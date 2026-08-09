@@ -1,0 +1,215 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║           URBAN HELPERS APP - BUILD & DEPLOY REFERENCE CARD              ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+PROJECT STATUS: READY TO BUILD ✓
+Location: c:\Users\Vichu\OneDrive\Desktop\UrbanHelpersApp
+
+════════════════════════════════════════════════════════════════════════════
+📦 SYSTEM STATUS
+════════════════════════════════════════════════════════════════════════════
+
+✓ Node.js v24.18.0
+✓ npm 11.16.0
+✓ Java 17 LTS
+✓ Dependencies installed
+✓ Android project generated
+✓ Expo CLI installed
+✓ EAS CLI installed
+
+════════════════════════════════════════════════════════════════════════════
+🚀 QUICK BUILD COMMANDS
+════════════════════════════════════════════════════════════════════════════
+
+METHOD A: EAS BUILD (Cloud - Easiest)
+─────────────────────────────────────
+$ cd c:\Users\Vichu\OneDrive\Desktop\UrbanHelpersApp
+$ eas login
+$ eas build --platform android --profile preview
+
+Time: 10-15 minutes
+Requires: Internet connection, Expo account
+
+METHOD B: GRADLE BUILD (Local - Faster)
+────────────────────────────────────────
+$ cd c:\Users\Vichu\OneDrive\Desktop\UrbanHelpersApp\android
+$ .\gradlew.bat assembleDebug    (or assembleRelease)
+
+Time: 5-10 minutes (after first run)
+Requires: Android SDK setup
+
+METHOD C: BUILD SCRIPTS
+───────────────────────
+$ .\build-apk.ps1 -type release
+$ .\build-apk.bat release
+
+════════════════════════════════════════════════════════════════════════════
+📱 PHONE DEPLOYMENT (ADB)
+════════════════════════════════════════════════════════════════════════════
+
+1. ENABLE USB DEBUGGING (On Phone):
+   Settings → About Phone → Build Number (tap 7x) 
+   → Developer Options → USB Debugging ON
+
+2. CONNECT PHONE:
+   Use USB data cable
+   Tap "Allow" on USB Debugging prompt
+
+3. VERIFY CONNECTION:
+   $ adb devices
+   (Should show: deviceid  device)
+
+4. INSTALL APK:
+   $ adb install -r android\app\build\outputs\apk\debug\app-debug.apk
+
+5. LAUNCH:
+   App opens automatically or find "Urban Helpers" on home screen
+
+════════════════════════════════════════════════════════════════════════════
+📂 IMPORTANT FILES
+════════════════════════════════════════════════════════════════════════════
+
+START_HERE.md              Main guide (read first)
+QUICK_BUILD.md            Quick build instructions
+APK_BUILD_GUIDE.md        Detailed build guide with all options
+USB_DEPLOYMENT.md         Phone deployment guide with troubleshooting
+build-apk.ps1             PowerShell build automation
+build-apk.bat             Batch build automation
+eas.json                  EAS configuration
+app.json                  App metadata & Android config
+android/                  Generated Android project
+
+════════════════════════════════════════════════════════════════════════════
+🎯 APK OUTPUT LOCATIONS
+════════════════════════════════════════════════════════════════════════════
+
+Debug APK:
+  android/app/build/outputs/apk/debug/app-debug.apk
+  Size: ~90 MB
+
+Release APK:
+  android/app/build/outputs/apk/release/app-release.apk
+  Size: ~65 MB
+
+════════════════════════════════════════════════════════════════════════════
+🔧 USEFUL COMMANDS
+════════════════════════════════════════════════════════════════════════════
+
+ADB:
+  adb devices                    List connected devices
+  adb install -r <apk>          Install APK
+  adb uninstall <package>        Uninstall app
+  adb logcat                     View device logs
+  adb shell am start -n <pkg>    Launch app
+
+NPM:
+  npm install                    Install dependencies
+  npm start                      Start Expo dev server
+  npm run android                Launch in Android emulator
+
+GRADLE:
+  cd android
+  .\gradlew.bat clean            Clean build
+  .\gradlew.bat assembleDebug    Build debug APK
+  .\gradlew.bat assembleRelease  Build release APK
+
+EAS:
+  eas login                      Login to Expo
+  eas build --platform android   Build APK (cloud)
+  eas build --status             Check build status
+  eas logout                     Logout
+
+════════════════════════════════════════════════════════════════════════════
+⚠️  TROUBLESHOOTING QUICK FIXES
+════════════════════════════════════════════════════════════════════════════
+
+"adb not found"
+→ Add to PATH: C:\Users\Vichu\AppData\Local\Android\sdk\platform-tools
+
+"Device offline/unauthorized"
+→ adb kill-server
+→ adb start-server
+→ Tap "Allow" on phone
+
+"Build timeout"
+→ This is normal on first build, just wait
+
+"Installation failed"
+→ adb uninstall com.urbanhelpers.app
+→ adb install -r <apk>
+
+"App crashes"
+→ adb logcat | Select-String "UrbanHelpers"
+
+════════════════════════════════════════════════════════════════════════════
+📊 PROJECT SPECS
+════════════════════════════════════════════════════════════════════════════
+
+App Name: Urban Helpers
+Package: com.urbanhelpers.app
+Type: Health & Wellness Tracker
+Screens: 44 (across 6 modules)
+Stack: React Native + Expo + TypeScript
+Styling: NativeWind (Tailwind CSS)
+Navigation: React Navigation
+Icons: Ionicons
+APK Size: 65-90 MB (depending on build type)
+
+════════════════════════════════════════════════════════════════════════════
+🎬 TYPICAL WORKFLOW
+════════════════════════════════════════════════════════════════════════════
+
+First Build (15-20 min total):
+  1. eas build --platform android --profile preview    [10-15 min]
+  2. Enable USB Debugging on phone                      [30 sec]
+  3. Connect phone via USB                              [1 min]
+  4. adb install -r app.apk                             [2 min]
+  5. Test on phone                                      [5 min]
+
+Subsequent Builds (8-15 min):
+  1. Make code changes
+  2. eas build --platform android --profile preview    [10-15 min]
+  3. adb install -r app.apk                             [2 min]
+  4. Test on phone
+
+════════════════════════════════════════════════════════════════════════════
+✅ BEFORE YOU BUILD
+════════════════════════════════════════════════════════════════════════════
+
+□ Read START_HERE.md
+□ Choose build method (EAS or Gradle)
+□ Have USB cable ready
+□ Charge Android phone
+□ Have internet connection (for EAS builds)
+
+════════════════════════════════════════════════════════════════════════════
+🆘 NEED HELP?
+════════════════════════════════════════════════════════════════════════════
+
+BUILD ISSUES    → APK_BUILD_GUIDE.md (Troubleshooting section)
+DEPLOY ISSUES   → USB_DEPLOYMENT.md (Troubleshooting section)
+QUICK START     → QUICK_BUILD.md
+FULL DETAILS    → APK_BUILD_GUIDE.md
+GENERAL INFO    → START_HERE.md
+
+════════════════════════════════════════════════════════════════════════════
+🚀 READY? START HERE:
+════════════════════════════════════════════════════════════════════════════
+
+$ cd c:\Users\Vichu\OneDrive\Desktop\UrbanHelpersApp
+
+Option A (Easiest):
+$ eas login && eas build --platform android --profile preview
+
+Option B (Faster, local):
+$ cd android && .\gradlew.bat assembleDebug
+
+Then deploy:
+$ adb install -r android\app\build\outputs\apk\debug\app-debug.apk
+
+════════════════════════════════════════════════════════════════════════════
+
+Last Updated: August 8, 2026
+Status: READY TO BUILD ✓
+
+════════════════════════════════════════════════════════════════════════════

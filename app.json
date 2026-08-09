@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Urban Helpers",
+    "slug": "urban-helpers-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#0B3D91"
+    },
+    "android": {
+      "package": "com.urbanhelpers.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0B3D91"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.urbanhelpers.app",
+      "supportsTablet": false
+    }
+  }
+}
