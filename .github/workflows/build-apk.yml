@@ -32,6 +32,9 @@ jobs:
       - name: 🏗️ Generate Android project (Prebuild)
         run: npx expo prebuild --platform android --clean
 
+      - name: 📦 Bundle JavaScript for Offline / Standalone APK
+        run: npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/
+
       - name: 🔨 Build Debug APK
         working-directory: android
         run: ./gradlew assembleDebug --stacktrace
