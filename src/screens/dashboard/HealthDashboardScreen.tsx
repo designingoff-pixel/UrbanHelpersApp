@@ -1,191 +1,195 @@
 import React from "react";
-import { ScrollView, Text, View, Pressable } from "react-native";
+import { ScrollView, Text, View, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
-import { ScreenContainer } from "@/components";
+import { colors } from "@/theme/colors";
 
 type Props = NativeStackScreenProps<RootStackParamList, "HealthDashboard">;
 
+const VITALS = [
+  { label: "HEART RATE", value: "72", unit: "BPM", status: "Normal", gradient: ["#be185d", "#7e22ce"] as (string[]), icon: "heart" },
+  { label: "OXYGEN", value: "98%", unit: "", status: "Healthy", gradient: ["#0284c7", "#0d9488"] as (string[]), icon: "water" },
+  { label: "PRESSURE", value: "120/80", unit: "", status: "Normal", gradient: ["#1e3a8a", "#4338ca"] as (string[]), icon: "pulse" },
+];
+
+const NAV = [
+  { icon: "home-outline", route: "HomeDashboard", label: "Home" },
+  { icon: "heart", route: "HealthDashboard", label: "Health", active: true },
+  { icon: "compass-outline", route: "Discover", label: "Discover" },
+  { icon: "barbell-outline", route: "FitnessDashboard", label: "Fitness" },
+  { icon: "person-outline", route: "Profile", label: "Profile" },
+];
+
 export default function HealthDashboardScreen({ navigation }: Props) {
   return (
-    <ScreenContainer style={{ backgroundColor: "#081826" }}>
-      <View className="flex-1 bg-[#081826]">
-        {/* Header */}
-        <View className="px-5 pt-4 pb-3 flex-row justify-between items-center">
-          <View>
-            <Text className="text-white text-2xl font-bold">Health Hub</Text>
-            <Text className="text-slate-400 text-xs mt-0.5">Real-time vitals & medical records</Text>
-          </View>
-          <Pressable
-            className="w-10 h-10 rounded-full bg-[#1B2B3B] items-center justify-center border border-white/10"
-            onPress={() => navigation.navigate("EmergencyAssistance")}
-          >
-            <Ionicons name="alert-circle" size={22} color="#EF4444" />
-          </Pressable>
+    <View style={s.root}>
+      {/* Header */}
+      <View style={s.header}>
+        <Pressable onPress={() => navigation.goBack()} style={s.backBtn}>
+          <Ionicons name="chevron-back" size={22} color={colors.text.secondary} />
+        </Pressable>
+        <View style={s.headerTitle}>
+          <Text style={s.title}>Health</Text>
+          <Text style={s.caption}>Everything about your wellness.</Text>
         </View>
+        <Pressable style={s.iconBtn}>
+          <Ionicons name="notifications-outline" size={20} color={colors.text.secondary} />
+          <View style={s.badge} />
+        </Pressable>
+      </View>
 
-        <ScrollView className="flex-1 px-5 pt-2" contentContainerStyle={{ paddingBottom: 90 }}>
-          {/* Hero Banner: AI Health Insights */}
-          <Pressable onPress={() => navigation.navigate("AICoach")}>
-            <LinearGradient
-              colors={["#0052D4", "#4364F7", "#6FB1FC"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              className="rounded-3xl p-5 mb-4 relative overflow-hidden"
-            >
-              <View className="flex-row items-center mb-2">
-                <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center mr-2">
-                  <Ionicons name="sparkles" size={18} color="#FFFFFF" />
-                </View>
-                <Text className="text-white text-xs font-bold uppercase tracking-wider">AI Health Companion</Text>
-              </View>
-              <Text className="text-white text-xl font-bold max-w-[240px] leading-tight mb-2">
-                "Your heart rate & hydration look optimal today!"
-              </Text>
-              <Text className="text-white/80 text-xs mb-3">Tap to talk with your AI Coach for custom advice →</Text>
-            </LinearGradient>
+      {/* Tabs */}
+      <View style={s.tabRow}>
+        {["Overview", "Vitals", "Medication", "Reports"].map((t, i) => (
+          <Pressable key={t} style={[s.tab, i === 0 && s.tabActive]}>
+            <Text style={[s.tabText, i === 0 && s.tabTextActive]}>{t}</Text>
           </Pressable>
+        ))}
+      </View>
 
-          {/* Real-time Vitals Header */}
-          <Text className="text-white font-bold text-base mb-3">Live Vitals & Analytics</Text>
-
-          {/* Vitals Grid: Heart Rate & Oxygen */}
-          <View className="flex-row gap-3 mb-3">
-            <Pressable
-              className="flex-1"
-              onPress={() => navigation.navigate("HealthDataAnalytics")}
-            >
-              <LinearGradient
-                colors={["#E11D48", "#BE123C"]}
-                className="rounded-2xl p-4 h-36 justify-between"
-              >
-                <View className="flex-row justify-between items-center">
-                  <Ionicons name="heart" size={24} color="#FFFFFF" />
-                  <Text className="text-white/80 text-[10px] font-bold uppercase">BPM</Text>
-                </View>
-                <View>
-                  <Text className="text-white text-2xl font-extrabold">72 bpm</Text>
-                  <Text className="text-white/90 text-xs font-medium">Heart Rate • Normal</Text>
-                </View>
-              </LinearGradient>
-            </Pressable>
-
-            <Pressable
-              className="flex-1"
-              onPress={() => navigation.navigate("BloodTestReports")}
-            >
-              <LinearGradient
-                colors={["#2563EB", "#1D4ED8"]}
-                className="rounded-2xl p-4 h-36 justify-between"
-              >
-                <View className="flex-row justify-between items-center">
-                  <Ionicons name="water" size={24} color="#FFFFFF" />
-                  <Text className="text-white/80 text-[10px] font-bold uppercase">SpO2</Text>
-                </View>
-                <View>
-                  <Text className="text-white text-2xl font-extrabold">98%</Text>
-                  <Text className="text-white/90 text-xs font-medium">Blood Oxygen • Optimal</Text>
-                </View>
-              </LinearGradient>
-            </Pressable>
-          </View>
-
-          {/* Medical Records Shortcuts */}
-          <Text className="text-white font-bold text-base mb-3 mt-2">Clinical Records Vault</Text>
-          <View className="flex-row gap-3 mb-4">
-            <Pressable
-              className="flex-1 bg-[#1B2B3B] p-4 rounded-2xl border border-white/10 items-center justify-center py-4"
-              onPress={() => navigation.navigate("PrescriptionManagement")}
-            >
-              <Ionicons name="document-text" size={24} color="#38BDF8" />
-              <Text className="text-white text-xs font-semibold mt-2">Prescriptions</Text>
-            </Pressable>
-
-            <Pressable
-              className="flex-1 bg-[#1B2B3B] p-4 rounded-2xl border border-white/10 items-center justify-center py-4"
-              onPress={() => navigation.navigate("LabReportsHub")}
-            >
-              <Ionicons name="flask" size={24} color="#A78BFA" />
-              <Text className="text-white text-xs font-semibold mt-2">Lab Reports</Text>
-            </Pressable>
-
-            <Pressable
-              className="flex-1 bg-[#1B2B3B] p-4 rounded-2xl border border-white/10 items-center justify-center py-4"
-              onPress={() => navigation.navigate("DoctorAdvice")}
-            >
-              <Ionicons name="chatbubbles" size={24} color="#4ADE80" />
-              <Text className="text-white text-xs font-semibold mt-2">Doctor Advice</Text>
-            </Pressable>
-          </View>
-
-          {/* Daily Care Reminders */}
-          <Text className="text-white font-bold text-base mb-3">Daily Care & Reminders</Text>
-          <Pressable
-            className="mb-3"
-            onPress={() => navigation.navigate("MedicationCenter")}
-          >
-            <LinearGradient
-              colors={["#059669", "#047857"]}
-              className="rounded-2xl p-4 flex-row items-center justify-between"
-            >
-              <View className="flex-row items-center">
-                <View className="w-10 h-10 rounded-full bg-white/20 items-center justify-center mr-3">
-                  <Ionicons name="medical" size={20} color="#FFFFFF" />
-                </View>
-                <View>
-                  <Text className="text-white font-bold text-base">Medication Tracker</Text>
-                  <Text className="text-white/80 text-xs">2 pills scheduled for today</Text>
-                </View>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
-            </LinearGradient>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+        {/* Hero */}
+        <LinearGradient colors={["#0C4A6E", "#4C1D95"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.hero}>
+          <Text style={s.heroTitle}>Your Health Journey</Text>
+          <Text style={s.heroSub}>Track every important aspect of your health in one place.</Text>
+          <Pressable style={s.heroBtn}>
+            <Text style={s.heroBtnText}>View Summary</Text>
+            <Ionicons name="arrow-forward" size={14} color="white" />
           </Pressable>
+        </LinearGradient>
 
-          <Pressable
-            onPress={() => navigation.navigate("VaccinationCenter")}
-          >
-            <LinearGradient
-              colors={["#7C3AED", "#6D28D9"]}
-              className="rounded-2xl p-4 flex-row items-center justify-between"
-            >
-              <View className="flex-row items-center">
-                <View className="w-10 h-10 rounded-full bg-white/20 items-center justify-center mr-3">
-                  <Ionicons name="shield-checkmark" size={20} color="#FFFFFF" />
+        {/* Today's Vitals */}
+        <Text style={s.sectionTitle}>Today's Vitals</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.vitalsRow}>
+          {VITALS.map((v) => (
+            <LinearGradient key={v.label} colors={v.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.vitalCard}>
+              <View style={s.vitalTop}>
+                <View style={s.vitalIconWrap}>
+                  <Ionicons name={v.icon as any} size={16} color="white" />
                 </View>
-                <View>
-                  <Text className="text-white font-bold text-base">Vaccination History</Text>
-                  <Text className="text-white/80 text-xs">Flu Shot due in 2 weeks</Text>
-                </View>
+                <Text style={s.vitalLabel}>{v.label}</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+              <Text style={s.vitalValue}>{v.value} <Text style={s.vitalUnit}>{v.unit}</Text></Text>
+              <View style={s.vitalStatus}>
+                <View style={s.statusDot} />
+                <Text style={s.statusText}>{v.status}</Text>
+              </View>
             </LinearGradient>
-          </Pressable>
+          ))}
         </ScrollView>
 
-        {/* Samsung Health Style Dark Navigation */}
-        <View className="bg-[#0F2027] flex-row justify-around items-center py-3 px-4 rounded-t-3xl border-t border-white/10">
-          <Pressable className="items-center" onPress={() => navigation.navigate("HomeDashboard")}>
-            <Ionicons name="home-outline" size={22} color="#94A3B8" />
-            <Text className="text-[10px] text-slate-400 mt-1">Home</Text>
+        {/* Daily Wellness Grid */}
+        <Text style={s.sectionTitle}>Daily Wellness</Text>
+        <View style={s.wellnessGrid}>
+          <Pressable onPress={() => navigation.navigate("HydrationDashboard")} style={[s.wellnessCard, { borderColor: "rgba(79,219,200,0.3)" }]}>
+            <Ionicons name="water" size={22} color={colors.secondary} />
+            <Text style={s.wellnessLabel}>HYDRATION</Text>
+            <Text style={s.wellnessValue}>2.1 L</Text>
+            <View style={s.progressBar}><View style={[s.progressFill, { width: "70%", backgroundColor: colors.secondary }]} /></View>
           </Pressable>
-          <Pressable className="items-center" onPress={() => navigation.navigate("HealthDashboard")}>
-            <View className="w-10 h-10 rounded-full bg-blue-500/20 items-center justify-center">
-              <Ionicons name="heart" size={20} color="#3B82F6" />
-            </View>
-          </Pressable>
-          <Pressable className="items-center" onPress={() => navigation.navigate("FitnessDashboard")}>
-            <Ionicons name="fitness-outline" size={22} color="#94A3B8" />
-            <Text className="text-[10px] text-slate-400 mt-1">Fitness</Text>
-          </Pressable>
-          <Pressable className="items-center" onPress={() => navigation.navigate("Discover")}>
-            <Ionicons name="compass-outline" size={22} color="#94A3B8" />
-            <Text className="text-[10px] text-slate-400 mt-1">Market</Text>
+          <Pressable onPress={() => navigation.navigate("SleepDashboard")} style={[s.wellnessCard, { borderColor: "rgba(210,187,255,0.3)" }]}>
+            <Ionicons name="moon" size={22} color={colors.tertiary} />
+            <Text style={s.wellnessLabel}>SLEEP</Text>
+            <Text style={s.wellnessValue}>7h 45m</Text>
+            <Text style={[s.statusText, { color: colors.tertiary, marginTop: 4 }]}>Excellent</Text>
           </Pressable>
         </View>
+
+        {/* AI Coach Banner */}
+        <Pressable onPress={() => navigation.navigate("AICoach")}>
+          <LinearGradient colors={["rgba(37,99,235,0.2)", "rgba(131,67,244,0.2)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.aiBanner}>
+            <View style={{ flex: 1 }}>
+              <View style={s.aiRow}>
+                <Ionicons name="sparkles" size={18} color={colors.tertiaryFixed} />
+                <Text style={s.aiBannerTitle}>AI Health Coach</Text>
+              </View>
+              <Text style={s.aiBannerSub}>Receive personalized health suggestions based on your recent vitals.</Text>
+            </View>
+            <View style={s.aiOrb}>
+              <Ionicons name="logo-electron" size={30} color={colors.tertiary} />
+            </View>
+          </LinearGradient>
+        </Pressable>
+
+        {/* Quick Actions */}
+        <Text style={s.sectionTitle}>Quick Access</Text>
+        <View style={s.quickGrid}>
+          {[
+            { icon: "flask", label: "Lab Reports", route: "LabReportsHub", color: "#f43f5e" },
+            { icon: "water-outline", label: "Blood Test", route: "BloodTestReports", color: "#f59e0b" },
+            { icon: "shield-checkmark", label: "Vaccination", route: "VaccinationCenter", color: "#10b981" },
+            { icon: "receipt", label: "Prescription", route: "PrescriptionManagement", color: "#8b5cf6" },
+          ].map((q) => (
+            <Pressable key={q.label} onPress={() => navigation.navigate(q.route as any)} style={[s.quickCard, { backgroundColor: q.color }]}>
+              <Ionicons name={q.icon as any} size={26} color="white" />
+              <Text style={s.quickLabel}>{q.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <View style={{ height: 100 }} />
+      </ScrollView>
+
+      {/* Bottom Nav */}
+      <View style={s.navBar}>
+        {NAV.map((n) => (
+          <Pressable key={n.route} onPress={() => navigation.navigate(n.route as any)} style={[s.navBtn, n.active && s.navBtnActive]}>
+            <Ionicons name={n.icon as any} size={22} color={n.active ? colors.onPrimary : colors.text.secondary} />
+          </Pressable>
+        ))}
       </View>
-    </ScreenContainer>
+    </View>
   );
 }
 
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.surface.dim },
+  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 52, paddingBottom: 12, gap: 12 },
+  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface.containerHigh, borderWidth: 1, borderColor: colors.glass.border, justifyContent: "center", alignItems: "center" },
+  headerTitle: { flex: 1 },
+  title: { fontSize: 24, fontWeight: "700", color: colors.primary },
+  caption: { fontSize: 12, color: colors.text.secondary, marginTop: 2 },
+  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface.containerHigh, borderWidth: 1, borderColor: colors.glass.border, justifyContent: "center", alignItems: "center" },
+  badge: { position: "absolute", top: 8, right: 8, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.error },
+  tabRow: { flexDirection: "row", marginHorizontal: 16, marginBottom: 16, backgroundColor: colors.glass.background, borderRadius: 30, borderWidth: 1, borderColor: colors.glass.border, padding: 4 },
+  tab: { flex: 1, paddingVertical: 8, borderRadius: 20, alignItems: "center" },
+  tabActive: { backgroundColor: "rgba(180,197,255,0.15)" },
+  tabText: { fontSize: 12, fontWeight: "500", color: colors.text.secondary },
+  tabTextActive: { color: colors.primary, fontWeight: "700" },
+  scroll: { paddingHorizontal: 16 },
+  hero: { borderRadius: 30, padding: 24, marginBottom: 20, minHeight: 200, justifyContent: "flex-end", borderWidth: 1, borderColor: colors.glass.border },
+  heroTitle: { fontSize: 28, fontWeight: "700", color: "white", marginBottom: 8 },
+  heroSub: { fontSize: 14, color: "rgba(255,255,255,0.8)", marginBottom: 24 },
+  heroBtn: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(255,255,255,0.1)", borderWidth: 1, borderColor: "rgba(255,255,255,0.2)", paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20, alignSelf: "flex-start" },
+  heroBtnText: { color: "white", fontSize: 14, fontWeight: "700" },
+  sectionTitle: { fontSize: 20, fontWeight: "700", color: colors.text.primary, marginBottom: 12 },
+  vitalsRow: { marginBottom: 20, marginHorizontal: -16, paddingHorizontal: 16 },
+  vitalCard: { borderRadius: 30, padding: 20, marginRight: 12, minWidth: 160, justifyContent: "space-between", minHeight: 140 },
+  vitalTop: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 20 },
+  vitalIconWrap: { width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.2)", justifyContent: "center", alignItems: "center" },
+  vitalLabel: { fontSize: 11, fontWeight: "700", color: "rgba(255,255,255,0.8)", letterSpacing: 0.5 },
+  vitalValue: { fontSize: 24, fontWeight: "700", color: "white" },
+  vitalUnit: { fontSize: 14, fontWeight: "400" },
+  vitalStatus: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
+  statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#4ade80" },
+  statusText: { fontSize: 12, color: "rgba(255,255,255,0.8)" },
+  wellnessGrid: { flexDirection: "row", gap: 12, marginBottom: 16 },
+  wellnessCard: { flex: 1, backgroundColor: colors.surface.containerHigh, borderRadius: 30, padding: 20, borderWidth: 1 },
+  wellnessLabel: { fontSize: 11, fontWeight: "700", color: colors.text.secondary, letterSpacing: 0.5, marginTop: 8 },
+  wellnessValue: { fontSize: 24, fontWeight: "700", color: colors.text.primary, marginTop: 4 },
+  progressBar: { height: 6, backgroundColor: colors.surface.containerHighest, borderRadius: 3, marginTop: 12, overflow: "hidden" },
+  progressFill: { height: "100%", borderRadius: 3 },
+  aiBanner: { borderRadius: 30, padding: 20, marginBottom: 20, flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "rgba(131,67,244,0.3)" },
+  aiRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
+  aiBannerTitle: { fontSize: 14, fontWeight: "700", color: colors.tertiaryFixed },
+  aiBannerSub: { fontSize: 12, color: colors.text.secondary, lineHeight: 18 },
+  aiOrb: { width: 64, height: 64, borderRadius: 32, backgroundColor: "rgba(131,67,244,0.2)", justifyContent: "center", alignItems: "center", borderWidth: 1, borderColor: "rgba(131,67,244,0.3)" },
+  quickGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 8 },
+  quickCard: { width: "47%", borderRadius: 16, padding: 16, alignItems: "center", gap: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" },
+  quickLabel: { fontSize: 12, color: "white", fontWeight: "600" },
+  navBar: { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", justifyContent: "space-around", alignItems: "center", height: 80, marginHorizontal: 16, marginBottom: 16, backgroundColor: colors.glass.background, borderRadius: 32, borderWidth: 1, borderColor: colors.glass.border },
+  navBtn: { width: 48, height: 48, borderRadius: 24, justifyContent: "center", alignItems: "center" },
+  navBtnActive: { backgroundColor: colors.primary },
+});

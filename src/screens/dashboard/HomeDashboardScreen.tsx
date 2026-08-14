@@ -1,270 +1,255 @@
-import React from "react";
-import { ScrollView, Text, View, Pressable, Image } from "react-native";
+import React, { useState } from "react";
+import {
+  ScrollView,
+  Text,
+  View,
+  Pressable,
+  StyleSheet,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
-import { ScreenContainer } from "@/components";
+import { colors } from "@/theme/colors";
 
 type Props = NativeStackScreenProps<RootStackParamList, "HomeDashboard">;
 
 const PILLS = [
   { name: "Home", icon: "home", active: true },
   { name: "Health", icon: "heart-outline", active: false },
-  { name: "Fitness", icon: "fitness-outline", active: false },
+  { name: "Fitness", icon: "barbell-outline", active: false },
   { name: "Home Care", icon: "briefcase-outline", active: false },
+  { name: "Family", icon: "people-outline", active: false },
+];
+
+const FEATURE_CARDS = [
+  { id: "energy",     title: "Energy Score",    subtitle: "Understand how your day is shaping up.", gradient: ["#1e3a8a", "#38bdf8"] as (string[]), icon: "flash",        route: "FitnessDashboard",       wide: true,  height: 100 },
+  { id: "heart",      title: "Heart Health",     subtitle: "View your heart insights.",              gradient: ["#be185d", "#7e22ce"] as (string[]), icon: "heart",        route: "HealthDashboard",        wide: false, height: 160 },
+  { id: "sleep",      title: "Sleep",            subtitle: "Track your sleep quality.",              gradient: ["#4338ca", "#8b5cf6"] as (string[]), icon: "moon",         route: "SleepDashboard",         wide: false, height: 160 },
+  { id: "nutrition",  title: "Nutrition",        subtitle: "Build healthier eating habits.",         gradient: ["#ea580c", "#d97706"] as (string[]), icon: "nutrition",    route: "NutritionDashboard",     wide: true,  height: 100 },
+  { id: "family",     title: "Family Care",      subtitle: "Stay connected with loved ones.",        gradient: ["#d97706", "#f59e0b"] as (string[]), icon: "people",       route: "FamilyDashboard",        wide: true,  height: 140 },
+  { id: "medication", title: "Medication",       subtitle: "Manage your meds.",                      gradient: ["#059669", "#10b981"] as (string[]), icon: "medical",      route: "MedicationCenter",       wide: false, height: 120 },
+  { id: "emergency",  title: "Emergency SOS",   subtitle: "1-Tap Alert",                            gradient: ["#b91c1c", "#ef4444"] as (string[]), icon: "alert-circle", route: "EmergencyAssistance",    wide: false, height: 120 },
+  { id: "aicoach",    title: "AI Coach",         subtitle: "Personalized health tips.",              gradient: ["#2563eb", "#8343f4"] as (string[]), icon: "sparkles",     route: "AICoach",                wide: true,  height: 100 },
+  { id: "medical",    title: "Medical Records",  subtitle: "Your health vault.",                     gradient: ["#1e3a8a", "#4c1d95"] as (string[]), icon: "document-text", route: "MedicalRecords",        wide: false, height: 120 },
+  { id: "discover",   title: "Discover",         subtitle: "Explore wellness content.",              gradient: ["#0d9488", "#14b8a6"] as (string[]), icon: "compass",      route: "Discover",               wide: false, height: 120 },
+];
+
+const NAV = [
+  { icon: "home",            route: "HomeDashboard",   label: "Home",    active: true },
+  { icon: "heart-outline",   route: "HealthDashboard", label: "Health" },
+  { icon: "compass-outline", route: "Discover",        label: "Discover" },
+  { icon: "barbell-outline", route: "FitnessDashboard",label: "Fitness" },
+  { icon: "person-outline",  route: "CreateProfile",   label: "Profile" },
 ];
 
 export default function HomeDashboardScreen({ navigation }: Props) {
+  const [activeNav, setActiveNav] = useState("HomeDashboard");
+
+  const handleNav = (route: string) => {
+    setActiveNav(route);
+    navigation.navigate(route as any);
+  };
+
+  // Separate wide cards from narrow cards for layout
+  const wideCards  = FEATURE_CARDS.filter((c) => c.wide);
+  const narrowCards = FEATURE_CARDS.filter((c) => !c.wide);
+
   return (
-    <ScreenContainer>
-      <View className="flex-1 bg-white">
-        {/* Top Header */}
-        <View className="px-5 pt-3 pb-2 flex-row justify-between items-center">
-          <View>
-            <Text className="font-heading text-2xl text-blue-900 font-bold">Urban Helpers</Text>
-            <View className="flex-row items-center mt-1">
-              <View className="w-6 h-6 rounded-full bg-slate-300 items-center justify-center mr-1.5 overflow-hidden">
-                <Ionicons name="person" size={14} color="#475569" />
-              </View>
-              <Text className="text-sm font-semibold text-slate-700">Good Morning, Alex 👋</Text>
-            </View>
-            <Text className="text-xs text-slate-400">Your companion for healthier living.</Text>
+    <View style={s.root}>
+      {/* ── Top App Bar ─────────────────────────────────── */}
+      <View style={s.topBar}>
+        <View style={s.topBarLeft}>
+          <Text style={s.appTitle}>Urban Helpers</Text>
+          <View style={s.subtitleRow}>
+            <View style={s.avatar}><Ionicons name="person" size={12} color={colors.text.secondary} /></View>
+            <Text style={s.greeting}>Good Morning, Alex 👋</Text>
           </View>
-          <View className="flex-row gap-2">
-            <Pressable className="w-10 h-10 rounded-full bg-slate-800 items-center justify-center">
-              <Ionicons name="notifications-outline" size={20} color="#FFFFFF" />
-            </Pressable>
-            <Pressable className="w-10 h-10 rounded-full bg-slate-800 items-center justify-center">
-              <Ionicons name="ellipsis-vertical" size={20} color="#FFFFFF" />
-            </Pressable>
-          </View>
+          <Text style={s.tagline}>Your companion for healthier living.</Text>
         </View>
-
-        {/* Horizontal Category Pills */}
-        <View className="px-5 py-2">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View className="flex-row gap-2">
-              {PILLS.map((p) => (
-                <Pressable
-                  key={p.name}
-                  className={`flex-row items-center px-4 py-2 rounded-full ${
-                    p.active ? "bg-indigo-50 border border-indigo-200" : "bg-slate-800"
-                  }`}
-                >
-                  <Ionicons
-                    name={p.icon as any}
-                    size={16}
-                    color={p.active ? "#2563EB" : "#94A3B8"}
-                    style={{ marginRight: 6 }}
-                  />
-                  <Text className={`text-xs font-semibold ${p.active ? "text-blue-600" : "text-white"}`}>
-                    {p.name}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </ScrollView>
-        </View>
-
-        <ScrollView className="flex-1 px-5 pt-2" contentContainerStyle={{ paddingBottom: 100 }}>
-          {/* Hero Banner: Take care of your family's wellbeing */}
-          <LinearGradient
-            colors={["#1E3A5F", "#2D4A6F", "#1A2B3C"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            className="rounded-3xl p-5 mb-4 relative overflow-hidden"
-          >
-            <Text className="text-white text-xl font-bold max-w-[200px] mb-2 leading-tight">
-              Take care of your family's wellbeing
-            </Text>
-            <Text className="text-slate-300 text-xs max-w-[200px] mb-4">
-              Manage health, appointments, reminders, and home services in one place.
-            </Text>
-            
-            <View className="flex-row items-center justify-between mt-2">
-              <View className="flex-row gap-1">
-                <View className="w-6 h-1.5 rounded-full bg-white" />
-                <View className="w-1.5 h-1.5 rounded-full bg-white/40" />
-                <View className="w-1.5 h-1.5 rounded-full bg-white/40" />
-              </View>
-              <Pressable
-                onPress={() => navigation.navigate("Discover")}
-                className="flex-row items-center bg-white/20 border border-white/30 px-4 py-2 rounded-full"
-              >
-                <Text className="text-white text-xs font-semibold mr-1">Explore</Text>
-                <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
-              </Pressable>
-            </View>
-          </LinearGradient>
-
-          {/* Energy Score Card */}
-          <Pressable onPress={() => navigation.navigate("FitnessDashboard")}>
-            <LinearGradient
-              colors={["#2B7FFF", "#00B4D8"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              className="rounded-2xl p-5 mb-4 flex-row justify-between items-center"
-            >
-              <View>
-                <Text className="text-white text-lg font-bold">Energy Score</Text>
-                <Text className="text-white/80 text-xs mt-1">Understand how your day is shaping up.</Text>
-              </View>
-              <View className="w-10 h-10 rounded-full bg-white/30 items-center justify-center">
-                <View className="w-6 h-6 rounded-full bg-white" />
-              </View>
-            </LinearGradient>
+        <View style={s.topBarRight}>
+          <Pressable style={s.iconBtn}>
+            <Ionicons name="notifications-outline" size={20} color={colors.text.secondary} />
+            <View style={s.notifBadge} />
           </Pressable>
-
-          {/* Split 2-Column: Heart Health & Sleep */}
-          <View className="flex-row gap-3 mb-4">
-            {/* Heart Health */}
-            <Pressable
-              className="flex-1"
-              onPress={() => navigation.navigate("HealthDataAnalytics")}
-            >
-              <LinearGradient
-                colors={["#A81C7E", "#6C1D94"]}
-                className="rounded-2xl p-4 h-48 justify-between"
-              >
-                <View className="w-10 h-10 rounded-full bg-white/20 items-center justify-center">
-                  <Ionicons name="heart" size={20} color="#FFFFFF" />
-                </View>
-                <View>
-                  <Text className="text-white text-base font-bold">Heart Health</Text>
-                  <Text className="text-white/80 text-xs mt-1">View your heart insights.</Text>
-                </View>
-              </LinearGradient>
-            </Pressable>
-
-            {/* Sleep */}
-            <Pressable
-              className="flex-1"
-              onPress={() => navigation.navigate("SleepDashboard")}
-            >
-              <LinearGradient
-                colors={["#635BFF", "#8A4FFF"]}
-                className="rounded-2xl p-4 h-48 justify-between"
-              >
-                <View className="w-10 h-10 rounded-full bg-white/20 items-center justify-center">
-                  <Ionicons name="moon" size={20} color="#FFFFFF" />
-                </View>
-                <View>
-                  <Text className="text-white text-base font-bold">Sleep</Text>
-                  <Text className="text-white/80 text-xs mt-1">Track your sleep quality.</Text>
-                </View>
-              </LinearGradient>
-            </Pressable>
-          </View>
-
-          {/* Nutrition Banner */}
-          <Pressable onPress={() => navigation.navigate("NutritionDashboard")}>
-            <LinearGradient
-              colors={["#E65100", "#F57C00"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              className="rounded-2xl p-5 mb-4 flex-row justify-between items-center"
-            >
-              <View>
-                <Text className="text-white text-lg font-bold">Nutrition</Text>
-                <Text className="text-white/80 text-xs mt-1">Build healthier eating habits.</Text>
-              </View>
-              <View className="w-10 h-10 rounded-full bg-white/20 items-center justify-center">
-                <Ionicons name="nutrition" size={22} color="#FFFFFF" />
-              </View>
-            </LinearGradient>
-          </Pressable>
-
-          {/* Family Care Card */}
-          <Pressable onPress={() => navigation.navigate("FamilyDashboard")}>
-            <LinearGradient
-              colors={["#F59E0B", "#D97706"]}
-              className="rounded-3xl p-5 mb-4 justify-between relative overflow-hidden min-h-[140px]"
-            >
-              <View className="w-10 h-10 rounded-full bg-white/20 items-center justify-center mb-3">
-                <Ionicons name="people" size={20} color="#FFFFFF" />
-              </View>
-              <View className="max-w-[200px]">
-                <Text className="text-white text-xl font-bold">Family Care</Text>
-                <Text className="text-white/80 text-xs mt-1">
-                  Stay connected with loved ones and manage care plans.
-                </Text>
-              </View>
-              {/* Silhouette Illustration */}
-              <View className="absolute right-4 bottom-2 flex-row items-end opacity-90">
-                <Ionicons name="man" size={54} color="#FFF52E" />
-                <Ionicons name="body" size={32} color="#FFF52E" style={{ marginHorizontal: -6 }} />
-                <Ionicons name="woman" size={50} color="#FFF52E" />
-              </View>
-            </LinearGradient>
-          </Pressable>
-
-          {/* Bottom Dual Grid: Medication & Home Care */}
-          <View className="flex-row gap-3">
-            {/* Medication */}
-            <Pressable
-              className="flex-1"
-              onPress={() => navigation.navigate("MedicationCenter")}
-            >
-              <LinearGradient
-                colors={["#00B87C", "#00875A"]}
-                className="rounded-2xl p-4 items-center justify-center py-5"
-              >
-                <Ionicons name="medical" size={24} color="#FFFFFF" />
-                <Text className="text-white text-sm font-bold mt-2">Medication</Text>
-              </LinearGradient>
-            </Pressable>
-
-            {/* Home Care */}
-            <Pressable
-              className="flex-1"
-              onPress={() => navigation.navigate("OnboardingHomeServices")}
-            >
-              <LinearGradient
-                colors={["#00A896", "#028090"]}
-                className="rounded-2xl p-4 items-center justify-center py-5"
-              >
-                <Ionicons name="briefcase" size={24} color="#FFFFFF" />
-                <Text className="text-white text-sm font-bold mt-2">Home Care</Text>
-              </LinearGradient>
-            </Pressable>
-          </View>
-        </ScrollView>
-
-        {/* Floating Action Plus (+) Button */}
-        <Pressable
-          className="absolute right-6 bottom-24 w-14 h-14 rounded-full bg-indigo-600 items-center justify-center shadow-lg"
-          onPress={() => navigation.navigate("Discover")}
-        >
-          <Ionicons name="add" size={30} color="#FFFFFF" />
-        </Pressable>
-
-        {/* Dark Bottom Nav Bar */}
-        <View className="bg-slate-900 flex-row justify-around items-center py-3 px-4 rounded-t-3xl">
-          <Pressable className="items-center" onPress={() => navigation.navigate("HomeDashboard")}>
-            <View className="w-10 h-10 rounded-full bg-blue-500/20 items-center justify-center">
-              <Ionicons name="home" size={20} color="#60A5FA" />
-            </View>
-          </Pressable>
-          <Pressable className="items-center" onPress={() => navigation.navigate("HealthDashboard")}>
-            <Ionicons name="medical-outline" size={22} color="#94A3B8" />
-            <Text className="text-[10px] text-slate-400 mt-1 font-medium">Health</Text>
-          </Pressable>
-          <Pressable className="items-center" onPress={() => navigation.navigate("Discover")}>
-            <Ionicons name="compass-outline" size={22} color="#94A3B8" />
-            <Text className="text-[10px] text-slate-400 mt-1 font-medium">Discover</Text>
-          </Pressable>
-          <Pressable className="items-center" onPress={() => navigation.navigate("FitnessDashboard")}>
-            <Ionicons name="fitness-outline" size={22} color="#94A3B8" />
-            <Text className="text-[10px] text-slate-400 mt-1 font-medium">Fitness</Text>
-          </Pressable>
-          <Pressable className="items-center" onPress={() => navigation.navigate("CreateProfile")}>
-            <Ionicons name="person-outline" size={22} color="#94A3B8" />
-            <Text className="text-[10px] text-slate-400 mt-1 font-medium">Profile</Text>
+          <Pressable style={s.iconBtn}>
+            <Ionicons name="ellipsis-vertical" size={20} color={colors.text.secondary} />
           </Pressable>
         </View>
       </View>
-    </ScreenContainer>
+
+      {/* ── Category Pills ──────────────────────────────── */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.pillsScroll} contentContainerStyle={s.pillsContent}>
+        {PILLS.map((p) => (
+          <Pressable key={p.name} style={[s.pill, p.active && s.pillActive]}>
+            <Ionicons name={p.icon as any} size={14} color={p.active ? colors.primary : colors.text.secondary} />
+            <Text style={[s.pillText, { color: p.active ? colors.primary : colors.text.secondary }]}>{p.name}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      {/* ── Main Scrollable Content ─────────────────────── */}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+
+        {/* Hero Card */}
+        <LinearGradient
+          colors={[colors.gradients.hero[0], colors.gradients.hero[1], colors.gradients.hero[2]]}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={s.hero}
+        >
+          <Text style={s.heroTitle}>Take care of your family's wellbeing</Text>
+          <Text style={s.heroSub}>Manage health, appointments, reminders, and home services in one place.</Text>
+          <View style={s.heroCTA}>
+            <View style={s.dotsRow}>
+              <View style={s.dotActive} /><View style={s.dot} /><View style={s.dot} />
+            </View>
+            <Pressable onPress={() => navigation.navigate("Discover")} style={s.exploreBtn}>
+              <Text style={s.exploreBtnText}>Explore</Text>
+              <Ionicons name="arrow-forward" size={13} color="white" />
+            </Pressable>
+          </View>
+        </LinearGradient>
+
+        {/* ── Feature Cards Grid ────────────────────── */}
+        {/* Wide (full-width) cards + 2-column narrow pairs */}
+        <View style={s.cardGrid}>
+
+          {/* Row: Energy Score (wide) */}
+          <FeatureBtn card={FEATURE_CARDS[0]} onPress={(r) => navigation.navigate(r as any)} />
+
+          {/* Row: Heart + Sleep (2-col) */}
+          <View style={s.row2}>
+            <FeatureBtn card={FEATURE_CARDS[1]} onPress={(r) => navigation.navigate(r as any)} half />
+            <FeatureBtn card={FEATURE_CARDS[2]} onPress={(r) => navigation.navigate(r as any)} half />
+          </View>
+
+          {/* Row: Nutrition (wide) */}
+          <FeatureBtn card={FEATURE_CARDS[3]} onPress={(r) => navigation.navigate(r as any)} />
+
+          {/* Row: Family (wide) */}
+          <FeatureBtn card={FEATURE_CARDS[4]} onPress={(r) => navigation.navigate(r as any)} />
+
+          {/* Row: Medication + Emergency (2-col) */}
+          <View style={s.row2}>
+            <FeatureBtn card={FEATURE_CARDS[5]} onPress={(r) => navigation.navigate(r as any)} half />
+            <FeatureBtn card={FEATURE_CARDS[6]} onPress={(r) => navigation.navigate(r as any)} half />
+          </View>
+
+          {/* Row: AI Coach (wide) */}
+          <FeatureBtn card={FEATURE_CARDS[7]} onPress={(r) => navigation.navigate(r as any)} />
+
+          {/* Row: Medical Records + Discover (2-col) */}
+          <View style={s.row2}>
+            <FeatureBtn card={FEATURE_CARDS[8]} onPress={(r) => navigation.navigate(r as any)} half />
+            <FeatureBtn card={FEATURE_CARDS[9]} onPress={(r) => navigation.navigate(r as any)} half />
+          </View>
+
+        </View>
+
+        <View style={{ height: 100 }} />
+      </ScrollView>
+
+      {/* ── FAB ─────────────────────────────────────────── */}
+      <Pressable
+        onPress={() => navigation.navigate("AICoach")}
+        style={s.fab}
+      >
+        <Ionicons name="add" size={28} color="white" />
+      </Pressable>
+
+      {/* ── Bottom Nav ──────────────────────────────────── */}
+      <View style={s.navBar}>
+        {NAV.map((n) => (
+          <Pressable key={n.route} onPress={() => handleNav(n.route)} style={[s.navBtn, activeNav === n.route && s.navBtnActive]}>
+            <Ionicons name={n.icon as any} size={22} color={activeNav === n.route ? colors.onPrimary : colors.text.secondary} />
+          </Pressable>
+        ))}
+      </View>
+    </View>
   );
 }
 
+// ─── Reusable Feature Card Button ──────────────────
+interface FeatureBtnProps {
+  card: typeof FEATURE_CARDS[0];
+  onPress: (route: string) => void;
+  half?: boolean;
+}
+function FeatureBtn({ card, onPress, half }: FeatureBtnProps) {
+  return (
+    <Pressable
+      onPress={() => onPress(card.route)}
+      style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1, flex: half ? 1 : undefined }]}
+    >
+      <LinearGradient
+        colors={card.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[s.featureCard, { height: card.height }]}
+      >
+        <View style={s.featureIconWrap}>
+          <Ionicons name={card.icon as any} size={24} color="white" />
+        </View>
+        <View style={s.featureTextWrap}>
+          <Text style={s.featureTitle}>{card.title}</Text>
+          <Text style={s.featureSub}>{card.subtitle}</Text>
+        </View>
+      </LinearGradient>
+    </Pressable>
+  );
+}
+
+// ─── Styles ─────────────────────────────────────────
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.surface.dim },
+
+  // Top Bar
+  topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", paddingHorizontal: 16, paddingTop: 52, paddingBottom: 8 },
+  topBarLeft: { flex: 1 },
+  appTitle: { fontSize: 28, fontWeight: "700", color: colors.text.primary, lineHeight: 32 },
+  subtitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 },
+  avatar: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surface.containerHigh, justifyContent: "center", alignItems: "center", borderWidth: 1, borderColor: colors.glass.border },
+  greeting: { fontSize: 14, fontWeight: "600", color: colors.text.primary },
+  tagline: { fontSize: 12, color: colors.text.secondary, marginTop: 4 },
+  topBarRight: { flexDirection: "row", gap: 8 },
+  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface.containerHigh, borderWidth: 1, borderColor: colors.glass.border, justifyContent: "center", alignItems: "center" },
+  notifBadge: { position: "absolute", top: 8, right: 8, width: 10, height: 10, borderRadius: 5, backgroundColor: colors.error, borderWidth: 2, borderColor: colors.surface.containerHigh },
+
+  // Pills
+  pillsScroll: { maxHeight: 52 },
+  pillsContent: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
+  pill: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: colors.surface.containerHigh, borderWidth: 1, borderColor: colors.glass.border, gap: 6 },
+  pillActive: { backgroundColor: "rgba(180,197,255,0.15)", borderColor: colors.primary },
+  pillText: { fontSize: 12, fontWeight: "600" },
+
+  // Scroll
+  scroll: { paddingHorizontal: 16 },
+
+  // Hero
+  hero: { borderRadius: 36, padding: 24, marginTop: 12, marginBottom: 20, minHeight: 220, justifyContent: "space-between", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", elevation: 8 },
+  heroTitle: { fontSize: 24, fontWeight: "700", color: "white", lineHeight: 32, marginBottom: 8 },
+  heroSub: { fontSize: 12, color: "rgba(255,255,255,0.8)", lineHeight: 18 },
+  heroCTA: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 20 },
+  dotsRow: { flexDirection: "row", gap: 6 },
+  dotActive: { width: 24, height: 4, borderRadius: 2, backgroundColor: "white" },
+  dot: { width: 6, height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.4)" },
+  exploreBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(255,255,255,0.15)", borderWidth: 1, borderColor: "rgba(255,255,255,0.2)", paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
+  exploreBtnText: { color: "white", fontSize: 12, fontWeight: "600" },
+
+  // Cards
+  cardGrid: { gap: 12 },
+  row2: { flexDirection: "row", gap: 12 },
+  featureCard: { borderRadius: 30, padding: 20, justifyContent: "space-between", overflow: "hidden", borderWidth: 1, borderColor: "rgba(255,255,255,0.15)" },
+  featureIconWrap: { width: 48, height: 48, borderRadius: 24, backgroundColor: "rgba(255,255,255,0.2)", justifyContent: "center", alignItems: "center" },
+  featureTextWrap: { marginTop: "auto" as any },
+  featureTitle: { fontSize: 16, fontWeight: "700", color: "white", marginBottom: 4 },
+  featureSub: { fontSize: 12, color: "rgba(255,255,255,0.8)", lineHeight: 16 },
+
+  // FAB
+  fab: { position: "absolute", bottom: 112, right: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.tertiaryContainer, justifyContent: "center", alignItems: "center", elevation: 10, shadowColor: colors.tertiary, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 20 },
+
+  // Bottom Nav
+  navBar: { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", justifyContent: "space-around", alignItems: "center", height: 80, marginHorizontal: 16, marginBottom: 16, backgroundColor: "rgba(17,33,48,0.9)", borderRadius: 32, borderWidth: 1, borderColor: colors.glass.border, elevation: 12 },
+  navBtn: { width: 48, height: 48, borderRadius: 24, justifyContent: "center", alignItems: "center" },
+  navBtnActive: { backgroundColor: colors.primary },
+});

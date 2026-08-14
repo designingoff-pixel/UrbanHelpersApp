@@ -54,6 +54,9 @@ export type RootStackParamList = {
   PersonalHygiene: undefined;
   HealthPrecautions: undefined;
   HealthCompanion: undefined;
+
+  // Profile
+  Profile: undefined;
 };
 
 export type ScreenName = keyof RootStackParamList;
