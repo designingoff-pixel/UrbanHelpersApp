@@ -40,7 +40,7 @@ const NAV = [
   { icon: "heart-outline",   route: "HealthDashboard", label: "Health" },
   { icon: "compass-outline", route: "Discover",        label: "Discover" },
   { icon: "barbell-outline", route: "FitnessDashboard",label: "Fitness" },
-  { icon: "person-outline",  route: "CreateProfile",   label: "Profile" },
+  { icon: "person-outline",  route: "Profile",         label: "Profile" },
 ];
 
 export default function HomeDashboardScreen({ navigation }: Props) {
@@ -160,8 +160,9 @@ export default function HomeDashboardScreen({ navigation }: Props) {
       {/* ── Bottom Nav ──────────────────────────────────── */}
       <View style={s.navBar}>
         {NAV.map((n) => (
-          <Pressable key={n.route} onPress={() => handleNav(n.route)} style={[s.navBtn, activeNav === n.route && s.navBtnActive]}>
-            <Ionicons name={n.icon as any} size={22} color={activeNav === n.route ? colors.onPrimary : colors.text.secondary} />
+          <Pressable key={n.route} onPress={() => handleNav(n.route)} style={s.navBtn}>
+            <Ionicons name={n.icon as any} size={22} color={activeNav === n.route ? colors.primary : colors.text.secondary} />
+            <Text style={[s.navLabel, activeNav === n.route && s.navLabelActive]}>{n.label}</Text>
           </Pressable>
         ))}
       </View>
@@ -252,4 +253,6 @@ const s = StyleSheet.create({
   navBar: { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", justifyContent: "space-around", alignItems: "center", height: 80, marginHorizontal: 16, marginBottom: 16, backgroundColor: "rgba(17,33,48,0.9)", borderRadius: 32, borderWidth: 1, borderColor: colors.glass.border, elevation: 12 },
   navBtn: { width: 48, height: 48, borderRadius: 24, justifyContent: "center", alignItems: "center" },
   navBtnActive: { backgroundColor: colors.primary },
+  navLabel: { fontSize: 10, color: colors.text.secondary, marginTop: 2, fontWeight: "500" },
+  navLabelActive: { color: colors.primary, fontWeight: "700" },
 });
