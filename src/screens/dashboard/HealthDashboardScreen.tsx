@@ -54,7 +54,7 @@ export default function HealthDashboardScreen({ navigation }: Props) {
         <LinearGradient colors={["#0C4A6E", "#4C1D95"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.hero}>
           <Text style={s.heroTitle}>Your Health Journey</Text>
           <Text style={s.heroSub}>Track every important aspect of your health in one place.</Text>
-          <Pressable style={s.heroBtn}>
+          <Pressable style={s.heroBtn} onPress={() => navigation.navigate("HealthDataAnalytics")}>
             <Text style={s.heroBtnText}>View Summary</Text>
             <Ionicons name="arrow-forward" size={14} color="white" />
           </Pressable>
