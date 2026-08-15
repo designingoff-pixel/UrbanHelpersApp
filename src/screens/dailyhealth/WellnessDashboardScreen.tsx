@@ -67,7 +67,7 @@ const ACTIVITIES = [
 const NAV = [
   { icon: "heart", label: "Health", route: "HealthDashboard", active: true },
   { icon: "headset-outline", label: "Coaching", route: "AICoach" },
-  { icon: "add-circle-outline", label: "Log", route: "WellnessDashboard" },
+  { icon: "add-circle-outline", label: "Log", route: "AdvancedNutritionDashboard" },
   { icon: "restaurant-outline", label: "Nutrition", route: "NutritionDashboard" },
   { icon: "person-outline", label: "Profile", route: "Profile" },
 ];
