@@ -4,87 +4,75 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
+import { AnimatedCard } from "@/components/AnimatedCard";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Discover">;
 
-const { width: SCREEN_W } = Dimensions.get("window");
-// 16px padding each side, 12px gap between 2 columns
-const CARD_W = (SCREEN_W - 32 - 12) / 2;
+const { width: W } = Dimensions.get("window");
+const CARD_W = (W - 32 - 12) / 2; // 2-col grid, 16px side padding, 12px gap
 
-const CATEGORIES: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  sub: string;
-  gradient: string[];
-  route: keyof RootStackParamList;
-}[] = [
-  { icon: "heart",        label: "Health",    sub: "24 services",  gradient: ["#ec4899", "#8b5cf6"], route: "HealthDashboard" },
-  { icon: "home",         label: "Home Care", sub: "Home services", gradient: ["#f97316", "#fbbf24"], route: "MedicationCenter" },
-  { icon: "alert-circle", label: "Emergency", sub: "URGENT",        gradient: ["#ef4444", "#f97316"], route: "EmergencyAssistance" },
-  { icon: "happy",        label: "Wellness",  sub: "Mind & Body",   gradient: ["#14b8a6", "#06b6d4"], route: "WellnessDashboard" },
+// ── Categories — horizontal 2×2 grid ─────────────────────────────────────────
+const CATEGORIES = [
+  { icon: "heart",        label: "Health",     sub: "24 services",  gradient: ["#be185d", "#8b5cf6"] as string[], route: "HealthDashboard" },
+  { icon: "flash",        label: "Fitness",    sub: "6 workouts",   gradient: ["#1e3a8a", "#38bdf8"] as string[], route: "FitnessDashboard" },
+  { icon: "alert-circle", label: "Emergency",  sub: "URGENT",       gradient: ["#7f1d1d", "#ef4444"] as string[], route: "EmergencyAssistance" },
+  { icon: "happy",        label: "Wellness",   sub: "Mind & Body",  gradient: ["#065f46", "#14b8a6"] as string[], route: "WellnessDashboard" },
+  { icon: "moon",         label: "Sleep",      sub: "Track rest",   gradient: ["#4338ca", "#8b5cf6"] as string[], route: "SleepDashboard" },
+  { icon: "nutrition",    label: "Nutrition",  sub: "Eat better",   gradient: ["#92400e", "#f59e0b"] as string[], route: "NutritionDashboard" },
 ];
 
 const ARTICLES = [
-  { tag: "NUTRITION",   title: "The Future of Personalized Nutrition and Wellness",  read: "5 min read" },
-  { tag: "SMART HOME",  title: "Integrating Health Tech into Your Living Space",      read: "8 min read" },
+  { tag: "NUTRITION",   title: "The Future of Personalized Nutrition and Wellness", read: "5 min read", gradient: ["#1e3a8a", "#4338ca"] as string[] },
+  { tag: "SMART HOME",  title: "Integrating Health Tech into Your Living Space",     read: "8 min read", gradient: ["#134e4a", "#0d9488"] as string[] },
 ];
 
-const EXPLORE_MORE: {
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  route: keyof RootStackParamList;
-  color: string;
-}[] = [
-  { label: "Sleep",      icon: "moon",          route: "SleepDashboard",      color: "#4338ca" },
-  { label: "Fitness",    icon: "barbell",        route: "FitnessDashboard",    color: "#1e3a8a" },
-  { label: "Nutrition",  icon: "nutrition",      route: "NutritionDashboard",  color: "#ea580c" },
-  { label: "Family",     icon: "people",         route: "FamilyDashboard",     color: "#d97706" },
-  { label: "Medication", icon: "medical",        route: "MedicationCenter",    color: "#059669" },
-  { label: "AI Coach",   icon: "sparkles",       route: "AICoach",             color: "#8343f4" },
+const EXPLORE_MORE = [
+  { label: "AI Coach",        icon: "sparkles",      route: "AICoach",           color: "#8343f4" },
+  { label: "Medication",      icon: "medical",       route: "MedicationCenter",  color: "#059669" },
+  { label: "Family",          icon: "people",        route: "FamilyDashboard",   color: "#d97706" },
+  { label: "Medical Records", icon: "document-text", route: "MedicalRecords",    color: "#1e3a8a" },
+  { label: "Hydration",       icon: "water",         route: "HydrationDashboard",color: "#0284c7" },
+  { label: "Steps",           icon: "walk",          route: "DailyStepsDashboard",color: "#6d28d9" },
 ];
 
-const NAV_TABS: {
-  icon: keyof typeof Ionicons.glyphMap;
-  route: keyof RootStackParamList;
-  label: string;
-  active?: boolean;
-}[] = [
-  { icon: "home-outline",    route: "HomeDashboard",   label: "Home" },
-  { icon: "heart-outline",   route: "HealthDashboard", label: "Health" },
-  { icon: "compass",         route: "Discover",        label: "Discover", active: true },
-  { icon: "barbell-outline", route: "FitnessDashboard",label: "Fitness" },
-  { icon: "person-outline",  route: "Profile",         label: "Profile" },
+const NAV_TABS = [
+  { icon: "home-outline" as const,   route: "HomeDashboard" as const,    label: "Home" },
+  { icon: "heart-outline" as const,  route: "HealthDashboard" as const,  label: "Health" },
+  { icon: "compass" as const,        route: "Discover" as const,         label: "Discover" },
+  { icon: "barbell-outline" as const,route: "FitnessDashboard" as const, label: "Fitness" },
+  { icon: "person-outline" as const, route: "Profile" as const,          label: "Profile" },
 ];
 
 export default function DiscoverScreen({ navigation }: Props) {
   return (
     <View style={s.root}>
 
-      {/* Header */}
+      {/* ── Header ──────────────────────────────────────────── */}
       <View style={s.header}>
         <View>
           <Text style={s.pageTitle}>Discover</Text>
           <Text style={s.pageSub}>Explore new ways to improve your health.</Text>
         </View>
-        <Pressable style={s.iconBtn}>
+        <Pressable
+          style={s.iconBtn}
+          onPress={() => navigation.navigate("Notifications" as any)}
+        >
           <Ionicons name="notifications-outline" size={20} color={colors.text.secondary} />
+          <View style={s.notifDot} />
         </Pressable>
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={s.scroll}
-      >
-        {/* ── Hero ─────────────────────────────────────── */}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+
+        {/* ── Hero Card ────────────────────────────────────── */}
         <Animated.View entering={FadeInDown.duration(400).springify()}>
           <LinearGradient
             colors={["#04b4a2", "#005048", "#041423"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             style={s.hero}
           >
             <View style={s.heroTag}>
@@ -95,125 +83,121 @@ export default function DiscoverScreen({ navigation }: Props) {
               Manage health, home care, emergency services and daily routines in one place.
             </Text>
             <Pressable
-              style={({ pressed }) => [s.heroBtn, { opacity: pressed ? 0.85 : 1 }]}
+              style={s.heroBtn}
               onPress={() => navigation.navigate("HomeDashboard")}
             >
               <Text style={s.heroBtnText}>Explore Now</Text>
+              <Ionicons name="arrow-forward" size={14} color={colors.onPrimary} />
             </Pressable>
           </LinearGradient>
         </Animated.View>
 
-        {/* ── Popular Categories — proper 2-col grid ────── */}
+        {/* ── Popular Categories — 2-col grid ─────────────── */}
         <Text style={s.sectionTitle}>Popular Categories</Text>
         <View style={s.categoryGrid}>
           {CATEGORIES.map((c, i) => (
-            <Animated.View
+            <AnimatedCard
               key={c.label}
-              entering={FadeInDown.delay(i * 80).duration(380).springify().damping(16)}
+              onPress={() => navigation.navigate(c.route as any)}
               style={s.categoryOuter}
             >
-              <Pressable
-                onPress={() => navigation.navigate(c.route as any)}
-                style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
-              >
+              <Animated.View entering={FadeInDown.delay(i * 60).duration(350).springify()}>
                 <LinearGradient
                   colors={c.gradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                   style={s.categoryCard}
                 >
-                  {/* Icon circle */}
                   <View style={s.catIconWrap}>
-                    <Ionicons name={c.icon} size={28} color="white" />
+                    <Ionicons name={c.icon as any} size={26} color="white" />
                   </View>
-                  {/* Text at bottom */}
-                  <View>
+                  <View style={s.catTextWrap}>
                     <Text style={s.categoryLabel}>{c.label}</Text>
                     {c.sub === "URGENT" ? (
                       <View style={s.urgentBadge}>
-                        <Text style={s.urgentText}>{c.sub}</Text>
+                        <Text style={s.urgentText}>URGENT</Text>
                       </View>
                     ) : (
                       <Text style={s.categorySub}>{c.sub}</Text>
                     )}
                   </View>
+                  <Ionicons name="arrow-forward" size={16} color="rgba(255,255,255,0.5)" />
                 </LinearGradient>
-              </Pressable>
-            </Animated.View>
+              </Animated.View>
+            </AnimatedCard>
           ))}
         </View>
 
-        {/* ── Articles ─────────────────────────────────── */}
+        {/* ── Articles ─────────────────────────────────────── */}
         <Text style={s.sectionTitle}>Read & Inspire</Text>
         {ARTICLES.map((a, i) => (
           <Animated.View
             key={a.title}
-            entering={FadeInDown.delay(i * 100).duration(380).springify()}
-            style={s.articleCard}
+            entering={FadeInDown.delay(i * 80).duration(400).springify()}
           >
-            <View style={s.articleThumb}>
-              <LinearGradient
-                colors={["#1e3a8a", "#4338ca"]}
-                style={s.articleThumbGrad}
-              >
+            <View style={s.articleCard}>
+              <LinearGradient colors={a.gradient} style={s.articleThumb}>
                 <Ionicons name="document-text" size={32} color="rgba(255,255,255,0.4)" />
               </LinearGradient>
-              <View style={s.articleTag}>
-                <Text style={s.articleTagText}>{a.tag}</Text>
+              <View style={s.articleBody}>
+                <View style={s.articleTag}>
+                  <Text style={s.articleTagText}>{a.tag}</Text>
+                </View>
+                <Text style={s.articleTitle}>{a.title}</Text>
+                <View style={s.articleFooter}>
+                  <Ionicons name="time-outline" size={13} color={colors.text.muted} />
+                  <Text style={s.articleRead}>{a.read}</Text>
+                  <View style={{ flex: 1 }} />
+                  <Ionicons name="bookmark-outline" size={18} color={colors.text.secondary} />
+                </View>
               </View>
-            </View>
-            <Text style={s.articleTitle}>{a.title}</Text>
-            <View style={s.articleFooter}>
-              <Text style={s.articleRead}>{a.read}</Text>
-              <Ionicons name="bookmark-outline" size={18} color={colors.text.secondary} />
             </View>
           </Animated.View>
         ))}
 
-        {/* ── Explore More 3-col grid ───────────────────── */}
+        {/* ── Explore More ─────────────────────────────────── */}
         <Text style={s.sectionTitle}>Explore More</Text>
         <View style={s.exploreGrid}>
           {EXPLORE_MORE.map((e, i) => (
-            <Animated.View
+            <AnimatedCard
               key={e.label}
-              entering={FadeInDown.delay(i * 60).duration(340).springify()}
+              onPress={() => navigation.navigate(e.route as any)}
               style={s.exploreOuter}
             >
-              <Pressable
-                onPress={() => navigation.navigate(e.route as any)}
-                style={({ pressed }) => [
-                  s.exploreCard,
-                  { backgroundColor: e.color, opacity: pressed ? 0.85 : 1 },
-                ]}
+              <Animated.View
+                entering={FadeInDown.delay(i * 50).duration(350).springify()}
+                style={[s.exploreCard, { backgroundColor: e.color }]}
               >
-                <Ionicons name={e.icon} size={24} color="white" />
+                <View style={s.exploreIconWrap}>
+                  <Ionicons name={e.icon as any} size={22} color="white" />
+                </View>
                 <Text style={s.exploreLabel}>{e.label}</Text>
-              </Pressable>
-            </Animated.View>
+              </Animated.View>
+            </AnimatedCard>
           ))}
         </View>
 
         <View style={{ height: 110 }} />
       </ScrollView>
 
-      {/* ── Bottom Nav ───────────────────────────────────── */}
+      {/* ── Bottom Nav ──────────────────────────────────────── */}
       <View style={s.navBar}>
-        {NAV_TABS.map((n) => (
-          <Pressable
-            key={n.route}
-            onPress={() => navigation.navigate(n.route as any)}
-            style={s.navBtn}
-          >
-            <Ionicons
-              name={n.icon}
-              size={22}
-              color={n.active ? colors.primary : colors.text.secondary}
-            />
-            <Text style={[s.navLabel, n.active && s.navLabelActive]}>
-              {n.label}
-            </Text>
-          </Pressable>
-        ))}
+        {NAV_TABS.map((n) => {
+          const isActive = n.route === "Discover";
+          return (
+            <Pressable
+              key={n.route}
+              onPress={() => n.route !== "Discover" && navigation.navigate(n.route as any)}
+              style={s.navBtn}
+            >
+              <Ionicons
+                name={n.icon}
+                size={22}
+                color={isActive ? colors.primary : colors.text.secondary}
+              />
+              <Text style={[s.navLabel, isActive && s.navLabelActive]}>{n.label}</Text>
+            </Pressable>
+          );
+        })}
       </View>
 
     </View>
@@ -223,7 +207,6 @@ export default function DiscoverScreen({ navigation }: Props) {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surface.dim },
 
-  // Header
   header: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start",
     paddingHorizontal: 16, paddingTop: 52, paddingBottom: 12,
@@ -236,114 +219,111 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: colors.glass.border,
     justifyContent: "center", alignItems: "center",
   },
+  notifDot: {
+    position: "absolute", top: 9, right: 9,
+    width: 8, height: 8, borderRadius: 4,
+    backgroundColor: colors.error,
+    borderWidth: 1, borderColor: colors.surface.containerHigh,
+  },
 
-  scroll: { paddingHorizontal: 16 },
+  scroll: { paddingHorizontal: 16, paddingTop: 4 },
 
   // Hero
   hero: {
-    borderRadius: 28, padding: 24, marginBottom: 28,
-    minHeight: 240, justifyContent: "flex-end",
-    borderWidth: 1, borderColor: colors.glass.border,
+    borderRadius: 28, padding: 24,
+    marginBottom: 24, minHeight: 240,
+    justifyContent: "flex-end",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
   },
   heroTag: {
     backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20,
     paddingHorizontal: 12, paddingVertical: 4,
     alignSelf: "flex-start", marginBottom: 12,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.2)",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.18)",
   },
   heroTagText: { fontSize: 11, fontWeight: "700", color: colors.secondaryFixed },
   heroTitle: { fontSize: 26, fontWeight: "700", color: "white", marginBottom: 8, lineHeight: 34 },
-  heroSub: { fontSize: 14, color: "rgba(255,255,255,0.8)", marginBottom: 20, lineHeight: 20 },
+  heroSub: { fontSize: 14, color: "rgba(255,255,255,0.75)", marginBottom: 20, lineHeight: 20 },
   heroBtn: {
+    flexDirection: "row", alignItems: "center", gap: 8,
     backgroundColor: colors.primary,
-    paddingHorizontal: 24, paddingVertical: 12,
+    paddingHorizontal: 20, paddingVertical: 12,
     borderRadius: 20, alignSelf: "flex-start",
   },
   heroBtnText: { color: colors.onPrimary, fontSize: 14, fontWeight: "700" },
 
-  // Section title
-  sectionTitle: { fontSize: 20, fontWeight: "700", color: colors.text.primary, marginBottom: 14 },
+  sectionTitle: { fontSize: 20, fontWeight: "700", color: colors.text.primary, marginBottom: 12 },
 
-  // Category grid — 2 columns, fixed width, horizontal text
-  categoryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-    marginBottom: 28,
-  },
+  // Category cards — 2-col, horizontal layout (icon + text + arrow in a row)
+  categoryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 24 },
   categoryOuter: { width: CARD_W },
   categoryCard: {
-    width: CARD_W,
-    height: 150,                  // fixed height — no vertical text spill
-    borderRadius: 24,
-    padding: 18,
-    justifyContent: "space-between",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
-    overflow: "hidden",
+    borderRadius: 20, padding: 16,
+    flexDirection: "row", alignItems: "center",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
+    minHeight: 72,
+    gap: 10,
   },
   catIconWrap: {
-    width: 52, height: 52, borderRadius: 26,
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center", alignItems: "center",
+    flexShrink: 0,
   },
-  categoryLabel: {
-    fontSize: 15, fontWeight: "700", color: "white",
-    marginBottom: 2,
-    flexWrap: "wrap",
-  },
-  categorySub: { fontSize: 12, color: "rgba(255,255,255,0.7)" },
+  catTextWrap: { flex: 1 },
+  categoryLabel: { fontSize: 13, fontWeight: "700", color: "white" },
+  categorySub: { fontSize: 11, color: "rgba(255,255,255,0.65)", marginTop: 2 },
   urgentBadge: {
-    backgroundColor: colors.error, borderRadius: 6,
-    paddingHorizontal: 6, paddingVertical: 2,
-    alignSelf: "flex-start", marginTop: 4,
+    backgroundColor: colors.error, borderRadius: 4,
+    paddingHorizontal: 5, paddingVertical: 2,
+    alignSelf: "flex-start", marginTop: 3,
   },
-  urgentText: { fontSize: 10, fontWeight: "700", color: "white" },
+  urgentText: { fontSize: 9, fontWeight: "700", color: "white" },
 
   // Articles
   articleCard: {
-    backgroundColor: colors.surface.containerHigh,
+    backgroundColor: colors.surface.container,
     borderRadius: 24, overflow: "hidden",
-    marginBottom: 16,
-    borderWidth: 1, borderColor: colors.glass.border,
+    marginBottom: 14, borderWidth: 1, borderColor: colors.glass.border,
+    flexDirection: "row", alignItems: "stretch",
   },
-  articleThumb: { height: 150, position: "relative" },
-  articleThumbGrad: { flex: 1, justifyContent: "center", alignItems: "center" },
+  articleThumb: {
+    width: 90, justifyContent: "center", alignItems: "center",
+  },
+  articleBody: { flex: 1, padding: 16 },
   articleTag: {
-    position: "absolute", top: 12, left: 12,
-    backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 20,
-    paddingHorizontal: 12, paddingVertical: 4,
-    borderWidth: 1, borderColor: colors.glass.border,
+    backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 3, alignSelf: "flex-start",
+    marginBottom: 8,
   },
-  articleTagText: { fontSize: 11, fontWeight: "700", color: colors.secondary },
-  articleTitle: {
-    fontSize: 16, fontWeight: "700", color: colors.text.primary,
-    padding: 16, lineHeight: 24,
-  },
-  articleFooter: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 16, paddingBottom: 16,
-  },
-  articleRead: { fontSize: 12, color: colors.text.secondary },
+  articleTagText: { fontSize: 10, fontWeight: "700", color: colors.secondary },
+  articleTitle: { fontSize: 14, fontWeight: "600", color: colors.text.primary, lineHeight: 20 },
+  articleFooter: { flexDirection: "row", alignItems: "center", marginTop: 10, gap: 4 },
+  articleRead: { fontSize: 12, color: colors.text.muted },
 
-  // Explore more 3-col
+  // Explore more — 3-col
   exploreGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 8 },
-  exploreOuter: { width: "30%" },
+  exploreOuter: { width: (W - 32 - 24) / 3 },
   exploreCard: {
-    borderRadius: 20, paddingVertical: 18,
-    alignItems: "center", gap: 8,
+    borderRadius: 20, padding: 14, alignItems: "center",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.15)",
   },
-  exploreLabel: { fontSize: 11, color: "white", fontWeight: "600" },
+  exploreIconWrap: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center", alignItems: "center",
+    marginBottom: 8,
+  },
+  exploreLabel: { fontSize: 11, color: "white", fontWeight: "600", textAlign: "center" },
 
   // Bottom nav
   navBar: {
     position: "absolute", bottom: 0, left: 0, right: 0,
-    flexDirection: "row", alignItems: "center",
+    flexDirection: "row",
     height: 72, marginHorizontal: 12, marginBottom: 12,
     backgroundColor: "rgba(10,22,36,0.97)",
     borderRadius: 28, borderWidth: 1, borderColor: colors.glass.border,
-    elevation: 16,
+    elevation: 16, alignItems: "center",
   },
   navBtn: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 8 },
   navLabel: { fontSize: 10, color: colors.text.secondary, marginTop: 3, fontWeight: "500" },

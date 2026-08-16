@@ -61,6 +61,9 @@ import HealthCompanionScreen from "@/screens/dailycare/HealthCompanionScreen";
 // Profile
 import ProfileScreen from "@/screens/profile/ProfileScreen";
 
+// Notifications
+import NotificationsScreen from "@/screens/notifications/NotificationsScreen";
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 /**
@@ -141,6 +144,9 @@ export function RootNavigator() {
 
       {/* Profile */}
       <Stack.Screen name="Profile" component={ProfileScreen} />
+
+      {/* Notifications */}
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
     </Stack.Navigator>
   );
 }

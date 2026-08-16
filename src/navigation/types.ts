@@ -57,6 +57,9 @@ export type RootStackParamList = {
 
   // Profile
   Profile: undefined;
+
+  // Notifications
+  Notifications: undefined;
 };
 
 export type ScreenName = keyof RootStackParamList;

@@ -96,34 +96,22 @@ const NAV_TABS = [
 ];
 
 // ─── Animated press-scale card ─────────────────────────────────────────────────
-// Uses onEnd (not onFinalize) so accidental scroll-touches don't trigger navigation.
-// onEnd only fires when the finger lifts without being cancelled by a pan/scroll.
 interface PressCardProps {
   onPress: () => void;
   style?: any;
   children: React.ReactNode;
-  index?: number;
+  index?: number; // for staggered entrance
 }
 function PressCard({ onPress, style, children, index = 0 }: PressCardProps) {
   const scale = useSharedValue(1);
-
   const tap = Gesture.Tap()
-    .maxDuration(500)          // shorter window = less chance of capturing a slow scroll start
-    .onBegin(() => {
-      scale.value = withSpring(0.95, { damping: 15, stiffness: 350 });
-    })
-    .onEnd(() => {
-      // onEnd fires ONLY on a successful tap — not when the gesture is cancelled by a scroll
+    .maxDuration(800)
+    .onBegin(() => { scale.value = withSpring(0.95, { damping: 15, stiffness: 350 }); })
+    .onFinalize(() => {
       scale.value = withSpring(1, { damping: 12, stiffness: 280 });
       runOnJS(onPress)();
-    })
-    .onTouchesCancelled(() => {
-      // Scroll cancelled the touch — snap scale back without navigating
-      scale.value = withSpring(1, { damping: 12, stiffness: 280 });
     });
-
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-
   return (
     <GestureDetector gesture={tap}>
       <Animated.View
@@ -201,7 +189,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
           <Text style={s.tagline}>Your companion for healthier living.</Text>
         </View>
         <View style={s.topBarRight}>
-          <Pressable style={s.iconBtn}>
+          <Pressable style={s.iconBtn} onPress={() => navigation.navigate("Notifications")}>
             <Ionicons name="notifications-outline" size={20} color={colors.text.secondary} />
             <View style={s.notifBadge} />
           </Pressable>
