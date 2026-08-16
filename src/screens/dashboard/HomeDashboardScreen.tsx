@@ -1,63 +1,183 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   ScrollView,
   Text,
   View,
   Pressable,
   StyleSheet,
+  Dimensions,
+  FlatList,
+  ViewToken,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withDelay,
+  withSequence,
+  interpolate,
+  runOnJS,
+  FadeInDown,
+  FadeIn,
+  SlideInLeft,
+  Easing,
+} from "react-native-reanimated";
+import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 
 type Props = NativeStackScreenProps<RootStackParamList, "HomeDashboard">;
 
-const PILLS = [
-  { name: "Home",      icon: "home-outline" as const,      active: true },
-  { name: "Health",    icon: "heart-outline" as const,     active: false },
-  { name: "Fitness",   icon: "barbell-outline" as const,   active: false },
-  { name: "Home Care", icon: "briefcase-outline" as const, active: false },
-  { name: "Family",    icon: "people-outline" as const,    active: false },
+const { width: SCREEN_W } = Dimensions.get("window");
+const NAV_TAB_W = (SCREEN_W - 24) / 5; // 5 tabs, 12px margin each side
+
+// ─── Category pills — each navigates to a screen ──────────────────────────────
+const PILLS: { name: string; icon: keyof typeof Ionicons.glyphMap; route: keyof RootStackParamList }[] = [
+  { name: "Home",      icon: "home-outline",      route: "HomeDashboard" },
+  { name: "Health",    icon: "heart-outline",      route: "HealthDashboard" },
+  { name: "Fitness",   icon: "barbell-outline",    route: "FitnessDashboard" },
+  { name: "Home Care", icon: "briefcase-outline",  route: "MedicationCenter" },
+  { name: "Family",    icon: "people-outline",     route: "FamilyDashboard" },
 ];
 
-// wide: true  → full-width horizontal card (icon left, text right)
-// wide: false → half-width vertical card   (icon top, text bottom)
+// ─── Hero carousel slides ──────────────────────────────────────────────────────
+const HERO_SLIDES = [
+  {
+    id: "1",
+    title: "Take care of your family's wellbeing",
+    sub: "Manage health, appointments, reminders, and home services in one place.",
+    gradient: ["#0f2027", "#203a43", "#2c5364"] as string[],
+    btnLabel: "Explore",
+    route: "Discover" as keyof RootStackParamList,
+  },
+  {
+    id: "2",
+    title: "Track your health with AI precision",
+    sub: "Real-time vitals, sleep analysis, and personalised coaching in your pocket.",
+    gradient: ["#1a1a2e", "#16213e", "#0f3460"] as string[],
+    btnLabel: "View Health",
+    route: "HealthDashboard" as keyof RootStackParamList,
+  },
+  {
+    id: "3",
+    title: "Stay fit. Stay strong. Every day.",
+    sub: "Yoga, gym, steps, calories — all your fitness goals in one beautiful dashboard.",
+    gradient: ["#0d1b2a", "#1b4332", "#2d6a4f"] as string[],
+    btnLabel: "Start Fitness",
+    route: "FitnessDashboard" as keyof RootStackParamList,
+  },
+];
+
+// ─── Feature cards ─────────────────────────────────────────────────────────────
 const FEATURE_CARDS = [
-  { id: "energy",    title: "Energy Score",   subtitle: "Understand how your day is shaping up.", gradient: ["#1e3a8a", "#2563eb", "#38bdf8"] as string[], icon: "flash",         route: "FitnessDashboard",    wide: true,  height: 110 },
-  { id: "heart",     title: "Heart Health",   subtitle: "View your heart insights.",              gradient: ["#be185d", "#7e22ce"] as string[],            icon: "heart",         route: "HealthDashboard",     wide: false, height: 170 },
-  { id: "sleep",     title: "Sleep",          subtitle: "Track your sleep quality.",              gradient: ["#4338ca", "#8b5cf6"] as string[],            icon: "moon",          route: "SleepDashboard",      wide: false, height: 170 },
-  { id: "nutrition", title: "Nutrition",      subtitle: "Build healthier eating habits.",         gradient: ["#ea580c", "#d97706"] as string[],            icon: "nutrition",     route: "NutritionDashboard",  wide: true,  height: 110 },
-  { id: "family",    title: "Family Care",    subtitle: "Stay connected with loved ones.",        gradient: ["#92400e", "#d97706", "#f59e0b"] as string[], icon: "people",        route: "FamilyDashboard",     wide: true,  height: 130 },
-  { id: "medication",title: "Medication",     subtitle: "Manage your meds.",                      gradient: ["#065f46", "#059669"] as string[],            icon: "medical",       route: "MedicationCenter",    wide: false, height: 150 },
-  { id: "emergency", title: "Emergency SOS", subtitle: "1-Tap Alert",                            gradient: ["#7f1d1d", "#b91c1c"] as string[],            icon: "alert-circle",  route: "EmergencyAssistance", wide: false, height: 150 },
-  { id: "aicoach",   title: "AI Coach",       subtitle: "Personalized health guidance.",          gradient: ["#1d4ed8", "#6d28d9", "#8343f4"] as string[], icon: "sparkles",      route: "AICoach",             wide: true,  height: 110 },
-  { id: "medical",   title: "Medical Records",subtitle: "Your health vault.",                     gradient: ["#1e3a8a", "#4c1d95"] as string[],            icon: "document-text", route: "MedicalRecords",      wide: false, height: 150 },
-  { id: "discover",  title: "Discover",       subtitle: "Explore wellness content.",              gradient: ["#134e4a", "#0d9488"] as string[],            icon: "compass",       route: "Discover",            wide: false, height: 150 },
+  { id: "energy",    title: "Energy Score",    subtitle: "Understand how your day is shaping up.", gradient: ["#1e3a8a", "#2563eb", "#38bdf8"] as string[], icon: "flash",         route: "FitnessDashboard",    wide: true,  height: 110 },
+  { id: "heart",     title: "Heart Health",    subtitle: "View your heart insights.",              gradient: ["#be185d", "#7e22ce"] as string[],            icon: "heart",         route: "HealthDashboard",     wide: false, height: 170 },
+  { id: "sleep",     title: "Sleep",           subtitle: "Track your sleep quality.",              gradient: ["#4338ca", "#8b5cf6"] as string[],            icon: "moon",          route: "SleepDashboard",      wide: false, height: 170 },
+  { id: "nutrition", title: "Nutrition",       subtitle: "Build healthier eating habits.",         gradient: ["#ea580c", "#d97706"] as string[],            icon: "nutrition",     route: "NutritionDashboard",  wide: true,  height: 110 },
+  { id: "family",    title: "Family Care",     subtitle: "Stay connected with loved ones.",        gradient: ["#92400e", "#d97706", "#f59e0b"] as string[], icon: "people",        route: "FamilyDashboard",     wide: true,  height: 130 },
+  { id: "medication",title: "Medication",      subtitle: "Manage your meds.",                      gradient: ["#065f46", "#059669"] as string[],            icon: "medical",       route: "MedicationCenter",    wide: false, height: 150 },
+  { id: "emergency", title: "Emergency SOS",  subtitle: "1-Tap Alert",                            gradient: ["#7f1d1d", "#b91c1c"] as string[],            icon: "alert-circle",  route: "EmergencyAssistance", wide: false, height: 150 },
+  { id: "aicoach",   title: "AI Coach",        subtitle: "Personalized health guidance.",          gradient: ["#1d4ed8", "#6d28d9", "#8343f4"] as string[], icon: "sparkles",      route: "AICoach",             wide: true,  height: 110 },
+  { id: "medical",   title: "Medical Records", subtitle: "Your health vault.",                     gradient: ["#1e3a8a", "#4c1d95"] as string[],            icon: "document-text", route: "MedicalRecords",      wide: false, height: 150 },
+  { id: "discover",  title: "Discover",        subtitle: "Explore wellness content.",              gradient: ["#134e4a", "#0d9488"] as string[],            icon: "compass",       route: "Discover",            wide: false, height: 150 },
 ];
 
-const NAV = [
-  { icon: "home" as const,           route: "HomeDashboard",    label: "Home" },
-  { icon: "heart-outline" as const,  route: "HealthDashboard",  label: "Health" },
-  { icon: "compass-outline" as const,route: "Discover",         label: "Discover" },
-  { icon: "barbell-outline" as const,route: "FitnessDashboard", label: "Fitness" },
-  { icon: "person-outline" as const, route: "Profile",          label: "Profile" },
+// ─── Bottom nav tabs ───────────────────────────────────────────────────────────
+const NAV_TABS = [
+  { icon: "home" as keyof typeof Ionicons.glyphMap,           route: "HomeDashboard" as keyof RootStackParamList,    label: "Home" },
+  { icon: "heart-outline" as keyof typeof Ionicons.glyphMap,  route: "HealthDashboard" as keyof RootStackParamList,  label: "Health" },
+  { icon: "compass-outline" as keyof typeof Ionicons.glyphMap,route: "Discover" as keyof RootStackParamList,         label: "Discover" },
+  { icon: "barbell-outline" as keyof typeof Ionicons.glyphMap,route: "FitnessDashboard" as keyof RootStackParamList, label: "Fitness" },
+  { icon: "person-outline" as keyof typeof Ionicons.glyphMap, route: "Profile" as keyof RootStackParamList,          label: "Profile" },
 ];
 
+// ─── Animated press-scale card ─────────────────────────────────────────────────
+interface PressCardProps {
+  onPress: () => void;
+  style?: any;
+  children: React.ReactNode;
+  index?: number; // for staggered entrance
+}
+function PressCard({ onPress, style, children, index = 0 }: PressCardProps) {
+  const scale = useSharedValue(1);
+  const tap = Gesture.Tap()
+    .maxDuration(800)
+    .onBegin(() => { scale.value = withSpring(0.95, { damping: 15, stiffness: 350 }); })
+    .onFinalize(() => {
+      scale.value = withSpring(1, { damping: 12, stiffness: 280 });
+      runOnJS(onPress)();
+    });
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  return (
+    <GestureDetector gesture={tap}>
+      <Animated.View
+        entering={FadeInDown.delay(index * 80).duration(400).springify().damping(18)}
+        style={[style, animStyle]}
+      >
+        {children}
+      </Animated.View>
+    </GestureDetector>
+  );
+}
+
+// ─── Main screen ───────────────────────────────────────────────────────────────
 export default function HomeDashboardScreen({ navigation }: Props) {
-  const [activeNav, setActiveNav] = useState("HomeDashboard");
+  const [activePill, setActivePill] = useState(0);
+  const [activeNav, setActiveNav] = useState(0); // index 0 = Home
+  const [heroIndex, setHeroIndex] = useState(0);
 
-  const handleNav = (route: string) => {
-    setActiveNav(route);
-    navigation.navigate(route as any);
-  };
+  // Bottom nav sliding indicator
+  const indicatorX = useSharedValue(0);
+  const indicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: indicatorX.value }],
+  }));
+
+  const handleNav = useCallback((route: keyof RootStackParamList, index: number) => {
+    setActiveNav(index);
+    indicatorX.value = withSpring(index * NAV_TAB_W, { damping: 18, stiffness: 300 });
+    if (route !== "HomeDashboard") navigation.navigate(route as any);
+  }, [navigation]);
+
+  // Hero auto-scroll
+  const heroRef = useRef<FlatList>(null);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setHeroIndex((prev) => {
+        const next = (prev + 1) % HERO_SLIDES.length;
+        heroRef.current?.scrollToIndex({ index: next, animated: true });
+        return next;
+      });
+    }, 4000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    if (viewableItems.length > 0 && viewableItems[0].index != null) {
+      setHeroIndex(viewableItems[0].index);
+    }
+  }).current;
+
+  // Header entrance
+  const headerOpacity = useSharedValue(0);
+  const headerY = useSharedValue(-20);
+  useEffect(() => {
+    headerOpacity.value = withTiming(1, { duration: 500, easing: Easing.out(Easing.cubic) });
+    headerY.value = withSpring(0, { damping: 18, stiffness: 200 });
+  }, []);
+  const headerStyle = useAnimatedStyle(() => ({
+    opacity: headerOpacity.value,
+    transform: [{ translateY: headerY.value }],
+  }));
 
   return (
     <View style={s.root}>
 
-      {/* ── Top App Bar ─────────────────────────────────── */}
-      <View style={s.topBar}>
+      {/* ── Top App Bar ─────────────────────────────────────── */}
+      <Animated.View style={[s.topBar, headerStyle]}>
         <View style={s.topBarLeft}>
           <Text style={s.appTitle}>Urban Helpers</Text>
           <View style={s.subtitleRow}>
@@ -77,114 +197,231 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             <Ionicons name="ellipsis-vertical" size={20} color={colors.text.secondary} />
           </Pressable>
         </View>
-      </View>
+      </Animated.View>
 
-      {/* ── Category Pills ──────────────────────────────── */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={s.pillsContent}
-        style={s.pillsScroll}
-      >
-        {PILLS.map((p) => (
-          <Pressable key={p.name} style={[s.pill, p.active && s.pillActive]}>
-            <Ionicons
-              name={p.icon}
-              size={13}
-              color={p.active ? colors.primary : colors.text.secondary}
-            />
-            <Text style={[s.pillText, p.active && s.pillTextActive]}>
-              {p.name}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+      {/* ── Category Pills — visible, tappable, navigating ── */}
+      <Animated.View entering={SlideInLeft.delay(200).duration(400).springify()}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.pillsContent}
+          style={s.pillsScroll}
+          bounces={false}
+        >
+          {PILLS.map((p, i) => {
+            const isActive = activePill === i;
+            return (
+              <Pressable
+                key={p.name}
+                onPress={() => {
+                  setActivePill(i);
+                  if (i !== 0) navigation.navigate(p.route as any);
+                }}
+                style={[s.pill, isActive && s.pillActive]}
+              >
+                <Ionicons
+                  name={p.icon}
+                  size={14}
+                  color={isActive ? colors.primary : colors.text.secondary}
+                />
+                <Text style={[s.pillText, isActive && s.pillTextActive]}>
+                  {p.name}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </Animated.View>
 
-      {/* ── Main Scrollable Content ─────────────────────── */}
+      {/* ── Main Scrollable Content ──────────────────────────── */}
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={s.scroll}
       >
-        {/* Hero */}
-        <LinearGradient
-          colors={[colors.gradients.hero[0], colors.gradients.hero[1], colors.gradients.hero[2]]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={s.hero}
-        >
-          <Text style={s.heroTitle}>Take care of your family's wellbeing</Text>
-          <Text style={s.heroSub}>
-            Manage health, appointments, reminders, and home services in one place.
-          </Text>
-          <View style={s.heroCTA}>
-            <View style={s.dotsRow}>
-              <View style={s.dotActive} />
-              <View style={s.dot} />
-              <View style={s.dot} />
-            </View>
-            <Pressable
-              onPress={() => navigation.navigate("Discover")}
-              style={s.exploreBtn}
-            >
-              <Text style={s.exploreBtnText}>Explore</Text>
-              <Ionicons name="arrow-forward" size={13} color="white" />
-            </Pressable>
-          </View>
-        </LinearGradient>
 
-        {/* ── Feature Cards Grid ─────────────────────────── */}
+        {/* ── Animated Hero Carousel ─────────────────────────── */}
+        <View style={s.heroWrap}>
+          <FlatList
+            ref={heroRef}
+            data={HERO_SLIDES}
+            keyExtractor={(item) => item.id}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={{ viewAreaCoveragePercentThreshold: 50 }}
+            renderItem={({ item }) => (
+              <LinearGradient
+                colors={item.gradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={s.heroSlide}
+              >
+                <Text style={s.heroTitle}>{item.title}</Text>
+                <Text style={s.heroSub}>{item.sub}</Text>
+                <View style={s.heroCTA}>
+                  {/* Dots */}
+                  <View style={s.dotsRow}>
+                    {HERO_SLIDES.map((_, idx) => (
+                      <View
+                        key={idx}
+                        style={[s.dot, idx === heroIndex && s.dotActive]}
+                      />
+                    ))}
+                  </View>
+                  <Pressable
+                    onPress={() => navigation.navigate(item.route as any)}
+                    style={s.exploreBtn}
+                  >
+                    <Text style={s.exploreBtnText}>{item.btnLabel}</Text>
+                    <Ionicons name="arrow-forward" size={13} color="white" />
+                  </Pressable>
+                </View>
+              </LinearGradient>
+            )}
+          />
+        </View>
+
+        {/* ── Feature Cards Grid ─────────────────────────────── */}
         <View style={s.cardGrid}>
 
-          {/* Energy Score — wide */}
-          <CardWide card={FEATURE_CARDS[0]} onPress={(r) => navigation.navigate(r as any)} />
+          {/* Energy Score — wide, index 0 */}
+          <PressCard index={0} onPress={() => navigation.navigate(FEATURE_CARDS[0].route as any)}>
+            <LinearGradient colors={FEATURE_CARDS[0].gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.wideCard, { height: FEATURE_CARDS[0].height }]}>
+              <View style={s.wideIconWrap}><Ionicons name={FEATURE_CARDS[0].icon as any} size={28} color="white" /></View>
+              <View style={s.wideTextWrap}>
+                <Text style={s.wideTitle}>{FEATURE_CARDS[0].title}</Text>
+                <Text style={s.wideSub}>{FEATURE_CARDS[0].subtitle}</Text>
+              </View>
+              <Ionicons name="arrow-forward" size={18} color="rgba(255,255,255,0.6)" style={s.wideArrow} />
+            </LinearGradient>
+          </PressCard>
 
-          {/* Heart Health + Sleep — 2-col */}
+          {/* Heart + Sleep — 2-col, indices 1–2 */}
           <View style={s.row2}>
-            <CardHalf card={FEATURE_CARDS[1]} onPress={(r) => navigation.navigate(r as any)} />
-            <CardHalf card={FEATURE_CARDS[2]} onPress={(r) => navigation.navigate(r as any)} />
+            <PressCard index={1} onPress={() => navigation.navigate(FEATURE_CARDS[1].route as any)} style={s.halfOuter}>
+              <LinearGradient colors={FEATURE_CARDS[1].gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.halfCard, { height: FEATURE_CARDS[1].height }]}>
+                <View style={s.halfIconWrap}><Ionicons name={FEATURE_CARDS[1].icon as any} size={24} color="white" /></View>
+                <View style={s.halfTextWrap}>
+                  <Text style={s.halfTitle}>{FEATURE_CARDS[1].title}</Text>
+                  <Text style={s.halfSub} numberOfLines={2}>{FEATURE_CARDS[1].subtitle}</Text>
+                </View>
+              </LinearGradient>
+            </PressCard>
+            <PressCard index={2} onPress={() => navigation.navigate(FEATURE_CARDS[2].route as any)} style={s.halfOuter}>
+              <LinearGradient colors={FEATURE_CARDS[2].gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.halfCard, { height: FEATURE_CARDS[2].height }]}>
+                <View style={s.halfIconWrap}><Ionicons name={FEATURE_CARDS[2].icon as any} size={24} color="white" /></View>
+                <View style={s.halfTextWrap}>
+                  <Text style={s.halfTitle}>{FEATURE_CARDS[2].title}</Text>
+                  <Text style={s.halfSub} numberOfLines={2}>{FEATURE_CARDS[2].subtitle}</Text>
+                </View>
+              </LinearGradient>
+            </PressCard>
           </View>
 
-          {/* Nutrition — wide */}
-          <CardWide card={FEATURE_CARDS[3]} onPress={(r) => navigation.navigate(r as any)} />
+          {/* Nutrition — wide, index 3 */}
+          <PressCard index={3} onPress={() => navigation.navigate(FEATURE_CARDS[3].route as any)}>
+            <LinearGradient colors={FEATURE_CARDS[3].gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.wideCard, { height: FEATURE_CARDS[3].height }]}>
+              <View style={s.wideIconWrap}><Ionicons name={FEATURE_CARDS[3].icon as any} size={28} color="white" /></View>
+              <View style={s.wideTextWrap}>
+                <Text style={s.wideTitle}>{FEATURE_CARDS[3].title}</Text>
+                <Text style={s.wideSub}>{FEATURE_CARDS[3].subtitle}</Text>
+              </View>
+              <Ionicons name="arrow-forward" size={18} color="rgba(255,255,255,0.6)" style={s.wideArrow} />
+            </LinearGradient>
+          </PressCard>
 
-          {/* Family Care — wide */}
-          <CardWide card={FEATURE_CARDS[4]} onPress={(r) => navigation.navigate(r as any)} />
+          {/* Family Care — wide, index 4 */}
+          <PressCard index={4} onPress={() => navigation.navigate(FEATURE_CARDS[4].route as any)}>
+            <LinearGradient colors={FEATURE_CARDS[4].gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.wideCard, { height: FEATURE_CARDS[4].height }]}>
+              <View style={s.wideIconWrap}><Ionicons name={FEATURE_CARDS[4].icon as any} size={28} color="white" /></View>
+              <View style={s.wideTextWrap}>
+                <Text style={s.wideTitle}>{FEATURE_CARDS[4].title}</Text>
+                <Text style={s.wideSub}>{FEATURE_CARDS[4].subtitle}</Text>
+              </View>
+              <Ionicons name="arrow-forward" size={18} color="rgba(255,255,255,0.6)" style={s.wideArrow} />
+            </LinearGradient>
+          </PressCard>
 
-          {/* Medication + Emergency — 2-col */}
+          {/* Medication + Emergency — 2-col, indices 5–6 */}
           <View style={s.row2}>
-            <CardHalf card={FEATURE_CARDS[5]} onPress={(r) => navigation.navigate(r as any)} />
-            <CardHalf card={FEATURE_CARDS[6]} onPress={(r) => navigation.navigate(r as any)} />
+            <PressCard index={5} onPress={() => navigation.navigate(FEATURE_CARDS[5].route as any)} style={s.halfOuter}>
+              <LinearGradient colors={FEATURE_CARDS[5].gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.halfCard, { height: FEATURE_CARDS[5].height }]}>
+                <View style={s.halfIconWrap}><Ionicons name={FEATURE_CARDS[5].icon as any} size={24} color="white" /></View>
+                <View style={s.halfTextWrap}>
+                  <Text style={s.halfTitle}>{FEATURE_CARDS[5].title}</Text>
+                  <Text style={s.halfSub} numberOfLines={2}>{FEATURE_CARDS[5].subtitle}</Text>
+                </View>
+              </LinearGradient>
+            </PressCard>
+            <PressCard index={6} onPress={() => navigation.navigate(FEATURE_CARDS[6].route as any)} style={s.halfOuter}>
+              <LinearGradient colors={FEATURE_CARDS[6].gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.halfCard, { height: FEATURE_CARDS[6].height }]}>
+                <View style={s.halfIconWrap}><Ionicons name={FEATURE_CARDS[6].icon as any} size={24} color="white" /></View>
+                <View style={s.halfTextWrap}>
+                  <Text style={s.halfTitle}>{FEATURE_CARDS[6].title}</Text>
+                  <Text style={s.halfSub} numberOfLines={2}>{FEATURE_CARDS[6].subtitle}</Text>
+                </View>
+              </LinearGradient>
+            </PressCard>
           </View>
 
-          {/* AI Coach — wide */}
-          <CardWide card={FEATURE_CARDS[7]} onPress={(r) => navigation.navigate(r as any)} />
+          {/* AI Coach — wide, index 7 */}
+          <PressCard index={7} onPress={() => navigation.navigate(FEATURE_CARDS[7].route as any)}>
+            <LinearGradient colors={FEATURE_CARDS[7].gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.wideCard, { height: FEATURE_CARDS[7].height }]}>
+              <View style={s.wideIconWrap}><Ionicons name={FEATURE_CARDS[7].icon as any} size={28} color="white" /></View>
+              <View style={s.wideTextWrap}>
+                <Text style={s.wideTitle}>{FEATURE_CARDS[7].title}</Text>
+                <Text style={s.wideSub}>{FEATURE_CARDS[7].subtitle}</Text>
+              </View>
+              <Ionicons name="arrow-forward" size={18} color="rgba(255,255,255,0.6)" style={s.wideArrow} />
+            </LinearGradient>
+          </PressCard>
 
-          {/* Medical Records + Discover — 2-col */}
+          {/* Medical Records + Discover — 2-col, indices 8–9 */}
           <View style={s.row2}>
-            <CardHalf card={FEATURE_CARDS[8]} onPress={(r) => navigation.navigate(r as any)} />
-            <CardHalf card={FEATURE_CARDS[9]} onPress={(r) => navigation.navigate(r as any)} />
+            <PressCard index={8} onPress={() => navigation.navigate(FEATURE_CARDS[8].route as any)} style={s.halfOuter}>
+              <LinearGradient colors={FEATURE_CARDS[8].gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.halfCard, { height: FEATURE_CARDS[8].height }]}>
+                <View style={s.halfIconWrap}><Ionicons name={FEATURE_CARDS[8].icon as any} size={24} color="white" /></View>
+                <View style={s.halfTextWrap}>
+                  <Text style={s.halfTitle}>{FEATURE_CARDS[8].title}</Text>
+                  <Text style={s.halfSub} numberOfLines={2}>{FEATURE_CARDS[8].subtitle}</Text>
+                </View>
+              </LinearGradient>
+            </PressCard>
+            <PressCard index={9} onPress={() => navigation.navigate(FEATURE_CARDS[9].route as any)} style={s.halfOuter}>
+              <LinearGradient colors={FEATURE_CARDS[9].gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.halfCard, { height: FEATURE_CARDS[9].height }]}>
+                <View style={s.halfIconWrap}><Ionicons name={FEATURE_CARDS[9].icon as any} size={24} color="white" /></View>
+                <View style={s.halfTextWrap}>
+                  <Text style={s.halfTitle}>{FEATURE_CARDS[9].title}</Text>
+                  <Text style={s.halfSub} numberOfLines={2}>{FEATURE_CARDS[9].subtitle}</Text>
+                </View>
+              </LinearGradient>
+            </PressCard>
           </View>
 
         </View>
 
-        {/* Spacer so last card clears the bottom nav */}
+        {/* Bottom nav clearance */}
         <View style={{ height: 110 }} />
       </ScrollView>
 
-      {/* ── Bottom Nav ──────────────────────────────────── */}
+      {/* ── Animated Bottom Nav ──────────────────────────────── */}
       <View style={s.navBar}>
-        {NAV.map((n) => (
+        {/* Sliding active pill indicator */}
+        <Animated.View style={[s.navIndicator, indicatorStyle]} />
+
+        {NAV_TABS.map((n, i) => (
           <Pressable
             key={n.route}
-            onPress={() => handleNav(n.route)}
+            onPress={() => handleNav(n.route, i)}
             style={s.navBtn}
           >
             <Ionicons
               name={n.icon}
               size={22}
-              color={activeNav === n.route ? colors.primary : colors.text.secondary}
+              color={activeNav === i ? colors.primary : colors.text.secondary}
             />
-            <Text style={[s.navLabel, activeNav === n.route && s.navLabelActive]}>
+            <Text style={[s.navLabel, activeNav === i && s.navLabelActive]}>
               {n.label}
             </Text>
           </Pressable>
@@ -195,65 +432,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
   );
 }
 
-// ─── Wide card — horizontal: icon left, text right ──
-interface CardProps {
-  card: typeof FEATURE_CARDS[0];
-  onPress: (route: string) => void;
-}
-
-function CardWide({ card, onPress }: CardProps) {
-  return (
-    <Pressable
-      onPress={() => onPress(card.route)}
-      style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
-    >
-      <LinearGradient
-        colors={card.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[s.wideCard, { height: card.height }]}
-      >
-        <View style={s.wideIconWrap}>
-          <Ionicons name={card.icon as any} size={28} color="white" />
-        </View>
-        <View style={s.wideTextWrap}>
-          <Text style={s.wideTitle}>{card.title}</Text>
-          <Text style={s.wideSub}>{card.subtitle}</Text>
-        </View>
-        <View style={s.wideArrow}>
-          <Ionicons name="arrow-forward" size={18} color="rgba(255,255,255,0.6)" />
-        </View>
-      </LinearGradient>
-    </Pressable>
-  );
-}
-
-// ─── Half card — vertical: icon top, text bottom ────
-function CardHalf({ card, onPress }: CardProps) {
-  return (
-    <Pressable
-      onPress={() => onPress(card.route)}
-      style={({ pressed }) => [s.halfOuter, { opacity: pressed ? 0.85 : 1 }]}
-    >
-      <LinearGradient
-        colors={card.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[s.halfCard, { height: card.height }]}
-      >
-        <View style={s.halfIconWrap}>
-          <Ionicons name={card.icon as any} size={24} color="white" />
-        </View>
-        <View style={s.halfTextWrap}>
-          <Text style={s.halfTitle}>{card.title}</Text>
-          <Text style={s.halfSub} numberOfLines={2}>{card.subtitle}</Text>
-        </View>
-      </LinearGradient>
-    </Pressable>
-  );
-}
-
-// ─── Styles ─────────────────────────────────────────
+// ─── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surface.dim },
 
@@ -292,54 +471,81 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: colors.surface.containerHigh,
   },
 
-  // Category Pills
-  pillsScroll: { flexGrow: 0, marginBottom: 4 },
+  // Pills — full height, proper padding, no clipping
+  pillsScroll: { flexGrow: 0 },
   pillsContent: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingTop: 6,
+    paddingBottom: 10,
     flexDirection: "row",
     alignItems: "center",
   },
   pill: {
-    flexDirection: "row", alignItems: "center",
-    paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 22,
     backgroundColor: colors.surface.containerHigh,
-    borderWidth: 1, borderColor: colors.glass.border,
+    borderWidth: 1,
+    borderColor: colors.glass.border,
     marginRight: 8,
+    // min width so short pills aren't too small
+    minWidth: 72,
   },
-  pillActive: { backgroundColor: "rgba(180,197,255,0.12)", borderColor: colors.primary },
-  pillText: { fontSize: 12, fontWeight: "600", color: colors.text.secondary, marginLeft: 5 },
+  pillActive: {
+    backgroundColor: "rgba(180,197,255,0.14)",
+    borderColor: colors.primary,
+  },
+  pillText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.text.secondary,
+    marginLeft: 6,
+  },
   pillTextActive: { color: colors.primary },
 
-  // Main scroll
+  // Scroll
   scroll: { paddingHorizontal: 16, paddingTop: 4 },
 
-  // Hero
-  hero: {
-    borderRadius: 28, padding: 24,
-    marginTop: 8, marginBottom: 16,
-    minHeight: 200,
+  // Hero Carousel
+  heroWrap: { marginTop: 8, marginBottom: 16, borderRadius: 28, overflow: "hidden" },
+  heroSlide: {
+    width: SCREEN_W - 32, // matches paddingHorizontal: 16 each side
+    padding: 24,
+    minHeight: 210,
     justifyContent: "space-between",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
   },
   heroTitle: { fontSize: 22, fontWeight: "700", color: "white", lineHeight: 30, marginBottom: 8 },
   heroSub: { fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 19 },
   heroCTA: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: 20,
   },
   dotsRow: { flexDirection: "row", alignItems: "center" },
-  dotActive: { width: 20, height: 4, borderRadius: 2, backgroundColor: "white", marginRight: 4 },
-  dot: { width: 6, height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.4)", marginRight: 4 },
+  dot: {
+    width: 6, height: 4, borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.35)",
+    marginRight: 5,
+  },
+  dotActive: {
+    width: 22, height: 4, borderRadius: 2,
+    backgroundColor: "white",
+  },
   exploreBtn: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.15)",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.25)",
     paddingHorizontal: 16, paddingVertical: 10,
     borderRadius: 20,
+    gap: 6,
   },
-  exploreBtnText: { color: "white", fontSize: 13, fontWeight: "600", marginRight: 6 },
+  exploreBtnText: { color: "white", fontSize: 13, fontWeight: "600" },
 
   // Card grid
   cardGrid: { gap: 12 },
@@ -347,9 +553,12 @@ const s = StyleSheet.create({
 
   // Wide card
   wideCard: {
-    borderRadius: 24, paddingHorizontal: 20, paddingVertical: 0,
-    flexDirection: "row", alignItems: "center",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.15)",
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
     overflow: "hidden",
   },
   wideIconWrap: {
@@ -383,15 +592,33 @@ const s = StyleSheet.create({
   // Bottom Nav
   navBar: {
     position: "absolute", bottom: 0, left: 0, right: 0,
-    flexDirection: "row", justifyContent: "space-around", alignItems: "center",
-    height: 72, marginHorizontal: 12, marginBottom: 12,
-    backgroundColor: "rgba(10,22,36,0.96)",
+    flexDirection: "row",
+    height: 72,
+    marginHorizontal: 12,
+    marginBottom: 12,
+    backgroundColor: "rgba(10,22,36,0.97)",
     borderRadius: 28,
-    borderWidth: 1, borderColor: colors.glass.border,
+    borderWidth: 1,
+    borderColor: colors.glass.border,
     elevation: 16,
+    overflow: "hidden",
+    alignItems: "center",
+  },
+  // Sliding pill behind active tab
+  navIndicator: {
+    position: "absolute",
+    left: 8,
+    width: NAV_TAB_W - 16,
+    height: 52,
+    borderRadius: 20,
+    backgroundColor: "rgba(180,197,255,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(180,197,255,0.2)",
   },
   navBtn: {
-    flex: 1, alignItems: "center", justifyContent: "center",
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 8,
   },
   navLabel: { fontSize: 10, color: colors.text.secondary, marginTop: 3, fontWeight: "500" },

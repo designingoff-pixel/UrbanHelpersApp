@@ -71,7 +71,18 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
  */
 export function RootNavigator() {
   return (
-    <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      initialRouteName="Splash"
+      screenOptions={{
+        headerShown: false,
+        // Samsung Health-style: fast slide-up with a slight fade
+        animation: "slide_from_bottom",
+        animationDuration: 320,
+        contentStyle: { backgroundColor: "#041423" },
+        // Gesture back swipe works out of the box on iOS; enable on Android too
+        gestureEnabled: true,
+      }}
+    >
       {/* Module 1 */}
       <Stack.Screen name="Splash" component={SplashScreen} />
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
