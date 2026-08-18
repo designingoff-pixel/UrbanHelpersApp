@@ -161,7 +161,7 @@ export default function ServiceInProgressScreen({ navigation }: Props) {
       <View style={s.cta}>
         <Pressable
           style={s.ctaBtn}
-          onPress={() => navigation.navigate("ServiceCompleted")}
+          onPress={() => navigation.navigate("ServiceCompleted", {})}
         >
           <Text style={s.ctaBtnText}>Track Progress</Text>
           <Ionicons name="arrow-forward" size={18} color="white" />

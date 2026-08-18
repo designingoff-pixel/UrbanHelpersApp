@@ -194,7 +194,7 @@ const s = StyleSheet.create({
   // Rooms
   roomsScroll: { gap: 12, paddingBottom: 4, marginBottom: 24 },
   roomCard: { width: 220, height: 140, borderRadius: 22, padding: 18, justifyContent: "flex-end", overflow: "hidden" },
-  roomOverlay: { position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.2)" },
+  roomOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.2)" },
   roomTitle: { fontSize: 18, fontWeight: "700", color: "white" },
   roomSub: { fontSize: 12, color: "rgba(255,255,255,0.75)", marginTop: 4 },
 

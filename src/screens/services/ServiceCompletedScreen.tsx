@@ -127,7 +127,7 @@ export default function ServiceCompletedScreen({ navigation }: Props) {
       <View style={s.cta}>
         <Pressable
           style={s.ctaBtn}
-          onPress={() => navigation.navigate("RatingFeedback")}
+          onPress={() => navigation.navigate("RatingFeedback", {})}
         >
           <Ionicons name="star" size={20} color="white" />
           <Text style={s.ctaBtnText}>Rate Your Experience</Text>
@@ -152,7 +152,7 @@ const s = StyleSheet.create({
 
   // Hero
   hero: { borderRadius: 28, padding: 28, marginBottom: 16, overflow: "hidden" },
-  heroOverlay: { position: "absolute", inset: 0, backgroundColor: "rgba(255,255,255,0.08)" },
+  heroOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(255,255,255,0.08)" },
   heroContent: { alignItems: "center" },
   checkWrap: { marginBottom: 16 },
   heroTitle: { fontSize: 22, fontWeight: "700", color: "white", textAlign: "center", marginBottom: 8, lineHeight: 30 },

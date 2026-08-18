@@ -207,7 +207,7 @@ export default function LiveTrackingScreen({ navigation }: Props) {
 
       {/* ── Bottom CTA ───────────────────────────────────────── */}
       <View style={s.cta}>
-        <Pressable style={s.ctaBtn} onPress={() => navigation.navigate("ServiceInProgress")}>
+        <Pressable style={s.ctaBtn} onPress={() => navigation.navigate("ServiceInProgress", {})}>
           <Ionicons name="call" size={20} color="white" />
           <Text style={s.ctaBtnText}>Contact Professional</Text>
         </Pressable>
