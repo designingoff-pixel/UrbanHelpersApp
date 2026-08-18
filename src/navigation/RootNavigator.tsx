@@ -69,6 +69,11 @@ import ServicesDashboardScreen from "@/screens/services/ServicesDashboardScreen"
 import ServiceCategoryScreen from "@/screens/services/ServiceCategoryScreen";
 import ServiceDetailScreen from "@/screens/services/ServiceDetailScreen";
 import BookingConfirmedScreen from "@/screens/services/BookingConfirmedScreen";
+import LiveTrackingScreen from "@/screens/services/LiveTrackingScreen";
+import ServiceInProgressScreen from "@/screens/services/ServiceInProgressScreen";
+import ServiceCompletedScreen from "@/screens/services/ServiceCompletedScreen";
+import RatingFeedbackScreen from "@/screens/services/RatingFeedbackScreen";
+import HomeCleaningScreen from "@/screens/services/HomeCleaningScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -159,6 +164,11 @@ export function RootNavigator() {
       <Stack.Screen name="ServiceCategory" component={ServiceCategoryScreen} />
       <Stack.Screen name="ServiceDetail" component={ServiceDetailScreen} />
       <Stack.Screen name="BookingConfirmed" component={BookingConfirmedScreen} />
+      <Stack.Screen name="LiveTracking" component={LiveTrackingScreen} />
+      <Stack.Screen name="ServiceInProgress" component={ServiceInProgressScreen} />
+      <Stack.Screen name="ServiceCompleted" component={ServiceCompletedScreen} />
+      <Stack.Screen name="RatingFeedback" component={RatingFeedbackScreen} />
+      <Stack.Screen name="HomeCleaning" component={HomeCleaningScreen} />
     </Stack.Navigator>
   );
 }

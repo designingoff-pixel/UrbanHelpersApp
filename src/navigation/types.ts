@@ -66,7 +66,11 @@ export type RootStackParamList = {
   ServiceCategory: { categoryId: string };
   ServiceDetail: { categoryId: string; subServiceId: string };
   BookingConfirmed: { categoryId: string; subServiceId: string; dayIndex: number; slotIndex: number };
-  ServiceBookings: undefined;
+  LiveTracking: { categoryId?: string; subServiceId?: string };
+  ServiceInProgress: { categoryId?: string; subServiceId?: string };
+  ServiceCompleted: { categoryId?: string; subServiceId?: string };
+  RatingFeedback: { categoryId?: string; subServiceId?: string };
+  HomeCleaning: undefined;
 };
 
 export type ScreenName = keyof RootStackParamList;
