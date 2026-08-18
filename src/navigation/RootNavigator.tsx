@@ -74,16 +74,8 @@ import ServiceInProgressScreen from "@/screens/services/ServiceInProgressScreen"
 import ServiceCompletedScreen from "@/screens/services/ServiceCompletedScreen";
 import RatingFeedbackScreen from "@/screens/services/RatingFeedbackScreen";
 import HomeCleaningScreen from "@/screens/services/HomeCleaningScreen";
-
-// Recording & OTP Vendor Verification (NEW)
-import YourHelperHasArrivedScreen from "@/screens/services/YourHelperHasArrivedScreen";
-import VerifyYourHelperScreen from "@/screens/services/VerifyYourHelperScreen";
-import ServiceRecordingConsentScreen from "@/screens/services/ServiceRecordingConsentScreen";
-import RecordingInProgressScreen from "@/screens/services/RecordingInProgressScreen";
-import RecordingPausedScreen from "@/screens/services/RecordingPausedScreen";
-import EndServiceRecordingScreen from "@/screens/services/EndServiceRecordingScreen";
-import HelperVerifiedScreen from "@/screens/services/HelperVerifiedScreen";
-import ServiceSummaryScreen from "@/screens/services/ServiceSummaryScreen";
+import MyBookingsScreen from "@/screens/services/MyBookingsScreen";
+import OffersScreen from "@/screens/services/OffersScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -179,16 +171,8 @@ export function RootNavigator() {
       <Stack.Screen name="ServiceCompleted" component={ServiceCompletedScreen} />
       <Stack.Screen name="RatingFeedback" component={RatingFeedbackScreen} />
       <Stack.Screen name="HomeCleaning" component={HomeCleaningScreen} />
-
-      {/* Recording & OTP Vendor Verification (NEW) */}
-      <Stack.Screen name="YourHelperHasArrived" component={YourHelperHasArrivedScreen} />
-      <Stack.Screen name="VerifyYourHelper" component={VerifyYourHelperScreen} />
-      <Stack.Screen name="ServiceRecordingConsent" component={ServiceRecordingConsentScreen} />
-      <Stack.Screen name="RecordingInProgress" component={RecordingInProgressScreen} />
-      <Stack.Screen name="RecordingPaused" component={RecordingPausedScreen} />
-      <Stack.Screen name="EndServiceRecording" component={EndServiceRecordingScreen} />
-      <Stack.Screen name="HelperVerified" component={HelperVerifiedScreen} />
-      <Stack.Screen name="ServiceSummary" component={ServiceSummaryScreen} />
+      <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
+      <Stack.Screen name="Offers" component={OffersScreen} />
     </Stack.Navigator>
   );
 }

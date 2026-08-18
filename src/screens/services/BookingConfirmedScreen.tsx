@@ -148,7 +148,7 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
         <Animated.View entering={FadeInDown.delay(580).duration(380)} style={s.actions}>
           <Pressable
             style={({ pressed }) => [s.trackBtn, { backgroundColor: category.gradient[0], opacity: pressed ? 0.88 : 1 }]}
-            onPress={() => navigation.navigate("YourHelperHasArrived", { bookingId: `UH-${Math.floor(100000 + Math.random() * 900000)}`, vendorId: "vendor-001" })}
+            onPress={() => navigation.navigate("LiveTracking", { categoryId: category.id, subServiceId: sub.id })}
           >
             <Ionicons name="location-outline" size={18} color="white" />
             <Text style={s.trackBtnText}>Track Booking</Text>

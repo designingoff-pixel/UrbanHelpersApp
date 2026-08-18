@@ -83,7 +83,7 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
             </View>
             <View style={s.recordingActions}>
               <Pressable
-                onPress={() => navigation.navigate("ServiceSummary", { bookingId, vendorId })}
+                onPress={() => navigation.navigate("RatingFeedback", {})}
                 style={s.playBtn}
               >
                 <Ionicons name="play-circle" size={18} color={colors.text.primary} />
@@ -134,7 +134,7 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
       {/* Bottom CTA */}
       <View style={s.bottomCta}>
         <Pressable
-          onPress={() => navigation.navigate("ServiceSummary", { bookingId, vendorId })}
+          onPress={() => navigation.navigate("RatingFeedback", {})}
           style={s.submitBtn}
         >
           <Text style={s.submitBtnText}>Submit Review</Text>
