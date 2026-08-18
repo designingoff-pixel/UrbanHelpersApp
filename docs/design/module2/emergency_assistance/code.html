@@ -1,0 +1,319 @@
+<!DOCTYPE html><html class="dark" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Emergency Assistance</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface-variant": "#c3c6d7",
+                        "on-secondary": "#003731",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "on-background": "#d4e4f9",
+                        "tertiary-container": "#8343f4",
+                        "tertiary": "#d2bbff",
+                        "surface-container-lowest": "#000f1e",
+                        "surface-container-low": "#0c1d2c",
+                        "on-primary-fixed": "#00174b",
+                        "secondary-fixed": "#71f8e4",
+                        "primary-fixed": "#dbe1ff",
+                        "surface-bright": "#2b3b4b",
+                        "secondary-container": "#04b4a2",
+                        "on-secondary-fixed": "#00201c",
+                        "surface-container-high": "#1b2b3b",
+                        "primary-container": "#2563eb",
+                        "surface-dim": "#041423",
+                        "secondary-fixed-dim": "#4fdbc8",
+                        "inverse-on-surface": "#223242",
+                        "on-secondary-fixed-variant": "#005048",
+                        "error": "#ffb4ab",
+                        "inverse-surface": "#d4e4f9",
+                        "on-tertiary-container": "#f7edff",
+                        "on-surface": "#d4e4f9",
+                        "on-primary": "#002a78",
+                        "outline": "#8d90a0",
+                        "on-tertiary-fixed": "#25005a",
+                        "surface-container": "#112130",
+                        "surface": "#041423",
+                        "on-tertiary-fixed-variant": "#5a00c6",
+                        "secondary": "#4fdbc8",
+                        "tertiary-fixed": "#eaddff",
+                        "surface-variant": "#263646",
+                        "primary": "#b4c5ff",
+                        "surface-tint": "#b4c5ff",
+                        "on-tertiary": "#3f008e",
+                        "error-container": "#93000a",
+                        "background": "#041423",
+                        "on-secondary-container": "#003f38",
+                        "inverse-primary": "#0053db",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-primary-container": "#eeefff",
+                        "outline-variant": "#434655",
+                        "on-error": "#690005",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#d2bbff",
+                        "surface-container-highest": "#263646"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xs": "4px",
+                        "xl": "80px",
+                        "md": "24px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "40px",
+                        "lg": "48px",
+                        "sm": "12px",
+                        "gutter": "24px",
+                        "base": "8px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "label-caps": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "caption": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "label-caps": ["11px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "700" }],
+                        "headline-xl": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .pulse-ring {
+            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.8; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        .glow-red {
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.3);
+        }
+        
+        /* Hide scrollbar for carousel */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md antialiased min-h-screen pb-24 pt-16">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-mobile h-16 bg-surface/80 dark:bg-surface/80 backdrop-blur-xl border-b border-white/10 shadow-none">
+<button class="text-primary dark:text-primary hover:opacity-80 transition-opacity active:scale-95 flex items-center justify-center p-2 rounded-full">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary dark:text-primary">Emergency</h1>
+<button class="text-primary dark:text-primary hover:opacity-80 transition-opacity active:scale-95 flex items-center justify-center p-2 rounded-full">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings</span>
+</button>
+</header>
+<main class="px-margin-mobile md:px-margin-desktop max-w-[1440px] mx-auto flex flex-col gap-md pt-md">
+<!-- Hero Section: SOS Button -->
+<section class="relative w-full rounded-[30px] overflow-hidden bg-gradient-to-br from-error-container to-surface-container-high p-lg flex flex-col items-center justify-center text-center shadow-[0px_20px_40px_rgba(0,0,0,0.4)] border border-white/10 min-h-[400px]">
+<div class="absolute inset-0 opacity-20 bg-[url('placeholder')] bg-cover bg-center mix-blend-overlay" data-alt="A highly detailed dark, gritty urban environment subtly glowing with red and orange neon lights in the background, creating a sense of urgency and high-tech emergency response in a dark mode aesthetic."></div>
+<!-- 3D SOS Shield Placeholder from User Prompt -->
+<div class="absolute top-4 left-4 w-24 h-24 opacity-80 pointer-events-none">
+<img alt="SOS Shield" class="w-full h-full object-contain drop-shadow-2xl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcEL1LYBheAWKrkwMO5aaLSPucVdUh9gTd8lLPYD-qUKoZErt_15xZOUl1rM7s9kQjFwPXcvAKbilhuVWHWm5WWxQ41zHHdbIP7IkuO2yOFItyjCb4KCRdCOqhnEyFLARohqBDsgnzswPDravRXh4N4x8sv8rTt4ONF1ycdDUOVCROkBjd7wMZboCcTIgOGwnCIb_A_jD7xfWvcVKHOYZJxxQDWPig2KnWJV0HpN3o35xeI51vulLE">
+</div>
+<div class="z-10 flex flex-col items-center gap-sm">
+<h2 class="font-headline-xl text-headline-xl text-on-error-container drop-shadow-lg">Emergency Assistance</h2>
+<p class="font-body-lg text-body-lg text-on-error-container/80 mb-lg">Instant access when needed.</p>
+<div class="relative flex items-center justify-center mt-md">
+<div class="absolute w-full h-full bg-error rounded-full pulse-ring blur-xl"></div>
+<div class="absolute w-full h-full bg-error rounded-full pulse-ring blur-xl" style="animation-delay: -1s;"></div>
+<button class="relative z-10 w-40 h-40 bg-error hover:bg-error-container text-white rounded-full flex flex-col items-center justify-center shadow-[0_0_50px_rgba(239,68,68,0.6)] active:scale-95 transition-all duration-300 border-4 border-white/20 glow-red" onclick="alert('Emergency SOS Activated. Connecting to dispatch...') ">
+<span class="font-headline-xl text-headline-xl tracking-widest font-black">SOS</span>
+<span class="font-label-caps text-label-caps mt-xs opacity-80">Hold to activate</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Emergency Actions Grid -->
+<section>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-sm px-xs">Quick Actions</h3>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-md">
+  <!-- Super Card: Ambulance -->
+  <button class="col-span-2 h-40 bg-error rounded-[30px] relative overflow-hidden flex flex-col items-center justify-center gap-sm transition-all active:scale-95 shadow-[0_0_30px_rgba(239,68,68,0.4)] group" onclick="alert('Calling Ambulance Services...')">
+    <div class="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-40"></div>
+    <div class="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center z-10">
+      <span class="material-symbols-outlined text-[40px] text-white" style="font-variation-settings: 'FILL' 1;">local_hospital</span>
+    </div>
+    <span class="font-headline-md text-headline-md text-white z-10">Ambulance</span>
+  </button>
+
+  <!-- Super Card: Police -->
+  <button class="col-span-2 h-40 bg-primary-container rounded-[30px] relative overflow-hidden flex flex-col items-center justify-center gap-sm transition-all active:scale-95 shadow-[0_0_30px_rgba(37,99,235,0.4)] group" onclick="alert('Calling Police Dispatch...')">
+    <div class="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-40"></div>
+    <div class="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center z-10">
+      <span class="material-symbols-outlined text-[40px] text-white" style="font-variation-settings: 'FILL' 1;">local_police</span>
+    </div>
+    <span class="font-headline-md text-headline-md text-white z-10">Police</span>
+  </button>
+
+  <!-- Fire -->
+  <button class="bg-orange-500 p-md rounded-[24px] relative overflow-hidden flex flex-col items-center justify-center gap-xs transition-all active:scale-95 shadow-[0_0_20px_rgba(249,115,22,0.3)]" onclick="alert('Calling Fire Department...')">
+    <div class="absolute inset-0 bg-white/10 backdrop-blur-[2px]"></div>
+    <span class="material-symbols-outlined text-[32px] text-white z-10" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+    <span class="font-body-md text-body-md text-white font-black z-10">Fire</span>
+  </button>
+
+  <!-- Family -->
+  <button class="bg-secondary-container p-md rounded-[24px] relative overflow-hidden flex flex-col items-center justify-center gap-xs transition-all active:scale-95 shadow-[0_0_20px_rgba(4,180,162,0.3)]">
+    <div class="absolute inset-0 bg-white/10 backdrop-blur-[2px]"></div>
+    <span class="material-symbols-outlined text-[32px] text-white z-10" style="font-variation-settings: 'FILL' 1;">diversity_1</span>
+    <span class="font-body-md text-body-md text-white font-black z-10">Family</span>
+  </button>
+
+  <!-- Doctor -->
+  <button class="bg-surface-container-highest p-md rounded-[24px] relative overflow-hidden flex flex-col items-center justify-center gap-xs transition-all active:scale-95 border border-white/10">
+    <div class="absolute inset-0 bg-white/5 backdrop-blur-[2px]"></div>
+    <span class="material-symbols-outlined text-[32px] text-primary z-10" style="font-variation-settings: 'FILL' 1;">medical_services</span>
+    <span class="font-body-md text-body-md text-white font-black z-10">Doctor</span>
+  </button>
+
+  <!-- Hospital -->
+  <button class="bg-tertiary-container p-md rounded-[24px] relative overflow-hidden flex flex-col items-center justify-center gap-xs transition-all active:scale-95 shadow-[0_0_20px_rgba(131,67,244,0.3)]">
+    <div class="absolute inset-0 bg-white/10 backdrop-blur-[2px]"></div>
+    <span class="material-symbols-outlined text-[32px] text-white z-10" style="font-variation-settings: 'FILL' 1;">apartment</span>
+    <span class="font-body-md text-body-md text-white font-black z-10">Hospital</span>
+  </button>
+
+  <!-- Blood Bank -->
+  <button class="bg-error-container p-md rounded-[24px] relative overflow-hidden flex flex-col items-center justify-center gap-xs transition-all active:scale-95 shadow-[0_0_20px_rgba(147,0,10,0.3)]">
+    <div class="absolute inset-0 bg-white/10 backdrop-blur-[2px]"></div>
+    <span class="material-symbols-outlined text-[32px] text-white z-10" style="font-variation-settings: 'FILL' 1;">bloodtype</span>
+    <span class="font-body-md text-body-md text-white font-black z-10">Blood Bank</span>
+  </button>
+
+  <!-- Roadside Help -->
+  <button class="bg-orange-400 p-md rounded-[24px] relative overflow-hidden flex flex-col items-center justify-center gap-xs transition-all active:scale-95 shadow-[0_0_20px_rgba(251,146,60,0.3)]">
+    <div class="absolute inset-0 bg-white/10 backdrop-blur-[2px]"></div>
+    <span class="material-symbols-outlined text-[32px] text-surface z-10" style="font-variation-settings: 'FILL' 1;">car_repair</span>
+    <span class="font-body-md text-body-md text-surface font-black z-10">Roadside</span>
+  </button>
+</div>
+</section>
+<!-- Medical ID & Live Location Bento -->
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-md">
+<!-- Medical ID -->
+<div class="glass-panel rounded-[30px] p-md flex flex-col gap-md shadow-[0px_20px_40px_rgba(0,0,0,0.4)]">
+<div class="flex justify-between items-center border-b border-white/10 pb-sm">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">badge</span>
+<h3 class="font-headline-md text-headline-md">Medical ID</h3>
+</div>
+<button class="text-primary text-sm hover:underline">Edit</button>
+</div>
+<div class="grid grid-cols-2 gap-sm"><div class="bg-error p-sm rounded-[16px] shadow-lg">
+<p class="font-caption text-caption text-white/80">Blood Group</p>
+<p class="font-headline-md text-headline-md text-white mt-xs">O+</p>
+</div>
+<div class="bg-orange-500 p-sm rounded-[16px] shadow-lg">
+<p class="font-caption text-caption text-white/80">Allergies</p>
+<p class="font-body-lg text-body-lg text-white mt-xs">Penicillin</p>
+</div>
+<div class="bg-surface-container-highest p-sm rounded-[16px] col-span-2 border border-white/20 shadow-lg">
+<p class="font-caption text-caption text-on-surface-variant">Emergency Contact</p>
+<div class="flex items-center justify-between mt-xs bg-surface/40 p-2 rounded-[12px]">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center">
+<span class="material-symbols-outlined">person</span>
+</div>
+<div>
+<p class="font-body-md text-body-md text-on-surface">Mother</p>
+<p class="font-caption text-caption text-on-surface-variant">+1 234 567 8900</p>
+</div>
+</div>
+<button class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center hover:bg-primary-container transition-colors shadow-lg">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">call</span>
+</button>
+</div>
+</div></div>
+</div>
+<!-- Live Location -->
+<div class="glass-panel rounded-[30px] overflow-hidden flex flex-col relative min-h-[300px] shadow-[0px_20px_40px_rgba(0,0,0,0.4)]">
+<!-- Map Background (Placeholder) -->
+<div class="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-luminosity" data-alt="A highly detailed satellite map view of a modern urban city center at night, with subtle glowing blue and cyan overlays highlighting streets and pathways, fitting a dark mode premium dashboard aesthetic." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD6TnAB9KENZ6pUjzzyJYOA48geeqk_xSDTyYLsaZuS4Bz8l2FkQDiCPY9N7Zx9Lj-BgVirWmx0PrJ-CLdm_h0BfegRiHi8XNPQNRvl9_NFWRZRUK4L-PcdD-Zw-VDWlxJTaIfZlBrA7XMYYle-xxSxXkDnmkDX5G5MC3NcUKlnCf8LG4WQKfZ8y_x_s4XPRU-k01TVTwbHi2Q0MAjkeI3nAnIXD3M_0qerwkFPdd7rL9h299_3GaJh')"></div>
+<div class="relative z-10 p-md flex flex-col h-full justify-between">
+<div class="flex justify-between items-start">
+<div class="bg-surface/80 backdrop-blur-md px-sm py-xs rounded-full border border-white/10 flex items-center gap-xs">
+<span class="material-symbols-outlined text-secondary text-sm" style="font-variation-settings: 'FILL' 1;">my_location</span>
+<span class="font-label-caps text-label-caps text-secondary">Live Location</span>
+</div>
+</div>
+<div class="mt-auto bg-surface-container/90 backdrop-blur-xl p-sm rounded-[20px] border border-white/10 flex flex-col gap-sm">
+<div>
+<p class="font-body-md text-body-md text-on-surface">124 Urban St, Downtown</p>
+<p class="font-caption text-caption text-on-surface-variant mt-xs">40.7128° N, 74.0060° W</p>
+</div>
+<button class="w-full bg-primary hover:bg-primary-container text-on-primary py-sm rounded-[12px] font-body-md text-body-md flex items-center justify-center gap-xs transition-colors">
+<span class="material-symbols-outlined">share</span>
+                            Share Location
+                        </button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pt-3 pb-6 bg-surface-container/60 dark:bg-surface-container/60 backdrop-blur-2xl border-t border-white/5 shadow-[0px_-20px_40px_rgba(0,0,0,0.4)] rounded-t-[30px] md:hidden">
+<button class="flex flex-col items-center justify-center text-primary dark:text-primary drop-shadow-[0_0_8px_rgba(180,197,255,0.3)] active:scale-90 transition-all hover:text-primary/80" onclick="location.href='{{DATA:SCREEN:SCREEN_179}}'">
+<span class="material-symbols-outlined text-2xl mb-1" style="font-variation-settings: 'FILL' 1;">emergency</span>
+<span class="font-label-caps text-label-caps">Emergency</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant active:scale-90 transition-all hover:text-primary/80">
+<span class="material-symbols-outlined text-2xl mb-1" style="font-variation-settings: 'FILL' 0;">contact_phone</span>
+<span class="font-label-caps text-label-caps">Contacts</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant active:scale-90 transition-all hover:text-primary/80" onclick="location.href='{{DATA:SCREEN:SCREEN_190}}'">
+<span class="material-symbols-outlined text-2xl mb-1" style="font-variation-settings: 'FILL' 0;">medical_services</span>
+<span class="font-label-caps text-label-caps">Medical ID</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant active:scale-90 transition-all hover:text-primary/80">
+<span class="material-symbols-outlined text-2xl mb-1" style="font-variation-settings: 'FILL' 0;">location_on</span>
+<span class="font-label-caps text-label-caps">Map</span>
+</button>
+</nav>
+
+
+
+
+</body></html>

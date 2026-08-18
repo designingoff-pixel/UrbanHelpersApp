@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Select Issue - UrbanService</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&amp;family=Manrope:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-container": "#6df5e1",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "on-tertiary-fixed": "#360f00",
+                        "error": "#ba1a1a",
+                        "on-primary": "#ffffff",
+                        "on-surface-variant": "#434655",
+                        "on-background": "#151c27",
+                        "surface-bright": "#f9f9ff",
+                        "tertiary": "#943700",
+                        "surface": "#f9f9ff",
+                        "surface-dim": "#d3daea",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed": "#71f8e4",
+                        "on-surface": "#151c27",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed": "#dbe1ff",
+                        "on-primary-container": "#eeefff",
+                        "surface-container-highest": "#dce2f3",
+                        "inverse-on-surface": "#ebf1ff",
+                        "tertiary-fixed": "#ffdbcd",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "primary-container": "#2563eb",
+                        "surface-tint": "#0053db",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-tertiary-container": "#ffede6",
+                        "surface-container": "#e7eefe",
+                        "surface-container-low": "#f0f3ff",
+                        "inverse-primary": "#b4c5ff",
+                        "surface-container-high": "#e2e8f8",
+                        "outline-variant": "#c3c6d7",
+                        "on-error": "#ffffff",
+                        "outline": "#737686",
+                        "inverse-surface": "#2a313d",
+                        "secondary-fixed-dim": "#4fdbc8",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "on-primary-fixed": "#00174b",
+                        "secondary": "#006b5f",
+                        "tertiary-container": "#bc4800",
+                        "primary": "#004ac6",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed": "#00201c",
+                        "on-secondary-fixed-variant": "#005048",
+                        "on-secondary-container": "#006f64",
+                        "surface-variant": "#dce2f3",
+                        "background": "#0f172a" /* Override for deep navy requested by user */
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "xs": "4px",
+                        "base": "8px",
+                        "sm": "12px",
+                        "container-max": "1200px",
+                        "md": "24px",
+                        "lg": "48px",
+                        "xl": "80px"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Manrope"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "body-lg": ["Manrope"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "body-md": ["Manrope"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "label-md": ["Manrope"],
+                        "body-sm": ["Manrope"],
+                        "headline-md": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "700" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #0f172a; color: white; }
+        .glass-panel {
+            background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .vibrant-card-1 { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); }
+        .vibrant-card-2 { background: linear-gradient(135deg, #9333ea 0%, #7e22ce 100%); }
+        .vibrant-card-3 { background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); }
+        .vibrant-card-4 { background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); }
+        
+        .issue-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .issue-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(37, 99, 235, 0.2);
+        }
+        .issue-card.selected {
+            border: 2px solid #6df5e1;
+            box-shadow: 0 0 20px rgba(109, 245, 225, 0.3);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen pb-32 font-sans antialiased">
+<!-- Top Navigation -->
+<header class="fixed top-0 w-full z-50 bg-[#0f172a]/90 backdrop-blur-xl border-b border-white/10 shadow-sm flex items-center justify-between px-md h-16 transition-all duration-300">
+<div class="flex items-center gap-4">
+<button aria-label="Go back" class="p-2 hover:bg-white/10 rounded-full transition-colors active:scale-95">
+<span class="material-symbols-outlined text-white">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-white tracking-tight">UrbanService</h1>
+</div>
+<button aria-label="Notifications" class="p-2 hover:bg-white/10 rounded-full transition-colors active:scale-95">
+<span class="material-symbols-outlined text-white">notifications</span>
+</button>
+</header>
+<main class="pt-24 px-md md:px-lg max-w-container-max mx-auto">
+<!-- Header Section -->
+<div class="mb-8">
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg font-bold text-white mb-2">What's the issue?</h2>
+<p class="font-body-lg text-body-lg text-slate-300">Select the problem you're experiencing with your Washing Machine.</p>
+</div>
+<!-- Issue Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mb-12">
+<!-- Card 1 -->
+<div class="issue-card rounded-[24px] overflow-hidden vibrant-card-1 relative group" onclick="this.classList.toggle('selected')">
+<div class="absolute top-4 left-4 z-10">
+<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px]">stars</span>
+                        AI Recommended
+                    </span>
+</div>
+<div class="p-6 pt-16 flex flex-col sm:flex-row gap-6 items-start sm:items-center">
+<div class="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl bg-white/10 flex-shrink-0 flex items-center justify-center relative overflow-hidden">
+<img class="w-full h-full object-cover mix-blend-luminosity opacity-80" data-alt="A stylized, modern 3D illustration of a washing machine with glowing error lights and a wrench, set against a dark blue background with vibrant neon blue highlights, clean aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2_rAO7j2t0DrPcv_x5PASlbQkORnC9-vMFM5-CR6E5ugES-1grgIfO9GTKTFivD9nNuxJrtaVc179u6b11A3njEzan2uTGkXCN2BU46kwZsFR9E6UEBYgWgIo4PM7jbHcFSvs5SkXzvDNQwLZMz-sgxrtYXThgcwo2zgczjQfVOFCBulK5Kqc3Q1RjS-XZ1Yym9ujozSp0o3IG8DjIGloYBqsAE0dV1EpBjvQHtWGkijYotX5rR-S"/>
+</div>
+<div class="flex-1">
+<h3 class="font-headline-md text-headline-md text-white font-bold mb-1">Not Working / Dead</h3>
+<p class="font-body-sm text-body-sm text-blue-100 mb-4 opacity-90">Machine completely unresponsive, no lights or sounds.</p>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1 bg-black/20 rounded-lg px-3 py-1.5">
+<span class="material-symbols-outlined text-[16px] text-blue-200">payments</span>
+<span class="font-label-md text-label-md text-white">Est. $45 - $80</span>
+</div>
+<div class="flex items-center gap-1 bg-black/20 rounded-lg px-3 py-1.5">
+<span class="material-symbols-outlined text-[16px] text-blue-200">schedule</span>
+<span class="font-label-md text-label-md text-white">60 mins</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="issue-card rounded-[24px] overflow-hidden vibrant-card-2 relative group" onclick="this.classList.toggle('selected')">
+<div class="absolute top-4 left-4 z-10">
+<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px]">local_fire_department</span>
+                        Most Common
+                    </span>
+</div>
+<div class="p-6 pt-16 flex flex-col sm:flex-row gap-6 items-start sm:items-center">
+<div class="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl bg-white/10 flex-shrink-0 flex items-center justify-center relative overflow-hidden">
+<img class="w-full h-full object-cover mix-blend-luminosity opacity-80" data-alt="A stylized 3D illustration of a water puddle and droplets around a futuristic pipe, set against a dark purple background with bright neon purple and magenta accents, clean premium look." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcjmhuRyIZUCBy8ZfR0ER8cAxCF7kQEsOZ1qTPUmGQGoMIikxq5VlZKaPskEvGm7u2uVXnSgBRJKXUpImrzQW_QfuM551NuIWMv5oTKLFENxU7kfmjN9lXJlMoHG-OyKJSTgWWAgSr9IkV2ifusDgWLIgSFEn_9XOZBOZzfN-CEY6ENXT0umsOta8AztFufw5QP4Y4BvP-eSkAxiICyu7Sqdgh4wsVKeU87Ty2k_gf2RBeUE6BB6jG"/>
+</div>
+<div class="flex-1">
+<h3 class="font-headline-md text-headline-md text-white font-bold mb-1">Water Leakage</h3>
+<p class="font-body-sm text-body-sm text-purple-100 mb-4 opacity-90">Water pooling under or around the appliance during use.</p>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1 bg-black/20 rounded-lg px-3 py-1.5">
+<span class="material-symbols-outlined text-[16px] text-purple-200">payments</span>
+<span class="font-label-md text-label-md text-white">Est. $35 - $60</span>
+</div>
+<div class="flex items-center gap-1 bg-black/20 rounded-lg px-3 py-1.5">
+<span class="material-symbols-outlined text-[16px] text-purple-200">schedule</span>
+<span class="font-label-md text-label-md text-white">45 mins</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="issue-card rounded-[24px] overflow-hidden vibrant-card-3 relative group" onclick="this.classList.toggle('selected')">
+<div class="p-6 flex flex-col sm:flex-row gap-6 items-start sm:items-center">
+<div class="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl bg-white/10 flex-shrink-0 flex items-center justify-center relative overflow-hidden">
+<img class="w-full h-full object-cover mix-blend-luminosity opacity-80" data-alt="A stylized 3D illustration of sound waves vibrating out of a metallic drum, set against a deep teal background with glowing neon teal and cyan highlights, modern minimal style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB9yMHOcIDBUGM-N1-GsQvFNOSb4JI-6dT6Bm4OjnsE5wpFcd6lJaymz6Mr-ll-QXTVIaZBwSbhZWZPfuhnzl3EHBwqDtEcizVSrPWX1Nhd3yP3Do1AdoUgMU0mOqpxIdonyYNtvpvb3BU5189mmqXKdNndJ_aBjiTnf1M8sKntAq6N6_8xSPltocWmM1IALgZBdBw5NHJ_LHYJK4BO2L6oiTGw5tvo6Y_JlXZv5S5kwyIqUi5p_Fto"/>
+</div>
+<div class="flex-1">
+<h3 class="font-headline-md text-headline-md text-white font-bold mb-1">Unusual Noise</h3>
+<p class="font-body-sm text-body-sm text-teal-100 mb-4 opacity-90">Loud banging, grinding, or rattling sounds during cycle.</p>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1 bg-black/20 rounded-lg px-3 py-1.5">
+<span class="material-symbols-outlined text-[16px] text-teal-200">payments</span>
+<span class="font-label-md text-label-md text-white">Est. $50 - $90</span>
+</div>
+<div class="flex items-center gap-1 bg-black/20 rounded-lg px-3 py-1.5">
+<span class="material-symbols-outlined text-[16px] text-teal-200">schedule</span>
+<span class="font-label-md text-label-md text-white">90 mins</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="issue-card rounded-[24px] overflow-hidden vibrant-card-4 relative group" onclick="this.classList.toggle('selected')">
+<div class="p-6 flex flex-col sm:flex-row gap-6 items-start sm:items-center">
+<div class="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl bg-white/10 flex-shrink-0 flex items-center justify-center relative overflow-hidden">
+<img class="w-full h-full object-cover mix-blend-luminosity opacity-80" data-alt="A stylized 3D illustration of a glowing thermometer dropping rapidly, set against a dark orange background with warm fiery highlights, clean premium service aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCquuXE1ugvBwWOz5kCfSzkG6qDCcb2am1M13vUcq8qkyc8TVgYcEs7frCAZa0NnkbPWCi__rdkuZ3qPO1dvgbYj3iqZPKO0-KZdjfdgiaHvcRQvKdFDJN6kJLfMpihoX4YFzPePb6Yu7HW5KP6VWM1hgjPYSE3AJp1IjYNS8MuxTredY4czDWthSRIZyx6UYdpD74N0RQ9QxVTi3V-XGDCyn6apFKgRwmAivQa2sgZLJfO1AN7YFSQ"/>
+</div>
+<div class="flex-1">
+<h3 class="font-headline-md text-headline-md text-white font-bold mb-1">General Maintenance</h3>
+<p class="font-body-sm text-body-sm text-orange-100 mb-4 opacity-90">Routine checkup, cleaning, and preventative service.</p>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1 bg-black/20 rounded-lg px-3 py-1.5">
+<span class="material-symbols-outlined text-[16px] text-orange-200">payments</span>
+<span class="font-label-md text-label-md text-white">Flat $40</span>
+</div>
+<div class="flex items-center gap-1 bg-black/20 rounded-lg px-3 py-1.5">
+<span class="material-symbols-outlined text-[16px] text-orange-200">schedule</span>
+<span class="font-label-md text-label-md text-white">30 mins</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Service Benefits -->
+<div class="glass-panel rounded-[24px] p-6 mb-8">
+<h3 class="font-label-md text-label-md text-slate-400 uppercase tracking-wider mb-4">UrbanService Guarantee</h3>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-blue-400">verified_user</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-white">Verified Pros</p>
+<p class="font-label-sm text-label-sm text-slate-400 font-normal">Background checked</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-purple-400">build_circle</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-white">Original Parts</p>
+<p class="font-label-sm text-label-sm text-slate-400 font-normal">OEM components</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-teal-500/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-teal-400">shield</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-white">90-Day Warranty</p>
+<p class="font-label-sm text-label-sm text-slate-400 font-normal">On all repairs</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Sticky Bottom CTA -->
+<div class="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/95 to-transparent z-40">
+<div class="max-w-container-max mx-auto">
+<button class="w-full h-[56px] rounded-[18px] bg-primary-container hover:bg-primary-container/90 text-white font-label-md text-label-md flex items-center justify-center gap-2 shadow-[0px_12px_32px_rgba(37,99,235,0.2)] transition-all active:scale-[0.98]">
+<span>Continue Booking</span>
+<span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Urban Helpers - Heart Rate Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "error-container": "#93000a",
+                      "on-primary": "#002a78",
+                      "on-secondary-fixed-variant": "#005048",
+                      "secondary-fixed": "#71f8e4",
+                      "surface-bright": "#2b3b4b",
+                      "tertiary-fixed": "#eaddff",
+                      "secondary": "#4fdbc8",
+                      "primary": "#b4c5ff",
+                      "on-primary-container": "#eeefff",
+                      "surface-container": "#112130",
+                      "on-primary-fixed-variant": "#003ea8",
+                      "surface-tint": "#b4c5ff",
+                      "background": "#041423",
+                      "tertiary-fixed-dim": "#d2bbff",
+                      "on-secondary-container": "#003f38",
+                      "on-tertiary-fixed-variant": "#5a00c6",
+                      "secondary-fixed-dim": "#4fdbc8",
+                      "outline-variant": "#434655",
+                      "surface-container-low": "#0c1d2c",
+                      "inverse-primary": "#0053db",
+                      "error": "#ffb4ab",
+                      "on-tertiary-fixed": "#25005a",
+                      "surface-container-highest": "#263646",
+                      "on-surface-variant": "#c3c6d7",
+                      "surface-container-lowest": "#000f1e",
+                      "inverse-on-surface": "#223242",
+                      "on-error-container": "#ffdad6",
+                      "on-primary-fixed": "#00174b",
+                      "surface-dim": "#041423",
+                      "surface-container-high": "#1b2b3b",
+                      "primary-container": "#2563eb",
+                      "on-tertiary": "#3f008e",
+                      "on-background": "#d4e4f9",
+                      "primary-fixed-dim": "#b4c5ff",
+                      "on-error": "#690005",
+                      "surface-variant": "#263646",
+                      "on-tertiary-container": "#f7edff",
+                      "primary-fixed": "#dbe1ff",
+                      "on-secondary": "#003731",
+                      "tertiary": "#d2bbff",
+                      "surface": "#041423",
+                      "on-surface": "#d4e4f9",
+                      "secondary-container": "#04b4a2",
+                      "inverse-surface": "#d4e4f9",
+                      "on-secondary-fixed": "#00201c",
+                      "outline": "#8d90a0",
+                      "tertiary-container": "#8343f4",
+                      
+                      "heart-pink": "#FF5F8F",
+                      "heart-purple": "#B5179E",
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "2xl": "1.25rem",
+                      "3xl": "30px",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gutter": "24px",
+                      "xs": "4px",
+                      "md": "24px",
+                      "margin-mobile": "16px",
+                      "xl": "80px",
+                      "sm": "12px",
+                      "base": "8px",
+                      "lg": "48px",
+                      "margin-desktop": "40px"
+              },
+              "fontFamily": {
+                      "headline-xl": ["Plus Jakarta Sans"],
+                      "headline-md": ["Plus Jakarta Sans"],
+                      "label-caps": ["Plus Jakarta Sans"],
+                      "body-lg": ["Plus Jakarta Sans"],
+                      "body-sm": ["Plus Jakarta Sans"],
+                      "headline-lg": ["Plus Jakarta Sans"],
+                      "headline-lg-mobile": ["Plus Jakarta Sans"],
+                      "caption": ["Plus Jakarta Sans"],
+                      "body-md": ["Plus Jakarta Sans"]
+              },
+              "fontSize": {
+                      "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                      "label-caps": ["11px", {"lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "500"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                      "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                      "caption": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "500"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        body {
+            background-color: #071827; /* Deep Navy Floor */
+            background-image: radial-gradient(circle at 50% -20%, rgba(181, 23, 158, 0.15) 0%, transparent 70%);
+            background-attachment: fixed;
+            color: theme('colors.on-background');
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .card-surface {
+            background-color: #18344F; /* Floating Level 2 */
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0px 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 95, 143, 0.4); }
+            70% { transform: scale(1.02); box-shadow: 0 0 0 15px rgba(255, 95, 143, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 95, 143, 0); }
+        }
+
+        .ecg-line {
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: drawLine 3s linear infinite;
+        }
+
+        @keyframes drawLine {
+            to { stroke-dashoffset: 0; }
+        }
+        
+        .hide-scroll::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scroll {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-32 overflow-x-hidden font-body-md text-body-md">
+<!-- TopAppBar -->
+<header class="sticky top-0 w-full z-40 bg-background dark:bg-background flex justify-between items-center px-margin-mobile md:px-margin-desktop py-4 shadow-sm">
+<div class="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer">
+<div class="w-10 h-10 rounded-full bg-surface-container overflow-hidden ring-2 ring-primary/20">
+<img class="w-full h-full object-cover" data-alt="A futuristic avatar of a user in a clinical yet high-tech setting. Deep navy background with vibrant pink and purple rim lighting, reflecting the color palette of a modern health dashboard. The avatar has a calm, confident expression, symbolizing trust and reliability. Cinematic lighting, high resolution, 8k, photorealistic style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBxORpQYji7FmezRu4P7SLM60hVBKN8i3Y5oHIiRUWn_UpRnMPe7WCGOcT_PuPDRtGgaBU9UVqL4jVxXZw_tB7nu3gZ33WHYKQUh1ltu8FpqcWhXnPzBFhseexkbP4JsgLovQRS1kfJbWiqEvdjq-lJkdUDvdeTH6KvragcrFq17C4WNna7fFBSL4KYCz8jl_a_lxQw7qB5x5JdlESd3tBpER-JRY7w45k6KO5UwzJLQX4xmRRE7JI8"/>
+</div>
+<h1 class="text-headline-md font-headline-md font-bold text-primary dark:text-primary">Urban Helpers</h1>
+</div>
+<!-- Desktop Nav (Hidden on Mobile) -->
+<nav class="hidden md:flex gap-8">
+<a class="text-on-surface dark:text-on-surface text-body-md font-body-md font-bold border-b-2 border-primary pb-1" href="#">Health</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface transition-colors text-body-md font-body-md" href="#">Coaching</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface transition-colors text-body-md font-body-md" href="#">Log</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface transition-colors text-body-md font-body-md" href="#">Nutrition</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface transition-colors text-body-md font-body-md" href="#">Profile</a>
+</nav>
+<button class="w-10 h-10 rounded-full glass-panel flex items-center justify-center text-primary dark:text-primary hover:opacity-80 transition-opacity active:scale-95 transition-transform">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</header>
+<main class="container mx-auto px-margin-mobile md:px-margin-desktop py-8 max-w-7xl flex flex-col gap-gutter">
+<!-- Page Title -->
+<div class="mb-2">
+<h2 class="text-headline-lg-mobile md:text-headline-lg font-headline-lg-mobile md:font-headline-lg text-on-surface">Heart Rate</h2>
+<p class="text-on-surface-variant text-body-sm font-body-sm mt-1">Live cardiovascular monitoring</p>
+</div>
+<!-- Hero Section -->
+<section class="relative rounded-3xl overflow-hidden shadow-[0_20px_40px_rgba(181,23,158,0.2)]">
+<div class="absolute inset-0 bg-gradient-to-br from-[#FF5F8F] to-[#B5179E] opacity-90"></div>
+<div class="relative z-10 flex flex-col md:flex-row items-center justify-between p-6 md:p-12 gap-8">
+<div class="flex-1 text-white">
+<div class="flex items-center gap-2 mb-4 bg-white/20 backdrop-blur-md rounded-full px-4 py-1.5 w-max">
+<span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+<span class="text-label-caps font-label-caps">LIVE TRACKING</span>
+</div>
+<h3 class="text-headline-xl font-headline-xl mb-2">102 <span class="text-headline-md font-headline-md font-normal opacity-80">BPM</span></h3>
+<p class="text-body-lg font-body-lg opacity-90 max-w-md">Your heart rate is slightly elevated. You are currently in the Fat Burn zone.</p>
+</div>
+<div class="flex-1 flex justify-center items-center relative w-full max-w-sm aspect-square">
+<!-- Glowing effect behind image -->
+<div class="absolute inset-0 bg-white/30 blur-3xl rounded-full mix-blend-overlay"></div>
+<img alt="3D glowing heart illustration" class="relative z-10 w-full h-full object-contain filter drop-shadow-[0_0_30px_rgba(255,255,255,0.4)]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZY8ewOIARXi330GwlnOKeq8xn48Gi72gbJTCbuow5Q0PRFSkVK1VKiBRQnXG26ZGvtpwzCiyTz0pU-xi-WEZ4BJTkFAM6KzOzp31YDtD1qqFQMylgSaKRQwz5sNL-PAm1onHqLbTd07_nz-0ntm4QAZ4pNd5NG5ugSyf5cWU2hzVudlUd86bVGmk7iwnwxb1Ue2bInP92Me_j8DuHpdsFlOIUohIkfuE11CB-X-iQ21OjLhEdTTFC"/>
+</div>
+</div>
+</section>
+<!-- Feature Cards (Bento Grid) -->
+<section class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-gutter">
+<!-- Current BPM -->
+<div class="col-span-2 md:col-span-1 rounded-3xl bg-gradient-to-br from-[#FF5F8F] to-[#d64570] p-6 shadow-lg pulse-animation relative overflow-hidden group cursor-pointer hover:shadow-[0_0_30px_rgba(255,95,143,0.5)] transition-all">
+<div class="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
+<span class="material-symbols-outlined text-6xl text-white">favorite</span>
+</div>
+<div class="relative z-10">
+<p class="text-white/80 text-label-caps font-label-caps mb-1">CURRENT</p>
+<div class="flex items-baseline gap-1 text-white">
+<span class="text-headline-lg font-headline-lg">102</span>
+<span class="text-body-sm font-body-sm opacity-80">bpm</span>
+</div>
+</div>
+</div>
+<!-- Resting BPM -->
+<div class="rounded-3xl bg-secondary-container p-6 shadow-lg relative overflow-hidden group cursor-pointer hover:bg-secondary-container/90 transition-colors">
+<div class="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
+<span class="material-symbols-outlined text-6xl text-on-secondary-container">bedtime</span>
+</div>
+<div class="relative z-10">
+<p class="text-on-secondary-container/80 text-label-caps font-label-caps mb-1">RESTING</p>
+<div class="flex items-baseline gap-1 text-on-secondary-container">
+<span class="text-headline-lg font-headline-lg">58</span>
+<span class="text-body-sm font-body-sm opacity-80">bpm</span>
+</div>
+</div>
+</div>
+<!-- Maximum BPM -->
+<div class="rounded-3xl bg-error p-6 shadow-lg relative overflow-hidden group cursor-pointer hover:bg-error/90 transition-colors">
+<div class="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
+<span class="material-symbols-outlined text-6xl text-on-error">speed</span>
+</div>
+<div class="relative z-10">
+<p class="text-on-error/80 text-label-caps font-label-caps mb-1">MAXIMUM</p>
+<div class="flex items-baseline gap-1 text-on-error">
+<span class="text-headline-lg font-headline-lg">185</span>
+<span class="text-body-sm font-body-sm opacity-80">bpm</span>
+</div>
+</div>
+</div>
+<!-- Average BPM -->
+<div class="rounded-3xl bg-primary-container p-6 shadow-lg relative overflow-hidden group cursor-pointer hover:bg-primary-container/90 transition-colors">
+<div class="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
+<span class="material-symbols-outlined text-6xl text-on-primary-container">timeline</span>
+</div>
+<div class="relative z-10">
+<p class="text-on-primary-container/80 text-label-caps font-label-caps mb-1">AVERAGE</p>
+<div class="flex items-baseline gap-1 text-on-primary-container">
+<span class="text-headline-lg font-headline-lg">74</span>
+<span class="text-body-sm font-body-sm opacity-80">bpm</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Analytics Section -->
+<section class="card-surface rounded-3xl p-6">
+<div class="flex justify-between items-center mb-6">
+<h4 class="text-headline-md font-headline-md text-on-surface">Trend Analysis</h4>
+<div class="flex gap-2">
+<button class="px-3 py-1 rounded-full bg-surface-bright text-on-surface text-caption font-caption hover:bg-surface-bright/80">Day</button>
+<button class="px-3 py-1 rounded-full bg-primary text-on-primary text-caption font-caption font-bold shadow-[0_0_10px_rgba(180,197,255,0.3)]">Week</button>
+<button class="px-3 py-1 rounded-full bg-surface-bright text-on-surface text-caption font-caption hover:bg-surface-bright/80">Month</button>
+</div>
+</div>
+<div class="h-48 w-full relative">
+<!-- SVG ECG Graph Mockup -->
+<svg class="w-full h-full drop-shadow-[0_5px_15px_rgba(255,95,143,0.3)]" preserveaspectratio="none" viewbox="0 0 800 200">
+<!-- Grid Lines -->
+<line stroke="rgba(255,255,255,0.05)" stroke-width="1" x1="0" x2="800" y1="50" y2="50"></line>
+<line stroke="rgba(255,255,255,0.05)" stroke-width="1" x1="0" x2="800" y1="100" y2="100"></line>
+<line stroke="rgba(255,255,255,0.05)" stroke-width="1" x1="0" x2="800" y1="150" y2="150"></line>
+<!-- Gradient for the line -->
+<defs>
+<lineargradient id="ecgGrad" x1="0%" x2="100%" y1="0%" y2="0%">
+<stop offset="0%" stop-color="#FF5F8F"></stop>
+<stop offset="100%" stop-color="#B5179E"></stop>
+</lineargradient>
+</defs>
+<path class="ecg-line" d="M0 100 L50 100 L60 80 L70 120 L80 100 L150 100 L160 50 L170 150 L180 90 L190 100 L250 100 L260 80 L270 110 L280 100 L350 100 L360 40 L370 160 L380 90 L390 100 L450 100 L460 70 L470 130 L480 100 L550 100 L560 60 L570 140 L580 90 L590 100 L650 100 L660 80 L670 120 L680 100 L750 100 L760 30 L770 170 L780 90 L790 100 L800 100" fill="none" stroke="url(#ecgGrad)" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"></path>
+</svg>
+</div>
+<!-- Heart Zones -->
+<div class="mt-6">
+<h5 class="text-body-sm font-body-sm text-on-surface-variant mb-3">Time in Zones (Today)</h5>
+<div class="w-full h-4 rounded-full bg-surface-bright overflow-hidden flex">
+<div class="h-full bg-secondary-container" style="width: 40%;" title="Rest: 40%"></div>
+<div class="h-full bg-primary" style="width: 30%;" title="Fat Burn: 30%"></div>
+<div class="h-full bg-heart-pink" style="width: 20%;" title="Cardio: 20%"></div>
+<div class="h-full bg-error" style="width: 10%;" title="Peak: 10%"></div>
+</div>
+<div class="flex justify-between text-caption font-caption text-on-surface-variant mt-2 px-1">
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-secondary-container"></span>Rest</span>
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-primary"></span>Fat Burn</span>
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-heart-pink"></span>Cardio</span>
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-error"></span>Peak</span>
+</div>
+</div>
+</section>
+<!-- AI Recommendations -->
+<section class="glass-panel rounded-3xl p-6 relative overflow-hidden">
+<!-- decorative background elements -->
+<div class="absolute -right-10 -top-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl"></div>
+<div class="flex items-start gap-4 relative z-10">
+<div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-tertiary to-primary flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(210,187,255,0.3)]">
+<span class="material-symbols-outlined text-on-primary">psychology</span>
+</div>
+<div>
+<h4 class="text-body-lg font-body-lg text-on-surface font-bold mb-1">AI Coach Insights</h4>
+<p class="text-body-sm font-body-sm text-on-surface-variant mb-4">Your resting heart rate has decreased by 2 bpm over the last week. Excellent progress!</p>
+<button class="bg-surface-bright hover:bg-surface-bright/80 text-on-surface px-4 py-2 rounded-lg text-body-sm font-body-sm transition-colors border border-white/5 flex items-center gap-2">
+                        View Detailed Report
+                        <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-md rounded-full backdrop-blur-xl bg-white/5 dark:bg-white/5 border border-white/10 shadow-[0_20px_40px_rgba(0,0,0,0.4)] z-50 flex justify-around items-center px-2 py-3">
+<!-- Active Tab: Health -->
+<button class="flex flex-col items-center justify-center bg-primary text-on-primary rounded-full w-12 h-12 shadow-[0_0_15px_rgba(180,197,255,0.3)] hover:opacity-80 transition-opacity active:scale-90 transition-transform duration-200">
+<span class="material-symbols-outlined" data-weight="fill" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-on-surface transition-colors w-12 h-12 group">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">psychology</span>
+<span class="text-[10px] font-caption mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity absolute -bottom-4">Coach</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-on-surface transition-colors w-12 h-12 group">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">add_circle</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-on-surface transition-colors w-12 h-12 group">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">restaurant</span>
+<span class="text-[10px] font-caption mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity absolute -bottom-4">Food</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-on-surface transition-colors w-12 h-12 group">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">person</span>
+</button>
+</nav>
+</body></html>

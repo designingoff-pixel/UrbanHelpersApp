@@ -1,0 +1,378 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Fitness - Urban Helpers</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "inverse-on-surface": "#223242",
+                      "primary": "#b4c5ff",
+                      "on-surface-variant": "#c3c6d7",
+                      "error": "#ffb4ab",
+                      "secondary-container": "#04b4a2",
+                      "on-error": "#690005",
+                      "surface-dim": "#041423",
+                      "error-container": "#93000a",
+                      "surface-container-highest": "#263646",
+                      "tertiary": "#d2bbff",
+                      "on-secondary-fixed": "#00201c",
+                      "primary-container": "#2563eb",
+                      "surface-container-lowest": "#000f1e",
+                      "tertiary-fixed": "#eaddff",
+                      "surface-container": "#112130",
+                      "secondary-fixed": "#71f8e4",
+                      "background": "#041423",
+                      "outline": "#8d90a0",
+                      "on-primary-container": "#eeefff",
+                      "on-tertiary-container": "#f7edff",
+                      "on-primary-fixed-variant": "#003ea8",
+                      "surface-container-high": "#1b2b3b",
+                      "on-tertiary-fixed-variant": "#5a00c6",
+                      "tertiary-fixed-dim": "#d2bbff",
+                      "tertiary-container": "#8343f4",
+                      "surface-tint": "#b4c5ff",
+                      "on-background": "#d4e4f9",
+                      "secondary-fixed-dim": "#4fdbc8",
+                      "on-error-container": "#ffdad6",
+                      "inverse-primary": "#0053db",
+                      "on-secondary": "#003731",
+                      "outline-variant": "#434655",
+                      "secondary": "#4fdbc8",
+                      "on-secondary-container": "#003f38",
+                      "on-surface": "#d4e4f9",
+                      "surface-bright": "#2b3b4b",
+                      "on-tertiary-fixed": "#25005a",
+                      "on-tertiary": "#3f008e",
+                      "on-secondary-fixed-variant": "#005048",
+                      "surface-container-low": "#0c1d2c",
+                      "on-primary-fixed": "#00174b",
+                      "inverse-surface": "#d4e4f9",
+                      "surface": "#041423",
+                      "primary-fixed-dim": "#b4c5ff",
+                      "surface-variant": "#263646",
+                      "on-primary": "#002a78",
+                      "primary-fixed": "#dbe1ff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "xs": "4px",
+                      "lg": "48px",
+                      "xl": "80px",
+                      "md": "24px",
+                      "sm": "12px",
+                      "margin-mobile": "16px",
+                      "base": "8px",
+                      "gutter": "24px",
+                      "margin-desktop": "40px"
+              },
+              "fontFamily": {
+                      "body-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-lg-mobile": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "label-caps": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-xl": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "caption": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-sm": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-lg": [
+                              "Plus Jakarta Sans"
+                      ]
+              },
+              "fontSize": {
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-caps": [
+                              "11px",
+                              {
+                                      "lineHeight": "14px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-xl": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "caption": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "500"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        body {
+            background-color: #071827;
+            background-image: linear-gradient(to bottom, #071827, #041423);
+            color: #d4e4f9;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .glass-panel {
+            background: rgba(24, 52, 79, 0.4);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0px 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .glow-effect {
+            box-shadow: 0 0 20px rgba(180, 197, 255, 0.2);
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-enter {
+            animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(37, 99, 235, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+        }
+
+        .animate-pulse-ring {
+            animation: pulse-ring 2s infinite;
+        }
+        
+        .progress-ring__circle {
+            transition: stroke-dashoffset 1.5s ease-in-out;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-32">
+<!-- Top Navigation -->
+<header class="fixed top-0 w-full z-50 bg-surface/60 backdrop-blur-xl dark:bg-surface/60 border-b border-white/10 shadow-lg shadow-black/40 flex justify-between items-center px-margin-mobile h-16 max-w-7xl mx-auto md:px-margin-desktop transition-all duration-300">
+<button class="text-on-surface-variant hover:bg-white/5 transition-colors p-2 rounded-full active:scale-95 duration-200">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md-mobile md:text-headline-md font-bold tracking-tight text-primary">Urban Helpers</h1>
+<div class="flex gap-2">
+<button class="text-on-surface-variant hover:bg-white/5 transition-colors p-2 rounded-full active:scale-95 duration-200 md:hidden">
+<span class="material-symbols-outlined">favorite</span>
+</button>
+<button class="text-on-surface-variant hover:bg-white/5 transition-colors p-2 rounded-full active:scale-95 duration-200 md:hidden">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+<button class="text-on-surface-variant hover:bg-white/5 transition-colors p-2 rounded-full active:scale-95 duration-200">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">notifications</span>
+</button>
+</div>
+<!-- Desktop Nav Items -->
+<nav class="hidden md:flex absolute left-1/2 -translate-x-1/2 gap-8">
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors py-2" href="#">HOME</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors py-2" href="#">HEALTH</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors py-2" href="#">DISCOVER</a>
+<a class="font-label-caps text-label-caps text-primary border-b-2 border-primary py-2" href="#">FITNESS</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors py-2" href="#">PROFILE</a>
+</nav>
+</header>
+<main class="pt-24 px-margin-mobile md:px-margin-desktop max-w-7xl mx-auto space-y-8 overflow-hidden">
+<div class="flex justify-between items-end animate-enter">
+<div>
+<h2 class="font-headline-xl text-headline-lg-mobile md:text-headline-xl text-on-surface">Fitness</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Track your progress and stay active.</p>
+</div>
+<div class="hidden md:flex gap-3">
+<button class="glass-panel text-on-surface-variant hover:text-primary transition-colors p-3 rounded-full active:scale-95 duration-200">
+<span class="material-symbols-outlined">favorite</span>
+</button>
+<button class="glass-panel text-on-surface-variant hover:text-primary transition-colors p-3 rounded-full active:scale-95 duration-200">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+</div>
+</div>
+<!-- Hero Section -->
+<section class="animate-enter delay-1">
+<div class="relative w-full h-[280px] rounded-[30px] overflow-hidden shadow-[0px_20px_40px_rgba(0,0,0,0.4)]">
+<!-- Background Gradient -->
+<div class="absolute inset-0 bg-gradient-to-br from-[#10243B] via-[#04b4a2]/40 to-[#2563eb]/60 z-0"></div>
+<!-- Decorative Image/Illustration Placeholder -->
+<div class="absolute inset-0 z-0 opacity-60 mix-blend-overlay">
+<div class="bg-cover bg-center w-full h-full" data-alt="A futuristic 3d illustration of an athlete running on a glowing path, surrounded by neon blue and green fitness graphs and metrics. Set against a dark navy environment, evoking a sense of high-tech fitness tracking and energetic movement. High quality, detailed render." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDCMmAAm1QqnjawSnxeH47_Ao0vh2b4jNByyhJ2JeM1VJBdU3X-Y_2OnozNKgME5NvesFOtE5LZWNtLg1kHBzjJ5AKICTIep5mf3YR-ZM5H2aPZh1yLrkLitNsVG-hCF2kwD9Q_I1HqyPvvkZoAUsbZht8l_gKExstU53VlqtJ2Q1HpxSmqqcop6KyrR0AgDHLYFAC_641rkt6fisHCwLgHHSZnAnI8c7-lMwGwZJwSipc3QdPpUwqv')"></div>
+</div>
+<!-- Content -->
+<div class="relative z-10 h-full flex flex-col justify-center p-6 md:p-10 w-2/3 md:w-1/2">
+<span class="inline-block px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-white font-label-caps text-label-caps mb-4 w-max border border-white/20">TODAY'S FOCUS</span>
+<h3 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-white mb-2 leading-tight drop-shadow-md">Today's Fitness Goal</h3>
+<p class="font-body-sm text-body-sm text-white/80 mb-6 drop-shadow">Keep moving toward a healthier lifestyle.</p>
+<button class="bg-primary hover:bg-primary/90 text-on-primary font-body-md text-body-md px-6 py-3 rounded-[16px] w-max transition-all active:scale-95 shadow-[0_0_20px_rgba(180,197,255,0.4)] flex items-center gap-2" onclick="window.location.href='{{DATA:SCREEN:SCREEN_102}}'">
+                        Start Workout
+                        <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Workout Categories -->
+<section class="animate-enter delay-2">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-headline-md text-headline-md-mobile md:text-headline-md text-on-surface">Categories</h3>
+</div>
+<div class="flex overflow-x-auto hide-scrollbar gap-4 pb-4 -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0">
+<!-- Category Card: Running -->
+<div class="min-w-[140px] h-[160px] rounded-[24px] glass-panel relative overflow-hidden group cursor-pointer hover:-translate-y-1 transition-transform duration-300">
+<div class="absolute inset-0 bg-gradient-to-br from-orange-500/60 via-orange-400/30 to-transparent z-0"></div>
+<div class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#18344F] to-transparent z-10"></div>
+<div class="relative z-20 h-full flex flex-col justify-end p-4">
+<span class="material-symbols-outlined text-[32px] text-orange-400 mb-2">directions_run</span>
+<h4 class="font-body-md text-body-md text-white font-bold">Running</h4>
+</div>
+</div>
+<!-- Category Card: Yoga -->
+<div class="min-w-[140px] h-[160px] rounded-[24px] glass-panel relative overflow-hidden group cursor-pointer hover:-translate-y-1 transition-transform duration-300">
+<div class="absolute inset-0 bg-gradient-to-br from-purple-500/60 via-purple-400/30 to-transparent z-0"></div>
+<div class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#18344F] to-transparent z-10"></div>
+<div class="relative z-20 h-full flex flex-col justify-end p-4">
+<span class="material-symbols-outlined text-[32px] text-purple-400 mb-2">self_improvement</span>
+<h4 class="font-body-md text-body-md text-white font-bold">Yoga</h4>
+</div>
+</div>
+<!-- Category Card: Gym -->
+<div class="min-w-[140px] h-[160px] rounded-[24px] glass-panel relative overflow-hidden group cursor-pointer hover:-translate-y-1 transition-transform duration-300" onclick="window.location.href='{{DATA:SCREEN:SCREEN_102}}'">
+<div class="absolute inset-0 bg-gradient-to-br from-blue-500/60 via-secondary/40 to-transparent z-0"></div>
+<div class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#18344F] to-transparent z-10"></div>
+<div class="relative z-20 h-full flex flex-col justify-end p-4">
+<span class="material-symbols-outlined text-[32px] text-blue-400 mb-2">fitness_center</span>
+<h4 class="font-body-md text-body-md text-white font-bold">Gym</h4>
+</div>
+</div>
+<!-- Category Card: Cycling -->
+<div class="min-w-[140px] h-[160px] rounded-[24px] glass-panel relative overflow-hidden group cursor-pointer hover:-translate-y-1 transition-transform duration-300">
+<div class="absolute inset-0 bg-gradient-to-br from-green-400/60 via-emerald-500/40 to-transparent z-0"></div>
+<div class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#18344F] to-transparent z-10"></div>
+<div class="relative z-20 h-full flex flex-col justify-end p-4">
+<span class="material-symbols-outlined text-[32px] text-green-400 mb-2">directions_bike</span>
+<h4 class="font-body-md text-body-md text-white font-bold">Cycling</h4>
+</div>
+</div>
+<div class="min-w-[140px] h-[160px] rounded-[24px] glass-panel relative overflow-hidden group cursor-pointer hover:-translate-y-1 transition-transform duration-300"><div class="absolute inset-0 bg-gradient-to-br from-[#04b4a2]/60 via-blue-500/30 to-transparent z-0"></div><div class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#18344F] to-transparent z-10"></div><div class="relative z-20 h-full flex flex-col justify-end p-4"><span class="material-symbols-outlined text-[32px] text-secondary mb-2">spa</span><h4 class="font-body-md text-body-md text-white font-bold">Meditation</h4></div></div><div class="min-w-[140px] h-[160px] rounded-[24px] glass-panel relative overflow-hidden group cursor-pointer hover:-translate-y-1 transition-transform duration-300"><div class="absolute inset-0 bg-gradient-to-br from-pink-500/60 via-purple-500/30 to-transparent z-0"></div><div class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#18344F] to-transparent z-10"></div><div class="relative z-20 h-full flex flex-col justify-end p-4"><span class="material-symbols-outlined text-[32px] text-purple-400 mb-2">music_note</span><h4 class="font-body-md text-body-md text-white font-bold">Dance</h4></div></div></div>
+</section>
+</main>
+<!-- Bottom Nav (Mobile Only) -->
+<nav class="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md rounded-full bg-white/5 backdrop-blur-xl dark:bg-white/5 border border-white/10 shadow-[0px_20px_40px_rgba(0,0,0,0.4)] flex justify-around items-center py-2 px-4 z-50">
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 p-3 hover:text-primary transition-all active:scale-90 duration-200" href="{{DATA:SCREEN:SCREEN_196}}">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-caps text-label-caps mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 p-3 hover:text-primary transition-all active:scale-90 duration-200" href="{{DATA:SCREEN:SCREEN_194}}">
+<span class="material-symbols-outlined">medical_services</span>
+<span class="font-label-caps text-label-caps mt-1">Health</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 p-3 hover:text-primary transition-all active:scale-90 duration-200" href="{{DATA:SCREEN:SCREEN_192}}">
+<span class="material-symbols-outlined">explore</span>
+<span class="font-label-caps text-label-caps mt-1">Discover</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full p-3 shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:text-primary transition-all active:scale-90 duration-200" href="{{DATA:SCREEN:SCREEN_191}}">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">fitness_center</span>
+<span class="font-label-caps text-label-caps mt-1">Fitness</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 p-3 hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-caps text-label-caps mt-1">Profile</span>
+</a>
+</nav>
+
+
+
+
+
+
+</body></html>

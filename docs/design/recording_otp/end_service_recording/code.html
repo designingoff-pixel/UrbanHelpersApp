@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>End Service</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                            "inverse-primary": "#6750a4",
+                            "on-surface": "#e6e0e9",
+                            "on-secondary": "#342b4b",
+                            "on-primary-fixed-variant": "#4f378a",
+                            "on-surface-variant": "#cbc4d2",
+                            "on-tertiary": "#3e2e00",
+                            "surface-container-high": "#2b292f",
+                            "surface-container": "#211f24",
+                            "on-primary-fixed": "#22005d",
+                            "secondary": "#cdc0e9",
+                            "surface": "#141218",
+                            "primary-container": "#6750a4",
+                            "surface-container-highest": "#36343a",
+                            "on-background": "#e6e0e9",
+                            "surface-variant": "#36343a",
+                            "tertiary": "#e7c365",
+                            "on-secondary-fixed": "#1f1635",
+                            "tertiary-fixed-dim": "#e7c365",
+                            "secondary-container": "#4d4465",
+                            "surface-bright": "#3b383e",
+                            "error-container": "#93000a",
+                            "on-primary": "#381e72",
+                            "surface-container-lowest": "#0f0d13",
+                            "primary-fixed": "#e9ddff",
+                            "surface-container-low": "#1d1b20",
+                            "secondary-fixed": "#e9ddff",
+                            "on-error-container": "#ffdad6",
+                            "on-secondary-fixed-variant": "#4b4263",
+                            "on-tertiary-fixed": "#241a00",
+                            "inverse-surface": "#e6e0e9",
+                            "on-tertiary-container": "#503d00",
+                            "on-primary-container": "#e0d2ff",
+                            "surface-tint": "#cfbcff",
+                            "on-error": "#690005",
+                            "primary-fixed-dim": "#cfbcff",
+                            "error": "#ffb4ab",
+                            "primary": "#cfbcff",
+                            "background": "#141218",
+                            "outline": "#948e9c",
+                            "secondary-fixed-dim": "#cdc0e9",
+                            "tertiary-container": "#c9a74d",
+                            "tertiary-fixed": "#ffdf93",
+                            "on-tertiary-fixed-variant": "#594400",
+                            "outline-variant": "#494551",
+                            "on-secondary-container": "#bfb2da",
+                            "surface-dim": "#141218",
+                            "inverse-on-surface": "#322f35"
+                    },
+                    "borderRadius": {
+                            "DEFAULT": "0.25rem",
+                            "lg": "0.5rem",
+                            "xl": "0.75rem",
+                            "full": "9999px"
+                    },
+                    "spacing": {
+                            "card-gap": "24px",
+                            "container-padding-desktop": "40px",
+                            "gutter": "16px",
+                            "base": "8px",
+                            "section-margin": "48px",
+                            "container-padding-mobile": "20px"
+                    },
+                    "fontFamily": {
+                            "headline-lg": [
+                                    "Plus Jakarta Sans"
+                            ],
+                            "headline-lg-mobile": [
+                                    "Plus Jakarta Sans"
+                            ],
+                            "title-lg": [
+                                    "Plus Jakarta Sans"
+                            ],
+                            "label-sm": [
+                                    "Inter"
+                            ],
+                            "body-lg": [
+                                    "Inter"
+                            ],
+                            "body-md": [
+                                    "Inter"
+                            ],
+                            "display-lg": [
+                                    "Plus Jakarta Sans"
+                            ],
+                            "label-md": [
+                                    "Inter"
+                            ]
+                    },
+                    "fontSize": {
+                            "headline-lg": [
+                                    "32px",
+                                    {
+                                            "lineHeight": "40px",
+                                            "letterSpacing": "-0.01em",
+                                            "fontWeight": "700"
+                                    }
+                            ],
+                            "headline-lg-mobile": [
+                                    "28px",
+                                    {
+                                            "lineHeight": "34px",
+                                            "fontWeight": "700"
+                                    }
+                            ],
+                            "title-lg": [
+                                    "22px",
+                                    {
+                                            "lineHeight": "28px",
+                                            "fontWeight": "600"
+                                    }
+                            ],
+                            "label-sm": [
+                                    "12px",
+                                    {
+                                            "lineHeight": "16px",
+                                            "fontWeight": "500"
+                                    }
+                            ],
+                            "body-lg": [
+                                    "18px",
+                                    {
+                                            "lineHeight": "28px",
+                                            "fontWeight": "400"
+                                    }
+                            ],
+                            "body-md": [
+                                    "16px",
+                                    {
+                                            "lineHeight": "24px",
+                                            "fontWeight": "400"
+                                    }
+                            ],
+                            "display-lg": [
+                                    "48px",
+                                    {
+                                            "lineHeight": "56px",
+                                            "letterSpacing": "-0.02em",
+                                            "fontWeight": "800"
+                                    }
+                            ],
+                            "label-md": [
+                                    "14px",
+                                    {
+                                            "lineHeight": "20px",
+                                            "fontWeight": "600"
+                                    }
+                            ]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(11, 29, 42, 0.85); /* Midnight Blue base */
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .glow-effect {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            background: radial-gradient(circle, rgba(255, 180, 171, 0.15) 0%, rgba(255, 180, 171, 0) 70%);
+            border-radius: 50%;
+            top: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            pointer-events: none;
+        }
+
+        .gradient-text-warning {
+            background: linear-gradient(135deg, #ffdad6 0%, #ffb4ab 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .pulse-record {
+            animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 180, 171, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(255, 180, 171, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 180, 171, 0); }
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface antialiased h-screen w-screen overflow-hidden flex flex-col items-center justify-end md:justify-center relative font-body-md">
+<!-- Background Elements to simulate modal context -->
+<div class="absolute inset-0 w-full h-full bg-background opacity-90 z-0">
+<!-- Abstract background pattern to suggest underlying content -->
+<div class="absolute inset-0 bg-[url('placeholder')] bg-cover bg-center opacity-10" data-alt="A blurred, dark out-of-focus background showing the interior of a modern urban home. The scene is illuminated by dim, moody lighting in deep navy and subtle teal, typical of a high-end smart home command interface. Abstract shapes of furniture can be seen faintly in the background."></div>
+</div>
+<!-- Simulated underlying screen content (dimmed) -->
+<div class="absolute top-10 left-container-padding-mobile right-container-padding-mobile md:left-container-padding-desktop md:right-container-padding-desktop z-0 opacity-30 blur-sm pointer-events-none">
+<div class="h-16 w-full rounded-xl bg-surface-container-high mb-4"></div>
+<div class="h-64 w-full rounded-[24px] bg-surface-container-high mb-4"></div>
+<div class="h-32 w-full rounded-[24px] bg-surface-container-high"></div>
+</div>
+<!-- Scrim overlay -->
+<div class="absolute inset-0 bg-black/60 z-10 backdrop-blur-sm"></div>
+<!-- Modal / Bottom Sheet Container -->
+<main class="w-full max-w-[500px] glass-panel rounded-t-[32px] md:rounded-[32px] p-container-padding-mobile md:p-container-padding-desktop z-20 flex flex-col relative overflow-hidden shadow-2xl pb-10 md:pb-container-padding-desktop transition-transform duration-300 transform translate-y-0" id="confirmation-modal">
+<!-- Subtle Glow -->
+<div class="glow-effect"></div>
+<!-- Mobile Drag Handle -->
+<div class="w-12 h-1.5 bg-outline-variant rounded-full mx-auto mb-8 md:hidden"></div>
+<!-- Icon / Warning Header -->
+<div class="flex flex-col items-center text-center mb-section-margin relative z-10">
+<div class="w-20 h-20 rounded-full bg-error-container/20 flex items-center justify-center mb-6 pulse-record">
+<span class="material-symbols-outlined text-error" style="font-size: 40px; font-variation-settings: 'FILL' 1;">
+                    stop_circle
+                </span>
+</div>
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-3 gradient-text-warning">
+                End Service Recording?
+            </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-sm mx-auto">
+                Are you sure you want to stop the recording and finish this service session?
+            </p>
+</div>
+<!-- Summary Info Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-base mb-section-margin relative z-10">
+<!-- Recording Time -->
+<div class="bg-surface-container p-gutter rounded-[16px] flex items-center md:flex-col md:justify-center border border-outline-variant/30">
+<div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center mr-4 md:mr-0 md:mb-3">
+<span class="material-symbols-outlined text-primary text-xl">
+                        timer
+                    </span>
+</div>
+<div class="md:text-center">
+<div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Recording</div>
+<div class="font-title-lg text-title-lg text-on-surface">42 min</div>
+</div>
+</div>
+<!-- Service Type -->
+<div class="bg-surface-container p-gutter rounded-[16px] flex items-center md:flex-col md:justify-center border border-outline-variant/30">
+<div class="w-10 h-10 rounded-full bg-tertiary-container/20 flex items-center justify-center mr-4 md:mr-0 md:mb-3">
+<span class="material-symbols-outlined text-tertiary text-xl">
+                        cleaning_services
+                    </span>
+</div>
+<div class="md:text-center">
+<div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Service</div>
+<div class="font-body-lg text-body-lg text-on-surface truncate max-w-[150px] md:max-w-[100px]">Home Cleaning</div>
+</div>
+</div>
+<!-- Vendor -->
+<div class="bg-surface-container p-gutter rounded-[16px] flex items-center md:flex-col md:justify-center border border-outline-variant/30">
+<div class="w-10 h-10 rounded-full bg-secondary-container/20 flex items-center justify-center mr-4 md:mr-0 md:mb-3 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A small, professional headshot portrait of a service worker named Rahul Kumar. The background is a clean, neutral gradient. The lighting is studio quality, bright and flattering. The visual style is premium and corporate." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAzqZNG3NlAVO-dY-8p2T9ORcdr0KAREIgRaVbd46IDy34-xG-PCB1rO2bX-pWscNS0Ksxfm97iB9a7Pdqo4Qs9kyvS1bYUfjzjYAXgv1HJIFibbMYpnj6vSnKabWiFp_m_gfWqjF4o4-m_cK3_Y8D-A6dgKl6Uu8vz2lhfIbu5N_rGC5P8Cxh38cuijKDX95KxUOdUJHZsWan-z8Ql97tpi1Ji3aNiDqab21C5IXYVAacn8KiXSLXx"/>
+</div>
+<div class="md:text-center">
+<div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Vendor</div>
+<div class="font-body-lg text-body-lg text-on-surface truncate max-w-[150px] md:max-w-[100px]">Rahul Kumar</div>
+</div>
+</div>
+</div>
+<!-- Actions -->
+<div class="flex flex-col gap-base mt-auto relative z-10">
+<button class="w-full py-4 px-6 rounded-full bg-error text-on-error font-label-md text-label-md uppercase tracking-wider hover:bg-error/90 transition-all shadow-[0_0_20px_rgba(255,180,171,0.2)] active:scale-[0.98] flex items-center justify-center">
+<span class="material-symbols-outlined mr-2 text-lg">save</span>
+                End &amp; Save Recording
+            </button>
+<button class="w-full py-4 px-6 rounded-full border border-outline-variant text-on-surface font-label-md text-label-md uppercase tracking-wider hover:bg-surface-container transition-colors active:scale-[0.98]">
+                Continue Service
+            </button>
+</div>
+</main>
+<script>
+        // Simple entrance animation for the modal
+        document.addEventListener('DOMContentLoaded', () => {
+            const modal = document.getElementById('confirmation-modal');
+            if(window.innerWidth < 768) {
+                // Bottom sheet behavior on mobile
+                modal.classList.add('translate-y-full');
+                setTimeout(() => {
+                    modal.classList.remove('translate-y-full');
+                }, 50);
+            } else {
+                // Fade/scale on desktop
+                modal.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0', 'scale-95');
+                    modal.classList.add('opacity-100', 'scale-100');
+                }, 50);
+            }
+        });
+    </script>
+</body></html>

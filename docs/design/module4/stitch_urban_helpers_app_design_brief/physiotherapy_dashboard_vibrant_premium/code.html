@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Physiotherapy Dashboard - Urban Helpers</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "tertiary": "#d2bbff",
+                "on-tertiary-fixed": "#25005a",
+                "error": "#ffb4ab",
+                "on-primary-fixed-variant": "#003ea8",
+                "on-error-container": "#ffdad6",
+                "error-container": "#93000a",
+                "tertiary-container": "#8343f4",
+                "on-tertiary-fixed-variant": "#5a00c6",
+                "outline": "#8d90a0",
+                "tertiary-fixed-dim": "#d2bbff",
+                "on-error": "#690005",
+                "tertiary-fixed": "#eaddff",
+                "background": "#041423",
+                "on-secondary-container": "#003f38",
+                "primary": "#b4c5ff",
+                "secondary-fixed-dim": "#4fdbc8",
+                "on-tertiary": "#3f008e",
+                "on-secondary": "#003731",
+                "primary-fixed-dim": "#b4c5ff",
+                "secondary-fixed": "#71f8e4",
+                "surface-container-high": "#1b2b3b",
+                "surface-tint": "#b4c5ff",
+                "on-primary-fixed": "#00174b",
+                "surface-container-low": "#0c1d2c",
+                "surface-dim": "#041423",
+                "surface-container-highest": "#263646",
+                "outline-variant": "#434655",
+                "on-secondary-fixed": "#00201c",
+                "inverse-primary": "#0053db",
+                "surface": "#041423",
+                "on-primary": "#002a78",
+                "inverse-on-surface": "#223242",
+                "on-background": "#d4e4f9",
+                "on-surface-variant": "#c3c6d7",
+                "secondary": "#4fdbc8",
+                "on-primary-container": "#eeefff",
+                "surface-bright": "#2b3b4b",
+                "on-tertiary-container": "#f7edff",
+                "surface-variant": "#263646",
+                "primary-fixed": "#dbe1ff",
+                "inverse-surface": "#d4e4f9",
+                "surface-container-lowest": "#000f1e",
+                "surface-container": "#112130",
+                "on-surface": "#d4e4f9",
+                "secondary-container": "#04b4a2",
+                "primary-container": "#2563eb",
+                "on-secondary-fixed-variant": "#005048"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "base": "8px",
+                "lg": "48px",
+                "xs": "4px",
+                "gutter": "24px",
+                "xl": "80px",
+                "md": "24px",
+                "sm": "12px",
+                "margin-mobile": "16px",
+                "margin-desktop": "40px"
+        },
+        "fontFamily": {
+                "body-md": [
+                        "Plus Jakarta Sans"
+                ],
+                "headline-xl": [
+                        "Plus Jakarta Sans"
+                ],
+                "headline-lg": [
+                        "Plus Jakarta Sans"
+                ],
+                "label-caps": [
+                        "Plus Jakarta Sans"
+                ],
+                "headline-md": [
+                        "Plus Jakarta Sans"
+                ],
+                "body-lg": [
+                        "Plus Jakarta Sans"
+                ],
+                "caption": [
+                        "Plus Jakarta Sans"
+                ],
+                "body-sm": [
+                        "Plus Jakarta Sans"
+                ],
+                "headline-lg-mobile": [
+                        "Plus Jakarta Sans"
+                ]
+        },
+        "fontSize": {
+                "body-md": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "500"
+                        }
+                ],
+                "headline-xl": [
+                        "48px",
+                        {
+                                "lineHeight": "56px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "40px",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "label-caps": [
+                        "11px",
+                        {
+                                "lineHeight": "14px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-md": [
+                        "24px",
+                        {
+                                "lineHeight": "32px",
+                                "fontWeight": "700"
+                        }
+                ],
+                "body-lg": [
+                        "18px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "500"
+                        }
+                ],
+                "caption": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-sm": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "500"
+                        }
+                ],
+                "headline-lg-mobile": [
+                        "28px",
+                        {
+                                "lineHeight": "36px",
+                                "fontWeight": "700"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        body { background-color: #041423; color: #d4e4f9; }
+        .bg-gradient-physio {
+            background: linear-gradient(135deg, #43AA8B 0%, #277DA1 100%);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen pb-32 md:pb-8 flex flex-col items-center">
+<!-- Top App Bar (Web) / Mobile Header -->
+<header class="bg-surface-dim/90 dark:bg-surface-dim/90 backdrop-blur-xl docked full-width top-0 sticky flex justify-between items-center w-full px-margin-mobile h-20 z-40 max-w-[1440px]">
+<div class="flex items-center gap-4">
+<button class="hover:bg-surface-variant/50 p-2 rounded-full transition-colors active:scale-95 text-primary dark:text-primary-fixed-dim">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">Health Records</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="hover:bg-surface-variant/50 p-2 rounded-full transition-colors active:scale-95 text-primary dark:text-primary-fixed-dim">
+<span class="material-symbols-outlined">search</span>
+</button>
+</div>
+</header>
+<main class="w-full max-w-[1440px] px-margin-mobile md:px-margin-desktop py-gutter grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Hero Section (Spans full width) -->
+<section class="col-span-1 md:col-span-12">
+<div class="rounded-[32px] overflow-hidden relative shadow-lg h-[300px] md:h-[400px]">
+<img alt="Physiotherapy" class="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-60" data-alt="A modern, high-tech physiotherapy room illuminated with a calming emerald to teal gradient light. A physiotherapist in scrubs is assisting a patient on a treatment table, with holographic digital overlays of skeletal structures emphasizing advanced recovery techniques. The mood is professional, calm, and technologically advanced, set in a deep navy and teal color palette." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFQY5Q50NDr1DEInFADB9LgLt0skAAssMMFwvbe56ZNszzVJ0UymW17ZSvc-BOpQh5FuuoAoYZA6a3lxRtB2VdvT1cb5dgqhssal7LkAyiPCoWeVbvK88TK49fIh97i9bx9NsLLIvovgYALyEiuqxxJYz_RjQhpajqidI30YdIFh8uZ2dI7L4D86GXU7idBeaI9NJVUpyLpUD3evqc5TlqnaLCY1gYC2AY-FGbk3LhyFFdSu7Y-oS9"/>
+<div class="absolute inset-0 bg-gradient-physio mix-blend-multiply opacity-80"></div>
+<div class="absolute inset-0 p-lg flex flex-col justify-end bg-gradient-to-t from-[#041423]/90 to-transparent">
+<h2 class="font-headline-xl text-headline-xl text-white mb-2 shadow-sm">Physiotherapy</h2>
+<p class="font-body-lg text-body-lg text-white/90 max-w-xl">Recover safely with guided therapy and personalized care plans designed for your optimal well-being.</p>
+</div>
+</div>
+</section>
+<!-- Main Content Area -->
+<div class="col-span-1 md:col-span-8 flex flex-col gap-gutter">
+<!-- Recovery Plans Grid -->
+<section class="bg-surface-container rounded-[32px] p-md shadow-lg">
+<div class="flex items-center justify-between mb-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface">Recovery Plans</h3>
+<button class="text-primary font-body-sm text-body-sm hover:underline">View All</button>
+</div>
+<div class="mb-6 rounded-2xl overflow-hidden h-48 relative">
+<img alt="Recovery Illustration" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhN48gk8_v4jxHEICP572bVT1r1S-DiCSRk7_imNSVuqG8FuQKuSkplcBETGFlKpaG4rzEF9Oe2huLkdTLP2HAFRFxj72TiNdIXuMFIK4VaPRW449dRvAn_B5Dd7Wp2WmQcL0oteXWv1TUiIk4-YUJCCrfUB2lzakwGqN5GhN7KkG3XgztkcvJPspHIwwRbtDeZaL31bcgp3ruG-0BjxekHr6aVk-eSW0X-VOmI6ywVABwlo5nrT71"/>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-sm">
+<!-- Plan 1 -->
+<div class="bg-secondary-container rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer hover:brightness-110 transition-all group shadow-md">
+<div class="w-12 h-12 rounded-full bg-white/20 text-on-secondary-container flex items-center justify-center mb-3">
+<span class="material-symbols-outlined">accessibility_new</span>
+</div>
+<span class="font-body-md text-body-md text-on-secondary-container font-bold">Back Pain</span>
+</div>
+<!-- Plan 2 -->
+<div class="bg-tertiary-container rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer hover:brightness-110 transition-all group shadow-md">
+<div class="w-12 h-12 rounded-full bg-white/20 text-on-tertiary-container flex items-center justify-center mb-3">
+<span class="material-symbols-outlined">airline_seat_recline_normal</span>
+</div>
+<span class="font-body-md text-body-md text-on-tertiary-container font-bold">Neck Pain</span>
+</div>
+<!-- Plan 3 -->
+<div class="bg-primary-container rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer hover:brightness-110 transition-all group shadow-md">
+<div class="w-12 h-12 rounded-full bg-white/20 text-on-primary-container flex items-center justify-center mb-3">
+<span class="material-symbols-outlined">pan_tool</span>
+</div>
+<span class="font-body-md text-body-md text-on-primary-container font-bold">Shoulder</span>
+</div>
+<!-- Plan 4 -->
+<div class="bg-[#005048] rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer hover:brightness-110 transition-all group shadow-md">
+<div class="w-12 h-12 rounded-full bg-white/20 text-white flex items-center justify-center mb-3">
+<span class="material-symbols-outlined">directions_walk</span>
+</div>
+<span class="font-body-md text-body-md text-white font-bold">Knee</span>
+</div>
+</div>
+</section>
+<!-- Exercise Library -->
+<section class="bg-surface-container rounded-[32px] p-md shadow-lg">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-sm">Exercise Library</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-sm">
+<!-- Exercise Card 1 -->
+<div class="bg-surface-container-highest flex rounded-2xl overflow-hidden group shadow-md">
+<div class="w-32 h-32 bg-surface-variant relative flex-shrink-0">
+<div class="absolute inset-0 bg-cover bg-center mix-blend-screen opacity-70" data-alt="A minimalist 3D animation silhouette of a person performing a seated knee extension exercise, glowing lightly against a dark navy background. The style is sleek, modern, and medically accurate, fitting a premium digital health interface." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA3STvtcEaABeUkoJY2LXFtZpCIr0k54c6yZCI0e_lc8AifvT2dfg-31iBKyzIlq-2ZBIdYFueDQJi3nhxbQxLhQ5mR7tmzAN0058DuvxYWy-rYhaFJcwIJkCOp9MK-gzZesykPRmrng5S5EkGe3tsJrLCuuvZXAbK9e7iUTX9XwWmcG6IoSoqxf7ocNCH_lggsczLor9zQTCWi3w3gEgGP_ND4Yc-pGVp07VDBVhPieNWD0MkPMDhk')"></div>
+<div class="absolute inset-0 flex items-center justify-center">
+<button class="w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white group-hover:bg-primary transition-colors">
+<span class="material-symbols-outlined filled">play_arrow</span>
+</button>
+</div>
+</div>
+<div class="p-4 flex flex-col justify-center">
+<h4 class="font-body-lg text-body-lg text-on-surface mb-1">Seated Knee Extension</h4>
+<p class="font-caption text-caption text-on-surface-variant mb-2">3 sets of 15 reps</p>
+<span class="inline-flex items-center gap-1 font-label-caps text-label-caps text-secondary-fixed">
+<span class="material-symbols-outlined text-[16px]">info</span> View Instructions
+                            </span>
+</div>
+</div>
+<!-- Exercise Card 2 -->
+<div class="bg-surface-container-highest flex rounded-2xl overflow-hidden group shadow-md">
+<div class="w-32 h-32 bg-surface-variant relative flex-shrink-0">
+<div class="absolute inset-0 bg-cover bg-center mix-blend-screen opacity-70" data-alt="A minimalist 3D animation silhouette of a person performing a shoulder stretch exercise, glowing lightly against a dark navy background. The style is sleek, modern, and medically accurate, fitting a premium digital health interface." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCIzzfs7YuTOLxIRHwb45s7NqiBua-GZinRNpLohisYuP_Te6zxBbFeHIk8sALbalXMb9Y3sIpHZcBSgiGvOBhBzmMOk0aQy9lzi9qAHDt4VbWvGAknMIgHfE8NRDfB_1COvjTTZ6-8H2_iO-3uCdXAR3cymXf8q4Cy1IPYbADxJ1vbg_alYztvsHGt0mC5PYtW5j9fpefB2bY_5M6nwxIHDmC0J8MhIRfCX70l4KDGoj2MIguOeQI1')"></div>
+<div class="absolute inset-0 flex items-center justify-center">
+<button class="w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white group-hover:bg-primary transition-colors">
+<span class="material-symbols-outlined filled">play_arrow</span>
+</button>
+</div>
+</div>
+<div class="p-4 flex flex-col justify-center">
+<h4 class="font-body-lg text-body-lg text-on-surface mb-1">Shoulder Rotations</h4>
+<p class="font-caption text-caption text-on-surface-variant mb-2">2 sets of 10 reps</p>
+<span class="inline-flex items-center gap-1 font-label-caps text-label-caps text-secondary-fixed">
+<span class="material-symbols-outlined text-[16px]">info</span> View Instructions
+                            </span>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Sidebar / Right Column -->
+<div class="col-span-1 md:col-span-4 flex flex-col gap-gutter">
+<!-- AI Insight -->
+<section class="bg-surface-container rounded-[32px] p-md relative overflow-hidden shadow-lg">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
+<div class="flex items-center gap-3 mb-4 relative z-10">
+<span class="material-symbols-outlined text-primary text-2xl">auto_awesome</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Recovery Insight</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4 relative z-10">Based on your recent pain tracking, focusing on lower back stretches before bed may accelerate your recovery by 15%.</p>
+<button class="w-full py-3 px-6 rounded-lg bg-surface-container-high text-primary font-body-md text-body-md hover:bg-surface-variant transition-colors relative z-10 border border-outline/20">
+                    Update Pain Tracker
+                </button>
+</section>
+<!-- Timeline -->
+<section class="bg-surface-container rounded-[32px] p-md shadow-lg">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-sm">Recovery Timeline</h3>
+<div class="relative pl-6 border-l-2 border-surface-variant mt-4">
+<!-- Step 1 (Completed) -->
+<div class="mb-6 relative">
+<div class="absolute -left-[31px] bg-primary rounded-full w-4 h-4 shadow-glow-primary"></div>
+<h4 class="font-body-md text-body-md text-on-surface mb-1">Initial Assessment</h4>
+<p class="font-caption text-caption text-on-surface-variant">Completed on Oct 12</p>
+</div>
+<!-- Step 2 (Active) -->
+<div class="mb-6 relative">
+<div class="absolute -left-[31px] bg-secondary-fixed rounded-full w-4 h-4 shadow-[0_0_10px_rgba(113,248,228,0.5)] border-2 border-surface-container"></div>
+<h4 class="font-body-md text-body-md text-secondary-fixed mb-1">Phase 1: Mobility</h4>
+<p class="font-caption text-caption text-on-surface-variant">In Progress - Week 2 of 4</p>
+</div>
+<!-- Step 3 (Future) -->
+<div class="relative">
+<div class="absolute -left-[31px] bg-surface-variant rounded-full w-4 h-4 border-2 border-surface-container"></div>
+<h4 class="font-body-md text-body-md text-on-surface-variant mb-1">Phase 2: Strengthening</h4>
+<p class="font-caption text-caption text-on-surface-variant/50">Upcoming</p>
+</div>
+</div>
+</section>
+<!-- Booking -->
+<section class="bg-surface-container rounded-[32px] p-md shadow-lg">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-tertiary text-2xl">calendar_month</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Next Appointment</h3>
+</div>
+<div class="bg-primary-container rounded-xl p-4 mb-4 text-on-primary-container shadow-md">
+<p class="font-body-md text-body-md font-bold">Dr. Sarah Jenkins</p>
+<p class="font-body-sm text-body-sm opacity-90">Thurs, Oct 26 • 10:00 AM</p>
+</div>
+<button class="w-full py-3 px-6 rounded-[16px] bg-primary text-on-primary font-body-md text-body-md hover:opacity-90 transition-opacity shadow-glow-primary mb-3">
+                    Book New Appointment
+                </button>
+<div class="h-32 rounded-xl overflow-hidden relative shadow-md">
+<img class="w-full h-full object-cover opacity-90" data-alt="A high-contrast dark mode map interface showing nearby physiotherapy clinics in a modern city. The map features glowing teal and blue markers against deep navy streets and dark terrain, maintaining the sleek corporate modern aesthetic of the application." data-location="New York City" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCZXMsIwGz5qC5Ls6TvLNUwNuYGMOQLc8KU5mTMoVt9AgkGfI_sD0jofsjSuLk296M4hNeBDURQiHx0Tn4qMnm5tewSbEQZCSHttURYKPzAYetoLmum6Cfwx9ZrXEW1Ulcx6l9hR0LXnyY3oqjbnCI8FlancD7lRqv0c27Nfd2ZEr4t5G-h50yTzAlfJpMiY7kkeYfyaMwkWVovMLpoU0_8QzYsKShBJ9h8-k4EpVrp1d0GAVwyme18"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background/90 to-transparent flex items-end p-3">
+<span class="font-label-caps text-label-caps text-white">Find Nearby Clinics</span>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Bottom Nav Bar (Mobile) -->
+<nav class="bg-surface-container-high border border-white/5 shadow-lg fixed bottom-margin-mobile left-0 right-0 mx-auto w-[90%] max-w-md z-50 flex justify-around items-center py-3 px-6 bottom-base left-1/2 -translate-x-1/2 w-[calc(100%-32px)] rounded-full md:hidden">
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-on-surface transition-colors group" href="#">
+<span class="material-symbols-outlined group-active:scale-110 transition-all duration-300 ease-out">home</span>
+<span class="font-label-caps text-label-caps mt-1">Home</span>
+</a>
+<!-- Active Tab -->
+<a class="flex flex-col items-center justify-center bg-primary text-on-primary rounded-full w-12 h-12 shadow-glow group" href="#">
+<span class="material-symbols-outlined filled group-active:scale-110 transition-all duration-300 ease-out">favorite</span>
+<span class="sr-only font-label-caps text-label-caps mt-1">Health</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-on-surface transition-colors group" href="#">
+<span class="material-symbols-outlined group-active:scale-110 transition-all duration-300 ease-out">exercise</span>
+<span class="font-label-caps text-label-caps mt-1">Activity</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-on-surface transition-colors group" href="#">
+<span class="material-symbols-outlined group-active:scale-110 transition-all duration-300 ease-out">person</span>
+<span class="font-label-caps text-label-caps mt-1">Profile</span>
+</a>
+</nav>
+</body></html>

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Book Service - Urban Helpers</title>
+<!-- Tailwind CSS & Plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&amp;family=Plus+Jakarta+Sans:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Config injected from system prompt -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-error": "#ffffff",
+                    "outline-variant": "#c3c6d7",
+                    "surface-tint": "#0053db",
+                    "tertiary": "#943700",
+                    "on-secondary-container": "#006f64",
+                    "on-error-container": "#93000a",
+                    "on-primary-container": "#eeefff",
+                    "on-primary-fixed": "#00174b",
+                    "secondary-container": "#6df5e1",
+                    "tertiary-container": "#bc4800",
+                    "tertiary-fixed": "#ffdbcd",
+                    "surface-container-low": "#f0f3ff",
+                    "inverse-primary": "#b4c5ff",
+                    "on-secondary-fixed": "#00201c",
+                    "on-background": "#151c27",
+                    "on-tertiary-container": "#ffede6",
+                    "surface-bright": "#f9f9ff",
+                    "on-tertiary-fixed": "#360f00",
+                    "surface-variant": "#dce2f3",
+                    "surface-dim": "#d3daea",
+                    "primary-container": "#2563eb",
+                    "primary": "#004ac6",
+                    "on-secondary": "#ffffff",
+                    "surface-container-high": "#e2e8f8",
+                    "on-surface-variant": "#434655",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "background": "#081826", /* User requested dark navy background */
+                    "tertiary-fixed-dim": "#ffb596",
+                    "surface-container-highest": "#dce2f3",
+                    "on-primary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-fixed-variant": "#7d2d00",
+                    "primary-fixed": "#dbe1ff",
+                    "secondary-fixed-dim": "#4fdbc8",
+                    "secondary": "#006b5f",
+                    "secondary-fixed": "#71f8e4",
+                    "on-tertiary": "#ffffff",
+                    "on-surface": "#151c27",
+                    "outline": "#737686",
+                    "surface": "#f9f9ff",
+                    "on-secondary-fixed-variant": "#005048",
+                    "inverse-on-surface": "#ebf1ff",
+                    "error-container": "#ffdad6",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "inverse-surface": "#2a313d",
+                    "surface-container": "#e7eefe",
+                    /* Custom Brand Colors for the user's request */
+                    "brand-cyan": "#00BCD4",
+                    "brand-cyan-light": "#4DD0E1",
+                    "brand-indigo": "#6366F1",
+                    "brand-indigo-light": "#A78BFA",
+                    "card-bg": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "2xl": "1.5rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "lg": "48px",
+                    "xs": "4px",
+                    "md": "24px",
+                    "container-max": "1200px",
+                    "sm": "12px",
+                    "base": "8px",
+                    "xl": "80px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "body-md": ["Manrope"],
+                    "body-lg": ["Manrope"],
+                    "headline-lg-mobile": ["Plus Jakarta Sans"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "label-sm": ["Manrope"],
+                    "display-lg": ["Plus Jakarta Sans"],
+                    "body-sm": ["Manrope"],
+                    "label-md": ["Manrope"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body {
+            background-color: #081826;
+            color: #ffffff;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        /* Custom scrollbar for horizontal sections */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="pb-32 selection:bg-brand-cyan/30">
+<!-- JSON Component: TopAppBar (Modified to fit user request intent, but keeping semantic structure) -->
+<header class="fixed top-0 w-full z-50 shadow-sm border-b border-white/10 flex items-center justify-between px-md h-16 w-full" style="background-color: #081826;">
+<div class="flex items-center gap-sm">
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:opacity-80 transition-opacity active:scale-95 transition-transform text-white">
+<span class="material-symbols-outlined" data-icon="arrow_back" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<div class="flex flex-col">
+<h1 class="font-headline-md text-headline-md text-white">Book Home Cleaning</h1>
+<p class="font-body-sm text-body-sm text-gray-400">Complete your booking</p>
+</div>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:opacity-80 transition-opacity active:scale-95 transition-transform text-white">
+<span class="material-symbols-outlined" data-icon="notifications" style="font-variation-settings: 'FILL' 0;">notifications</span>
+</button>
+</header>
+<!-- Main Canvas Content -->
+<main class="pt-24 px-md md:px-lg max-w-container-max mx-auto flex flex-col gap-md">
+<!-- 2. Selected Package -->
+<section class="rounded-2xl p-md flex flex-col md:flex-row gap-md items-center relative overflow-hidden shadow-xl" style="background: linear-gradient(135deg, #00BCD4 0%, #4DD0E1 100%);">
+<div class="absolute top-4 right-4 bg-white/20 px-sm py-1 rounded-full font-label-md text-label-md text-white backdrop-blur-sm border border-white/30 z-10 flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]">verified</span> Best Seller
+            </div>
+<div class="w-full md:w-1/3 aspect-square relative z-0 flex-shrink-0">
+<img alt="Premium Cleaning Service Illustration" class="object-cover w-full h-full rounded-xl shadow-lg mix-blend-luminosity opacity-90" src="https://lh3.googleusercontent.com/aida/AP1WRLudV4l-_zIr70iWHrNXW6ykiqfIyWJw42u_gsIqVajN2FPWXNDkiTYgUwvBhOmVrO17kLX2h6h5r2IooIuP43xhNRYthPjDVZGGvvWa2Y5iUw1DKVuAiOE-3t1-4o_rKnWhUklWc-uIYutxcCgROtmF0bwWyQRSoEY2Qrg_LZxHT7gKzi-hfFzxefC_SImyIuPB7EetMBH4ife6F__STcrw8uCuwwOWeDxGTp1Ig0el0a3lnfcrwV95ot0" style="mix-blend-mode: normal; opacity: 1;"/>
+</div>
+<div class="flex flex-col gap-sm z-10 w-full text-white">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg font-bold">Premium Cleaning</h2>
+<div class="flex items-center gap-md font-body-lg text-body-lg">
+<span class="font-bold text-2xl">₹1499</span>
+<span class="flex items-center gap-1 opacity-90"><span class="material-symbols-outlined text-lg">schedule</span> 5 Hours</span>
+</div>
+<ul class="font-body-md text-body-md space-y-2 mt-2 opacity-90">
+<li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm">check_circle</span> Deep kitchen &amp; bathroom cleaning</li>
+<li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm">check_circle</span> Sofa shampooing included</li>
+</ul>
+</div>
+</section>
+<!-- 3. Service Address -->
+<section class="bg-card-bg rounded-2xl p-md shadow-[0px_12px_32px_rgba(37,99,235,0.06)] text-on-surface">
+<div class="flex justify-between items-center mb-sm">
+<h3 class="font-headline-md text-headline-md text-on-background">Service Address</h3>
+<button class="text-primary font-label-md text-label-md flex items-center gap-1 hover:opacity-80">
+<span class="material-symbols-outlined text-sm">my_location</span> Locate
+                </button>
+</div>
+<div class="w-full h-32 rounded-xl mb-md bg-surface-variant overflow-hidden relative shadow-inner">
+<div class="bg-cover bg-center w-full h-full opacity-60" data-alt="A bright, modern map preview showing a suburban street layout in a tech-forward app interface style, focusing on a clear pinpoint location marker. The color palette is high-contrast with soft greens, grays, and a vibrant primary blue marker, adhering to a clean, crisp, digital aesthetic." data-location="Bangalore" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBHgpmlMBTNV5B6dQmiJCfxsoUwoDcbSHS1rvm8n9jmBgGSKrnxawJ2gTzqGipsyEWoSRofddkC5h-i4wSrWhEEugUksrKTFLKRflVO5CVNJEqGYky_iXuto2ey343tsfnIrMfWK6pDgfMO6iDhpmDZBZHr_iYYASm8ge4cMeRVWW34K95AlsZ4YH-h4Jynkf0tNZJasRmF4NBVfqWjeTBio-9ky0EdwmgSuXU0i5jrXFVH_IWdFbSz')"></div>
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+<span class="material-symbols-outlined text-primary text-4xl" style="font-variation-settings: 'FILL' 1;">location_on</span>
+</div>
+</div>
+<div class="flex gap-sm mb-md overflow-x-auto hide-scrollbar pb-1">
+<button class="bg-primary/10 text-primary border border-primary px-4 py-2 rounded-full font-label-md text-label-md flex items-center gap-2 shrink-0">
+<span class="material-symbols-outlined text-sm">home</span> Home
+                </button>
+<button class="bg-surface border border-outline-variant text-on-surface-variant px-4 py-2 rounded-full font-label-md text-label-md flex items-center gap-2 shrink-0 hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined text-sm">work</span> Office
+                </button>
+<button class="bg-surface border border-outline-variant text-on-surface-variant px-4 py-2 rounded-full font-label-md text-label-md flex items-center gap-2 shrink-0 hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined text-sm">add</span> Add New
+                </button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<div class="flex flex-col gap-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">House No / Apt</label>
+<input class="w-full h-[56px] rounded-[16px] border-[#E5E7EB] bg-white px-4 font-body-md text-on-background focus:ring-2 focus:ring-primary focus:border-primary shadow-sm outline-none transition-shadow" placeholder="e.g. 402, Block B" type="text" value="Villa 12"/>
+</div>
+<div class="flex flex-col gap-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">Landmark</label>
+<input class="w-full h-[56px] rounded-[16px] border-[#E5E7EB] bg-white px-4 font-body-md text-on-background focus:ring-2 focus:ring-primary focus:border-primary shadow-sm outline-none transition-shadow" placeholder="e.g. Near Central Park" type="text"/>
+</div>
+</div>
+</section>
+<!-- 4. Date & Time -->
+<section class="rounded-2xl p-md shadow-xl text-white relative overflow-hidden" style="background: linear-gradient(135deg, #6366F1 0%, #A78BFA 100%);">
+<h3 class="font-headline-md text-headline-md mb-md relative z-10">Select Date &amp; Time</h3>
+<div class="flex items-center justify-between mb-sm relative z-10 bg-white/20 rounded-xl p-sm backdrop-blur-sm">
+<span class="font-label-md text-label-md flex items-center gap-2">
+<span class="material-symbols-outlined text-lg">bolt</span> Express Service (Within 2 hrs)
+                </span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-white/30 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-cyan"></div>
+</label>
+</div>
+<!-- Fake Calendar Strip -->
+<div class="flex gap-sm overflow-x-auto hide-scrollbar pb-2 mb-md relative z-10">
+<div class="flex flex-col items-center justify-center min-w-[64px] h-[72px] rounded-xl bg-white text-brand-indigo font-bold cursor-pointer shadow-sm">
+<span class="font-label-sm text-label-sm uppercase">Wed</span>
+<span class="text-xl">12</span>
+</div>
+<div class="flex flex-col items-center justify-center min-w-[64px] h-[72px] rounded-xl bg-white/20 text-white font-medium cursor-pointer hover:bg-white/30 transition-colors border border-white/10">
+<span class="font-label-sm text-label-sm uppercase opacity-80">Thu</span>
+<span class="text-xl">13</span>
+</div>
+<div class="flex flex-col items-center justify-center min-w-[64px] h-[72px] rounded-xl bg-white/20 text-white font-medium cursor-pointer hover:bg-white/30 transition-colors border border-white/10">
+<span class="font-label-sm text-label-sm uppercase opacity-80">Fri</span>
+<span class="text-xl">14</span>
+</div>
+<div class="flex flex-col items-center justify-center min-w-[64px] h-[72px] rounded-xl bg-white/20 text-white font-medium cursor-pointer hover:bg-white/30 transition-colors border border-white/10">
+<span class="font-label-sm text-label-sm uppercase opacity-80">Sat</span>
+<span class="text-xl">15</span>
+</div>
+</div>
+<!-- Time Slots -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-sm relative z-10">
+<div class="bg-white/10 border border-white/20 rounded-xl p-sm cursor-pointer hover:bg-white/20 transition-colors">
+<p class="font-label-md text-label-md mb-1 opacity-80">Morning</p>
+<p class="font-body-md text-body-md font-medium">8:00 AM - 11:00 AM</p>
+</div>
+<div class="bg-white text-brand-indigo rounded-xl p-sm cursor-pointer shadow-sm border border-transparent ring-2 ring-white ring-offset-2 ring-offset-brand-indigo">
+<p class="font-label-md text-label-md mb-1 opacity-80">Afternoon</p>
+<p class="font-body-md text-body-md font-medium">12:00 PM - 3:00 PM</p>
+</div>
+<div class="bg-white/10 border border-white/20 rounded-xl p-sm cursor-pointer hover:bg-white/20 transition-colors">
+<p class="font-label-md text-label-md mb-1 opacity-80">Evening</p>
+<p class="font-body-md text-body-md font-medium">4:00 PM - 7:00 PM</p>
+</div>
+</div>
+</section>
+<!-- 8. Trust Section -->
+<section class="flex flex-col gap-sm">
+<h3 class="font-headline-md text-headline-md text-white mb-2">Our Promise</h3>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-sm">
+<div class="bg-[#1A2E40] border border-[#2A4259] rounded-xl p-sm flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-white">Verified Pros</p>
+<p class="font-body-sm text-body-sm text-gray-400">Background checked</p>
+</div>
+</div>
+<div class="bg-[#1A2E40] border border-[#2A4259] rounded-xl p-sm flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full bg-brand-cyan/20 text-brand-cyan flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">thumb_up</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-white">100% Satisfaction</p>
+<p class="font-body-sm text-body-sm text-gray-400">Guaranteed service</p>
+</div>
+</div>
+<div class="bg-[#1A2E40] border border-[#2A4259] rounded-xl p-sm flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full bg-brand-indigo/20 text-brand-indigo-light flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">schedule</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-white">On-Time Arrival</p>
+<p class="font-body-sm text-body-sm text-gray-400">Or get flat ₹200 off</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- 9. Bottom CTA -->
+<div class="fixed bottom-[88px] left-0 w-full px-md md:px-lg z-40">
+<div class="max-w-container-max mx-auto bg-card-bg text-on-background p-sm rounded-[24px] shadow-[0px_-8px_32px_rgba(0,0,0,0.4)] border border-[#E5E7EB] flex items-center justify-between">
+<div class="flex flex-col ml-sm">
+<span class="font-body-sm text-body-sm text-on-surface-variant line-through">₹1999</span>
+<span class="font-headline-md text-headline-md text-on-background font-bold">₹1499</span>
+</div>
+<button class="bg-primary text-white h-[56px] px-8 rounded-[18px] font-label-md text-label-md hover:bg-primary-fixed-variant transition-colors shadow-lg active:scale-95">
+                Confirm Booking
+            </button>
+</div>
+</div>
+<!-- JSON Component: BottomNavBar (Strict enforcement of JSON classes) -->
+<nav class="fixed bottom-6 left-0 right-0 z-50 flex justify-around items-center px-4 py-2 bg-white/70 dark:bg-surface-container/70 backdrop-blur-md shadow-[0px_12px_32px_rgba(37,99,235,0.12)] border border-white/20 fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md rounded-full font-label-sm text-label-sm font-headline-md text-headline-md text-primary" style="background-color: rgba(8, 24, 38, 0.8);">
+<!-- Active Tab: Home (User requested "Home" selected) -->
+<button class="flex flex-col items-center justify-center bg-primary text-on-primary rounded-full w-12 h-12 hover:bg-primary-container/20 rounded-full transition-colors active:scale-90 transition-transform duration-200">
+<span class="material-symbols-outlined" data-icon="home" data-weight="fill" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="sr-only">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant w-12 h-12 hover:bg-primary-container/20 rounded-full transition-colors active:scale-90 transition-transform duration-200 text-white opacity-70 hover:opacity-100">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+<span class="sr-only">Bookings</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant w-12 h-12 hover:bg-primary-container/20 rounded-full transition-colors active:scale-90 transition-transform duration-200 text-white opacity-70 hover:opacity-100">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span class="sr-only">Search</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant w-12 h-12 hover:bg-primary-container/20 rounded-full transition-colors active:scale-90 transition-transform duration-200 text-white opacity-70 hover:opacity-100">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="sr-only">Profile</span>
+</button>
+</nav>
+</body></html>

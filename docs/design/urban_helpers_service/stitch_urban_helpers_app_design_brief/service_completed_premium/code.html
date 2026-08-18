@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Service Completed - Urban Helpers</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&amp;family=Plus+Jakarta+Sans:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed-dim": "#ffb596",
+                    "on-surface-variant": "#434655",
+                    "surface-container": "#e7eefe",
+                    "surface-bright": "#f9f9ff",
+                    "surface-container-low": "#f0f3ff",
+                    "primary": "#004ac6",
+                    "on-surface": "#151c27",
+                    "inverse-surface": "#2a313d",
+                    "surface-tint": "#0053db",
+                    "on-primary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "surface-dim": "#d3daea",
+                    "surface-container-high": "#e2e8f8",
+                    "error": "#ba1a1a",
+                    "on-secondary-fixed-variant": "#005048",
+                    "surface": "#f9f9ff",
+                    "background": "#f9f9ff",
+                    "secondary-fixed-dim": "#4fdbc8",
+                    "on-tertiary-container": "#ffede6",
+                    "tertiary-fixed": "#ffdbcd",
+                    "on-error": "#ffffff",
+                    "on-tertiary-fixed-variant": "#7d2d00",
+                    "on-secondary-container": "#006f64",
+                    "on-primary-container": "#eeefff",
+                    "on-tertiary": "#ffffff",
+                    "surface-variant": "#dce2f3",
+                    "inverse-primary": "#b4c5ff",
+                    "secondary": "#006b5f",
+                    "on-background": "#151c27",
+                    "outline": "#737686",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary": "#943700",
+                    "inverse-on-surface": "#ebf1ff",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "primary-container": "#2563eb",
+                    "on-error-container": "#93000a",
+                    "on-primary-fixed": "#00174b",
+                    "primary-fixed": "#dbe1ff",
+                    "secondary-fixed": "#71f8e4",
+                    "on-secondary": "#ffffff",
+                    "secondary-container": "#6df5e1",
+                    "surface-container-highest": "#dce2f3",
+                    "on-tertiary-fixed": "#360f00",
+                    "outline-variant": "#c3c6d7",
+                    "tertiary-container": "#bc4800",
+                    "on-secondary-fixed": "#00201c"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px",
+                    "2xl": "24px",
+                    "3xl": "32px"
+            },
+            "spacing": {
+                    "md": "24px",
+                    "lg": "48px",
+                    "xl": "80px",
+                    "container-max": "1200px",
+                    "gutter": "24px",
+                    "xs": "4px",
+                    "base": "8px",
+                    "sm": "12px"
+            },
+            "fontFamily": {
+                    "headline-lg-mobile": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "display-lg": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "body-sm": [
+                            "Manrope"
+                    ],
+                    "body-lg": [
+                            "Manrope"
+                    ],
+                    "body-md": [
+                            "Manrope"
+                    ],
+                    "headline-md": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "label-md": [
+                            "Manrope"
+                    ],
+                    "label-sm": [
+                            "Manrope"
+                    ],
+                    "headline-lg": [
+                            "Plus Jakarta Sans"
+                    ]
+            },
+            "fontSize": {
+                    "headline-lg-mobile": [
+                            "28px",
+                            {
+                                    "lineHeight": "36px",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "display-lg": [
+                            "48px",
+                            {
+                                    "lineHeight": "56px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "800"
+                            }
+                    ],
+                    "body-sm": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "body-lg": [
+                            "18px",
+                            {
+                                    "lineHeight": "28px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "body-md": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-md": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "label-md": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "letterSpacing": "0.01em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "label-sm": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "headline-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "40px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "700"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+<style>
+        .glass-overlay {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .success-gradient {
+            background: linear-gradient(135deg, #22C55E 0%, #86EFAC 100%);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col pb-24 md:pb-0">
+<!-- Top Navigation (Shell suppressed based on instructions, using custom header) -->
+<header class="fixed top-0 w-full z-50 flex items-center justify-between px-md h-16 bg-surface-container/70 backdrop-blur-xl border-b border-white/20 shadow-sm md:px-lg">
+<div class="flex items-center gap-sm">
+<button class="p-2 -ml-2 rounded-full hover:bg-surface-variant transition-colors text-on-surface">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">Completed</h1>
+</div>
+<div class="flex items-center">
+<button class="p-2 rounded-full hover:bg-surface-variant transition-colors text-on-surface">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</header>
+<main class="flex-1 mt-16 max-w-container-max mx-auto w-full px-md md:px-lg py-md space-y-md">
+<!-- Success Hero -->
+<section class="success-gradient rounded-3xl p-md md:p-lg relative overflow-hidden shadow-lg flex flex-col items-center text-center">
+<div class="absolute inset-0 bg-white/10 mix-blend-overlay"></div>
+<div class="relative z-10 w-full flex flex-col items-center">
+<div class="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-md backdrop-blur-md border border-white/30">
+<span class="material-symbols-outlined text-white text-display-lg" style="font-variation-settings: 'FILL' 1; font-size: 48px;">check_circle</span>
+</div>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-white mb-xs">Cleaning Completed Successfully</h2>
+<p class="font-body-md text-body-md text-white/90 max-w-md">Your home is now professionally cleaned.</p>
+<div class="mt-lg w-full max-w-[400px] rounded-2xl overflow-hidden relative border-4 border-white/20 shadow-xl">
+<img alt="Service completed illustration" class="w-full h-auto object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvIDThCTBZcZ6zURsxHHm9_xoQFn5gD-T9AYXGWCMDFUePjZxB05euhrgof85xXuQW5Drdlj1n_cyhmsZZDWaUJlNFrmS0W7tQ8iMGZXKg_POVGfpVgvV66sQgZPmM_R68ieIXSP8ew9MJ7Vc2ZAUkiqNnGq282-fMMCFh8rurZF4QfdWo2uT5ADXklJ-U_2WUIg3bqgkAqMuo5pslibluq5UpoTVEQdoJbd0mvJq1HkKxqOmvruMC"/>
+</div>
+</div>
+</section>
+<!-- Service Summary -->
+<section class="bg-surface-container-lowest rounded-3xl p-md shadow-[0px_12px_32px_rgba(37,99,235,0.06)] border border-surface-variant">
+<h3 class="font-label-md text-label-md text-outline mb-sm uppercase tracking-wider">Service Summary</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-sm">
+<div class="flex items-start gap-sm p-sm bg-surface-container-low rounded-2xl">
+<div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center text-primary-container shrink-0">
+<span class="material-symbols-outlined">cleaning_services</span>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-outline">Package</p>
+<p class="font-body-md text-body-md text-on-surface font-semibold">Premium Cleaning</p>
+</div>
+</div>
+<div class="flex items-start gap-sm p-sm bg-surface-container-low rounded-2xl">
+<div class="w-10 h-10 rounded-full bg-secondary-container/20 flex items-center justify-center text-secondary shrink-0">
+<span class="material-symbols-outlined">schedule</span>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-outline">Duration</p>
+<p class="font-body-md text-body-md text-on-surface font-semibold">5 Hours</p>
+</div>
+</div>
+<div class="flex items-start gap-sm p-sm bg-surface-container-low rounded-2xl">
+<div class="w-10 h-10 rounded-full bg-tertiary-container/20 flex items-center justify-center text-tertiary shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Professional portrait of a male cleaner in a green uniform, well-lit, trustworthy expression, bright modern setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBGpFdg3BSsXEOopd7MWjS3xq98cRYSC2c7wc4v4OrkMA8WGCcFHdZ4hSZ2bVn54grrFAVfOFe642_bDgnA8j9zHyuVahZBLu-V4N0a0BfIoWzXeHxSGUhyudQq_vr6jw0MIjHYSwNVoItuJFiU5xWoHaYxutdhh0Vmv8Lu6bUWVngq9ZwBI0ja2-1TGOQmtmXP-wfH8zEiWAy929euVql7RISoatsVWVM0eJm0AtXzzgVOIBo9RbPh"/>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-outline">Professional</p>
+<div class="flex items-center gap-xs">
+<p class="font-body-md text-body-md text-on-surface font-semibold">Rajesh K.</p>
+<span class="material-symbols-outlined text-green-500 text-[16px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+</div>
+</div>
+<div class="flex items-start gap-sm p-sm bg-surface-container-low rounded-2xl">
+<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant shrink-0">
+<span class="material-symbols-outlined">receipt_long</span>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-outline">Date &amp; Invoice</p>
+<p class="font-body-md text-body-md text-on-surface font-semibold">Today, Oct 12 • UH-2026</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Photo Comparison Placeholder -->
+<section class="bg-surface-container-lowest rounded-3xl p-md shadow-[0px_12px_32px_rgba(37,99,235,0.06)] border border-surface-variant">
+<div class="flex justify-between items-center mb-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface">Before &amp; After</h3>
+</div>
+<div class="relative h-64 md:h-80 w-full rounded-2xl overflow-hidden group cursor-ew-resize">
+<div class="absolute inset-0 w-full h-full bg-cover bg-center" data-alt="A pristine, professionally cleaned living room with modern furniture, bright natural light, sparkling surfaces, highly organized and tidy, showcasing a premium cleaning service result." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBsTT19kf_CgXe9nmyo8DRKQ6ADNueioJ45u-eqwa3JUzO6HvAvrqkrp2sama4tBp5hNLr1WlkcChTemsRmFz3o8Tru4ZlVUClmW03WVjpWpmBNrCnGMPGjlhaMysdqRcT668WHdr3YJUDL_ceh75_PRrrPUveoCreQ6PgCofTmVTcIpFquNZSxImYrgPaqEr_2PZSHVoiRtEEfvvRxAQIu3vvrvKGVDJXSgiKqG6_KwOwC37OUpoZE')"></div>
+<div class="absolute inset-0 w-1/2 h-full bg-cover bg-center border-r-4 border-white shadow-[4px_0_12px_rgba(0,0,0,0.2)]" data-alt="A messy, disorganized living room with scattered items, slightly dim lighting, dusty surfaces, indicating the need for a professional cleaning service." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAHyb9TVqrPU0lN9LR8gqDfppROPxeO62Xgjb6H7TOAZhpip_NVSRXbNcjWNeM0DGRQP5v4xbDQbq62B5mwu_-WRQNsgj9akBQCnl5kxNyE2tUFuY1_n5wmTNhKA1XwSM76tGEbBif-DazBITkTegyK0J8bWrZgiF-KVGpBGFhb_1ApHtO571CrDw8v75jHkkeMueAj32GohF5ueBCFyiHyYD1p6vUBi23-s4wSlaVJxqB2g19f8mpy')">
+<div class="absolute inset-y-0 right-0 w-8 flex items-center justify-center translate-x-1/2">
+<div class="w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center text-primary-container">
+<span class="material-symbols-outlined text-[16px]">swap_horiz</span>
+</div>
+</div>
+</div>
+<div class="absolute bottom-4 left-4 bg-black/50 backdrop-blur-sm text-white px-3 py-1 rounded-full font-label-sm text-label-sm">Before</div>
+<div class="absolute bottom-4 right-4 bg-black/50 backdrop-blur-sm text-white px-3 py-1 rounded-full font-label-sm text-label-sm">After</div>
+</div>
+</section>
+<!-- Completed Tasks -->
+<section class="bg-surface-container-lowest rounded-3xl p-md shadow-[0px_12px_32px_rgba(37,99,235,0.06)] border border-surface-variant">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-md">What Was Completed</h3>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-sm">
+<div class="flex flex-col items-center p-sm bg-surface rounded-2xl border border-surface-variant text-center">
+<span class="material-symbols-outlined text-primary-container mb-2 text-[32px]">living</span>
+<p class="font-label-md text-label-md text-on-surface">Living Room</p>
+<span class="material-symbols-outlined text-green-500 mt-1" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="flex flex-col items-center p-sm bg-surface rounded-2xl border border-surface-variant text-center">
+<span class="material-symbols-outlined text-primary-container mb-2 text-[32px]">countertops</span>
+<p class="font-label-md text-label-md text-on-surface">Kitchen</p>
+<span class="material-symbols-outlined text-green-500 mt-1" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="flex flex-col items-center p-sm bg-surface rounded-2xl border border-surface-variant text-center">
+<span class="material-symbols-outlined text-primary-container mb-2 text-[32px]">bathtub</span>
+<p class="font-label-md text-label-md text-on-surface">Bathroom</p>
+<span class="material-symbols-outlined text-green-500 mt-1" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="flex flex-col items-center p-sm bg-surface rounded-2xl border border-surface-variant text-center">
+<span class="material-symbols-outlined text-primary-container mb-2 text-[32px]">bed</span>
+<p class="font-label-md text-label-md text-on-surface">Bedroom</p>
+<span class="material-symbols-outlined text-green-500 mt-1" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+</section>
+<!-- Downloads -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-sm">
+<button class="flex items-center justify-between p-md bg-surface-container-lowest rounded-2xl shadow-sm border border-surface-variant hover:bg-surface transition-colors">
+<div class="flex items-center gap-sm">
+<div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+<span class="material-symbols-outlined">receipt</span>
+</div>
+<div class="text-left">
+<p class="font-label-md text-label-md text-on-surface">Invoice</p>
+<p class="font-body-sm text-body-sm text-outline">PDF Document</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline">download</span>
+</button>
+<button class="flex items-center justify-between p-md bg-surface-container-lowest rounded-2xl shadow-sm border border-surface-variant hover:bg-surface transition-colors">
+<div class="flex items-center gap-sm">
+<div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
+<span class="material-symbols-outlined">description</span>
+</div>
+<div class="text-left">
+<p class="font-label-md text-label-md text-on-surface">Service Report</p>
+<p class="font-body-sm text-body-sm text-outline">Detailed View</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline">download</span>
+</button>
+<button class="flex items-center justify-between p-md bg-surface-container-lowest rounded-2xl shadow-sm border border-surface-variant hover:bg-surface transition-colors">
+<div class="flex items-center gap-sm">
+<div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
+<span class="material-symbols-outlined">verified_user</span>
+</div>
+<div class="text-left">
+<p class="font-label-md text-label-md text-on-surface">Warranty</p>
+<p class="font-body-sm text-body-sm text-outline">7 Days Active</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline">download</span>
+</button>
+</section>
+</main>
+<!-- Bottom Sticky CTA -->
+<div class="fixed bottom-0 w-full bg-surface-container-lowest/90 backdrop-blur-xl border-t border-surface-variant p-md md:p-lg z-40 md:relative md:bg-transparent md:border-none md:mt-lg">
+<div class="max-w-container-max mx-auto w-full flex justify-center">
+<button class="w-full md:w-auto md:min-w-[300px] h-14 bg-primary-container text-white font-label-md text-label-md rounded-2xl hover:bg-primary-fixed-variant transition-colors flex items-center justify-center gap-2 shadow-[0px_8px_16px_rgba(37,99,235,0.2)]">
+<span class="material-symbols-outlined">star</span>
+                Rate Your Experience
+            </button>
+</div>
+</div>
+</body></html>

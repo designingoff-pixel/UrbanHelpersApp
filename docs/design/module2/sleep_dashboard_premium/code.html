@@ -1,0 +1,365 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Sleep Dashboard</title>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100..900&amp;display=swap" rel="stylesheet">
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#b4c5ff",
+                        "on-primary-fixed": "#00174b",
+                        "surface-container-lowest": "#000f1e",
+                        "on-primary": "#002a78",
+                        "inverse-on-surface": "#223242",
+                        "outline": "#8d90a0",
+                        "surface-dim": "#041423",
+                        "surface-variant": "#263646",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "tertiary-container": "#8343f4",
+                        "on-primary-container": "#eeefff",
+                        "primary-fixed": "#dbe1ff",
+                        "tertiary": "#d2bbff",
+                        "on-background": "#d4e4f9",
+                        "on-secondary-container": "#003f38",
+                        "on-error": "#690005",
+                        "background": "#041423",
+                        "error": "#ffb4ab",
+                        "surface-bright": "#2b3b4b",
+                        "on-surface": "#d4e4f9",
+                        "on-tertiary": "#3f008e",
+                        "secondary-fixed-dim": "#4fdbc8",
+                        "on-tertiary-container": "#f7edff",
+                        "secondary": "#4fdbc8",
+                        "on-error-container": "#ffdad6",
+                        "surface-tint": "#b4c5ff",
+                        "tertiary-fixed": "#eaddff",
+                        "inverse-surface": "#d4e4f9",
+                        "surface-container-high": "#1b2b3b",
+                        "on-secondary-fixed": "#00201c",
+                        "primary-container": "#2563eb",
+                        "surface-container": "#112130",
+                        "surface-container-highest": "#263646",
+                        "on-secondary-fixed-variant": "#005048",
+                        "inverse-primary": "#0053db",
+                        "on-tertiary-fixed": "#25005a",
+                        "on-surface-variant": "#c3c6d7",
+                        "surface-container-low": "#0c1d2c",
+                        "error-container": "#93000a",
+                        "tertiary-fixed-dim": "#d2bbff",
+                        "on-secondary": "#003731",
+                        "surface": "#041423",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "outline-variant": "#434655",
+                        "on-tertiary-fixed-variant": "#5a00c6",
+                        "secondary-fixed": "#71f8e4",
+                        "secondary-container": "#04b4a2"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xs": "4px",
+                        "xl": "80px",
+                        "md": "24px",
+                        "sm": "12px",
+                        "lg": "48px",
+                        "gutter": "24px",
+                        "base": "8px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "40px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "label-caps": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "caption": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "label-caps": ["11px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                        "headline-xl": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        
+        /* Custom Animations */
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-up {
+            animation: slideUpFade 0.6s ease-out forwards;
+            opacity: 0;
+        }
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
+        .delay-400 { animation-delay: 400ms; }
+        
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(180, 197, 255, 0.2); }
+            50% { box-shadow: 0 0 40px rgba(180, 197, 255, 0.5); }
+        }
+        .pulse-glow {
+            animation: pulseGlow 3s infinite ease-in-out;
+        }
+        
+        /* Glass Card Base */
+        .glass-card {
+            background: #18344F;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+            box-shadow: 0px 20px 40px rgba(0, 0, 0, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface min-h-screen pb-24 selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar -->
+<header class="bg-surface-container/60 backdrop-blur-xl flex items-center justify-between px-margin-mobile h-16 w-full docked full-width top-0 shadow-lg sticky z-40">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary text-[24px]">bedtime</span>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">Sleep Dashboard</h1>
+</div>
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-variant flex items-center justify-center border border-outline/20">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">person</span>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="w-full max-w-5xl mx-auto px-margin-mobile md:px-margin-desktop py-md flex flex-col gap-md md:gap-xl">
+<!-- Hero Section -->
+<section class="relative w-full rounded-[30px] overflow-hidden bg-gradient-to-br from-tertiary-container/30 to-primary-container/10 border border-white/10 shadow-[0_20px_40px_rgba(0,0,0,0.4)] animate-slide-up min-h-[300px] flex items-center justify-center text-center p-md">
+<!-- STITCH_SVG_START:ANIMATION_65 class="absolute inset-0 w-full h-full opacity-60 mix-blend-screen pointer-events-none" --><div class="absolute inset-0 w-full h-full opacity-60 mix-blend-screen pointer-events-none" id="animated-svg-ANIMATION_65" style="display:block;"><svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+<!-- Star Field -->
+<circle cx="20" cy="30" fill="white" r="1">
+<animate attributeName="opacity" dur="3s" repeatCount="indefinite" values="0.2;1;0.2"></animate>
+</circle>
+<circle cx="150" cy="50" fill="white" r="1.5">
+<animate attributeName="opacity" dur="4s" repeatCount="indefinite" values="1;0.2;1"></animate>
+</circle>
+<circle cx="80" cy="120" fill="white" r="1">
+<animate attributeName="opacity" dur="2.5s" repeatCount="indefinite" values="0.2;1;0.2"></animate>
+</circle>
+<circle cx="180" cy="170" fill="white" r="1.2">
+<animate attributeName="opacity" dur="3.5s" repeatCount="indefinite" values="1;0.2;1"></animate>
+</circle>
+<circle cx="40" cy="160" fill="white" r="1">
+<animate attributeName="opacity" dur="4.5s" repeatCount="indefinite" values="0.2;1;0.2"></animate>
+</circle>
+</svg></div><!-- STITCH_SVG_END:ANIMATION_65 -->
+<div class="absolute inset-0 z-0 flex items-center justify-center opacity-40">
+<img alt="" class="w-[300px] h-[300px] object-cover scale-150 blur-3xl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvgqaUgmz1L0i7EofgBlxmrQFcKvry9O65IOdGUhJxjQY8qljyDkJiNvKK57v_3efIJ_Q4f8cSqWsosUPYGTot-ALHzJTCoMqIU29rG5X6XRPBQpV86lj8Lsk8ZxB_fGfHjXCYGLlgRdHvrBm4RhIXEqr7e1ZmzD4hCe8rpPwCm1EeNwwxwQpjTEJ3x78Moyk5Ue7FtU1uzyPFWskUJ0UrHyi-lLIMYw-nuWGhSC3jojmlYIoCj1YN">
+</div>
+<div class="relative z-10 flex flex-col items-center gap-sm">
+<img alt="" class="w-40 h-40 md:w-56 md:h-56 object-contain drop-shadow-2xl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvgqaUgmz1L0i7EofgBlxmrQFcKvry9O65IOdGUhJxjQY8qljyDkJiNvKK57v_3efIJ_Q4f8cSqWsosUPYGTot-ALHzJTCoMqIU29rG5X6XRPBQpV86lj8Lsk8ZxB_fGfHjXCYGLlgRdHvrBm4RhIXEqr7e1ZmzD4hCe8rpPwCm1EeNwwxwQpjTEJ3x78Moyk5Ue7FtU1uzyPFWskUJ0UrHyi-lLIMYw-nuWGhSC3jojmlYIoCj1YN">
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-primary-container">Sleep Better Tonight</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-md">Your personal sleep sanctuary is ready. Relax, unwind, and let's get you ready for a restful night.</p>
+</div>
+</section>
+<!-- Sleep Score & Timeline Grid -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-md md:gap-lg animate-slide-up delay-100">
+<!-- Sleep Score -->
+<section class="glass-card md:col-span-5 p-md flex flex-col items-center justify-center relative overflow-hidden cursor-pointer">
+<div class="absolute top-0 left-0 w-full h-32 bg-primary/5 blur-[80px]"></div>
+<h3 class="font-headline-md text-headline-md text-on-surface w-full text-left mb-xl z-10">Sleep Score</h3>
+<div class="relative w-48 h-48 flex items-center justify-center pulse-glow rounded-full mb-lg z-10">
+<!-- STITCH_SVG_START:ANIMATION_64 class="absolute inset-0 w-full h-full" --><div class="absolute inset-0 w-full h-full" id="animated-svg-ANIMATION_64" style="display:block;"><svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="ringGrad" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" style="stop-color:#a855f7;stop-opacity:1"></stop>
+<stop offset="100%" style="stop-color:#6366f1;stop-opacity:1"></stop>
+</linearGradient>
+</defs>
+<!-- Background Track -->
+<circle cx="200" cy="200" fill="none" r="160" stroke="#2e1065" stroke-width="24"></circle>
+<!-- Progress Ring -->
+<circle cx="200" cy="200" fill="none" r="160" stroke="url(#ringGrad)" stroke-dasharray="1005" stroke-dashoffset="1005" stroke-linecap="round" stroke-width="24">
+<animate attributeName="stroke-dashoffset" dur="2s" fill="freeze" from="1005" to="150"></animate>
+</circle>
+<!-- Inner Glow -->
+<circle cx="200" cy="200" fill="none" opacity="0.3" r="148" stroke="#a855f7" stroke-width="2">
+<animate attributeName="opacity" dur="3s" repeatCount="indefinite" values="0.3;0.6;0.3"></animate>
+</circle>
+</svg></div><!-- STITCH_SVG_END:ANIMATION_64 -->
+<div class="flex flex-col items-center z-10">
+<span class="font-headline-xl text-headline-xl text-primary drop-shadow-[0_0_10px_rgba(180,197,255,0.5)]">85</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest">Excellent</span>
+</div>
+</div>
+<div class="flex justify-between w-full border-t border-white/5 pt-sm z-10">
+<div class="flex flex-col">
+<span class="font-caption text-caption text-on-surface-variant">Hours Slept</span>
+<span class="font-body-lg text-body-lg text-on-surface">7h 42m</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="font-caption text-caption text-on-surface-variant">Quality</span>
+<span class="font-body-lg text-body-lg text-secondary">Excellent</span>
+</div>
+</div>
+</section>
+<!-- Sleep Timeline (Hypnogram) -->
+<section class="glass-card md:col-span-7 p-md flex flex-col cursor-pointer">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-sm">Sleep Stages</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-md">Detailed view of your sleep cycles from last night.</p>
+<div class="flex-grow flex flex-col justify-center min-h-[200px]">
+<!-- Dummy Timeline Chart representation -->
+<div class="w-full flex h-32 items-end gap-1 relative border-b border-white/10 pb-2">
+<!-- Y-axis labels -->
+<div class="absolute -left-2 h-full flex flex-col justify-between text-[10px] text-on-surface-variant/50 -ml-8">
+<span class="">Awake</span>
+<span class="">REM</span>
+<span class="">Light</span>
+<span class="">Deep</span>
+</div>
+<!-- Chart Bars -->
+<div class="w-1/12 h-full bg-[#facc15]/80 rounded-t-sm"></div>
+<div class="w-2/12 h-1/2 bg-[#c084fc]/80 rounded-t-sm"></div>
+<div class="w-1/12 h-1/4 bg-[#818cf8]/80 rounded-t-sm"></div>
+<div class="w-3/12 h-3/4 bg-[#a78bfa]/80 rounded-t-sm"></div>
+<div class="w-2/12 h-1/4 bg-[#818cf8]/80 rounded-t-sm"></div>
+<div class="w-1/12 h-full bg-[#facc15]/80 rounded-t-sm"></div>
+<div class="w-2/12 h-3/4 bg-[#a78bfa]/80 rounded-t-sm"></div>
+</div>
+<!-- X-axis labels -->
+<div class="flex justify-between w-full mt-2 font-caption text-caption text-on-surface-variant">
+<span class="">11:00 PM</span>
+<span class="">3:00 AM</span>
+<span class="">6:45 AM</span>
+</div>
+</div>
+<div class="flex gap-sm mt-md flex-wrap">
+<div class="flex items-center gap-xs font-caption text-caption text-on-surface-variant"><div class="w-2 h-2 rounded-full bg-[#facc15]"></div> Awake</div>
+<div class="flex items-center gap-xs font-caption text-caption text-on-surface-variant"><div class="w-2 h-2 rounded-full bg-[#c084fc]"></div> REM</div>
+<div class="flex items-center gap-xs font-caption text-caption text-on-surface-variant"><div class="w-2 h-2 rounded-full bg-[#a78bfa]"></div> Light</div>
+<div class="flex items-center gap-xs font-caption text-caption text-on-surface-variant"><div class="w-2 h-2 rounded-full bg-[#818cf8]"></div> Deep</div>
+</div>
+</section>
+</div>
+<!-- Wind Down & AI Recs -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-md md:gap-lg animate-slide-up delay-200">
+<!-- Wind Down Section -->
+<section class="md:col-span-6 flex flex-col gap-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface ml-2">Wind Down</h3>
+<div class="grid grid-cols-2 gap-sm">
+<div class="bg-[#064e3b] hover:opacity-80 transition-all rounded-xl p-md flex flex-col items-center justify-center gap-sm cursor-pointer shadow-lg border border-white/5">
+<div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-[24px]">self_improvement</span>
+</div>
+<span class="font-body-md text-body-md text-white">Meditation</span>
+</div>
+<div class="bg-[#1e3a8a] hover:opacity-80 transition-all rounded-xl p-md flex flex-col items-center justify-center gap-sm cursor-pointer shadow-lg border border-white/5">
+<div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-[24px]">queue_music</span>
+</div>
+<span class="font-body-md text-body-md text-white">Music</span>
+</div>
+<div class="bg-[#7f1d1d] hover:opacity-80 transition-all rounded-xl p-md flex flex-col items-center justify-center gap-sm cursor-pointer shadow-lg border border-white/5">
+<div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-[24px]">auto_stories</span>
+</div>
+<span class="font-body-md text-body-md text-white">Stories</span>
+</div>
+<div class="bg-[#7c2d12] hover:opacity-80 transition-all rounded-xl p-md flex flex-col items-center justify-center gap-sm cursor-pointer shadow-lg border border-white/5">
+<div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-[24px]">air</span>
+</div>
+<span class="font-body-md text-body-md text-white">Breathing</span>
+</div>
+</div>
+</section>
+<!-- AI Recommendations & Alarms -->
+<section class="md:col-span-6 flex flex-col gap-md">
+<!-- AI Recs -->
+<div class="flex flex-col gap-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface ml-2">Smart Insights</h3>
+<div class="bg-[#312e81] rounded-xl p-sm flex items-center gap-sm shadow-lg border border-white/5">
+<div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-white text-[20px]">alarm_on</span>
+</div>
+<p class="font-body-sm text-body-sm text-white"><strong>Smart Alarm:</strong> Wake up at 7:15 AM for optimal energy.</p>
+</div>
+<div class="bg-[#4c1d95] rounded-xl p-sm flex items-center gap-sm shadow-lg border border-white/5">
+<div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-white text-[20px]">nightlight</span>
+</div>
+<p class="font-body-sm text-body-sm text-white"><strong>Wind Down:</strong> Start meditation at 10:30 PM.</p>
+</div>
+</div>
+<!-- Alarms -->
+<div class="flex flex-col gap-sm mt-sm">
+<div class="flex items-center justify-between ml-2">
+<h3 class="font-headline-md text-headline-md text-on-surface">Alarms</h3>
+<button class="text-primary font-label-caps text-label-caps uppercase hover:opacity-80 transition-opacity">Add New</button>
+</div>
+<div class="bg-surface-container rounded-2xl p-md flex items-center justify-between border border-white/5">
+<div class="flex flex-col">
+<span class="font-headline-lg text-headline-lg text-on-surface">07:15 <span class="font-body-sm text-on-surface-variant uppercase">AM</span></span>
+<span class="font-caption text-caption text-on-surface-variant flex items-center gap-xs"><span class="material-symbols-outlined text-[14px]">auto_awesome</span> Smart Alarm • Tomorrow</span>
+</div>
+<!-- Toggle -->
+<div class="w-12 h-6 bg-primary rounded-full relative cursor-pointer shadow-[0_0_10px_rgba(180,197,255,0.3)]">
+<div class="absolute right-1 top-1 w-4 h-4 bg-on-primary-fixed rounded-full"></div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 pb-safe bg-surface-container/60 backdrop-blur-xl md:hidden shadow-2xl rounded-t-xl">
+<a href="#" class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-secondary transition-all w-16">
+<span class="material-symbols-outlined text-[24px]">home</span>
+<span class="font-body-sm text-body-sm text-[10px] mt-1">Home</span>
+</a>
+<a href="#" class="flex flex-col items-center justify-center bg-secondary-container/30 text-secondary rounded-xl px-4 py-1 shadow-[0_0_15px_rgba(4,180,162,0.2)] scale-110 duration-300 w-16">
+<span class="material-symbols-outlined text-[24px] fill">favorite</span>
+<span class="font-body-sm text-body-sm text-[10px] mt-1">Health</span>
+</a>
+<a href="#" class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-secondary transition-all w-16">
+<span class="material-symbols-outlined text-[24px]">monitoring</span>
+<span class="font-body-sm text-body-sm text-[10px] mt-1">Insights</span>
+</a>
+<a href="#" class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-secondary transition-all w-16">
+<span class="material-symbols-outlined text-[24px]">person</span>
+<span class="font-body-sm text-body-sm text-[10px] mt-1">Profile</span>
+</a>
+</nav>
+
+
+
+
+</body></html>

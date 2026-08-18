@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Select Issue - Urban Helpers</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&amp;family=Plus+Jakarta+Sans:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "inverse-primary": "#b4c5ff",
+                      "primary-fixed-dim": "#b4c5ff",
+                      "background": "#f9f9ff",
+                      "surface-variant": "#dce2f3",
+                      "secondary": "#006b5f",
+                      "on-tertiary-fixed": "#360f00",
+                      "on-secondary-container": "#006f64",
+                      "inverse-surface": "#2a313d",
+                      "surface": "#f9f9ff",
+                      "on-primary-fixed-variant": "#003ea8",
+                      "on-error-container": "#93000a",
+                      "surface-container-high": "#e2e8f8",
+                      "error-container": "#ffdad6",
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary": "#ffffff",
+                      "on-tertiary-fixed-variant": "#7d2d00",
+                      "outline-variant": "#c3c6d7",
+                      "surface-container-highest": "#dce2f3",
+                      "surface-dim": "#d3daea",
+                      "secondary-fixed-dim": "#4fdbc8",
+                      "tertiary-container": "#bc4800",
+                      "tertiary-fixed": "#ffdbcd",
+                      "on-surface": "#151c27",
+                      "inverse-on-surface": "#ebf1ff",
+                      "on-primary-container": "#eeefff",
+                      "on-secondary-fixed": "#00201c",
+                      "secondary-fixed": "#71f8e4",
+                      "surface-container-low": "#f0f3ff",
+                      "surface-container": "#e7eefe",
+                      "on-secondary": "#ffffff",
+                      "on-error": "#ffffff",
+                      "on-surface-variant": "#434655",
+                      "outline": "#737686",
+                      "error": "#ba1a1a",
+                      "primary": "#004ac6",
+                      "on-tertiary": "#ffffff",
+                      "on-tertiary-container": "#ffede6",
+                      "tertiary": "#943700",
+                      "primary-container": "#2563eb",
+                      "surface-bright": "#f9f9ff",
+                      "on-background": "#151c27",
+                      "surface-tint": "#0053db",
+                      "on-secondary-fixed-variant": "#005048",
+                      "on-primary-fixed": "#00174b",
+                      "primary-fixed": "#dbe1ff",
+                      "tertiary-fixed-dim": "#ffb596",
+                      "secondary-container": "#6df5e1"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "lg": "48px",
+                      "xs": "4px",
+                      "sm": "12px",
+                      "container-max": "1200px",
+                      "gutter": "24px",
+                      "base": "8px",
+                      "xl": "80px",
+                      "md": "24px"
+              },
+              "fontFamily": {
+                      "label-md": [
+                              "Manrope"
+                      ],
+                      "headline-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-lg-mobile": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-md": [
+                              "Manrope"
+                      ],
+                      "body-sm": [
+                              "Manrope"
+                      ],
+                      "label-sm": [
+                              "Manrope"
+                      ],
+                      "body-lg": [
+                              "Manrope"
+                      ],
+                      "display-lg": [
+                              "Plus Jakarta Sans"
+                      ]
+              },
+              "fontSize": {
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "800"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        body {
+            background-color: #081826;
+            color: #ffffff;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col font-body-md">
+<!-- Top App Bar -->
+<header class="sticky top-0 z-50 bg-[#081826]/90 backdrop-blur-xl border-b border-white/10 w-full max-w-container-max mx-auto px-md py-sm flex items-center justify-between">
+<button class="w-10 h-10 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-white">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-white">Select Issue</h1>
+<button class="w-10 h-10 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-white">help</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow px-4 md:px-lg py-6 pb-40 max-w-md md:max-w-3xl mx-auto w-full space-y-4">
+<!-- Cooling Problem Card -->
+<div class="relative overflow-hidden rounded-[32px] p-6 shadow-2xl cursor-pointer group" style="background: linear-gradient(135deg, #2563EB 0%, #4CC9F0 100%);">
+<div class="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-colors duration-300"></div>
+<div class="flex items-start justify-between relative z-10">
+<div class="w-2/3 pr-4">
+<div class="inline-flex items-center space-x-1 bg-white/20 backdrop-blur-md px-2 py-1 rounded-full mb-3">
+<span class="material-symbols-outlined text-[14px] text-white">smart_toy</span>
+<span class="font-label-sm text-label-sm text-white">AI Recommended</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-white mb-2 leading-tight">Cooling Problem</h2>
+<p class="font-body-sm text-body-sm text-white/90 mb-4">Insufficient cooling or ice buildup</p>
+<div class="flex items-center space-x-4">
+<div>
+<p class="font-label-sm text-label-sm text-white/70 uppercase tracking-wider mb-0.5">Starts from</p>
+<p class="font-headline-md text-[20px] font-bold text-white">₹399</p>
+</div>
+<div class="h-8 w-px bg-white/30"></div>
+<div>
+<p class="font-label-sm text-label-sm text-white/70 uppercase tracking-wider mb-0.5">Est. Time</p>
+<div class="flex items-center space-x-1">
+<span class="material-symbols-outlined text-[16px] text-white">schedule</span>
+<p class="font-label-md text-label-md text-white">60 min</p>
+</div>
+</div>
+</div>
+</div>
+<div class="w-1/3 flex justify-end -mt-4 -mr-4">
+<img class="w-32 h-32 object-contain drop-shadow-2xl mix-blend-screen opacity-90 transform group-hover:scale-105 transition-transform duration-500" data-alt="3D render of an air conditioner glowing blue with ice particles floating around it, indicating a cooling problem. High-tech modern aesthetic against a dark background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2pGDRfuoWEzxgVIbPEzNJX8-fTzofQz85mMj0vc1vr6ewfNWuF6Ww9czQg6ysvMANp-EILOsxkur_kR6SkWqZeqU-J20W0a8H2Kkxj4WzFms-C9a1IXYV2KDRfOFeWAne-8PV1QJxUewjRkX8iIvj4nbMz_WYJPBFq_ZyG0Vwl7SlN6Q4FTl7tpN0xRLGHtT0q61STbcc1WlAoCTvIu1EMK5KmQScThkdK2xmytTIuhkbzVN7uBxR"/>
+</div>
+</div>
+</div>
+<!-- Water Leakage Card -->
+<div class="relative overflow-hidden rounded-[32px] p-6 shadow-2xl cursor-pointer group" style="background: linear-gradient(135deg, #10B981 0%, #3B82F6 100%);">
+<div class="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-colors duration-300"></div>
+<div class="flex items-start justify-between relative z-10">
+<div class="w-2/3 pr-4">
+<h2 class="font-headline-md text-headline-md text-white mb-2 leading-tight">Water Leakage</h2>
+<p class="font-body-sm text-body-sm text-white/90 mb-4">Water dripping from base or pipes</p>
+<div class="flex items-center space-x-4">
+<div>
+<p class="font-label-sm text-label-sm text-white/70 uppercase tracking-wider mb-0.5">Starts from</p>
+<p class="font-headline-md text-[20px] font-bold text-white">₹249</p>
+</div>
+<div class="h-8 w-px bg-white/30"></div>
+<div>
+<p class="font-label-sm text-label-sm text-white/70 uppercase tracking-wider mb-0.5">Est. Time</p>
+<div class="flex items-center space-x-1">
+<span class="material-symbols-outlined text-[16px] text-white">schedule</span>
+<p class="font-label-md text-label-md text-white">45 min</p>
+</div>
+</div>
+</div>
+</div>
+<div class="w-1/3 flex justify-end -mt-4 -mr-4">
+<img class="w-32 h-32 object-contain drop-shadow-2xl mix-blend-screen opacity-90 transform group-hover:scale-105 transition-transform duration-500" data-alt="3D render of a modern refrigerator with glowing teal and blue water drops cascading down its surface, symbolizing water leakage. High-tech UI overlay in a dark environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKmu9m-Y7qX8phzLWah4bbPh7HBE4yPyrky1zYzaqYrOnBtd1_nS6TtCzV71N-Wc6Ir16UWr7GwoVXEATryUFxocSSunXRAUyiv2J7CeqBW-tvCCkYKb0OTFzWlSM4Q1ehiufx3Del7IiWWNvsAU_dNimuLfivU7r04_t5KPjVXNkUAscqu0Qrs6OH9e3N1eQ5uR59bie_2JO-GtkqLRlxmKpLIAJE82pNqu1arxQGVK7nOeA_V2Xd"/>
+</div>
+</div>
+</div>
+<!-- Power Issue Card -->
+<div class="relative overflow-hidden rounded-[32px] p-6 shadow-2xl cursor-pointer group" style="background: linear-gradient(135deg, #F97316 0%, #FBBF24 100%);">
+<div class="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-colors duration-300"></div>
+<div class="flex items-start justify-between relative z-10">
+<div class="w-2/3 pr-4">
+<h2 class="font-headline-md text-headline-md text-white mb-2 leading-tight">Power Issue</h2>
+<p class="font-body-sm text-body-sm text-white/90 mb-4">Appliance not turning on or tripping fuse</p>
+<div class="flex items-center space-x-4">
+<div>
+<p class="font-label-sm text-label-sm text-white/70 uppercase tracking-wider mb-0.5">Starts from</p>
+<p class="font-headline-md text-[20px] font-bold text-white">₹299</p>
+</div>
+<div class="h-8 w-px bg-white/30"></div>
+<div>
+<p class="font-label-sm text-label-sm text-white/70 uppercase tracking-wider mb-0.5">Est. Time</p>
+<div class="flex items-center space-x-1">
+<span class="material-symbols-outlined text-[16px] text-white">schedule</span>
+<p class="font-label-md text-label-md text-white">30 min</p>
+</div>
+</div>
+</div>
+</div>
+<div class="w-1/3 flex justify-end -mt-2 -mr-2">
+<img class="w-28 h-28 object-contain drop-shadow-2xl mix-blend-screen opacity-90 transform group-hover:scale-105 transition-transform duration-500" data-alt="3D glowing neon icon of a lightning bolt and a power plug in vibrant orange and gold, set against a dark blue background, representing an electrical power issue." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBsp4xCYCng9N2NXclYHOg0R97qzdnRmOHaLAJf0U-i1Vq33PWKjrI_HC_tmwJRt3O2NzwhyKq8s36cZGoc6_TMm3fTX4k03FcTEGeE7xDiMWnnEXsOJEVlsB1EO5bN0JZCNlq30d0vTsrGwGtNgOSOPId3CLxZkwmt6u8eAIrYIIwXq9x4hOZ4ODKsGN7xN1W3g4qdK-aglpl_Jkg7vCeCkDBn-APSPySvV1tKejw35VBIVJUCz5RE"/>
+</div>
+</div>
+</div>
+<!-- Noise Issue Card -->
+<div class="relative overflow-hidden rounded-[32px] p-6 shadow-2xl cursor-pointer group" style="background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);">
+<div class="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-colors duration-300"></div>
+<div class="flex items-start justify-between relative z-10">
+<div class="w-2/3 pr-4">
+<h2 class="font-headline-md text-headline-md text-white mb-2 leading-tight">Noise Issue</h2>
+<p class="font-body-sm text-body-sm text-white/90 mb-4">Unusual grinding or vibrating sounds</p>
+<div class="flex items-center space-x-4">
+<div>
+<p class="font-label-sm text-label-sm text-white/70 uppercase tracking-wider mb-0.5">Starts from</p>
+<p class="font-headline-md text-[20px] font-bold text-white">₹349</p>
+</div>
+<div class="h-8 w-px bg-white/30"></div>
+<div>
+<p class="font-label-sm text-label-sm text-white/70 uppercase tracking-wider mb-0.5">Est. Time</p>
+<div class="flex items-center space-x-1">
+<span class="material-symbols-outlined text-[16px] text-white">schedule</span>
+<p class="font-label-md text-label-md text-white">90 min</p>
+</div>
+</div>
+</div>
+</div>
+<div class="w-1/3 flex justify-end -mt-2 -mr-2">
+<img class="w-28 h-28 object-contain drop-shadow-2xl mix-blend-screen opacity-90 transform group-hover:scale-105 transition-transform duration-500" data-alt="3D stylized render of a vibrating spring and gear emitting magenta soundwaves, set on a glowing purple glass platform, representing a noise diagnostic issue." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDuwl0p5f7Ho7JGQ-oOVf3Nh0Rm2xyfjA028yj0w9h4tCCFX68GMYF7z9xNDYyfjPXgYq2mLuufFCyRBLxb6Rjfdt5Yq40-l3lTQIyqeLDBJe1GifkZTHh321S4IC2TP5X6CUTTAQ7TfreLvhX1kkU2n22nR_rG9j5GmK5V0g-blWYOtNWwUjeAttu5KKPF6tVB_9fHkMY0_aj_89nsiW34UzaNrEA8FCl6DGID8K61Xl6AXvHkxCLV"/>
+</div>
+</div>
+</div>
+<!-- Maintenance Card -->
+<div class="relative overflow-hidden rounded-[32px] p-6 shadow-2xl cursor-pointer group" style="background: linear-gradient(135deg, #0F766E 0%, #06B6D4 100%);">
+<div class="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-colors duration-300"></div>
+<div class="flex items-start justify-between relative z-10">
+<div class="w-2/3 pr-4">
+<h2 class="font-headline-md text-headline-md text-white mb-2 leading-tight">Maintenance</h2>
+<p class="font-body-sm text-body-sm text-white/90 mb-4">Professional deep cleaning and checkup</p>
+<div class="flex items-center space-x-4">
+<div>
+<p class="font-label-sm text-label-sm text-white/70 uppercase tracking-wider mb-0.5">Starts from</p>
+<p class="font-headline-md text-[20px] font-bold text-white">₹499</p>
+</div>
+<div class="h-8 w-px bg-white/30"></div>
+<div>
+<p class="font-label-sm text-label-sm text-white/70 uppercase tracking-wider mb-0.5">Est. Time</p>
+<div class="flex items-center space-x-1">
+<span class="material-symbols-outlined text-[16px] text-white">schedule</span>
+<p class="font-label-md text-label-md text-white">120 min</p>
+</div>
+</div>
+</div>
+</div>
+<div class="w-1/3 flex justify-end items-center -mr-2">
+<div class="w-24 h-24 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform duration-500">
+<span class="material-symbols-outlined text-[48px] text-white">handyman</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Actions & Nav -->
+<div class="fixed bottom-0 left-0 w-full z-50">
+<!-- Floating Action Button Area -->
+<div class="px-4 md:px-lg pb-24 md:pb-28 max-w-md md:max-w-3xl mx-auto flex justify-center pointer-events-none">
+<button class="w-full bg-[#2563EB] hover:bg-blue-700 text-white font-label-md text-[18px] py-4 rounded-[20px] shadow-lg shadow-blue-500/30 transition-all active:scale-95 pointer-events-auto flex items-center justify-center space-x-2">
+<span>Continue</span>
+<span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+<!-- BottomNavBar JSON injection mapping to Services -->
+<nav class="bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-xl border-t border-white/20 shadow-[0px_-12px_32px_rgba(37,99,235,0.06)] fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pt-3 pb-8 md:pb-4 rounded-t-[32px] overflow-hidden md:hidden">
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:text-primary transition-all active:scale-90 duration-300 ease-out group">
+<span class="material-symbols-outlined group-hover:fill-current">home</span>
+<span class="font-label-md text-label-md mt-1 text-[10px]">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-5 py-2 hover:text-primary transition-all active:scale-90 duration-300 ease-out group">
+<span class="material-symbols-outlined fill-current">category</span>
+<span class="font-label-md text-label-md mt-1 text-[10px]">Services</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:text-primary transition-all active:scale-90 duration-300 ease-out group">
+<span class="material-symbols-outlined group-hover:fill-current">event_note</span>
+<span class="font-label-md text-label-md mt-1 text-[10px]">Bookings</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:text-primary transition-all active:scale-90 duration-300 ease-out group">
+<span class="material-symbols-outlined group-hover:fill-current">person</span>
+<span class="font-label-md text-label-md mt-1 text-[10px]">Profile</span>
+</button>
+</nav>
+</div>
+</body></html>

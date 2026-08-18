@@ -1,0 +1,351 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Health Dashboard - Urban Helpers</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error-container": "#ffdad6",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "inverse-primary": "#0053db",
+                        "surface-container-highest": "#263646",
+                        "tertiary-fixed": "#eaddff",
+                        "on-primary-container": "#eeefff",
+                        "on-tertiary": "#3f008e",
+                        "on-secondary-container": "#003f38",
+                        "surface-container-low": "#0c1d2c",
+                        "surface-container": "#112130",
+                        "on-tertiary-fixed-variant": "#5a00c6",
+                        "background": "#041423",
+                        "primary-fixed": "#dbe1ff",
+                        "secondary": "#4fdbc8",
+                        "surface-dim": "#041423",
+                        "primary-container": "#2563eb",
+                        "on-secondary-fixed-variant": "#005048",
+                        "on-surface": "#d4e4f9",
+                        "surface-bright": "#2b3b4b",
+                        "on-tertiary-fixed": "#25005a",
+                        "tertiary": "#d2bbff",
+                        "tertiary-fixed-dim": "#d2bbff",
+                        "primary": "#b4c5ff",
+                        "inverse-surface": "#d4e4f9",
+                        "on-primary": "#002a78",
+                        "surface": "#041423",
+                        "secondary-container": "#04b4a2",
+                        "on-background": "#d4e4f9",
+                        "outline": "#8d90a0",
+                        "on-tertiary-container": "#f7edff",
+                        "inverse-on-surface": "#223242",
+                        "surface-container-high": "#1b2b3b",
+                        "error-container": "#93000a",
+                        "secondary-fixed-dim": "#4fdbc8",
+                        "on-error": "#690005",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "outline-variant": "#434655",
+                        "on-primary-fixed": "#00174b",
+                        "surface-variant": "#263646",
+                        "surface-container-lowest": "#000f1e",
+                        "secondary-fixed": "#71f8e4",
+                        "on-secondary-fixed": "#00201c",
+                        "error": "#ffb4ab",
+                        "surface-tint": "#b4c5ff",
+                        "tertiary-container": "#8343f4",
+                        "on-surface-variant": "#c3c6d7",
+                        "on-secondary": "#003731"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px",
+                        "premium": "28px",
+                        "premium-lg": "36px"
+                    },
+                    "spacing": {
+                        "xl": "80px",
+                        "gutter": "24px",
+                        "margin-mobile": "16px",
+                        "md": "24px",
+                        "margin-desktop": "40px",
+                        "base": "8px",
+                        "lg": "48px",
+                        "sm": "12px",
+                        "xs": "4px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "label-caps": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "caption": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "label-caps": ["11px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                        "headline-xl": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background: linear-gradient(180deg, #071623 0%, #10293F 100%);
+            min-height: 100vh;
+            color: #d4e4f9;
+        }
+        .radial-glow {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80vw;
+            height: 40vh;
+            background: radial-gradient(circle, rgba(37,99,235,0.15) 0%, rgba(37,99,235,0) 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0px 20px 40px rgba(0, 0, 0, 0.4);
+        }
+        
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Animations */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            100% { transform: scale(1.3); opacity: 0; }
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .animate-float { animation: float 6s ease-in-out infinite; }
+        .animate-pulse-ring::before {
+            content: '';
+            position: absolute;
+            inset: -10px;
+            border-radius: inherit;
+            border: 2px solid currentColor;
+            animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="relative overflow-x-hidden pb-32">
+<!-- Ambient Background Glow -->
+<div class="radial-glow"></div>
+<!-- Top App Bar (Shared Component) -->
+<header class="flex items-center px-container-margin h-16 w-full top-0 sticky z-50 bg-background/80 backdrop-blur-md px-margin-mobile md:px-margin-desktop">
+<button class="w-10 h-10 flex items-center justify-center rounded-full glass-panel text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-95 duration-100">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<div class="ml-4 flex-1">
+<h1 class="font-headline-md text-headline-md text-primary">Health</h1>
+<p class="font-caption text-caption text-on-surface-variant">Everything about your wellness.</p>
+</div>
+<div class="flex items-center gap-3">
+<button class="w-10 h-10 rounded-full glass-panel flex items-center justify-center relative active:scale-95 duration-100">
+<span class="material-symbols-outlined text-on-surface">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full animate-pulse"></span>
+</button>
+<div class="w-10 h-10 rounded-full bg-surface-container-high overflow-hidden border border-outline-variant/30 relative">
+<div class="w-full h-full bg-cover bg-center" data-alt="Close up portrait of a young professional wearing high tech smart glasses reflecting a blue holographic UI. Soft neon lighting highlights facial features in a sophisticated urban night setting." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAx1jJtGuJFKLLR9YOMw9565RpqJIAFo7P9rJ9tFaIvLnUfohTyMz2-Rhn6DJVXZcM1K6OO2922tRPozlbN-MxY-_UOA4J6wRK6L2DwIQ6YIGm6tTOJNrr5NxTno_NAHQnWZiHgE_jwDdf9pm2Fz5qbf3eAoieyzU8yk77mfbT1ouI14WJPf-5mF1zBj6t3nY7vaIvzifhENlhfu26aeE50kc4Kuc1jCmy6qRss-lNZACbXhhDwqwRH')"></div>
+</div>
+</div>
+</header>
+<main class="relative z-10 px-margin-mobile md:px-margin-desktop space-y-gutter mt-6">
+<!-- Quick Health Tabs -->
+<div class="overflow-x-auto hide-scrollbar -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0">
+<div class="flex gap-2 inline-flex p-1 glass-panel rounded-full">
+<button class="px-6 py-2 rounded-full bg-primary/20 text-primary font-body-sm text-body-sm shadow-[0_0_15px_rgba(180,197,255,0.2)] transition-all">Overview</button>
+<button class="px-6 py-2 rounded-full text-on-surface-variant font-body-sm text-body-sm hover:text-on-surface transition-all">Vitals</button>
+<button class="px-6 py-2 rounded-full text-on-surface-variant font-body-sm text-body-sm hover:text-on-surface transition-all">Medication</button>
+<button class="px-6 py-2 rounded-full text-on-surface-variant font-body-sm text-body-sm hover:text-on-surface transition-all">Reports</button>
+</div>
+</div>
+<!-- Hero Section -->
+<section class="h-[280px] rounded-premium-lg overflow-hidden relative group p-8 flex flex-col justify-end" style="background: linear-gradient(135deg, #0C4A6E 0%, #4C1D95 100%);">
+<!-- Background Illustration / Particles -->
+<div class="absolute inset-0 opacity-40 mix-blend-screen pointer-events-none">
+<div class="w-full h-full bg-cover bg-center" data-alt="Abstract 3D rendering of a glowing translucent human torso with intricate energetic light pathways simulating a neural network and floating ethereal heartbeat particles on a deep purple and cyan background." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDqdEgjMMWH6AKoeWTW9MiUtMLFiEBFKN3JjzisP5D9lT0JJcCenuUvO8DWCN-fQRY8wWizKD3ou00K_gdY8Ng7YT-41BDJFwsLlHLJrZxu3dXvu08NF1GoMwFaLrKz7ZI_mlWpJuxq0IXCPEePbYS4HrgtKx2FKcfRMZ30bMwXlhftF0y4axTqLo4FQRGsRx9lpKdyhBgetbfusNTub5Q5Cqv2Kx0SMZX6qgXVF1yR8biHyPf00gra')"></div>
+</div>
+<div class="relative z-10 w-full max-w-md">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-white mb-2">Your Health Journey</h2>
+<p class="font-body-sm text-body-sm text-white/80 mb-6">Track every important aspect of your health in one place.</p>
+<button class="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white px-6 py-3 rounded-full font-body-sm text-body-sm font-bold flex items-center gap-2 w-fit transition-all active:scale-95">
+                    View Summary
+                    <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</section>
+<!-- Today's Health (Horizontal Scroll) -->
+<section>
+<div class="flex justify-between items-end mb-4">
+<h3 class="font-headline-md text-headline-md text-on-surface">Today's Vitals</h3>
+</div>
+<div class="flex overflow-x-auto hide-scrollbar gap-4 pb-4 -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0 snap-x">
+<!-- Heart Rate -->
+<div class="min-w-[160px] p-5 rounded-premium flex flex-col justify-between snap-start" style="background: linear-gradient(145deg, rgb(190, 24, 93) 0%, rgb(126, 34, 206) 100%);" onclick="window.location.href='{{DATA:SCREEN:SCREEN_95}}'">
+<div class="flex items-center gap-2 mb-6">
+<div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white relative">
+<span class="material-symbols-outlined text-sm relative z-10">favorite</span>
+<div class="absolute inset-0 rounded-full border border-white/40 animate-[pulse-ring_2s_infinite]"></div>
+</div>
+<span class="font-label-caps text-label-caps text-white/80 uppercase">Heart Rate</span>
+</div>
+<div>
+<div class="font-headline-md text-headline-md text-white">72 <span class="text-sm font-normal text-white/70">BPM</span></div>
+<div class="font-caption text-caption text-white/80 mt-1 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-green-400"></span> Normal</div>
+</div>
+</div>
+<!-- Blood Oxygen -->
+<div class="min-w-[160px] p-5 rounded-premium flex flex-col justify-between snap-start" style="background: linear-gradient(145deg, rgb(2, 132, 199) 0%, rgb(13, 148, 136) 100%);" onclick="window.location.href='{{DATA:SCREEN:SCREEN_143}}'">
+<div class="flex items-center gap-2 mb-6">
+<div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white animate-float">
+<span class="material-symbols-outlined text-sm">air</span>
+</div>
+<span class="font-label-caps text-label-caps text-white/80 uppercase">Oxygen</span>
+</div>
+<div>
+<div class="font-headline-md text-headline-md text-white">98%</div>
+<div class="font-caption text-caption text-white/80 mt-1 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-green-400"></span> Healthy</div>
+</div>
+</div>
+<!-- Blood Pressure -->
+<div class="min-w-[160px] p-5 rounded-premium flex flex-col justify-between snap-start glass-panel border-t border-white/10" style="background: linear-gradient(145deg, rgba(30,58,138,0.5) 0%, rgba(67,56,202,0.5) 100%);">
+<div class="flex items-center gap-2 mb-6">
+<div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-primary-fixed">
+<span class="material-symbols-outlined text-sm">bloodtype</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Pressure</span>
+</div>
+<div>
+<div class="font-headline-md text-headline-md text-on-surface">120/80</div>
+<div class="font-caption text-caption text-on-surface-variant mt-1">Normal</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Daily Wellness Grid -->
+<section class="grid grid-cols-2 gap-4">
+<!-- Hydration -->
+<div class="p-5 rounded-premium glass-panel border border-secondary/20 relative overflow-hidden group" onclick="window.location.href='{{DATA:SCREEN:SCREEN_93}}'">
+<div class="absolute -right-4 -bottom-4 w-24 h-24 bg-secondary/10 rounded-full blur-xl group-hover:bg-secondary/20 transition-colors"></div>
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-secondary">water_drop</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">HYDRATION</span>
+</div>
+<div class="font-headline-md text-headline-md text-on-surface">2.1 L</div>
+<!-- Progress Bar -->
+<div class="w-full bg-surface-container-high h-1.5 rounded-full mt-3 overflow-hidden">
+<div class="bg-secondary h-full rounded-full w-[70%] shadow-[0_0_10px_#4fdbc8]"></div>
+</div>
+</div>
+<!-- Sleep -->
+<div class="p-5 rounded-premium glass-panel border border-tertiary/20 relative overflow-hidden group" onclick="window.location.href='{{DATA:SCREEN:SCREEN_170}}'">
+<div class="absolute -right-4 -bottom-4 w-24 h-24 bg-tertiary/10 rounded-full blur-xl group-hover:bg-tertiary/20 transition-colors"></div>
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-tertiary">bedtime</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">SLEEP</span>
+</div>
+<div class="font-headline-md text-headline-md text-on-surface">7h 45m</div>
+<div class="font-caption text-caption text-tertiary mt-2">Excellent</div>
+</div>
+</section>
+<!-- AI & Reminders List -->
+<section class="space-y-4">
+<!-- AI Coach -->
+<div class="p-6 rounded-premium flex items-center justify-between relative overflow-hidden" style="background: linear-gradient(90deg, rgba(37, 99, 235, 0.2) 0%, rgba(131, 67, 244, 0.2) 100%); border: 1px solid rgba(131, 67, 244, 0.3);" onclick="window.location.href='{{DATA:SCREEN:SCREEN_167}}'">
+<div class="relative z-10 w-2/3">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-tertiary-fixed text-lg">auto_awesome</span>
+<span class="font-body-sm text-body-sm font-bold text-tertiary-fixed">AI Health Coach</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed">Receive personalized health suggestions based on your recent vitals.</p>
+</div>
+<div class="w-16 h-16 rounded-full bg-tertiary/20 flex items-center justify-center animate-float relative z-10 border border-tertiary/30 shadow-[0_0_20px_rgba(131,67,244,0.4)]">
+<span class="material-symbols-outlined text-3xl text-tertiary">psychology</span>
+</div>
+</div>
+<!-- Medication -->
+<div class="p-4 rounded-premium glass-panel flex items-center justify-between border-l-4 border-l-secondary">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-secondary-container/30 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">medication</span>
+</div>
+<div>
+<div class="font-body-md text-body-md text-on-surface">Vitamin D</div>
+<div class="font-caption text-caption text-on-surface-variant">Today, 8:30 PM</div>
+</div>
+</div>
+<button class="px-4 py-2 rounded-full bg-surface-container-high text-on-surface font-label-caps text-label-caps hover:bg-secondary/20 hover:text-secondary transition-colors active:scale-95">Mark Taken</button>
+</div>
+</section>
+<!-- Spacer for Bottom Nav -->
+<div class="h-10"></div>
+</main>
+<!-- Bottom Navigation (Shared Component) -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-between items-end px-container-margin pb-4 h-20 bg-surface-container/90 backdrop-blur-xl border-t border-outline-variant/10 shadow-lg rounded-t-2xl md:hidden">
+<!-- Home -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:opacity-80 active:scale-90 transition-transform w-1/5" href="{{DATA:SCREEN:SCREEN_196}}">
+<span class="material-symbols-outlined text-[24px] mb-1">home</span>
+<span class="font-label-caps text-label-caps">Home</span>
+</a>
+<!-- Health (Active) -->
+<a class="flex flex-col items-center justify-center text-secondary-fixed font-bold hover:opacity-80 active:scale-90 transition-transform w-1/5 relative" href="{{DATA:SCREEN:SCREEN_194}}">
+<span class="absolute -top-4 w-12 h-1 bg-secondary-fixed rounded-b-full shadow-[0_0_10px_#71f8e4]"></span>
+<span class="material-symbols-outlined text-[24px] mb-1 drop-shadow-[0_0_8px_rgba(113,248,228,0.5)]" style="font-variation-settings: 'FILL' 1;">medical_services</span>
+<span class="font-label-caps text-label-caps">Health</span>
+</a>
+<!-- SOS -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:opacity-80 active:scale-90 transition-transform w-1/5" href="{{DATA:SCREEN:SCREEN_179}}">
+<span class="material-symbols-outlined text-[24px] mb-1">emergency</span>
+<span class="font-label-caps text-label-caps">SOS</span>
+</a>
+<!-- Daily -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:opacity-80 active:scale-90 transition-transform w-1/5" href="#health-summary">
+<span class="material-symbols-outlined text-[24px] mb-1">calendar_today</span>
+<span class="font-label-caps text-label-caps">Daily</span>
+</a>
+<!-- Profile -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:opacity-80 active:scale-90 transition-transform w-1/5" href="#profile">
+<span class="material-symbols-outlined text-[24px] mb-1">person</span>
+<span class="font-label-caps text-label-caps">Profile</span>
+</a>
+</nav>
+
+
+</body></html>
