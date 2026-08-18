@@ -6,7 +6,7 @@
  */
 import React from "react";
 import {
-  ScrollView, Text, View, Pressable, StyleSheet, Dimensions,
+  ScrollView, Text, View, Pressable, StyleSheet, Dimensions, Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -15,6 +15,7 @@ import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 import { SERVICE_CATEGORIES, SubService } from "./servicesData";
+import { getCategoryImage } from "@/assets/serviceImages";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceCategory">;
 
@@ -45,6 +46,13 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
 
       {/* ── Top Bar ──────────────────────────────────────────── */}
       <LinearGradient colors={category.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.topBar}>
+        {/* Background image overlay inside gradient header */}
+        <Image
+          source={{ uri: getCategoryImage(category.id) }}
+          style={s.headerBgImage}
+          resizeMode="cover"
+        />
+        <View style={s.headerImageOverlay} />
         <View style={s.topBarInner}>
           <Pressable onPress={() => navigation.goBack()} style={s.backBtn}>
             <Ionicons name="arrow-back" size={22} color="white" />
@@ -149,7 +157,18 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#081826" },
 
   // Top bar + hero (inside gradient)
-  topBar: { paddingBottom: 28 },
+  topBar: { paddingBottom: 28, overflow: "hidden" },
+  headerBgImage: {
+    position: "absolute",
+    top: 0, left: 0, right: 0, bottom: 0,
+    width: "100%", height: "100%",
+    opacity: 0.25,
+  },
+  headerImageOverlay: {
+    position: "absolute",
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.3)",
+  },
   topBarInner: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingHorizontal: 16, paddingTop: 52, paddingBottom: 16,

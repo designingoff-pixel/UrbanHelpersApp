@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import {
   ScrollView, Text, View, Pressable, StyleSheet,
-  TextInput, Dimensions,
+  TextInput, Dimensions, Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -14,6 +14,7 @@ import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 import { SERVICE_CATEGORIES } from "./servicesData";
+import { getCategoryImage } from "@/assets/serviceImages";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServicesDashboard">;
 
@@ -161,6 +162,15 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                   style={s.categoryCard}
                 >
+                  {/* Category image on the right */}
+                  <Image
+                    source={{ uri: getCategoryImage(cat.id) }}
+                    style={s.catImage}
+                    resizeMode="cover"
+                  />
+                  {/* Dark overlay so text stays readable */}
+                  <View style={s.catImageOverlay} />
+
                   <View style={s.catIconWrap}>
                     <Ionicons name={cat.icon as any} size={26} color="white" />
                   </View>
@@ -327,7 +337,23 @@ const s = StyleSheet.create({
     borderRadius: 22, padding: 16,
     flexDirection: "row", alignItems: "center",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
-    minHeight: 80, gap: 14,
+    minHeight: 88, gap: 14, overflow: "hidden",
+    position: "relative",
+  },
+  catImage: {
+    position: "absolute",
+    top: 0, right: 0,
+    width: 110, height: "100%",
+    borderTopRightRadius: 22,
+    borderBottomRightRadius: 22,
+  },
+  catImageOverlay: {
+    position: "absolute",
+    top: 0, right: 0,
+    width: 110, height: "100%",
+    backgroundColor: "rgba(0,0,0,0.38)",
+    borderTopRightRadius: 22,
+    borderBottomRightRadius: 22,
   },
   catIconWrap: {
     width: 52, height: 52, borderRadius: 26,
@@ -337,7 +363,7 @@ const s = StyleSheet.create({
   catInfo: { flex: 1 },
   catName: { fontSize: 15, fontWeight: "700", color: "white" },
   catTagline: { fontSize: 12, color: "rgba(255,255,255,0.65)", marginTop: 3 },
-  catSubCount: { alignItems: "center", flexShrink: 0 },
+  catSubCount: { alignItems: "center", flexShrink: 0, marginRight: 4 },
   catSubCountText: { fontSize: 22, fontWeight: "700", color: "rgba(255,255,255,0.9)" },
   catSubCountLabel: { fontSize: 10, color: "rgba(255,255,255,0.55)", marginTop: 1 },
 

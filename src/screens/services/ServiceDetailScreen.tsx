@@ -5,7 +5,7 @@
 import React, { useState } from "react";
 import {
   ScrollView, Text, View, Pressable, StyleSheet,
-  TextInput, Dimensions,
+  TextInput, Dimensions, Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -14,6 +14,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 import { SERVICE_CATEGORIES } from "./servicesData";
+import { getSubServiceImage } from "@/assets/serviceImages";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceDetail">;
 
@@ -62,6 +63,25 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+
+        {/* ── Hero Service Image ─────────────────────────────── */}
+        <Animated.View entering={FadeInDown.duration(300)} style={s.heroImageWrap}>
+          <Image
+            source={{ uri: getSubServiceImage(sub.id, category.id) }}
+            style={s.heroImage}
+            resizeMode="cover"
+          />
+          <LinearGradient
+            colors={["rgba(8,24,38,0)", "rgba(8,24,38,0.85)"]}
+            start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+            style={s.heroImageGradient}
+          />
+          {/* Floating category pill on the image */}
+          <View style={[s.heroImagePill, { backgroundColor: category.gradient[0] + "dd" }]}>
+            <Ionicons name={category.icon as any} size={14} color="white" />
+            <Text style={s.heroImagePillText}>{category.name}</Text>
+          </View>
+        </Animated.View>
 
         {/* ── Selected service card ─────────────────────────── */}
         <Animated.View entering={FadeInDown.duration(350)}>
@@ -254,6 +274,42 @@ const s = StyleSheet.create({
   },
 
   scroll: { paddingHorizontal: 16 },
+
+  // Hero Image
+  heroImageWrap: {
+    marginHorizontal: -16,
+    height: 220,
+    position: "relative",
+    marginBottom: 16,
+    overflow: "hidden",
+  },
+  heroImage: {
+    width: "100%",
+    height: "100%",
+  },
+  heroImageGradient: {
+    position: "absolute",
+    bottom: 0, left: 0, right: 0,
+    height: 100,
+  },
+  heroImagePill: {
+    position: "absolute",
+    bottom: 14,
+    left: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+  },
+  heroImagePillText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "white",
+  },
 
   // Service card
   serviceCard: {

@@ -71,6 +71,16 @@ export type RootStackParamList = {
   ServiceCompleted: { categoryId?: string; subServiceId?: string };
   RatingFeedback: { categoryId?: string; subServiceId?: string };
   HomeCleaning: undefined;
+
+  // Recording & OTP Vendor Verification (NEW)
+  YourHelperHasArrived: { bookingId: string; vendorId: string };
+  VerifyYourHelper: { bookingId: string; vendorId: string };
+  ServiceRecordingConsent: { bookingId: string; vendorId: string };
+  RecordingInProgress: { bookingId: string; vendorId: string };
+  RecordingPaused: { bookingId: string; vendorId: string };
+  EndServiceRecording: { bookingId: string; vendorId: string };
+  HelperVerified: { bookingId: string; vendorId: string };
+  ServiceSummary: { bookingId: string; vendorId: string };
 };
 
 export type ScreenName = keyof RootStackParamList;
