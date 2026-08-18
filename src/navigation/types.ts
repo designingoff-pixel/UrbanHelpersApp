@@ -60,6 +60,13 @@ export type RootStackParamList = {
 
   // Notifications
   Notifications: undefined;
+
+  // Services module
+  ServicesDashboard: undefined;
+  ServiceCategory: { categoryId: string };
+  ServiceDetail: { categoryId: string; subServiceId: string };
+  BookingConfirmed: { categoryId: string; subServiceId: string; dayIndex: number; slotIndex: number };
+  ServiceBookings: undefined;
 };
 
 export type ScreenName = keyof RootStackParamList;

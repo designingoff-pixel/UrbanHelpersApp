@@ -64,6 +64,12 @@ import ProfileScreen from "@/screens/profile/ProfileScreen";
 // Notifications
 import NotificationsScreen from "@/screens/notifications/NotificationsScreen";
 
+// Services module
+import ServicesDashboardScreen from "@/screens/services/ServicesDashboardScreen";
+import ServiceCategoryScreen from "@/screens/services/ServiceCategoryScreen";
+import ServiceDetailScreen from "@/screens/services/ServiceDetailScreen";
+import BookingConfirmedScreen from "@/screens/services/BookingConfirmedScreen";
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 /**
@@ -147,6 +153,12 @@ export function RootNavigator() {
 
       {/* Notifications */}
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
+
+      {/* Services module */}
+      <Stack.Screen name="ServicesDashboard" component={ServicesDashboardScreen} />
+      <Stack.Screen name="ServiceCategory" component={ServiceCategoryScreen} />
+      <Stack.Screen name="ServiceDetail" component={ServiceDetailScreen} />
+      <Stack.Screen name="BookingConfirmed" component={BookingConfirmedScreen} />
     </Stack.Navigator>
   );
 }

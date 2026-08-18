@@ -282,6 +282,40 @@ export default function HomeDashboardScreen({ navigation }: Props) {
           />
         </View>
 
+        {/* ── Services Entry Button — unique, glowing teal ──── */}
+        <Animated.View entering={FadeInDown.delay(120).duration(400).springify()}>
+          <Pressable
+            onPress={() => navigation.navigate("ServicesDashboard")}
+            style={({ pressed }) => ({ opacity: pressed ? 0.88 : 1 })}
+          >
+            <LinearGradient
+              colors={["#007c8a", "#00bcd4", "#26c6da"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={s.servicesBtn}
+            >
+              {/* Glow blob */}
+              <View style={s.servicesBtnBlob} />
+              {/* Left: icon in circle */}
+              <View style={s.servicesBtnIconWrap}>
+                <Ionicons name="construct" size={26} color="white" />
+              </View>
+              {/* Centre: text */}
+              <View style={s.servicesBtnText}>
+                <View style={s.servicesBtnBadge}>
+                  <Text style={s.servicesBtnBadgeText}>10 CATEGORIES</Text>
+                </View>
+                <Text style={s.servicesBtnTitle}>Urban Helpers Services</Text>
+                <Text style={s.servicesBtnSub}>RO · Pest · Cleaning · Care & more</Text>
+              </View>
+              {/* Right: arrow */}
+              <View style={s.servicesBtnArrow}>
+                <Ionicons name="arrow-forward-circle" size={32} color="rgba(255,255,255,0.85)" />
+              </View>
+            </LinearGradient>
+          </Pressable>
+        </Animated.View>
+
         {/* ── Feature Cards Grid ─────────────────────────────── */}
         <View style={s.cardGrid}>
 
@@ -546,6 +580,42 @@ const s = StyleSheet.create({
     gap: 6,
   },
   exploreBtnText: { color: "white", fontSize: 13, fontWeight: "600" },
+
+  // Services entry button — glowing teal, prominent
+  servicesBtn: {
+    borderRadius: 26, paddingVertical: 18, paddingHorizontal: 20,
+    flexDirection: "row", alignItems: "center",
+    marginBottom: 16, overflow: "hidden",
+    borderWidth: 1, borderColor: "rgba(0,188,212,0.5)",
+    // glow via elevation + shadow
+    elevation: 12,
+    shadowColor: "#00bcd4",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.55,
+    shadowRadius: 18,
+  },
+  servicesBtnBlob: {
+    position: "absolute", top: -30, right: -30,
+    width: 140, height: 140, borderRadius: 70,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  servicesBtnIconWrap: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center", alignItems: "center",
+    marginRight: 14, flexShrink: 0,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.3)",
+  },
+  servicesBtnText: { flex: 1 },
+  servicesBtnBadge: {
+    backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 3, alignSelf: "flex-start",
+    marginBottom: 5, borderWidth: 1, borderColor: "rgba(255,255,255,0.3)",
+  },
+  servicesBtnBadgeText: { fontSize: 9, fontWeight: "800", color: "white", letterSpacing: 1.2 },
+  servicesBtnTitle: { fontSize: 17, fontWeight: "700", color: "white", marginBottom: 3 },
+  servicesBtnSub: { fontSize: 12, color: "rgba(255,255,255,0.75)" },
+  servicesBtnArrow: { flexShrink: 0, paddingLeft: 8 },
 
   // Card grid
   cardGrid: { gap: 12 },
