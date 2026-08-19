@@ -1,10 +1,14 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { ScrollView, Text, View, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
+import {
+  scheduleInactivityAlert,
+  sendStepGoalNotification,
+} from "@/services/notificationService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "FitnessDashboard">;
 
@@ -25,7 +29,19 @@ const NAV = [
   { icon: "person-outline", route: "Profile" },
 ];
 
+// Current step data (in production comes from health sensors)
+const CURRENT_STEPS = 8400;
+const STEP_GOAL = 10000;
+
 export default function FitnessDashboardScreen({ navigation }: Props) {
+
+  useEffect(() => {
+    // Schedule inactivity alert (fires if no activity for 60 mins)
+    scheduleInactivityAlert(60);
+
+    // Send step goal progress notification based on current steps
+    sendStepGoalNotification(CURRENT_STEPS, STEP_GOAL);
+  }, []);
   return (
     <View style={s.root}>
       {/* Header */}

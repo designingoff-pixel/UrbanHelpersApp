@@ -15,6 +15,7 @@ import Animated, {
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 import { SERVICE_CATEGORIES } from "./servicesData";
+import { sendBookingConfirmation } from "@/services/notificationService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BookingConfirmed">;
 
@@ -39,6 +40,13 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
     ringScale.value = withSpring(1, { damping: 12, stiffness: 200 });
     checkScale.value = withDelay(200, withSpring(1, { damping: 10, stiffness: 260 }));
     confettiOp.value = withDelay(400, withTiming(1, { duration: 400 }));
+
+    // Fire booking confirmation notification
+    if (category && sub) {
+      const dayLabel = `${DAYS[dayIndex ?? 1]}, Aug ${DATES[dayIndex ?? 1]}`;
+      const timeLabel = SLOTS[slotIndex ?? 1];
+      sendBookingConfirmation(category.name, sub.name, dayLabel, timeLabel);
+    }
   }, []);
 
   const ringStyle = useAnimatedStyle(() => ({

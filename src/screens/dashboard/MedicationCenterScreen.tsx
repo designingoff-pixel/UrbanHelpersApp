@@ -1,20 +1,34 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { ScrollView, Text, View, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
+import {
+  scheduleMedicineReminder,
+  scheduleMissedMedicineAlert,
+} from "@/services/notificationService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "MedicationCenter">;
 
 const MEDS = [
-  { time: "Morning · 08:00 AM", name: "Lisinopril", dose: "10mg · 1 Tablet", progress: 75, color: "#fbbf24", timeIcon: "sunny" },
-  { time: "Afternoon · 01:00 PM", name: "Vitamin D3", dose: "5000 IU · 1 Capsule", progress: 0, color: "#f97316", timeIcon: "partly-sunny" },
-  { time: "Night · 09:00 PM", name: "Melatonin", dose: "3mg · 1 Tablet", progress: 0, color: "#a855f7", timeIcon: "moon" },
+  { time: "Morning · 08:00 AM", name: "Lisinopril", dose: "10mg · 1 Tablet", progress: 75, color: "#fbbf24", timeIcon: "sunny", hour: 8, minute: 0 },
+  { time: "Afternoon · 01:00 PM", name: "Vitamin D3", dose: "5000 IU · 1 Capsule", progress: 0, color: "#f97316", timeIcon: "partly-sunny", hour: 13, minute: 0 },
+  { time: "Night · 09:00 PM", name: "Melatonin", dose: "3mg · 1 Tablet", progress: 0, color: "#a855f7", timeIcon: "moon", hour: 21, minute: 0 },
 ];
 
 export default function MedicationCenterScreen({ navigation }: Props) {
+
+  // Schedule reminders for all meds when this screen mounts
+  useEffect(() => {
+    (async () => {
+      for (const med of MEDS) {
+        await scheduleMedicineReminder(med.name, med.dose, med.hour, med.minute);
+      }
+      console.log("[MedicationCenter] All medicine reminders scheduled");
+    })();
+  }, []);
   return (
     <View style={s.root}>
       {/* Header */}
@@ -72,11 +86,25 @@ export default function MedicationCenterScreen({ navigation }: Props) {
                   <Text style={[s.medRingText, { color: m.color }]}>{m.progress}%</Text>
                 </View>
                 {m.progress > 0 ? (
-                  <Pressable style={[s.medBtn, { borderColor: `${m.color}50` }]}>
+                  <Pressable
+                    style={[s.medBtn, { borderColor: `${m.color}50` }]}
+                    onPress={async () => {
+                      // Schedule missed-medicine alert in 2 hrs if not confirmed
+                      await scheduleMissedMedicineAlert(m.name, 120);
+                      console.log(`[Medication] Mark taken: ${m.name}`);
+                    }}
+                  >
                     <Text style={[s.medBtnText, { color: m.color }]}>Mark Taken</Text>
                   </Pressable>
                 ) : (
-                  <Pressable style={[s.medBtnFilled, { backgroundColor: m.color }]}>
+                  <Pressable
+                    style={[s.medBtnFilled, { backgroundColor: m.color }]}
+                    onPress={async () => {
+                      // Schedule missed alert — user can dismiss/cancel if taken
+                      await scheduleMissedMedicineAlert(m.name, 120);
+                      console.log(`[Medication] Take now: ${m.name}`);
+                    }}
+                  >
                     <Text style={s.medBtnFilledText}>Take Now</Text>
                   </Pressable>
                 )}

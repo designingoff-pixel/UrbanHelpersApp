@@ -11,12 +11,28 @@
       "resizeMode": "contain",
       "backgroundColor": "#081826"
     },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#00bcd4",
+          "defaultChannel": "default"
+        }
+      ]
+    ],
     "android": {
       "package": "com.urbanhelpers.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#081826"
-      }
+      },
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "POST_NOTIFICATIONS",
+        "SCHEDULE_EXACT_ALARM"
+      ]
     },
     "ios": {
       "bundleIdentifier": "com.urbanhelpers.app",
