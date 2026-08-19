@@ -88,11 +88,11 @@ const FEATURE_CARDS = [
 
 // ─── Bottom nav tabs ───────────────────────────────────────────────────────────
 const NAV_TABS = [
-  { icon: "home" as keyof typeof Ionicons.glyphMap,           route: "HomeDashboard" as keyof RootStackParamList,    label: "Home" },
-  { icon: "heart-outline" as keyof typeof Ionicons.glyphMap,  route: "HealthDashboard" as keyof RootStackParamList,  label: "Health" },
-  { icon: "compass-outline" as keyof typeof Ionicons.glyphMap,route: "Discover" as keyof RootStackParamList,         label: "Discover" },
-  { icon: "barbell-outline" as keyof typeof Ionicons.glyphMap,route: "FitnessDashboard" as keyof RootStackParamList, label: "Fitness" },
-  { icon: "person-outline" as keyof typeof Ionicons.glyphMap, route: "Profile" as keyof RootStackParamList,          label: "Profile" },
+  { icon: "home" as keyof typeof Ionicons.glyphMap,            route: "HomeDashboard" as keyof RootStackParamList,    label: "Home" },
+  { icon: "heart-outline" as keyof typeof Ionicons.glyphMap,   route: "HealthDashboard" as keyof RootStackParamList,  label: "Health" },
+  { icon: "construct-outline" as keyof typeof Ionicons.glyphMap,route: "ServicesDashboard" as keyof RootStackParamList,label: "Services" },
+  { icon: "barbell-outline" as keyof typeof Ionicons.glyphMap,  route: "FitnessDashboard" as keyof RootStackParamList, label: "Fitness" },
+  { icon: "compass-outline" as keyof typeof Ionicons.glyphMap,  route: "Discover" as keyof RootStackParamList,         label: "Discover" },
 ];
 
 // ─── Animated press-scale card ─────────────────────────────────────────────────
@@ -105,12 +105,13 @@ interface PressCardProps {
 function PressCard({ onPress, style, children, index = 0 }: PressCardProps) {
   const scale = useSharedValue(1);
   const tap = Gesture.Tap()
-    .maxDuration(800)
+    .maxDuration(200)
+    .maxDistance(10)
+    .onEnd((_e, success) => {
+      if (success) runOnJS(onPress)();
+    })
     .onBegin(() => { scale.value = withSpring(0.95, { damping: 15, stiffness: 350 }); })
-    .onFinalize(() => {
-      scale.value = withSpring(1, { damping: 12, stiffness: 280 });
-      runOnJS(onPress)();
-    });
+    .onFinalize(() => { scale.value = withSpring(1, { damping: 12, stiffness: 280 }); });
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
     <GestureDetector gesture={tap}>
@@ -193,8 +194,10 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             <Ionicons name="notifications-outline" size={20} color={colors.text.secondary} />
             <View style={s.notifBadge} />
           </Pressable>
-          <Pressable style={s.iconBtn}>
-            <Ionicons name="ellipsis-vertical" size={20} color={colors.text.secondary} />
+          <Pressable style={s.avatarBtn} onPress={() => navigation.navigate("Profile")}>
+            <LinearGradient colors={["#8343f4", "#2563eb"]} style={s.avatarBtnInner}>
+              <Text style={s.avatarBtnInitials}>AJ</Text>
+            </LinearGradient>
           </Pressable>
         </View>
       </Animated.View>
@@ -504,6 +507,16 @@ const s = StyleSheet.create({
     backgroundColor: colors.error,
     borderWidth: 1, borderColor: colors.surface.containerHigh,
   },
+  // Profile avatar button in top-right
+  avatarBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    borderWidth: 2, borderColor: "#8343f4",
+    overflow: "hidden",
+  },
+  avatarBtnInner: {
+    flex: 1, justifyContent: "center", alignItems: "center",
+  },
+  avatarBtnInitials: { fontSize: 14, fontWeight: "700", color: "white" },
 
   // Pills — full height, proper padding, no clipping
   pillsScroll: { flexGrow: 0 },

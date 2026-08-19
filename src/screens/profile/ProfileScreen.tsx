@@ -224,9 +224,44 @@ export default function ProfileScreen({ navigation }: Props) {
           </Pressable>
         </Animated.View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
 
+      {/* ── Bottom Nav (Home + Services) ──────────────────── */}
+      <View style={s.bottomBar}>
+        <Pressable
+          onPress={() => navigation.navigate("HomeDashboard")}
+          style={s.bottomBarBtn}
+        >
+          <Ionicons name="home-outline" size={22} color={colors.text.secondary} />
+          <Text style={s.bottomBarLabel}>Home</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => navigation.navigate("ServicesDashboard")}
+          style={s.bottomBarBtn}
+        >
+          <Ionicons name="construct-outline" size={22} color={colors.text.secondary} />
+          <Text style={s.bottomBarLabel}>Services</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => navigation.navigate("HealthDashboard")}
+          style={s.bottomBarBtn}
+        >
+          <Ionicons name="heart-outline" size={22} color={colors.text.secondary} />
+          <Text style={s.bottomBarLabel}>Health</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => navigation.navigate("FitnessDashboard")}
+          style={s.bottomBarBtn}
+        >
+          <Ionicons name="barbell-outline" size={22} color={colors.text.secondary} />
+          <Text style={s.bottomBarLabel}>Fitness</Text>
+        </Pressable>
+        <View style={s.bottomBarBtn}>
+          <Ionicons name="person" size={22} color={colors.primary} />
+          <Text style={[s.bottomBarLabel, { color: colors.primary }]}>Profile</Text>
+        </View>
+      </View>
     </View>
   );
 }
@@ -309,8 +344,8 @@ const s = StyleSheet.create({
   // Stat grid
   statGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 16 },
   statCard: {
-    width: (StyleSheet.flatten({ flex: 1 }) as any, "47.5%"),
-    borderRadius: 24, padding: 18, minWidth: "47%",
+    width: "47.5%",
+    borderRadius: 24, padding: 18,
     borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
     minHeight: 130,
     justifyContent: "space-between",
@@ -397,4 +432,24 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: "rgba(255,180,171,0.2)",
   },
   signOutText: { fontSize: 15, fontWeight: "600", color: colors.error },
+
+  // Bottom nav bar
+  bottomBar: {
+    flexDirection: "row",
+    height: 72,
+    marginHorizontal: 12,
+    marginBottom: 12,
+    backgroundColor: "rgba(10,22,36,0.97)",
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: colors.glass.border,
+    elevation: 16,
+    alignItems: "center",
+  },
+  bottomBarBtn: {
+    flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 8,
+  },
+  bottomBarLabel: {
+    fontSize: 10, color: colors.text.secondary, marginTop: 3, fontWeight: "500",
+  },
 });
