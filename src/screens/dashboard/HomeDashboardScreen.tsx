@@ -20,13 +20,11 @@ import Animated, {
   withDelay,
   withSequence,
   interpolate,
-  runOnJS,
   FadeInDown,
   FadeIn,
   SlideInLeft,
   Easing,
 } from "react-native-reanimated";
-import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 
@@ -104,24 +102,24 @@ interface PressCardProps {
 }
 function PressCard({ onPress, style, children, index = 0 }: PressCardProps) {
   const scale = useSharedValue(1);
-  const tap = Gesture.Tap()
-    .maxDuration(200)
-    .maxDistance(10)
-    .onEnd((_e, success) => {
-      if (success) runOnJS(onPress)();
-    })
-    .onBegin(() => { scale.value = withSpring(0.95, { damping: 15, stiffness: 350 }); })
-    .onFinalize(() => { scale.value = withSpring(1, { damping: 12, stiffness: 280 }); });
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
   return (
-    <GestureDetector gesture={tap}>
-      <Animated.View
-        entering={FadeInDown.delay(index * 80).duration(400).springify().damping(18)}
-        style={[style, animStyle]}
+    <Animated.View
+      entering={FadeInDown.delay(index * 80).duration(400).springify().damping(18)}
+      style={[style, animStyle]}
+    >
+      <Pressable
+        onPress={onPress}
+        onPressIn={() => { scale.value = withSpring(0.95, { damping: 15, stiffness: 350 }); }}
+        onPressOut={() => { scale.value = withSpring(1, { damping: 12, stiffness: 280 }); }}
+        delayLongPress={500}
+        android_ripple={null}
+        style={{ flex: 1 }}
       >
         {children}
-      </Animated.View>
-    </GestureDetector>
+      </Pressable>
+    </Animated.View>
   );
 }
 
