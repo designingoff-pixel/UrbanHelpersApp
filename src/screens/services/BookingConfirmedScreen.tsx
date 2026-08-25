@@ -24,7 +24,7 @@ const DATES = ["11", "12", "13", "14", "15", "16", "17"];
 const SLOTS = ["8:00 AM – 11:00 AM", "12:00 PM – 3:00 PM", "4:00 PM – 7:00 PM"];
 
 export default function BookingConfirmedScreen({ navigation, route }: Props) {
-  const { categoryId, subServiceId, dayIndex, slotIndex } = route.params;
+  const { bookingId, categoryId, subServiceId, dayIndex, slotIndex } = route.params;
 
   const category = SERVICE_CATEGORIES.find((c) => c.id === categoryId);
   const sub = category?.subServices.find((s) => s.id === subServiceId);
@@ -146,7 +146,7 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
             <View style={s.bookingIdRow}>
               <Text style={s.bookingIdLabel}>Booking ID</Text>
               <Text style={[s.bookingId, { color: category.accent }]}>
-                UH-{Math.floor(100000 + Math.random() * 900000)}
+                #{bookingId.slice(-8).toUpperCase()}
               </Text>
             </View>
           </LinearGradient>

@@ -1,65 +1,78 @@
-import React from "react";
-import { ScrollView, Text, View, Pressable, StyleSheet, Image } from "react-native";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, ScrollView, Text, View, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
+import { useAuth } from "@/context/AuthContext";
+import { Booking, BookingStatus, subscribeToUserBookings } from "@/services/bookingService";
+import { SERVICE_CATEGORIES } from "./servicesData";
 
 type Props = NativeStackScreenProps<RootStackParamList, "MyBookings">;
 
-const MOCK_BOOKINGS = [
-  {
-    id: "UH-20481",
-    service: "Home Cleaning",
-    subService: "Full Home Cleaning",
-    vendor: "Rahul Kumar",
-    date: "Today, 4:30 PM",
-    status: "confirmed",
-    price: "₹1,999",
-    icon: "sparkles",
-    gradient: ["#00bcd4", "#0097a7"] as [string, string],
-  },
-  {
-    id: "UH-20380",
-    service: "RO Service",
-    subService: "Filter Change",
-    vendor: "Priya Sharma",
-    date: "Tomorrow, 10:00 AM",
-    status: "pending",
-    price: "₹399",
-    icon: "water",
-    gradient: ["#0284c7", "#38bdf8"] as [string, string],
-  },
-  {
-    id: "UH-20271",
-    service: "Pest Control",
-    subService: "Anti-Cockroach",
-    vendor: "Suresh Patel",
-    date: "Aug 20, 9:00 AM",
-    status: "completed",
-    price: "₹499",
-    icon: "bug",
-    gradient: ["#15803d", "#4ade80"] as [string, string],
-  },
-];
+const DEFAULT_GRADIENT: [string, string] = ["#00bcd4", "#0097a7"];
 
-const STATUS_COLORS: Record<string, string> = {
-  confirmed: "#22c55e",
-  pending: "#f59e0b",
+function categoryFor(booking: Booking) {
+  return SERVICE_CATEGORIES.find((c) => c.name === booking.serviceCategory);
+}
+
+function formatScheduledAt(iso: string): string {
+  const date = new Date(iso);
+  const today = new Date();
+  const isToday = date.toDateString() === today.toDateString();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  const isTomorrow = date.toDateString() === tomorrow.toDateString();
+
+  const time = date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+  if (isToday) return `Today, ${time}`;
+  if (isTomorrow) return `Tomorrow, ${time}`;
+  return `${date.toLocaleDateString("en-IN", { month: "short", day: "numeric" })}, ${time}`;
+}
+
+const STATUS_COLORS: Record<BookingStatus, string> = {
+  requested: "#f59e0b",
+  assigned: "#38bdf8",
+  accepted: "#38bdf8",
+  en_route: "#38bdf8",
+  arrived: "#f59e0b",
+  in_progress: "#22c55e",
   completed: "#6366f1",
   cancelled: "#ef4444",
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  confirmed: "Confirmed",
-  pending: "Pending",
+const STATUS_LABELS: Record<BookingStatus, string> = {
+  requested: "Requested",
+  assigned: "Assigned",
+  accepted: "Accepted",
+  en_route: "En route",
+  arrived: "Arrived",
+  in_progress: "In progress",
   completed: "Completed",
   cancelled: "Cancelled",
 };
 
 export default function MyBookingsScreen({ navigation }: Props) {
+  const { user } = useAuth();
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) {
+      setBookings([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const unsubscribe = subscribeToUserBookings(user.uid, (result) => {
+      setBookings(result);
+      setLoading(false);
+    });
+    return unsubscribe;
+  }, [user]);
+
   return (
     <View style={s.root}>
       {/* Header */}
@@ -83,74 +96,95 @@ export default function MyBookingsScreen({ navigation }: Props) {
       </Animated.View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-        {MOCK_BOOKINGS.map((booking, i) => (
-          <Animated.View
-            key={booking.id}
-            entering={FadeInDown.delay(i * 80).duration(350)}
-          >
-            <Pressable
-              onPress={() => navigation.navigate("BookingConfirmed", {
-                categoryId: "cleaning",
-                subServiceId: "cl-full",
-                dayIndex: 0,
-                slotIndex: 2,
-              })}
-              style={s.bookingCard}
-            >
-              {/* Left gradient accent */}
-              <LinearGradient
-                colors={booking.gradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-                style={s.accentBar}
-              />
-
-              <View style={s.bookingBody}>
-                {/* Top row */}
-                <View style={s.bookingTop}>
-                  <View style={[s.serviceIconWrap, { backgroundColor: booking.gradient[0] + "22" }]}>
-                    <Ionicons name={booking.icon as any} size={22} color={booking.gradient[0]} />
-                  </View>
-                  <View style={s.bookingInfo}>
-                    <Text style={s.serviceName}>{booking.service}</Text>
-                    <Text style={s.subServiceName}>{booking.subService}</Text>
-                  </View>
-                  <View style={[s.statusBadge, { backgroundColor: STATUS_COLORS[booking.status] + "22" }]}>
-                    <View style={[s.statusDot, { backgroundColor: STATUS_COLORS[booking.status] }]} />
-                    <Text style={[s.statusText, { color: STATUS_COLORS[booking.status] }]}>
-                      {STATUS_LABELS[booking.status]}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Divider */}
-                <View style={s.divider} />
-
-                {/* Bottom row */}
-                <View style={s.bookingBottom}>
-                  <View style={s.metaItem}>
-                    <Ionicons name="person-outline" size={13} color={colors.text.secondary} />
-                    <Text style={s.metaText}>{booking.vendor}</Text>
-                  </View>
-                  <View style={s.metaItem}>
-                    <Ionicons name="calendar-outline" size={13} color={colors.text.secondary} />
-                    <Text style={s.metaText}>{booking.date}</Text>
-                  </View>
-                  <Text style={s.priceText}>{booking.price}</Text>
-                </View>
-
-                {/* Booking ID */}
-                <Text style={s.bookingId}>#{booking.id}</Text>
-              </View>
+        {!user && (
+          <View style={s.emptyHint}>
+            <Ionicons name="log-in-outline" size={40} color="rgba(255,255,255,0.2)" />
+            <Text style={s.emptyHintText}>Sign in to see your bookings</Text>
+            <Pressable onPress={() => navigation.navigate("SignIn")} style={s.signInBtn}>
+              <Text style={s.signInBtnText}>Sign In</Text>
             </Pressable>
-          </Animated.View>
-        ))}
+          </View>
+        )}
 
-        {/* Empty state hint */}
-        <Animated.View entering={FadeInDown.delay(320).duration(350)} style={s.emptyHint}>
-          <Ionicons name="calendar-outline" size={40} color="rgba(255,255,255,0.15)" />
-          <Text style={s.emptyHintText}>More bookings will appear here</Text>
-        </Animated.View>
+        {user && loading && (
+          <View style={s.emptyHint}>
+            <ActivityIndicator color="#00bcd4" />
+          </View>
+        )}
+
+        {user && !loading && bookings.map((booking, i) => {
+          const category = categoryFor(booking);
+          const gradient = category?.gradient ?? DEFAULT_GRADIENT;
+          return (
+            <Animated.View key={booking.id} entering={FadeInDown.delay(i * 80).duration(350)}>
+              <Pressable
+                onPress={() => navigation.navigate("BookingConfirmed", {
+                  bookingId: booking.id,
+                  categoryId: category?.id ?? SERVICE_CATEGORIES[0].id,
+                  subServiceId: category?.subServices.find((sv) => sv.name === booking.subServiceName)?.id
+                    ?? category?.subServices[0]?.id
+                    ?? SERVICE_CATEGORIES[0].subServices[0].id,
+                  dayIndex: 0,
+                  slotIndex: 1,
+                })}
+                style={s.bookingCard}
+              >
+                {/* Left gradient accent */}
+                <LinearGradient
+                  colors={gradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  style={s.accentBar}
+                />
+
+                <View style={s.bookingBody}>
+                  {/* Top row */}
+                  <View style={s.bookingTop}>
+                    <View style={[s.serviceIconWrap, { backgroundColor: gradient[0] + "22" }]}>
+                      <Ionicons name={(category?.icon as any) ?? "sparkles"} size={22} color={gradient[0]} />
+                    </View>
+                    <View style={s.bookingInfo}>
+                      <Text style={s.serviceName}>{booking.serviceCategory}</Text>
+                      <Text style={s.subServiceName}>{booking.subServiceName}</Text>
+                    </View>
+                    <View style={[s.statusBadge, { backgroundColor: STATUS_COLORS[booking.status] + "22" }]}>
+                      <View style={[s.statusDot, { backgroundColor: STATUS_COLORS[booking.status] }]} />
+                      <Text style={[s.statusText, { color: STATUS_COLORS[booking.status] }]}>
+                        {STATUS_LABELS[booking.status]}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Divider */}
+                  <View style={s.divider} />
+
+                  {/* Bottom row */}
+                  <View style={s.bookingBottom}>
+                    <View style={s.metaItem}>
+                      <Ionicons name="person-outline" size={13} color={colors.text.secondary} />
+                      <Text style={s.metaText}>{booking.vendorName}</Text>
+                    </View>
+                    <View style={s.metaItem}>
+                      <Ionicons name="calendar-outline" size={13} color={colors.text.secondary} />
+                      <Text style={s.metaText}>{formatScheduledAt(booking.scheduledAt)}</Text>
+                    </View>
+                    <Text style={s.priceText}>{booking.priceLabel}</Text>
+                  </View>
+
+                  {/* Booking ID */}
+                  <Text style={s.bookingId}>#{booking.id.slice(-8).toUpperCase()}</Text>
+                </View>
+              </Pressable>
+            </Animated.View>
+          );
+        })}
+
+        {user && !loading && bookings.length === 0 && (
+          <Animated.View entering={FadeInDown.delay(320).duration(350)} style={s.emptyHint}>
+            <Ionicons name="calendar-outline" size={40} color="rgba(255,255,255,0.15)" />
+            <Text style={s.emptyHintText}>No bookings yet — book a service to see it here</Text>
+          </Animated.View>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -221,5 +255,10 @@ const s = StyleSheet.create({
   priceText: { marginLeft: "auto", fontSize: 15, fontWeight: "700", color: "#00bcd4" },
   bookingId: { fontSize: 10, color: "rgba(255,255,255,0.3)", marginTop: 6 },
   emptyHint: { alignItems: "center", gap: 8, marginTop: 16, paddingVertical: 24 },
-  emptyHintText: { fontSize: 13, color: "rgba(255,255,255,0.25)" },
+  emptyHintText: { fontSize: 13, color: "rgba(255,255,255,0.4)", textAlign: "center", paddingHorizontal: 24 },
+  signInBtn: {
+    marginTop: 8, paddingHorizontal: 20, paddingVertical: 10,
+    borderRadius: 20, backgroundColor: "#00bcd4",
+  },
+  signInBtnText: { fontSize: 13, fontWeight: "700", color: "white" },
 });

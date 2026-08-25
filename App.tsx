@@ -12,6 +12,7 @@ import {
   isValidScreen,
 } from "@/services/notificationService";
 import { RootStackParamList } from "@/navigation/types";
+import { AuthProvider } from "@/context/AuthContext";
 
 export default function App() {
   // Ref to access navigation from outside React tree (notification taps)
@@ -65,10 +66,12 @@ export default function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <NavigationContainer ref={navigationRef}>
-          <StatusBar style="light" />
-          <RootNavigator />
-        </NavigationContainer>
+        <AuthProvider>
+          <NavigationContainer ref={navigationRef}>
+            <StatusBar style="light" />
+            <RootNavigator />
+          </NavigationContainer>
+        </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

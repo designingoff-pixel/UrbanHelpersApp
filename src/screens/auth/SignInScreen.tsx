@@ -1,15 +1,29 @@
-import React, { useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import { ScreenContainer, Button, TopAppBar } from "@/components";
+import { useAuth } from "@/context/AuthContext";
 
 type Props = NativeStackScreenProps<RootStackParamList, "SignIn">;
 
 export default function SignInScreen({ navigation }: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const { user, signingIn, signInWithGoogle } = useAuth();
+
+  useEffect(() => {
+    if (user) navigation.navigate("HomeDashboard");
+  }, [user]);
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithGoogle();
+    } catch (err) {
+      Alert.alert("Sign in failed", "Couldn't sign in with Google. Please try again.");
+    }
+  };
 
   return (
     <ScreenContainer>
@@ -56,11 +70,18 @@ export default function SignInScreen({ navigation }: Props) {
 
         <View className="gap-3">
           <Pressable
-            onPress={() => navigation.navigate("HomeDashboard")}
+            onPress={handleGoogleSignIn}
+            disabled={signingIn}
             className="flex-row items-center justify-center border border-border-light rounded-pill py-3"
           >
-            <Ionicons name="logo-google" size={18} color="#111827" />
-            <Text className="font-body-medium text-sm ml-2">Continue with Google</Text>
+            {signingIn ? (
+              <ActivityIndicator size="small" color="#111827" />
+            ) : (
+              <>
+                <Ionicons name="logo-google" size={18} color="#111827" />
+                <Text className="font-body-medium text-sm ml-2">Continue with Google</Text>
+              </>
+            )}
           </Pressable>
           <Pressable
             onPress={() => navigation.navigate("HomeDashboard")}

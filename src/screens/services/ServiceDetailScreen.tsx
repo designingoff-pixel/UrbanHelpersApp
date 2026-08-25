@@ -4,6 +4,7 @@
  */
 import React, { useState } from "react";
 import {
+  ActivityIndicator, Alert,
   ScrollView, Text, View, Pressable, StyleSheet,
   TextInput, Dimensions, Image,
 } from "react-native";
@@ -15,6 +16,22 @@ import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 import { SERVICE_CATEGORIES } from "./servicesData";
 import { getSubServiceImage } from "@/assets/serviceImages";
+import { useAuth } from "@/context/AuthContext";
+import { createBooking } from "@/services/bookingService";
+
+const SLOT_START_HOUR = [8, 12, 16];
+
+function slotToScheduledAt(dayIndex: number, slotIndex: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + dayIndex);
+  date.setHours(SLOT_START_HOUR[slotIndex] ?? 8, 0, 0, 0);
+  return date.toISOString();
+}
+
+function parsePrice(priceLabel: string): number {
+  const digits = priceLabel.replace(/[^0-9]/g, "");
+  return digits ? parseInt(digits, 10) : 0;
+}
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceDetail">;
 
@@ -42,8 +59,50 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   const [selectedDay, setSelectedDay] = useState(1);
   const [selectedSlot, setSelectedSlot] = useState(1);
   const [address, setAddress] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const { user } = useAuth();
 
   if (!category || !sub) return null;
+
+  const handleConfirmBooking = async () => {
+    if (!user) {
+      Alert.alert("Sign in required", "Please sign in to book a service.", [
+        { text: "Sign In", onPress: () => navigation.navigate("SignIn") },
+        { text: "Cancel", style: "cancel" },
+      ]);
+      return;
+    }
+    if (!address.trim()) {
+      Alert.alert("Address required", "Please enter your service address.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const bookingId = await createBooking({
+        customerId: user.uid,
+        customerName: user.displayName ?? "Urban Helpers customer",
+        serviceCategory: category.name,
+        subServiceName: sub.name,
+        address: address.trim(),
+        scheduledAt: slotToScheduledAt(selectedDay, selectedSlot),
+        price: parsePrice(sub.price),
+        priceLabel: sub.price,
+      });
+
+      navigation.navigate("BookingConfirmed", {
+        bookingId,
+        categoryId: category.id,
+        subServiceId: sub.id,
+        dayIndex: selectedDay,
+        slotIndex: selectedSlot,
+      });
+    } catch (err) {
+      Alert.alert("Booking failed", "Something went wrong while confirming your booking. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <View style={s.root}>
@@ -232,18 +291,18 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
           <Text style={s.ctaDuration}>{sub.duration}</Text>
         </View>
         <Pressable
-          onPress={() =>
-            navigation.navigate("BookingConfirmed", {
-              categoryId: category.id,
-              subServiceId: sub.id,
-              dayIndex: selectedDay,
-              slotIndex: selectedSlot,
-            })
-          }
-          style={({ pressed }) => [s.ctaBtn, { backgroundColor: category.gradient[0], opacity: pressed ? 0.88 : 1 }]}
+          onPress={handleConfirmBooking}
+          disabled={submitting}
+          style={({ pressed }) => [s.ctaBtn, { backgroundColor: category.gradient[0], opacity: pressed || submitting ? 0.7 : 1 }]}
         >
-          <Text style={s.ctaBtnText}>Confirm Booking</Text>
-          <Ionicons name="arrow-forward" size={18} color="white" />
+          {submitting ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <>
+              <Text style={s.ctaBtnText}>Confirm Booking</Text>
+              <Ionicons name="arrow-forward" size={18} color="white" />
+            </>
+          )}
         </Pressable>
       </View>
 
