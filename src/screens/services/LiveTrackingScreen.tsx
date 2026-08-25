@@ -1,5 +1,6 @@
-import React, { useEffect } from "react";
-import { ScrollView, Text, View, Pressable, StyleSheet, Dimensions } from "react-native";
+"use client";
+import React, { useEffect, useState } from "react";
+import { ScrollView, Text, View, Pressable, StyleSheet, Linking, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -8,42 +9,180 @@ import Animated, {
   withRepeat, withSequence, withTiming,
   FadeInDown,
 } from "react-native-reanimated";
+import {
+  doc, onSnapshot, collection, query, where, limit,
+} from "firebase/firestore";
+import { db } from "@/services/firebase";
+import { useAuth } from "@/context/AuthContext";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 
 type Props = NativeStackScreenProps<RootStackParamList, "LiveTracking">;
-const { width: W } = Dimensions.get("window");
 
-const STEPS = [
-  { label: "Booking Confirmed", time: "09:00 AM", done: true },
-  { label: "Professional Assigned", time: "09:15 AM", done: true },
-  { label: "On The Way", time: "ETA 15 Mins", done: false, active: true },
-  { label: "Arriving", time: "", done: false },
-  { label: "Service Started", time: "", done: false },
-];
+// ── Status → timeline step mapping ──────────────────────────────────────────
+type BookingStatus =
+  | "requested" | "assigned" | "accepted"
+  | "en_route" | "arrived" | "in_progress" | "completed" | "cancelled";
 
-export default function LiveTrackingScreen({ navigation }: Props) {
-  // Pulsing ETA dot
+type StepState = { label: string; done: boolean; active: boolean; time: string };
+
+function buildSteps(status: BookingStatus, scheduledAt?: string): StepState[] {
+  const timeStr = scheduledAt
+    ? new Date(scheduledAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+    : "";
+
+  const order: BookingStatus[] = [
+    "requested", "assigned", "en_route", "arrived", "in_progress", "completed",
+  ];
+  const labels: Record<string, string> = {
+    requested:   "Booking Confirmed",
+    assigned:    "Professional Assigned",
+    en_route:    "On The Way",
+    arrived:     "Arriving",
+    in_progress: "Service Started",
+    completed:   "Completed",
+  };
+
+  const currentIdx = order.indexOf(status);
+
+  return order.map((s, i) => ({
+    label:  labels[s],
+    done:   i < currentIdx,
+    active: i === currentIdx,
+    time:   i === 0 ? timeStr : i === currentIdx ? (s === "en_route" ? "ETA 15 Mins" : "Now") : "",
+  }));
+}
+
+// ── Hero title from status ────────────────────────────────────────────────────
+function heroTitle(status: BookingStatus): string {
+  const map: Partial<Record<BookingStatus, string>> = {
+    requested:   "Finding\nProfessional",
+    assigned:    "Professional\nAssigned",
+    accepted:    "Professional\nConfirmed",
+    en_route:    "Professional\nOn The Way",
+    arrived:     "Professional\nArrived",
+    in_progress: "Service\nIn Progress",
+    completed:   "Service\nCompleted",
+  };
+  return map[status] ?? "Tracking\nYour Service";
+}
+
+interface LiveBooking {
+  id: string;
+  vendorId?: string;
+  vendorName?: string;
+  serviceCategory?: string;
+  status: BookingStatus;
+  address?: string;
+  scheduledAt?: string;
+  price?: number;
+  priceLabel?: string;
+}
+
+interface VendorLocation {
+  lat: number;
+  lng: number;
+  heading?: number;
+  speed?: number;
+}
+
+export default function LiveTrackingScreen({ navigation, route }: Props) {
+  const { user } = useAuth();
+
+  // ── Shared values for animations ─────────────────────────────────────────
   const pulse = useSharedValue(1);
+  const ring  = useSharedValue(0.8);
+
   useEffect(() => {
     pulse.value = withRepeat(
-      withSequence(
-        withTiming(1.3, { duration: 800 }),
-        withTiming(1, { duration: 800 })
-      ), -1, false
+      withSequence(withTiming(1.3, { duration: 800 }), withTiming(1, { duration: 800 })),
+      -1, false,
     );
-  }, []);
-  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
-
-  // Ping ring on active step
-  const ring = useSharedValue(0.8);
-  useEffect(() => {
     ring.value = withRepeat(
       withSequence(withTiming(1.4, { duration: 900 }), withTiming(0.8, { duration: 900 })),
-      -1, false
+      -1, false,
     );
   }, []);
-  const ringStyle = useAnimatedStyle(() => ({ transform: [{ scale: ring.value }], opacity: 2 - ring.value }));
+
+  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+  const ringStyle  = useAnimatedStyle(() => ({
+    transform: [{ scale: ring.value }],
+    opacity: 2 - ring.value,
+  }));
+
+  // ── Firestore state ───────────────────────────────────────────────────────
+  const [booking, setBooking]           = useState<LiveBooking | null>(null);
+  const [vendorLocation, setVendorLocation] = useState<VendorLocation | null>(null);
+  const [loading, setLoading]           = useState(true);
+
+  // Subscribe to the most recent active booking for this user
+  useEffect(() => {
+    if (!user) return;
+
+    const q = query(
+      collection(db, "bookings"),
+      where("customerId", "==", user.uid),
+      where("status", "in", ["assigned", "accepted", "en_route", "arrived", "in_progress"]),
+      limit(1),
+    );
+
+    const unsubBooking = onSnapshot(q, (snap) => {
+      if (snap.empty) {
+        setBooking(null);
+        setLoading(false);
+        return;
+      }
+      const d = snap.docs[0];
+      setBooking({ id: d.id, ...d.data() } as LiveBooking);
+      setLoading(false);
+    });
+
+    return unsubBooking;
+  }, [user]);
+
+  // Subscribe to vendor's live location once we know vendorId
+  useEffect(() => {
+    if (!booking?.vendorId) return;
+
+    const unsubLocation = onSnapshot(
+      doc(db, "vendors", booking.vendorId),
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data?.location?.lat) {
+            setVendorLocation({
+              lat:     data.location.lat,
+              lng:     data.location.lng,
+              heading: data.location.heading,
+              speed:   data.location.speed,
+            });
+          }
+        }
+      },
+    );
+
+    return unsubLocation;
+  }, [booking?.vendorId]);
+
+  // Auto-navigate to rating screen when completed
+  useEffect(() => {
+    if (booking?.status === "completed") {
+      navigation.navigate("RatingFeedback", {});
+    }
+  }, [booking?.status]);
+
+  // ── Derived state ─────────────────────────────────────────────────────────
+  const status   = booking?.status ?? "requested";
+  const steps    = buildSteps(status as BookingStatus, booking?.scheduledAt);
+  const vendorInitials = (booking?.vendorName ?? "VC")
+    .split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+
+  const handleCallVendor = () => {
+    Alert.alert("Call Professional", "This will call the assigned professional.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Call", onPress: () => Linking.openURL("tel:+919999999999") },
+    ]);
+  };
 
   return (
     <View style={s.root}>
@@ -57,9 +196,6 @@ export default function LiveTrackingScreen({ navigation }: Props) {
           <Pressable style={s.iconBtn} onPress={() => navigation.navigate("Notifications")}>
             <Ionicons name="notifications-outline" size={20} color="white" />
           </Pressable>
-          <Pressable style={s.iconBtn}>
-            <Ionicons name="help-circle-outline" size={20} color="white" />
-          </Pressable>
         </View>
       </View>
 
@@ -67,94 +203,106 @@ export default function LiveTrackingScreen({ navigation }: Props) {
 
         {/* ── ETA Hero ─────────────────────────────────────── */}
         <Animated.View entering={FadeInDown.duration(380)}>
-          <LinearGradient colors={["#15803d", "#22c55e"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.hero}>
+          <LinearGradient
+            colors={status === "completed" ? ["#064e3b", "#047857"] : ["#15803d", "#22c55e"]}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={s.hero}
+          >
             <View style={s.heroBlobTL} />
             <View style={s.heroBlobBR} />
             <View style={s.heroLeft}>
               <View style={s.liveBadge}>
                 <Animated.View style={[s.liveDot, pulseStyle]} />
-                <Text style={s.liveBadgeText}>LIVE UPDATE</Text>
+                <Text style={s.liveBadgeText}>
+                  {status === "completed" ? "COMPLETED" : "LIVE UPDATE"}
+                </Text>
               </View>
-              <Text style={s.heroTitle}>Professional{"\n"}On The Way</Text>
-              <View style={s.etaRow}>
-                <Text style={s.etaNumber}>15</Text>
-                <Text style={s.etaUnit}>Minutes ETA</Text>
-              </View>
-              <Text style={s.bookingId}>ID: UH-2026-45893</Text>
+              <Text style={s.heroTitle}>{heroTitle(status as BookingStatus)}</Text>
+
+              {status === "en_route" && (
+                <View style={s.etaRow}>
+                  <Text style={s.etaNumber}>~15</Text>
+                  <Text style={s.etaUnit}>Minutes ETA</Text>
+                </View>
+              )}
+
+              <Text style={s.bookingId}>
+                ID: #{booking?.id?.slice(-8).toUpperCase() ?? "—"}
+              </Text>
             </View>
           </LinearGradient>
         </Animated.View>
 
-        {/* ── Map Placeholder ──────────────────────────────── */}
+        {/* ── Map area ─────────────────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(80).duration(380)} style={s.mapCard}>
           <LinearGradient colors={["#0f2a3a", "#1a3550"]} style={s.mapGrad}>
-            {/* Fake route line */}
+            {/* Route line */}
             <View style={s.routeLine} />
-            {/* Destination pin */}
+
+            {/* Home pin */}
             <View style={[s.mapPin, { top: "45%", right: "22%" }]}>
               <View style={s.mapPinHome}>
                 <Ionicons name="home" size={16} color="white" />
               </View>
             </View>
-            {/* Pro marker with pulse ring */}
+
+            {/* Vendor pin — shows live indicator when location received */}
             <View style={[s.mapMarkerWrap, { top: "60%", left: "32%" }]}>
               <Animated.View style={[s.mapPingRing, ringStyle]} />
               <View style={s.etaBubble}>
-                <Text style={s.etaBubbleText}>15 Min</Text>
+                <Text style={s.etaBubbleText}>
+                  {vendorLocation ? "Live 📍" : "Waiting…"}
+                </Text>
               </View>
-              <View style={s.mapPinPro}>
+              <View style={[s.mapPinPro, vendorLocation ? { backgroundColor: "#22c55e" } : { backgroundColor: "#64748b" }]}>
                 <Ionicons name="car" size={16} color="white" />
               </View>
             </View>
-            <Text style={s.mapLabel}>Sunny Enclave, Chennai</Text>
+
+            <Text style={s.mapLabel}>{booking?.address ?? "Locating…"}</Text>
           </LinearGradient>
         </Animated.View>
 
-        {/* ── Professional Card ────────────────────────────── */}
+        {/* ── Professional Card ──────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(140).duration(380)}>
           <LinearGradient colors={["#1e3a8a", "#0f172a"]} style={s.proCard}>
             <View style={s.proLeft}>
               <View style={s.proAvatarWrap}>
                 <LinearGradient colors={["#2563eb", "#8343f4"]} style={s.proAvatar}>
-                  <Text style={s.proAvatarText}>RK</Text>
+                  <Text style={s.proAvatarText}>{vendorInitials}</Text>
                 </LinearGradient>
-                <View style={s.proVerified}>
-                  <Ionicons name="checkmark-circle" size={16} color="#22c55e" />
-                </View>
+                {booking?.vendorId && (
+                  <View style={s.proVerified}>
+                    <Ionicons name="checkmark-circle" size={16} color="#22c55e" />
+                  </View>
+                )}
               </View>
               <View>
-                <Text style={s.proName}>Rajesh K.</Text>
-                <View style={s.proMeta}>
-                  <Ionicons name="star" size={14} color="#fbbf24" />
-                  <Text style={s.proRating}>4.9</Text>
-                  <Text style={s.proExp}> · 8 yrs exp</Text>
-                </View>
+                <Text style={s.proName}>
+                  {booking?.vendorName ?? "Assigning…"}
+                </Text>
+                <Text style={s.proSub}>{booking?.serviceCategory ?? ""}</Text>
               </View>
             </View>
             <View style={s.proActions}>
-              {[
-                { icon: "call" as const },
-                { icon: "chatbubble-outline" as const },
-                { icon: "share-outline" as const },
-              ].map((a) => (
-                <Pressable key={a.icon} style={s.proActionBtn}>
-                  <Ionicons name={a.icon} size={20} color="white" />
-                </Pressable>
-              ))}
+              <Pressable style={s.proActionBtn} onPress={handleCallVendor}>
+                <Ionicons name="call" size={20} color="white" />
+              </Pressable>
+              <Pressable style={s.proActionBtn}>
+                <Ionicons name="chatbubble-outline" size={20} color="white" />
+              </Pressable>
             </View>
           </LinearGradient>
         </Animated.View>
 
-        {/* ── Status Timeline ──────────────────────────────── */}
+        {/* ── Status Timeline ─────────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(200).duration(380)} style={s.timelineCard}>
           <Text style={s.timelineTitle}>Status</Text>
-          {STEPS.map((step, i) => (
+          {steps.map((step, i) => (
             <View key={step.label} style={s.stepRow}>
-              {/* Connector line */}
-              {i < STEPS.length - 1 && (
+              {i < steps.length - 1 && (
                 <View style={[s.stepLine, step.done && s.stepLineDone]} />
               )}
-              {/* Dot */}
               {step.active ? (
                 <View style={s.stepDotActiveWrap}>
                   <Animated.View style={[s.stepDotRing, ringStyle]} />
@@ -165,13 +313,18 @@ export default function LiveTrackingScreen({ navigation }: Props) {
                   {step.done && <Ionicons name="checkmark" size={12} color="white" />}
                 </View>
               )}
-              {/* Text */}
               <View style={s.stepText}>
-                <Text style={[s.stepLabel, step.active && s.stepLabelActive, !step.done && !step.active && s.stepLabelPending]}>
+                <Text style={[
+                  s.stepLabel,
+                  step.active  && s.stepLabelActive,
+                  !step.done && !step.active && s.stepLabelPending,
+                ]}>
                   {step.label}
                 </Text>
                 {step.time ? (
-                  <Text style={[s.stepTime, step.active && s.stepTimeActive]}>{step.time}</Text>
+                  <Text style={[s.stepTime, step.active && s.stepTimeActive]}>
+                    {step.time}
+                  </Text>
                 ) : null}
               </View>
             </View>
@@ -185,29 +338,46 @@ export default function LiveTrackingScreen({ navigation }: Props) {
               <Ionicons name="sparkles" size={18} color="white" />
               <Text style={s.infoCardTitle}>Booking Info</Text>
             </View>
-            <Text style={s.infoValue}>Premium Home Cleaning</Text>
-            <Text style={s.infoSub}>Today, 10:00 AM</Text>
-            <Text style={[s.infoSub, { marginTop: 8 }]}>Villa 12, Sunny Enclave</Text>
+            <Text style={s.infoValue}>{booking?.serviceCategory ?? "—"}</Text>
+            <Text style={s.infoSub}>
+              {booking?.scheduledAt
+                ? new Date(booking.scheduledAt).toLocaleString("en-IN", {
+                    month: "short", day: "numeric",
+                    hour: "2-digit", minute: "2-digit",
+                  })
+                : "—"}
+            </Text>
+            <Text style={[s.infoSub, { marginTop: 8 }]}>{booking?.address ?? ""}</Text>
           </LinearGradient>
+
           <LinearGradient colors={["#047857", "#064e3b"]} style={s.infoCard}>
             <View style={s.infoIconRow}>
               <Ionicons name="card" size={18} color="white" />
               <Text style={s.infoCardTitle}>Payment</Text>
             </View>
-            <Text style={s.infoSub}>Total Paid</Text>
-            <Text style={s.infoPrice}>₹1,499</Text>
+            <Text style={s.infoSub}>Total</Text>
+            <Text style={s.infoPrice}>
+              {booking?.priceLabel ?? (booking?.price ? `₹${booking.price}` : "—")}
+            </Text>
             <Pressable style={s.invoiceBtn}>
               <Text style={s.invoiceBtnText}>View Invoice</Text>
             </Pressable>
           </LinearGradient>
         </Animated.View>
 
+        {loading && (
+          <Text style={s.loadingText}>Connecting to live tracking…</Text>
+        )}
+        {!loading && !booking && (
+          <Text style={s.loadingText}>No active booking found.</Text>
+        )}
+
         <View style={{ height: 110 }} />
       </ScrollView>
 
-      {/* ── Bottom CTA ───────────────────────────────────────── */}
+      {/* ── Bottom CTA ─────────────────────────────────────── */}
       <View style={s.cta}>
-        <Pressable style={s.ctaBtn} onPress={() => navigation.navigate("ServiceInProgress", {})}>
+        <Pressable style={s.ctaBtn} onPress={handleCallVendor}>
           <Ionicons name="call" size={20} color="white" />
           <Text style={s.ctaBtnText}>Contact Professional</Text>
         </Pressable>
@@ -230,8 +400,8 @@ const s = StyleSheet.create({
     justifyContent: "center", alignItems: "center",
   },
   scroll: { paddingHorizontal: 16 },
+  loadingText: { textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 13, marginTop: 20 },
 
-  // Hero
   hero: { borderRadius: 28, padding: 24, marginBottom: 14, minHeight: 180, overflow: "hidden" },
   heroBlobTL: { position: "absolute", top: -40, left: -40, width: 160, height: 160, borderRadius: 80, backgroundColor: "rgba(255,255,255,0.08)" },
   heroBlobBR: { position: "absolute", bottom: -50, right: -30, width: 200, height: 200, borderRadius: 100, backgroundColor: "rgba(0,0,0,0.1)" },
@@ -250,7 +420,6 @@ const s = StyleSheet.create({
   etaUnit: { fontSize: 18, color: "rgba(255,255,255,0.85)" },
   bookingId: { fontSize: 12, color: "rgba(255,255,255,0.6)" },
 
-  // Map
   mapCard: { borderRadius: 24, overflow: "hidden", marginBottom: 14, height: 220 },
   mapGrad: { flex: 1, position: "relative", justifyContent: "flex-end" },
   routeLine: {
@@ -266,23 +435,19 @@ const s = StyleSheet.create({
   },
   mapMarkerWrap: { position: "absolute", alignItems: "center" },
   mapPingRing: {
-    position: "absolute",
-    width: 48, height: 48, borderRadius: 24,
+    position: "absolute", width: 48, height: 48, borderRadius: 24,
     borderWidth: 2, borderColor: "#22c55e",
   },
   etaBubble: {
-    backgroundColor: "white", borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4,
-    marginBottom: 4,
+    backgroundColor: "white", borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4, marginBottom: 4,
   },
   etaBubbleText: { fontSize: 11, fontWeight: "700", color: "#15803d" },
   mapPinPro: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: "#22c55e", justifyContent: "center", alignItems: "center",
-    borderWidth: 2, borderColor: "white",
+    justifyContent: "center", alignItems: "center", borderWidth: 2, borderColor: "white",
   },
   mapLabel: { padding: 12, fontSize: 12, color: "rgba(255,255,255,0.6)" },
 
-  // Pro card
   proCard: {
     borderRadius: 24, padding: 18, marginBottom: 14,
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
@@ -294,9 +459,7 @@ const s = StyleSheet.create({
   proAvatarText: { fontSize: 20, fontWeight: "700", color: "white" },
   proVerified: { position: "absolute", bottom: 0, right: -2 },
   proName: { fontSize: 16, fontWeight: "700", color: "white" },
-  proMeta: { flexDirection: "row", alignItems: "center", marginTop: 3 },
-  proRating: { fontSize: 13, color: "#fbbf24", fontWeight: "600", marginLeft: 3 },
-  proExp: { fontSize: 13, color: "rgba(255,255,255,0.55)" },
+  proSub: { fontSize: 12, color: "rgba(255,255,255,0.55)", marginTop: 2 },
   proActions: { flexDirection: "row", gap: 10 },
   proActionBtn: {
     width: 42, height: 42, borderRadius: 21,
@@ -305,7 +468,6 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: "rgba(255,255,255,0.15)",
   },
 
-  // Timeline
   timelineCard: {
     backgroundColor: colors.surface.container, borderRadius: 24, padding: 20,
     marginBottom: 14, borderWidth: 1, borderColor: colors.glass.border,
@@ -337,12 +499,8 @@ const s = StyleSheet.create({
   stepTime: { fontSize: 12, color: colors.text.muted, marginTop: 2 },
   stepTimeActive: { color: "#3b82f6" },
 
-  // Info row
   infoRow: { flexDirection: "row", gap: 12, marginBottom: 8 },
-  infoCard: {
-    flex: 1, borderRadius: 24, padding: 18,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
-  },
+  infoCard: { flex: 1, borderRadius: 24, padding: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
   infoIconRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 },
   infoCardTitle: { fontSize: 14, fontWeight: "700", color: "white" },
   infoValue: { fontSize: 14, fontWeight: "700", color: "white", marginBottom: 4 },
@@ -354,7 +512,6 @@ const s = StyleSheet.create({
   },
   invoiceBtnText: { fontSize: 12, fontWeight: "700", color: "white" },
 
-  // CTA
   cta: {
     position: "absolute", bottom: 0, left: 0, right: 0,
     paddingHorizontal: 16, paddingBottom: 28, paddingTop: 12,
