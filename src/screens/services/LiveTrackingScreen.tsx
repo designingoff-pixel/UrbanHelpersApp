@@ -1,9 +1,9 @@
-"use client";
 import React, { useEffect, useState } from "react";
-import { ScrollView, Text, View, Pressable, StyleSheet, Linking, Alert } from "react-native";
+import { ScrollView, Text, View, Pressable, StyleSheet, Linking, Alert, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import Animated, {
   useSharedValue, useAnimatedStyle,
   withRepeat, withSequence, withTiming,
@@ -16,6 +16,8 @@ import { db } from "@/services/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
+
+const { width } = Dimensions.get("window");
 
 type Props = NativeStackScreenProps<RootStackParamList, "LiveTracking">;
 
@@ -233,34 +235,57 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
           </LinearGradient>
         </Animated.View>
 
-        {/* ── Map area ─────────────────────────────────────── */}
+        {/* ── Real Map ─────────────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(80).duration(380)} style={s.mapCard}>
-          <LinearGradient colors={["#0f2a3a", "#1a3550"]} style={s.mapGrad}>
-            {/* Route line */}
-            <View style={s.routeLine} />
+          <MapView
+            style={s.map}
+            provider={PROVIDER_GOOGLE}
+            region={
+              vendorLocation
+                ? {
+                    latitude:       vendorLocation.lat,
+                    longitude:      vendorLocation.lng,
+                    latitudeDelta:  0.02,
+                    longitudeDelta: 0.02,
+                  }
+                : {
+                    latitude:      20.5937,
+                    longitude:     78.9629,
+                    latitudeDelta: 10,
+                    longitudeDelta: 10,
+                  }
+            }
+            showsUserLocation={false}
+            showsTraffic={false}
+            showsCompass={false}
+            scrollEnabled={false}
+            zoomEnabled={false}
+          >
+            {/* Vendor marker — moves as GPS updates arrive */}
+            {vendorLocation && (
+              <Marker
+                coordinate={{ latitude: vendorLocation.lat, longitude: vendorLocation.lng }}
+                title={booking?.vendorName ?? "Professional"}
+                anchor={{ x: 0.5, y: 0.5 }}
+              >
+                <View style={s.vendorPin}>
+                  <LinearGradient colors={["#2563eb", "#06b6d4"]} style={s.vendorPinInner}>
+                    <Ionicons name="car" size={16} color="white" />
+                  </LinearGradient>
+                </View>
+              </Marker>
+            )}
+          </MapView>
 
-            {/* Home pin */}
-            <View style={[s.mapPin, { top: "45%", right: "22%" }]}>
-              <View style={s.mapPinHome}>
-                <Ionicons name="home" size={16} color="white" />
-              </View>
+          {/* Overlay label */}
+          <View style={s.mapOverlay}>
+            <View style={s.mapLivePill}>
+              <Animated.View style={[s.liveDotSmall, pulseStyle]} />
+              <Text style={s.mapLiveText}>
+                {vendorLocation ? "Vendor location — live" : "Waiting for vendor GPS…"}
+              </Text>
             </View>
-
-            {/* Vendor pin — shows live indicator when location received */}
-            <View style={[s.mapMarkerWrap, { top: "60%", left: "32%" }]}>
-              <Animated.View style={[s.mapPingRing, ringStyle]} />
-              <View style={s.etaBubble}>
-                <Text style={s.etaBubbleText}>
-                  {vendorLocation ? "Live 📍" : "Waiting…"}
-                </Text>
-              </View>
-              <View style={[s.mapPinPro, vendorLocation ? { backgroundColor: "#22c55e" } : { backgroundColor: "#64748b" }]}>
-                <Ionicons name="car" size={16} color="white" />
-              </View>
-            </View>
-
-            <Text style={s.mapLabel}>{booking?.address ?? "Locating…"}</Text>
-          </LinearGradient>
+          </View>
         </Animated.View>
 
         {/* ── Professional Card ──────────────────────────── */}
@@ -420,33 +445,25 @@ const s = StyleSheet.create({
   etaUnit: { fontSize: 18, color: "rgba(255,255,255,0.85)" },
   bookingId: { fontSize: 12, color: "rgba(255,255,255,0.6)" },
 
-  mapCard: { borderRadius: 24, overflow: "hidden", marginBottom: 14, height: 220 },
-  mapGrad: { flex: 1, position: "relative", justifyContent: "flex-end" },
-  routeLine: {
-    position: "absolute", top: "40%", left: "28%", right: "28%",
-    height: 3, backgroundColor: "#22c55e", borderRadius: 2,
-    transform: [{ rotate: "-20deg" }],
+  mapCard:    { borderRadius: 24, overflow: "hidden", marginBottom: 14, height: 220 },
+  map:        { flex: 1, height: 220 },
+  mapOverlay: {
+    position: "absolute", bottom: 0, left: 0, right: 0,
+    padding: 12,
   },
-  mapPin: { position: "absolute" },
-  mapPinHome: {
+  mapLivePill:{
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: "rgba(8,24,38,0.75)", borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 6, alignSelf: "flex-start",
+  },
+  liveDotSmall:{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: "#22c55e" },
+  mapLiveText: { fontSize: 11, fontWeight: "700", color: "rgba(255,255,255,0.85)" },
+  vendorPin:       { alignItems: "center" },
+  vendorPinInner:  {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: "#2563eb", justifyContent: "center", alignItems: "center",
+    justifyContent: "center", alignItems: "center",
     borderWidth: 2, borderColor: "white",
   },
-  mapMarkerWrap: { position: "absolute", alignItems: "center" },
-  mapPingRing: {
-    position: "absolute", width: 48, height: 48, borderRadius: 24,
-    borderWidth: 2, borderColor: "#22c55e",
-  },
-  etaBubble: {
-    backgroundColor: "white", borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4, marginBottom: 4,
-  },
-  etaBubbleText: { fontSize: 11, fontWeight: "700", color: "#15803d" },
-  mapPinPro: {
-    width: 36, height: 36, borderRadius: 18,
-    justifyContent: "center", alignItems: "center", borderWidth: 2, borderColor: "white",
-  },
-  mapLabel: { padding: 12, fontSize: 12, color: "rgba(255,255,255,0.6)" },
 
   proCard: {
     borderRadius: 24, padding: 18, marginBottom: 14,
