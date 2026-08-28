@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import * as WebBrowser from "expo-web-browser";
+import { registerForPushNotifications } from "@/services/notificationService";
 import * as Google from "expo-auth-session/providers/google";
 import { GoogleAuthProvider, onAuthStateChanged, signInWithCredential, signOut as firebaseSignOut, User } from "firebase/auth";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
@@ -28,9 +29,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
-    return onAuthStateChanged(auth, (firebaseUser) => {
+    return onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       setInitializing(false);
+
+      if (firebaseUser) {
+        // Automatically request push token and save to user profile
+        try {
+          const token = await registerForPushNotifications();
+          if (token) {
+            await setDoc(
+              doc(db, "users", firebaseUser.uid),
+              { pushToken: token },
+              { merge: true }
+            );
+          }
+        } catch (e) {
+          console.warn("Failed to save push token", e);
+        }
+      }
     });
   }, []);
 

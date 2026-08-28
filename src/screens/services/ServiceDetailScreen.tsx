@@ -13,6 +13,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Location from "expo-location";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 import { SERVICE_CATEGORIES } from "./servicesData";
@@ -38,27 +39,15 @@ type Props = NativeStackScreenProps<RootStackParamList, "ServiceDetail">;
 
 const { width: W } = Dimensions.get("window");
 
-const DAYS = Array.from({ length: 7 }).map((_, i) => {
-  const d = new Date();
-  d.setDate(d.getDate() + i);
-  const dayName = i === 0 ? "Today" : i === 1 ? "Tmw" : d.toLocaleDateString("en-US", { weekday: "short" });
-  return { day: dayName, date: d.getDate().toString() };
-});
-
-const TIME_SLOTS = [
-  { label: "Morning",   time: "8:00 AM – 11:00 AM" },
-  { label: "Afternoon", time: "12:00 PM – 3:00 PM" },
-  { label: "Evening",   time: "4:00 PM – 7:00 PM" },
-];
-
 export default function ServiceDetailScreen({ navigation, route }: Props) {
   const { categoryId, subServiceId } = route.params;
 
   const category = SERVICE_CATEGORIES.find((c) => c.id === categoryId);
   const sub = category?.subServices.find((s) => s.id === subServiceId);
 
-  const [selectedDay, setSelectedDay] = useState(0);
-  const [selectedSlot, setSelectedSlot] = useState(0);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerMode, setPickerMode] = useState<"date" | "time">("date");
   const [address, setAddress] = useState("");
   const [locType, setLocType] = useState("Home");
   const [submitting, setSubmitting] = useState(false);
@@ -90,16 +79,6 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         if (geocodeResult && geocodeResult.length > 0) {
           customerLat = geocodeResult[0].latitude;
           customerLng = geocodeResult[0].longitude;
-        } else {
-          // Fallback to current device location
-          const { status } = await Location.requestForegroundPermissionsAsync();
-          if (status === "granted") {
-            const pos = await Location.getCurrentPositionAsync({
-              accuracy: Location.Accuracy.Balanced,
-            });
-            customerLat = pos.coords.latitude;
-            customerLng = pos.coords.longitude;
-          }
         }
       } catch (e) {
         console.warn("Location error:", e);
@@ -111,7 +90,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         serviceCategory: category.name,
         subServiceName:  sub.name,
         address:         address.trim(),
-        scheduledAt:     slotToScheduledAt(selectedDay, selectedSlot),
+        scheduledAt:     selectedDate.toISOString(),
         price:           parsePrice(sub.price),
         priceLabel:      sub.price,
         customerLat,
@@ -122,8 +101,8 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         bookingId,
         categoryId:   category.id,
         subServiceId: sub.id,
-        dayIndex:     selectedDay,
-        slotIndex:    selectedSlot,
+        dayIndex:     0,
+        slotIndex:    0,
       });
     } catch (err) {
       Alert.alert("Booking failed", "Something went wrong while confirming your booking. Please try again.");
@@ -242,7 +221,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
           </View>
         </Animated.View>
 
-        {/* ── Date & Time ──────────────────────────────────────── */}
+        {/* ── Native Date & Time Picker ──────────────────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(160).duration(380)}>
           <LinearGradient
             colors={["#4338ca", "#8b5cf6"]}
@@ -250,44 +229,41 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
             style={s.dateSection}
           >
             <Text style={s.dateSectionTitle}>Select Date & Time</Text>
-
-            {/* Express toggle */}
-            <View style={s.expressRow}>
-              <Ionicons name="flash" size={16} color="white" />
-              <Text style={s.expressText}>Express Service (within 2 hrs)</Text>
+            
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 15 }}>
+              <Pressable
+                style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.2)', padding: 12, borderRadius: 12, alignItems: 'center' }}
+                onPress={() => { setPickerMode('date'); setShowPicker(true); }}
+              >
+                <Ionicons name="calendar-outline" size={20} color="white" />
+                <Text style={{ color: 'white', marginTop: 4, fontWeight: '600' }}>
+                  {selectedDate.toLocaleDateString()}
+                </Text>
+              </Pressable>
+              
+              <Pressable
+                style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.2)', padding: 12, borderRadius: 12, alignItems: 'center' }}
+                onPress={() => { setPickerMode('time'); setShowPicker(true); }}
+              >
+                <Ionicons name="time-outline" size={20} color="white" />
+                <Text style={{ color: 'white', marginTop: 4, fontWeight: '600' }}>
+                  {selectedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </Text>
+              </Pressable>
             </View>
-
-            {/* Day strip */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.dayStrip}>
-              {DAYS.map((d, i) => (
-                <Pressable
-                  key={i}
-                  onPress={() => setSelectedDay(i)}
-                  style={[s.dayCard, selectedDay === i && s.dayCardActive]}
-                >
-                  <Text style={[s.dayName, selectedDay === i && s.dayNameActive]}>{d.day}</Text>
-                  <Text style={[s.dayDate, selectedDay === i && s.dayDateActive]}>{d.date}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-
-            {/* Time slots */}
-            <View style={s.slotGrid}>
-              {TIME_SLOTS.map((slot, i) => (
-                <Pressable
-                  key={i}
-                  onPress={() => setSelectedSlot(i)}
-                  style={[s.slotCard, selectedSlot === i && s.slotCardActive]}
-                >
-                  <Text style={[s.slotLabel, selectedSlot === i && s.slotLabelActive]}>
-                    {slot.label}
-                  </Text>
-                  <Text style={[s.slotTime, selectedSlot === i && s.slotTimeActive]}>
-                    {slot.time}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
+            
+            {showPicker && (
+              <DateTimePicker
+                value={selectedDate}
+                mode={pickerMode}
+                is24Hour={false}
+                display="default"
+                onChange={(event, date) => {
+                  setShowPicker(false);
+                  if (date) setSelectedDate(date);
+                }}
+              />
+            )}
           </LinearGradient>
         </Animated.View>
 
