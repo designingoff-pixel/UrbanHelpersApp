@@ -42,6 +42,9 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
+      - name: Install expo-location explicitly
+        run: npx expo install expo-location --npm
+
       - name: Generate Android project (Expo Prebuild)
         run: npx expo prebuild --platform android --clean --no-install
 
