@@ -38,12 +38,12 @@ type Props = NativeStackScreenProps<RootStackParamList, "ServiceDetail">;
 
 const { width: W } = Dimensions.get("window");
 
-const DAYS = [
-  { day: "Mon", date: "11" }, { day: "Tue", date: "12" },
-  { day: "Wed", date: "13" }, { day: "Thu", date: "14" },
-  { day: "Fri", date: "15" }, { day: "Sat", date: "16" },
-  { day: "Sun", date: "17" },
-];
+const DAYS = Array.from({ length: 7 }).map((_, i) => {
+  const d = new Date();
+  d.setDate(d.getDate() + i);
+  const dayName = i === 0 ? "Today" : i === 1 ? "Tmw" : d.toLocaleDateString("en-US", { weekday: "short" });
+  return { day: dayName, date: d.getDate().toString() };
+});
 
 const TIME_SLOTS = [
   { label: "Morning",   time: "8:00 AM – 11:00 AM" },
@@ -57,9 +57,10 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   const category = SERVICE_CATEGORIES.find((c) => c.id === categoryId);
   const sub = category?.subServices.find((s) => s.id === subServiceId);
 
-  const [selectedDay, setSelectedDay] = useState(1);
-  const [selectedSlot, setSelectedSlot] = useState(1);
+  const [selectedDay, setSelectedDay] = useState(0);
+  const [selectedSlot, setSelectedSlot] = useState(0);
   const [address, setAddress] = useState("");
+  const [locType, setLocType] = useState("Home");
   const [submitting, setSubmitting] = useState(false);
   const { user } = useAuth();
 
@@ -80,20 +81,28 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 
     setSubmitting(true);
     try {
-      // Try to get customer GPS for live tracking map
+      // Try to get customer GPS from typed address
       let customerLat: number | undefined;
       let customerLng: number | undefined;
       try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === "granted") {
-          const pos = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
-          customerLat = pos.coords.latitude;
-          customerLng = pos.coords.longitude;
+        const fullAddress = `${locType} - ${address.trim()}`;
+        const geocodeResult = await Location.geocodeAsync(fullAddress);
+        if (geocodeResult && geocodeResult.length > 0) {
+          customerLat = geocodeResult[0].latitude;
+          customerLng = geocodeResult[0].longitude;
+        } else {
+          // Fallback to current device location
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status === "granted") {
+            const pos = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            });
+            customerLat = pos.coords.latitude;
+            customerLng = pos.coords.longitude;
+          }
         }
-      } catch {
-        // GPS optional — booking still works without it
+      } catch (e) {
+        console.warn("Location error:", e);
       }
 
       const bookingId = await createBooking({
@@ -203,13 +212,17 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
             {/* Location type chips */}
             <View style={s.locChips}>
               {["Home", "Office", "+ Add New"].map((l, i) => (
-                <Pressable key={l} style={[s.locChip, i === 0 && s.locChipActive]}>
+                <Pressable
+                  key={l}
+                  onPress={() => setLocType(l)}
+                  style={[s.locChip, locType === l && s.locChipActive]}
+                >
                   <Ionicons
                     name={i === 0 ? "home-outline" : i === 1 ? "briefcase-outline" : "add"}
                     size={13}
-                    color={i === 0 ? category.accent : colors.text.secondary}
+                    color={locType === l ? category.accent : colors.text.secondary}
                   />
-                  <Text style={[s.locChipText, i === 0 && { color: category.accent }]}>{l}</Text>
+                  <Text style={[s.locChipText, locType === l && { color: category.accent }]}>{l}</Text>
                 </Pressable>
               ))}
             </View>

@@ -242,6 +242,18 @@ export async function scheduleWorkoutReminder(
   });
 }
 
+export async function sendVendorArrivedOTPNotification(otp: string): Promise<string> {
+  return Notifications.scheduleNotificationAsync({
+    content: {
+      title: "📍 Your Vendor Has Arrived!",
+      body: `Please share this secure OTP with your vendor: ${otp}`,
+      sound: true,
+      data: { screen: "LiveTracking" },
+    },
+    trigger: null, // trigger immediately
+  });
+}
+
 export async function scheduleWeeklySummary(): Promise<void> {
   await Notifications.scheduleNotificationAsync({
     content: {

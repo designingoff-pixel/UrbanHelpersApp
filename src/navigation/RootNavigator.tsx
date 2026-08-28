@@ -1,6 +1,10 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { RootStackParamList } from "./types";
+import { useAuth } from "@/context/AuthContext";
+import { db } from "@/services/firebase";
+import { collection, query, where, onSnapshot, orderBy, limit } from "firebase/firestore";
+import { sendVendorArrivedOTPNotification } from "@/services/notificationService";
 
 // Module 1 — Onboarding / Auth
 import SplashScreen from "@/screens/auth/SplashScreen";
@@ -80,15 +84,52 @@ import OffersScreen from "@/screens/services/OffersScreen";
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 /**
+ * Global component that listens to the user's active booking
+ * and triggers a push notification if the vendor arrives.
+ */
+function GlobalOTPListener() {
+  const { user } = useAuth();
+  const prevStatus = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(
+      collection(db, "bookings"),
+      where("customerId", "==", user.uid),
+      where("status", "in", ["assigned", "accepted", "en_route", "arrived"]),
+      limit(1)
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      if (snap.empty) {
+        prevStatus.current = null;
+        return;
+      }
+      const data = snap.docs[0].data();
+      const newStatus = data.status;
+
+      // If transition to arrived, fire notification!
+      if (prevStatus.current && prevStatus.current !== "arrived" && newStatus === "arrived") {
+        if (data.otp) {
+          sendVendorArrivedOTPNotification(data.otp);
+        }
+      }
+      prevStatus.current = newStatus;
+    });
+    return () => unsub();
+  }, [user]);
+
+  return null;
+}
+
+/**
  * Screen graph mirrors the 143 reactions wired into the Figma prototype
- * (Splash -> Welcome -> Onboarding/Auth -> Main Dashboard hub -> module sub-screens).
- * A plain stack is used (not nested tabs) because the source design's bottom navs
- * differ per screen rather than sharing one fixed tab set.
  */
 export function RootNavigator() {
   return (
-    <Stack.Navigator
-      initialRouteName="Splash"
+    <>
+      <GlobalOTPListener />
+      <Stack.Navigator
+        initialRouteName="Splash"
       screenOptions={{
         headerShown: false,
         // Samsung Health-style: fast slide-up with a slight fade
@@ -174,5 +215,6 @@ export function RootNavigator() {
       <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
       <Stack.Screen name="Offers" component={OffersScreen} />
     </Stack.Navigator>
+    </>
   );
 }
