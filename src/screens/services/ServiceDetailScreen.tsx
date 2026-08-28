@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import * as Location from "expo-location";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 import { SERVICE_CATEGORIES } from "./servicesData";
@@ -79,23 +80,41 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 
     setSubmitting(true);
     try {
+      // Try to get customer GPS for live tracking map
+      let customerLat: number | undefined;
+      let customerLng: number | undefined;
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === "granted") {
+          const pos = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          customerLat = pos.coords.latitude;
+          customerLng = pos.coords.longitude;
+        }
+      } catch {
+        // GPS optional — booking still works without it
+      }
+
       const bookingId = await createBooking({
-        customerId: user.uid,
-        customerName: user.displayName ?? "Urban Helpers customer",
+        customerId:      user.uid,
+        customerName:    user.displayName ?? "Urban Helpers customer",
         serviceCategory: category.name,
-        subServiceName: sub.name,
-        address: address.trim(),
-        scheduledAt: slotToScheduledAt(selectedDay, selectedSlot),
-        price: parsePrice(sub.price),
-        priceLabel: sub.price,
+        subServiceName:  sub.name,
+        address:         address.trim(),
+        scheduledAt:     slotToScheduledAt(selectedDay, selectedSlot),
+        price:           parsePrice(sub.price),
+        priceLabel:      sub.price,
+        customerLat,
+        customerLng,
       });
 
       navigation.navigate("BookingConfirmed", {
         bookingId,
-        categoryId: category.id,
+        categoryId:   category.id,
         subServiceId: sub.id,
-        dayIndex: selectedDay,
-        slotIndex: selectedSlot,
+        dayIndex:     selectedDay,
+        slotIndex:    selectedSlot,
       });
     } catch (err) {
       Alert.alert("Booking failed", "Something went wrong while confirming your booking. Please try again.");

@@ -36,14 +36,16 @@ export interface Booking {
 }
 
 export interface CreateBookingInput {
-  customerId: string;
-  customerName: string;
+  customerId:      string;
+  customerName:    string;
   serviceCategory: string;
-  subServiceName: string;
-  address: string;
-  scheduledAt: string;
-  price: number;
-  priceLabel: string;
+  subServiceName:  string;
+  address:         string;
+  scheduledAt:     string;
+  price:           number;
+  priceLabel:      string;
+  customerLat?:    number;   // GPS coords stored so vendor map + customer map can show both pins
+  customerLng?:    number;
 }
 
 /** Generates a random 4-digit OTP string */
