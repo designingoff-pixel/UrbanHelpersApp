@@ -3,6 +3,7 @@ import {
   View, Text, Pressable, StyleSheet,
   Linking, Alert, ScrollView,
 } from "react-native";
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -73,35 +74,25 @@ function buildSteps(status: BookingStatus, etaText: string) {
     done:   i < idx,
     active: i === idx,
     time:   i === idx && s === "en_route" ? etaText
-          : i === idx ? "Now"
-          : i === 0   ? "Confirmed"
-          : "",
+          : i === idx ? "Now" : i === 0 ? "Confirmed" : "",
   }));
 }
 
 export default function LiveTrackingScreen({ navigation }: Props) {
   const { user } = useAuth();
+  const mapRef = useRef<MapView>(null);
 
   const pulse = useSharedValue(1);
   const ring  = useSharedValue(0.8);
   useEffect(() => {
-    pulse.value = withRepeat(
-      withSequence(withTiming(1.35,{duration:800}),withTiming(1,{duration:800})),
-      -1, false,
-    );
-    ring.value = withRepeat(
-      withSequence(withTiming(1.45,{duration:900}),withTiming(0.8,{duration:900})),
-      -1, false,
-    );
+    pulse.value = withRepeat(withSequence(withTiming(1.35,{duration:800}),withTiming(1,{duration:800})),-1,false);
+    ring.value  = withRepeat(withSequence(withTiming(1.45,{duration:900}),withTiming(0.8,{duration:900})),-1,false);
   }, []);
   const pulseStyle = useAnimatedStyle(() => ({ transform:[{scale:pulse.value}] }));
-  const ringStyle  = useAnimatedStyle(() => ({
-    transform:[{scale:ring.value}],
-    opacity: Math.max(0, 2 - ring.value),
-  }));
+  const ringStyle  = useAnimatedStyle(() => ({ transform:[{scale:ring.value}], opacity:Math.max(0,2-ring.value) }));
 
-  const [booking,        setBooking]        = useState<LiveBooking | null>(null);
-  const [vendorCoords,   setVendorCoords]   = useState<VendorCoords | null>(null);
+  const [booking,        setBooking]        = useState<LiveBooking|null>(null);
+  const [vendorCoords,   setVendorCoords]   = useState<VendorCoords|null>(null);
   const [customerCoords, setCustomerCoords] = useState<{lat:number;lng:number}|null>(null);
   const [etaText,        setEtaText]        = useState("Calculating…");
   const [distanceText,   setDistanceText]   = useState("");
@@ -118,9 +109,9 @@ export default function LiveTrackingScreen({ navigation }: Props) {
       where("status","in",["assigned","accepted","en_route","arrived","in_progress"]),
       limit(1),
     );
-    return onSnapshot(q, (snap) => {
+    return onSnapshot(q,(snap) => {
       if (snap.empty) { setBooking(null); setLoading(false); return; }
-      const d    = snap.docs[0];
+      const d = snap.docs[0];
       const data = { id:d.id, ...d.data() } as LiveBooking;
       setBooking(data);
       setLoading(false);
@@ -141,7 +132,7 @@ export default function LiveTrackingScreen({ navigation }: Props) {
         );
       }
     }, 10000);
-    const unsub = onSnapshot(doc(db,"vendors",booking.vendorId), (snap) => {
+    const unsub = onSnapshot(doc(db,"vendors",booking.vendorId),(snap) => {
       if (!snap.exists()) return;
       const data = snap.data();
       if (data?.location?.lat) {
@@ -162,7 +153,19 @@ export default function LiveTrackingScreen({ navigation }: Props) {
     setDistanceText(formatDistance(km));
   }, [vendorCoords, customerCoords]);
 
-  // Auto-navigate on complete
+  // Fit map to both markers
+  useEffect(() => {
+    if (!vendorCoords || !customerCoords) return;
+    mapRef.current?.fitToCoordinates(
+      [
+        { latitude:vendorCoords.lat,   longitude:vendorCoords.lng },
+        { latitude:customerCoords.lat, longitude:customerCoords.lng },
+      ],
+      { edgePadding:{top:60,right:50,bottom:320,left:50}, animated:true },
+    );
+  }, [vendorCoords, customerCoords]);
+
+  // Auto navigate on complete
   useEffect(() => {
     if (booking?.status === "completed")
       setTimeout(() => navigation.navigate("RatingFeedback",{}), 1500);
@@ -172,20 +175,18 @@ export default function LiveTrackingScreen({ navigation }: Props) {
   const steps    = buildSteps(status as BookingStatus, etaText);
   const initials = (booking?.vendorName ?? "VC").split(" ").map((w:string)=>w[0]).join("").slice(0,2).toUpperCase();
 
+  const mapRegion = vendorCoords
+    ? { latitude:vendorCoords.lat,   longitude:vendorCoords.lng,   latitudeDelta:0.02, longitudeDelta:0.02 }
+    : customerCoords
+    ? { latitude:customerCoords.lat, longitude:customerCoords.lng, latitudeDelta:0.02, longitudeDelta:0.02 }
+    : { latitude:20.5937, longitude:78.9629, latitudeDelta:10, longitudeDelta:10 };
+
   const handleCall = () => {
     Alert.alert("Call Professional","This will call the assigned professional.",[
       {text:"Cancel",style:"cancel"},
       {text:"Call",onPress:()=>Linking.openURL("tel:+919999999999")},
     ]);
   };
-
-  // Progress percentage for vendor movement bar
-  const progressPct = vendorCoords && customerCoords
-    ? Math.max(0, Math.min(100, 100 - (getDistanceKm(
-        vendorCoords.lat,vendorCoords.lng,
-        customerCoords.lat,customerCoords.lng
-      ) / 5) * 100))
-    : 0;
 
   return (
     <View style={s.root}>
@@ -238,101 +239,80 @@ export default function LiveTrackingScreen({ navigation }: Props) {
           </LinearGradient>
         </Animated.View>
 
-        {/* ── Live Tracking Card (no Google Maps API key needed) ── */}
-        <Animated.View entering={FadeInDown.delay(80).duration(350)}>
-          <LinearGradient colors={["#0f2a3a","#1a3550"]} style={s.trackingCard}>
-
-            {/* Header row */}
-            <View style={s.trackingHeader}>
-              <View style={s.trackingBadge}>
-                <Animated.View style={[s.trackingDot,pulseStyle,
-                  {backgroundColor: demoMode?"#f59e0b":vendorCoords?"#4ade80":"#64748b"}]}/>
-                <Text style={s.trackingBadgeText}>
-                  {demoMode?"DEMO TRACKING":vendorCoords?"LIVE GPS TRACKING":"WAITING FOR GPS…"}
-                </Text>
-              </View>
-              {distanceText?(
-                <Text style={s.trackingDistLabel}>{distanceText}</Text>
-              ):null}
-            </View>
-
-            {/* Route visualisation */}
-            <View style={s.routeRow}>
-              {/* Vendor pin */}
-              <View style={s.routePin}>
-                <LinearGradient
-                  colors={demoMode?["#f59e0b","#d97706"]:["#2563eb","#06b6d4"]}
-                  style={s.routePinInner}
-                >
-                  <Ionicons name="car" size={18} color="white"/>
-                </LinearGradient>
-                <Text style={s.routePinLabel}>
-                  {booking?.vendorName?.split(" ")[0]??"Vendor"}
-                </Text>
-              </View>
-
-              {/* Animated progress bar */}
-              <View style={s.routeBar}>
-                <View style={s.routeBarBg}>
+        {/* ── Real Google MapView ─────────────────────────────────── */}
+        <Animated.View entering={FadeInDown.delay(80).duration(350)} style={s.mapCard}>
+          <MapView
+            ref={mapRef}
+            style={s.map}
+            provider={PROVIDER_GOOGLE}
+            region={mapRegion}
+            showsUserLocation={false}
+            showsTraffic={false}
+            showsCompass={false}
+            scrollEnabled={true}
+            zoomEnabled={true}
+            rotateEnabled={false}
+          >
+            {/* Vendor marker — moves every 5s */}
+            {vendorCoords && (
+              <Marker
+                coordinate={{ latitude:vendorCoords.lat, longitude:vendorCoords.lng }}
+                title={booking?.vendorName??"Professional"}
+                anchor={{ x:0.5, y:0.5 }}
+              >
+                <View style={s.vendorPin}>
                   <LinearGradient
-                    colors={demoMode?["#f59e0b","#fbbf24"]:["#2563eb","#06b6d4"]}
-                    start={{x:0,y:0}} end={{x:1,y:0}}
-                    style={[s.routeBarFill,{width:`${progressPct}%` as any}]}
-                  />
+                    colors={demoMode?["#f59e0b","#d97706"]:["#2563eb","#06b6d4"]}
+                    style={s.vendorPinInner}
+                  >
+                    <Ionicons name="car" size={16} color="white"/>
+                  </LinearGradient>
                 </View>
-                {/* Moving dots */}
-                <View style={s.routeDots}>
-                  {[0,1,2,3,4].map(i=>(
-                    <View key={i} style={[s.routeDot,{
-                      opacity: vendorCoords ? 0.9-(i*0.15) : 0.2,
-                      backgroundColor: demoMode?"#f59e0b":"#3b82f6",
-                    }]}/>
-                  ))}
+              </Marker>
+            )}
+
+            {/* Customer home marker */}
+            {customerCoords && (
+              <Marker
+                coordinate={{ latitude:customerCoords.lat, longitude:customerCoords.lng }}
+                title="Your Location"
+                anchor={{ x:0.5, y:1 }}
+              >
+                <View style={s.homePin}>
+                  <View style={s.homePinInner}>
+                    <Ionicons name="home" size={16} color="white"/>
+                  </View>
+                  <View style={s.homePinTail}/>
                 </View>
-              </View>
+              </Marker>
+            )}
 
-              {/* Customer pin */}
-              <View style={s.routePin}>
-                <View style={s.routeHomePinInner}>
-                  <Ionicons name="home" size={18} color="white"/>
-                </View>
-                <Text style={s.routePinLabel}>You</Text>
-              </View>
-            </View>
+            {/* Dashed route */}
+            {vendorCoords && customerCoords && (
+              <Polyline
+                coordinates={[
+                  { latitude:vendorCoords.lat,   longitude:vendorCoords.lng },
+                  { latitude:customerCoords.lat, longitude:customerCoords.lng },
+                ]}
+                strokeColor={demoMode?"#f59e0b":"#3b82f6"}
+                strokeWidth={3}
+                lineDashPattern={[10,6]}
+              />
+            )}
+          </MapView>
 
-            {/* Stats row */}
-            <View style={s.trackingStats}>
-              <View style={s.trackingStat}>
-                <Ionicons name="time-outline" size={15} color="#4ade80"/>
-                <Text style={s.trackingStatLabel}>ETA</Text>
-                <Text style={s.trackingStatValue}>{etaText}</Text>
-              </View>
-              <View style={s.statDivider}/>
-              <View style={s.trackingStat}>
-                <Ionicons name="navigate-outline" size={15} color="#60a5fa"/>
-                <Text style={s.trackingStatLabel}>Distance</Text>
-                <Text style={s.trackingStatValue}>{distanceText||"—"}</Text>
-              </View>
-              <View style={s.statDivider}/>
-              <View style={s.trackingStat}>
-                <Ionicons name="radio-outline" size={15}
-                  color={vendorCoords?"#4ade80":"#64748b"}/>
-                <Text style={s.trackingStatLabel}>GPS</Text>
-                <Text style={[s.trackingStatValue,
-                  {color:vendorCoords?"#4ade80":"#64748b"}]}>
-                  {vendorCoords?"Live":"Waiting"}
-                </Text>
-              </View>
-            </View>
-
-            {/* Map coming soon note */}
-            <View style={s.mapComingSoon}>
-              <Ionicons name="map-outline" size={14} color="rgba(255,255,255,0.35)"/>
-              <Text style={s.mapComingSoonText}>
-                Interactive map coming soon · Real-time position updated above
+          {/* Live status pill */}
+          <View style={s.mapOverlay}>
+            <View style={[s.mapPill, demoMode&&{backgroundColor:"rgba(245,158,11,0.85)"}]}>
+              <Animated.View style={[s.mapPillDot, pulseStyle, demoMode&&{backgroundColor:"#fef08a"}]}/>
+              <Text style={s.mapPillText}>
+                {vendorCoords
+                  ? demoMode ? "Demo mode — real GPS pending"
+                             : "Live vendor location"
+                  : "Waiting for vendor GPS…"}
               </Text>
             </View>
-          </LinearGradient>
+          </View>
         </Animated.View>
 
         {/* Professional card */}
@@ -343,27 +323,17 @@ export default function LiveTrackingScreen({ navigation }: Props) {
                 <LinearGradient colors={["#2563eb","#8b5cf6"]} style={s.proAvatar}>
                   <Text style={s.proAvatarText}>{initials}</Text>
                 </LinearGradient>
-                {booking?.vendorId&&(
-                  <View style={s.proVerified}>
-                    <Ionicons name="checkmark-circle" size={16} color="#22c55e"/>
-                  </View>
-                )}
+                {booking?.vendorId&&(<View style={s.proVerified}><Ionicons name="checkmark-circle" size={16} color="#22c55e"/></View>)}
               </View>
               <View style={{flex:1}}>
                 <Text style={s.proName}>{booking?.vendorName??"Assigning…"}</Text>
                 <Text style={s.proSub}>{booking?.serviceCategory??""}</Text>
-                {distanceText?(
-                  <Text style={s.proETA}>{distanceText} · {etaText}</Text>
-                ):null}
+                {distanceText&&(<Text style={s.proETA}>{distanceText} · {etaText}</Text>)}
               </View>
             </View>
             <View style={s.proActions}>
-              <Pressable style={s.proBtn} onPress={handleCall}>
-                <Ionicons name="call" size={20} color="white"/>
-              </Pressable>
-              <Pressable style={s.proBtn}>
-                <Ionicons name="chatbubble-outline" size={20} color="white"/>
-              </Pressable>
+              <Pressable style={s.proBtn} onPress={handleCall}><Ionicons name="call" size={20} color="white"/></Pressable>
+              <Pressable style={s.proBtn}><Ionicons name="chatbubble-outline" size={20} color="white"/></Pressable>
             </View>
           </LinearGradient>
         </Animated.View>
@@ -373,9 +343,7 @@ export default function LiveTrackingScreen({ navigation }: Props) {
           <Text style={s.timelineTitle}>Status</Text>
           {steps.map((step,i)=>(
             <View key={step.label} style={s.stepRow}>
-              {i<steps.length-1&&(
-                <View style={[s.stepLine,step.done&&s.stepLineDone]}/>
-              )}
+              {i<steps.length-1&&(<View style={[s.stepLine,step.done&&s.stepLineDone]}/>)}
               {step.active?(
                 <View style={s.stepActiveWrap}>
                   <Animated.View style={[s.stepRing,ringStyle]}/>
@@ -387,12 +355,8 @@ export default function LiveTrackingScreen({ navigation }: Props) {
                 </View>
               )}
               <View style={s.stepText}>
-                <Text style={[s.stepLabel,
-                  step.active&&s.stepLabelActive,
-                  !step.done&&!step.active&&s.stepLabelPending]}>
-                  {step.label}
-                </Text>
-                {step.time?(<Text style={[s.stepTime,step.active&&s.stepTimeActive]}>{step.time}</Text>):null}
+                <Text style={[s.stepLabel,step.active&&s.stepLabelActive,!step.done&&!step.active&&s.stepLabelPending]}>{step.label}</Text>
+                {step.time&&(<Text style={[s.stepTime,step.active&&s.stepTimeActive]}>{step.time}</Text>)}
               </View>
             </View>
           ))}
@@ -401,31 +365,16 @@ export default function LiveTrackingScreen({ navigation }: Props) {
         {/* Booking + Payment */}
         <Animated.View entering={FadeInDown.delay(260).duration(350)} style={s.infoRow}>
           <LinearGradient colors={["#4338ca","#312e81"]} style={s.infoCard}>
-            <View style={s.infoIconRow}>
-              <Ionicons name="sparkles" size={16} color="white"/>
-              <Text style={s.infoCardTitle}>Booking</Text>
-            </View>
+            <View style={s.infoIconRow}><Ionicons name="sparkles" size={16} color="white"/><Text style={s.infoCardTitle}>Booking</Text></View>
             <Text style={s.infoValue}>{booking?.serviceCategory??"—"}</Text>
-            <Text style={s.infoSub}>
-              {booking?.scheduledAt
-                ?new Date(booking.scheduledAt).toLocaleString("en-IN",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})
-                :"—"}
-            </Text>
+            <Text style={s.infoSub}>{booking?.scheduledAt?new Date(booking.scheduledAt).toLocaleString("en-IN",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"—"}</Text>
             <Text style={[s.infoSub,{marginTop:6}]} numberOfLines={2}>{booking?.address??""}</Text>
           </LinearGradient>
-
           <LinearGradient colors={["#047857","#064e3b"]} style={s.infoCard}>
-            <View style={s.infoIconRow}>
-              <Ionicons name="card" size={16} color="white"/>
-              <Text style={s.infoCardTitle}>Payment</Text>
-            </View>
+            <View style={s.infoIconRow}><Ionicons name="card" size={16} color="white"/><Text style={s.infoCardTitle}>Payment</Text></View>
             <Text style={s.infoSub}>Total</Text>
-            <Text style={s.infoPrice}>
-              {booking?.priceLabel??(booking?.price?`₹${booking.price}`:"—")}
-            </Text>
-            <Pressable style={s.invoiceBtn}>
-              <Text style={s.invoiceBtnText}>View Invoice</Text>
-            </Pressable>
+            <Text style={s.infoPrice}>{booking?.priceLabel??(booking?.price?`₹${booking.price}`:"—")}</Text>
+            <Pressable style={s.invoiceBtn}><Text style={s.invoiceBtnText}>View Invoice</Text></Pressable>
           </LinearGradient>
         </Animated.View>
 
@@ -468,32 +417,18 @@ const s = StyleSheet.create({
   distText:   {fontSize:13,color:"rgba(255,255,255,0.85)",fontWeight:"600"},
   bookingId:  {fontSize:12,color:"rgba(255,255,255,0.55)",marginTop:4},
 
-  // Tracking card
-  trackingCard:    {borderRadius:24,overflow:"hidden",marginBottom:14,padding:18},
-  trackingHeader:  {flexDirection:"row",justifyContent:"space-between",alignItems:"center",marginBottom:18},
-  trackingBadge:   {flexDirection:"row",alignItems:"center",gap:7,backgroundColor:"rgba(255,255,255,0.08)",borderRadius:20,paddingHorizontal:12,paddingVertical:6},
-  trackingDot:     {width:8,height:8,borderRadius:4},
-  trackingBadgeText:{fontSize:11,fontWeight:"700",color:"rgba(255,255,255,0.85)",letterSpacing:0.5},
-  trackingDistLabel:{fontSize:14,fontWeight:"700",color:"white"},
+  mapCard:    {borderRadius:24,overflow:"hidden",marginBottom:14,height:240},
+  map:        {flex:1},
+  mapOverlay: {position:"absolute",bottom:10,left:10,right:10},
+  mapPill:    {flexDirection:"row",alignItems:"center",gap:7,backgroundColor:"rgba(8,24,38,0.8)",borderRadius:20,paddingHorizontal:12,paddingVertical:7,alignSelf:"flex-start",borderWidth:1,borderColor:"rgba(255,255,255,0.12)"},
+  mapPillDot: {width:7,height:7,borderRadius:3.5,backgroundColor:"#22c55e"},
+  mapPillText:{fontSize:11,fontWeight:"600",color:"rgba(255,255,255,0.9)"},
 
-  routeRow:        {flexDirection:"row",alignItems:"center",gap:12,marginBottom:18},
-  routePin:        {alignItems:"center",gap:6},
-  routePinInner:   {width:44,height:44,borderRadius:22,justifyContent:"center",alignItems:"center",borderWidth:2,borderColor:"rgba(255,255,255,0.3)"},
-  routeHomePinInner:{width:44,height:44,borderRadius:22,backgroundColor:"#ef4444",justifyContent:"center",alignItems:"center",borderWidth:2,borderColor:"rgba(255,255,255,0.3)"},
-  routePinLabel:   {fontSize:11,color:"rgba(255,255,255,0.6)",fontWeight:"600"},
-  routeBar:        {flex:1,gap:8},
-  routeBarBg:      {height:6,backgroundColor:"rgba(255,255,255,0.1)",borderRadius:3,overflow:"hidden"},
-  routeBarFill:    {height:6,borderRadius:3},
-  routeDots:       {flexDirection:"row",justifyContent:"space-between",paddingHorizontal:2},
-  routeDot:        {width:6,height:6,borderRadius:3},
-
-  trackingStats:   {flexDirection:"row",backgroundColor:"rgba(255,255,255,0.06)",borderRadius:16,padding:14,marginBottom:12},
-  trackingStat:    {flex:1,alignItems:"center",gap:4},
-  trackingStatLabel:{fontSize:10,color:"rgba(255,255,255,0.5)",fontWeight:"600"},
-  trackingStatValue:{fontSize:13,fontWeight:"700",color:"white"},
-  statDivider:     {width:1,backgroundColor:"rgba(255,255,255,0.1)",marginVertical:4},
-  mapComingSoon:   {flexDirection:"row",alignItems:"center",gap:6,paddingTop:4},
-  mapComingSoonText:{fontSize:11,color:"rgba(255,255,255,0.3)",flex:1},
+  vendorPin:      {alignItems:"center"},
+  vendorPinInner: {width:38,height:38,borderRadius:19,justifyContent:"center",alignItems:"center",borderWidth:2.5,borderColor:"white",elevation:6},
+  homePin:        {alignItems:"center"},
+  homePinInner:   {width:36,height:36,borderRadius:18,backgroundColor:"#ef4444",justifyContent:"center",alignItems:"center",borderWidth:2.5,borderColor:"white",elevation:6},
+  homePinTail:    {width:0,height:0,borderLeftWidth:6,borderRightWidth:6,borderTopWidth:10,borderLeftColor:"transparent",borderRightColor:"transparent",borderTopColor:"#ef4444",marginTop:-1},
 
   proCard:       {borderRadius:24,padding:18,marginBottom:14,flexDirection:"row",alignItems:"center",justifyContent:"space-between",borderWidth:1,borderColor:"rgba(255,255,255,0.08)"},
   proLeft:       {flexDirection:"row",alignItems:"center",gap:14,flex:1},

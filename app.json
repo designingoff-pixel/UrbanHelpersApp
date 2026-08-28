@@ -19,6 +19,12 @@
           "color": "#00bcd4",
           "defaultChannel": "default"
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Urban Helpers needs your location to show your professional's route."
+        }
       ]
     ],
     "android": {
@@ -31,12 +37,26 @@
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
         "POST_NOTIFICATIONS",
-        "SCHEDULE_EXACT_ALARM"
-      ]
+        "SCHEDULE_EXACT_ALARM",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "INTERNET"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAMzsDmDdT2c7r5j1dWTSxev6XSHJZTf-s"
+        }
+      }
     },
     "ios": {
       "bundleIdentifier": "com.urbanhelpers.app",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "config": {
+        "googleMapsApiKey": "AIzaSyAMzsDmDdT2c7r5j1dWTSxev6XSHJZTf-s"
+      },
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Urban Helpers needs your location to show your professional's route."
+      }
     }
   }
 }
