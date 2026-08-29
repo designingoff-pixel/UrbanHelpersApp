@@ -79,11 +79,11 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       let customerLat: number | undefined;
       let customerLng: number | undefined;
       try {
-        const fullAddress = `${locType} - ${address.trim()}`;
-        const geocodeResult = await Location.geocodeAsync(fullAddress);
-        if (geocodeResult && geocodeResult.length > 0) {
-          customerLat = geocodeResult[0].latitude;
-          customerLng = geocodeResult[0].longitude;
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === "granted") {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          customerLat = loc.coords.latitude;
+          customerLng = loc.coords.longitude;
         }
       } catch (e) {
         console.warn("Location error:", e);
