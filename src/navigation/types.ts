@@ -65,7 +65,7 @@ export type RootStackParamList = {
   ServicesDashboard: undefined;
   ServiceCategory: { categoryId: string };
   ServiceDetail: { categoryId: string; subServiceId: string };
-  BookingConfirmed: { bookingId: string; categoryId: string; subServiceId: string; dayIndex: number; slotIndex: number };
+  BookingConfirmed: { bookingId: string; otp: string; categoryId: string; subServiceId: string; dayIndex: number; slotIndex: number };
   LiveTracking: { categoryId?: string; subServiceId?: string };
   ServiceInProgress: { categoryId?: string; subServiceId?: string };
   ServiceCompleted: { categoryId?: string; subServiceId?: string };

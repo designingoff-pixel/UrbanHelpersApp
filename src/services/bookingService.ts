@@ -23,7 +23,9 @@ export interface Booking {
   id: string;
   customerId: string;
   customerName: string;
+  customerPhone?: string;
   vendorName: string;
+  vendorPhone?: string;
   serviceCategory: string;
   subServiceName: string;
   status: BookingStatus;
@@ -38,6 +40,7 @@ export interface Booking {
 export interface CreateBookingInput {
   customerId:      string;
   customerName:    string;
+  customerPhone:   string; // ← added customer phone
   serviceCategory: string;
   subServiceName:  string;
   address:         string;
@@ -54,17 +57,18 @@ function generateOTP(): string {
 }
 
 /** Writes a new booking request. Matches the `Booking` shape the admin dashboard reads. */
-export async function createBooking(input: CreateBookingInput): Promise<string> {
+export async function createBooking(input: CreateBookingInput): Promise<{ bookingId: string, otp: string }> {
+  const generatedOTP = generateOTP();
   const docRef = await addDoc(collection(db, "bookings"), {
     ...input,
     vendorName: "Vendor pending",
     status: "requested" as BookingStatus,
     paymentStatus: "pending",
     safety: "normal",
-    otp: generateOTP(),          // ← customer OTP for vendor verification
+    otp: generatedOTP,          // ← customer OTP for vendor verification
     createdAt: serverTimestamp(),
   });
-  return docRef.id;
+  return { bookingId: docRef.id, otp: generatedOTP };
 }
 
 /** Live-subscribes to every booking made by this customer, newest first. */

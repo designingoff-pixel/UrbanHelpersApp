@@ -40,8 +40,11 @@ interface LiveBooking {
   scheduledAt?: string;
   price?: number;
   priceLabel?: string;
+  priceLabel?: string;
   customerLat?: number;
   customerLng?: number;
+  otp?: string;
+  vendorPhone?: string;
 }
 
 interface VendorCoords { lat: number; lng: number; heading?: number; speed?: number; }
@@ -182,9 +185,13 @@ export default function LiveTrackingScreen({ navigation }: Props) {
     : { latitude:20.5937, longitude:78.9629, latitudeDelta:10, longitudeDelta:10 };
 
   const handleCall = () => {
+    if (!booking?.vendorPhone) {
+      Alert.alert("Contact Unavailable", "The professional has not provided a contact number yet.");
+      return;
+    }
     Alert.alert("Call Professional","This will call the assigned professional.",[
       {text:"Cancel",style:"cancel"},
-      {text:"Call",onPress:()=>Linking.openURL("tel:+919999999999")},
+      {text:"Call",onPress:()=>Linking.openURL(`tel:${booking.vendorPhone}`)},
     ]);
   };
 
@@ -235,6 +242,12 @@ export default function LiveTrackingScreen({ navigation }: Props) {
                 </View>
               )}
               <Text style={s.bookingId}>#{booking?.id?.slice(-8).toUpperCase()??"—"}</Text>
+              {booking?.otp && (
+                <View style={s.otpPill}>
+                  <Text style={s.otpLabel}>OTP for Vendor</Text>
+                  <Text style={s.otpText}>{booking.otp}</Text>
+                </View>
+              )}
             </View>
           </LinearGradient>
         </Animated.View>
@@ -416,6 +429,9 @@ const s = StyleSheet.create({
   distPill:   {flexDirection:"row",alignItems:"center",gap:5,backgroundColor:"rgba(0,0,0,0.25)",borderRadius:16,paddingHorizontal:12,paddingVertical:8},
   distText:   {fontSize:13,color:"rgba(255,255,255,0.85)",fontWeight:"600"},
   bookingId:  {fontSize:12,color:"rgba(255,255,255,0.55)",marginTop:4},
+  otpPill:    {flexDirection:"row",alignItems:"center",gap:8,backgroundColor:"rgba(0,0,0,0.3)",paddingHorizontal:12,paddingVertical:6,borderRadius:12,alignSelf:"flex-start",marginTop:12},
+  otpLabel:   {fontSize:12,color:"rgba(255,255,255,0.7)"},
+  otpText:    {fontSize:16,fontWeight:"700",color:"white",letterSpacing:2},
 
   mapCard:    {borderRadius:24,overflow:"hidden",marginBottom:14,height:240},
   map:        {flex:1},

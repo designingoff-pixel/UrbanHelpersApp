@@ -49,6 +49,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   const [showPicker, setShowPicker] = useState(false);
   const [pickerMode, setPickerMode] = useState<"date" | "time">("date");
   const [address, setAddress] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   const [locType, setLocType] = useState("Home");
   const [submitting, setSubmitting] = useState(false);
   const { user } = useAuth();
@@ -61,6 +62,10 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         { text: "Sign In", onPress: () => navigation.navigate("SignIn") },
         { text: "Cancel", style: "cancel" },
       ]);
+      return;
+    }
+    if (!customerPhone.trim() || customerPhone.length < 10) {
+      Alert.alert("Phone number required", "Please enter a valid phone number.");
       return;
     }
     if (!address.trim()) {
@@ -84,9 +89,10 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         console.warn("Location error:", e);
       }
 
-      const bookingId = await createBooking({
+      const { bookingId, otp } = await createBooking({
         customerId:      user.uid,
         customerName:    user.displayName ?? "Urban Helpers customer",
+        customerPhone:   customerPhone.trim(),
         serviceCategory: category.name,
         subServiceName:  sub.name,
         address:         address.trim(),
@@ -99,6 +105,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 
       navigation.navigate("BookingConfirmed", {
         bookingId,
+        otp,
         categoryId:   category.id,
         subServiceId: sub.id,
         dayIndex:     0,
@@ -183,8 +190,23 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
           </LinearGradient>
         </Animated.View>
 
-        {/* ── Address ──────────────────────────────────────────── */}
+        {/* ── Contact Info ───────────────────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(100).duration(380)}>
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>Contact Number</Text>
+            <TextInput
+              style={s.addressInput}
+              placeholder="Your mobile number (for vendor to contact)"
+              placeholderTextColor={colors.text.muted}
+              value={customerPhone}
+              onChangeText={setCustomerPhone}
+              keyboardType="phone-pad"
+            />
+          </View>
+        </Animated.View>
+
+        {/* ── Address ──────────────────────────────────────────── */}
+        <Animated.View entering={FadeInDown.delay(120).duration(380)}>
           <View style={s.section}>
             <Text style={s.sectionTitle}>Service Address</Text>
 
