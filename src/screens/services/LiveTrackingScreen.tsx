@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/services/firebase";
 import { useAuth } from "@/context/AuthContext";
+import { sendServiceCompletedNotification } from "@/services/notificationService";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 import {
@@ -170,8 +171,11 @@ export default function LiveTrackingScreen({ navigation }: Props) {
 
   // Auto navigate on complete
   useEffect(() => {
-    if (booking?.status === "completed")
-      setTimeout(() => navigation.navigate("RatingFeedback",{}), 1500);
+    if (booking?.status === "completed") {
+      // Send the work completed notification immediately
+      sendServiceCompletedNotification(booking.subServiceName ?? "Service");
+      setTimeout(() => navigation.navigate("RatingFeedback",{}), 500); // Navigate to review faster (0.5s instead of 1.5s)
+    }
   }, [booking?.status]);
 
   const status   = booking?.status ?? "requested";
