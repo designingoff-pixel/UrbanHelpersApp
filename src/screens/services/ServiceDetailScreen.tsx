@@ -6,13 +6,14 @@ import React, { useState } from "react";
 import {
   ActivityIndicator, Alert,
   ScrollView, Text, View, Pressable, StyleSheet,
-  TextInput, Dimensions, Image,
+  TextInput, Dimensions, Image, Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Location from "expo-location";
+import MapView, { Marker, Region, PROVIDER_GOOGLE } from "react-native-maps";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
@@ -51,8 +52,53 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   const [address, setAddress] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [locType, setLocType] = useState("Home");
+  const [customerLat, setCustomerLat] = useState<number | undefined>();
+  const [customerLng, setCustomerLng] = useState<number | undefined>();
+  
+  // Map Modal State
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [mapRegion, setMapRegion] = useState<Region>({ latitude: 20.5937, longitude: 78.9629, latitudeDelta: 5, longitudeDelta: 5 });
+  const [pinCoords, setPinCoords] = useState<{lat: number; lng: number} | null>(null);
+  
   const [submitting, setSubmitting] = useState(false);
   const { user } = useAuth();
+
+  // Open map and get current location
+  const handleOpenMap = async () => {
+    setShowMapModal(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        setMapRegion({
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005,
+        });
+        setPinCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      }
+    } catch (e) {
+      console.warn("Location error:", e);
+    }
+  };
+
+  // Confirm map location
+  const handleConfirmLocation = async () => {
+    if (pinCoords) {
+      setCustomerLat(pinCoords.lat);
+      setCustomerLng(pinCoords.lng);
+      try {
+        const geocode = await Location.reverseGeocodeAsync({ latitude: pinCoords.lat, longitude: pinCoords.lng });
+        if (geocode.length > 0) {
+          const place = geocode[0];
+          const addrStr = [place.name, place.street, place.subregion, place.city, place.region].filter(Boolean).join(", ");
+          setAddress(addrStr);
+        }
+      } catch (e) {}
+    }
+    setShowMapModal(false);
+  };
 
   if (!category || !sub) return null;
 
@@ -75,18 +121,20 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 
     setSubmitting(true);
     try {
-      // Try to get customer GPS from typed address
-      let customerLat: number | undefined;
-      let customerLng: number | undefined;
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === "granted") {
-          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-          customerLat = loc.coords.latitude;
-          customerLng = loc.coords.longitude;
+      // Try to get customer GPS if not picked from map
+      let finalLat = customerLat;
+      let finalLng = customerLng;
+      if (!finalLat || !finalLng) {
+        try {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status === "granted") {
+            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            finalLat = loc.coords.latitude;
+            finalLng = loc.coords.longitude;
+          }
+        } catch (e) {
+          console.warn("Location error:", e);
         }
-      } catch (e) {
-        console.warn("Location error:", e);
       }
 
       const { bookingId, otp } = await createBooking({
@@ -99,8 +147,8 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         scheduledAt:     selectedDate.toISOString(),
         price:           parsePrice(sub.price),
         priceLabel:      sub.price,
-        customerLat,
-        customerLng,
+        customerLat:     finalLat,
+        customerLng:     finalLng,
       });
 
       navigation.navigate("BookingConfirmed", {
@@ -228,6 +276,11 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               ))}
             </View>
 
+            <Pressable style={s.mapBtn} onPress={handleOpenMap}>
+              <Ionicons name="navigate" size={16} color="white" />
+              <Text style={s.mapBtnText}>Locate on Map (Auto-fill)</Text>
+            </Pressable>
+
             <TextInput
               style={s.addressInput}
               placeholder="House No / Flat / Villa…"
@@ -335,6 +388,45 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
           )}
         </Pressable>
       </View>
+
+      {/* ── Map Modal ───────────────────────────────────────────── */}
+      <Modal visible={showMapModal} animationType="slide" transparent={false}>
+        <View style={s.modalContainer}>
+          <View style={s.modalHeader}>
+            <Pressable onPress={() => setShowMapModal(false)} style={s.modalCloseBtn}>
+              <Ionicons name="close" size={24} color="white" />
+            </Pressable>
+            <Text style={s.modalTitle}>Set Location</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          
+          <MapView
+            style={s.modalMap}
+            provider={PROVIDER_GOOGLE}
+            region={mapRegion}
+            onRegionChangeComplete={(r) => setMapRegion(r)}
+          >
+            {pinCoords && (
+              <Marker
+                draggable
+                coordinate={{ latitude: pinCoords.lat, longitude: pinCoords.lng }}
+                onDragEnd={(e) => setPinCoords({ lat: e.nativeEvent.coordinate.latitude, lng: e.nativeEvent.coordinate.longitude })}
+              >
+                <View style={s.draggablePin}>
+                  <Ionicons name="location" size={36} color="#ef4444" />
+                </View>
+              </Marker>
+            )}
+          </MapView>
+          
+          <View style={s.modalFooter}>
+            <Text style={s.modalFooterText}>Drag the red pin to your exact location</Text>
+            <Pressable style={s.modalConfirmBtn} onPress={handleConfirmLocation}>
+              <Text style={s.modalConfirmBtnText}>Confirm Location</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
     </View>
   );
@@ -451,6 +543,14 @@ const s = StyleSheet.create({
     color: colors.text.primary, fontSize: 14,
     borderWidth: 1, borderColor: colors.glass.border,
   },
+  mapBtn: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: "rgba(37,99,235,0.2)",
+    borderWidth: 1, borderColor: "#3b82f6",
+    paddingHorizontal: 14, paddingVertical: 12,
+    borderRadius: 14, marginBottom: 14,
+  },
+  mapBtnText: { fontSize: 13, fontWeight: "600", color: "#60a5fa" },
 
   // Date/time section
   dateSection: {
@@ -521,4 +621,16 @@ const s = StyleSheet.create({
     paddingHorizontal: 22, paddingVertical: 14, borderRadius: 18,
   },
   ctaBtnText: { fontSize: 15, fontWeight: "700", color: "white" },
+
+  // Map Modal
+  modalContainer: { flex: 1, backgroundColor: "#081826" },
+  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingTop: 50, paddingBottom: 16, backgroundColor: "#081826" },
+  modalCloseBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.1)", justifyContent: "center", alignItems: "center" },
+  modalTitle: { fontSize: 18, fontWeight: "700", color: "white" },
+  modalMap: { flex: 1 },
+  draggablePin: { alignItems: "center", justifyContent: "center", marginTop: -18 },
+  modalFooter: { padding: 24, backgroundColor: "#081826", paddingBottom: 40 },
+  modalFooterText: { fontSize: 13, color: "rgba(255,255,255,0.7)", textAlign: "center", marginBottom: 16 },
+  modalConfirmBtn: { backgroundColor: "#2563eb", paddingVertical: 16, borderRadius: 16, alignItems: "center" },
+  modalConfirmBtnText: { fontSize: 16, fontWeight: "700", color: "white" },
 });

@@ -383,8 +383,8 @@ export default function LiveTrackingScreen({ navigation }: Props) {
               {i<steps.length-1&&(<View style={[s.stepLine,step.done&&s.stepLineDone]}/>)}
               {step.active?(
                 <View style={s.stepActiveWrap}>
-                  <Animated.View style={[s.stepRing,ringStyle]}/>
-                  <View style={s.stepActiveDot}/>
+                  <Animated.View style={[s.stepRing,ringStyle,{borderColor:STATUS_COLORS[status]?.[0]||"#3b82f6"}]}/>
+                  <View style={[s.stepActiveDot,{backgroundColor:STATUS_COLORS[status]?.[0]||"#3b82f6"}]}/>
                 </View>
               ):(
                 <View style={[s.stepDot,step.done&&s.stepDotDone]}>
@@ -392,8 +392,8 @@ export default function LiveTrackingScreen({ navigation }: Props) {
                 </View>
               )}
               <View style={s.stepText}>
-                <Text style={[s.stepLabel,step.active&&s.stepLabelActive,!step.done&&!step.active&&s.stepLabelPending]}>{step.label}</Text>
-                {step.time&&(<Text style={[s.stepTime,step.active&&s.stepTimeActive]}>{step.time}</Text>)}
+                <Text style={[s.stepLabel,step.active&&[s.stepLabelActive,{color:STATUS_COLORS[status]?.[0]||"#3b82f6"}],!step.done&&!step.active&&s.stepLabelPending]}>{step.label}</Text>
+                {step.time&&(<Text style={[s.stepTime,step.active&&[s.stepTimeActive,{color:STATUS_COLORS[status]?.[0]||"#3b82f6"}]]}>{step.time}</Text>)}
               </View>
             </View>
           ))}
