@@ -71,6 +71,16 @@ const HERO_TITLES: Partial<Record<BookingStatus, string>> = {
   completed:   "Service\nCompleted",
 };
 
+const STATUS_COLORS: Record<string, readonly [string, string]> = {
+  requested:   ["#f59e0b", "#d97706"], // amber
+  assigned:    ["#3b82f6", "#2563eb"], // blue
+  accepted:    ["#8b5cf6", "#7c3aed"], // purple
+  en_route:    ["#06b6d4", "#0891b2"], // cyan
+  arrived:     ["#f43f5e", "#e11d48"], // rose
+  in_progress: ["#10b981", "#059669"], // emerald
+  completed:   ["#047857", "#064e3b"], // dark green
+};
+
 function buildSteps(status: BookingStatus, etaText: string) {
   const idx = STATUS_ORDER.indexOf(status);
   return STATUS_ORDER.map((s, i) => ({
@@ -110,7 +120,7 @@ export default function LiveTrackingScreen({ navigation }: Props) {
     const q = query(
       collection(db,"bookings"),
       where("customerId","==",user.uid),
-      where("status","in",["assigned","accepted","en_route","arrived","in_progress"]),
+      where("status","in",["requested","assigned","accepted","en_route","arrived","in_progress"]),
       limit(1),
     );
     return onSnapshot(q,(snap) => {
@@ -170,13 +180,26 @@ export default function LiveTrackingScreen({ navigation }: Props) {
   }, [vendorCoords, customerCoords]);
 
   // Auto navigate on complete
+  const prevBookingRef = useRef<LiveBooking | null>(null);
   useEffect(() => {
-    if (booking?.status === "completed") {
-      // Send the work completed notification immediately
-      sendServiceCompletedNotification(booking.subServiceName ?? "Service");
-      setTimeout(() => navigation.navigate("RatingFeedback",{}), 500); // Navigate to review faster (0.5s instead of 1.5s)
+    // If the booking drops out of the active query (becomes null), 
+    // and it was previously in progress/arrived, it means it just completed!
+    if (!booking && prevBookingRef.current) {
+      const prev = prevBookingRef.current;
+      if (prev.status === "in_progress" || prev.status === "arrived" || prev.status === "en_route" || prev.status === "accepted") {
+        sendServiceCompletedNotification(prev.serviceCategory ?? "Service");
+        setTimeout(() => navigation.navigate("RatingFeedback",{}), 500);
+      }
     }
-  }, [booking?.status]);
+    
+    // Also handle if the query was updated to include "completed" at some point
+    if (booking?.status === "completed") {
+      sendServiceCompletedNotification(booking.serviceCategory ?? "Service");
+      setTimeout(() => navigation.navigate("RatingFeedback",{}), 500);
+    }
+    
+    prevBookingRef.current = booking;
+  }, [booking]);
 
   const status   = booking?.status ?? "requested";
   const steps    = buildSteps(status as BookingStatus, etaText);
@@ -214,7 +237,7 @@ export default function LiveTrackingScreen({ navigation }: Props) {
         {/* ETA Hero */}
         <Animated.View entering={FadeInDown.duration(350)}>
           <LinearGradient
-            colors={status==="completed"?["#064e3b","#047857"]:["#15803d","#22c55e"]}
+            colors={STATUS_COLORS[status] || ["#15803d","#22c55e"]}
             start={{x:0,y:0}} end={{x:1,y:1}} style={s.hero}
           >
             <View style={s.heroBlobTL}/><View style={s.heroBlobBR}/>
