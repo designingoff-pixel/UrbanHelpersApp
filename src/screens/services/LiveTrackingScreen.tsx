@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   View, Text, Pressable, StyleSheet,
-  Linking, Alert, ScrollView,
+  Linking, Alert, ScrollView, Image
 } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
@@ -35,6 +35,7 @@ interface LiveBooking {
   id: string;
   vendorId?: string;
   vendorName?: string;
+  vendorImage?: string;
   serviceCategory?: string;
   status: BookingStatus;
   address?: string;
@@ -357,9 +358,13 @@ export default function LiveTrackingScreen({ navigation }: Props) {
           <LinearGradient colors={["#1e3a8a","#0f172a"]} style={s.proCard}>
             <View style={s.proLeft}>
               <View style={s.proAvatarWrap}>
-                <LinearGradient colors={["#2563eb","#8b5cf6"]} style={s.proAvatar}>
-                  <Text style={s.proAvatarText}>{initials}</Text>
-                </LinearGradient>
+                {booking?.vendorImage ? (
+                  <Image source={{ uri: booking.vendorImage }} style={s.proAvatar} />
+                ) : (
+                  <LinearGradient colors={["#2563eb","#8b5cf6"]} style={s.proAvatar}>
+                    <Text style={s.proAvatarText}>{initials}</Text>
+                  </LinearGradient>
+                )}
                 {booking?.vendorId&&(<View style={s.proVerified}><Ionicons name="checkmark-circle" size={16} color="#22c55e"/></View>)}
               </View>
               <View style={{flex:1}}>

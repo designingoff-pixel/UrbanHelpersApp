@@ -26,6 +26,7 @@ export interface Booking {
   customerPhone?: string;
   vendorName: string;
   vendorPhone?: string;
+  vendorImage?: string; // ← added
   serviceCategory: string;
   subServiceName: string;
   status: BookingStatus;

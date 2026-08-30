@@ -435,10 +435,12 @@ const s = StyleSheet.create({
 
   // Bottom nav bar
   bottomBar: {
+    position: "absolute",
+    bottom: 24,
+    left: 12,
+    right: 12,
     flexDirection: "row",
     height: 72,
-    marginHorizontal: 12,
-    marginBottom: 12,
     backgroundColor: "rgba(10,22,36,0.97)",
     borderRadius: 28,
     borderWidth: 1,

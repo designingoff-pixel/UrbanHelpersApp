@@ -1,9 +1,10 @@
 import React, { useEffect, useRef } from "react";
+import { useNavigation } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { RootStackParamList } from "./types";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/services/firebase";
-import { collection, query, where, onSnapshot, orderBy, limit } from "firebase/firestore";
+import { collection, query, where, onSnapshot, limit } from "firebase/firestore";
 import { sendVendorArrivedOTPNotification } from "@/services/notificationService";
 
 // Module 1 — Onboarding / Auth
@@ -84,11 +85,13 @@ import OffersScreen from "@/screens/services/OffersScreen";
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 /**
- * Global component that listens to the user's active booking
- * and triggers a push notification if the vendor arrives.
+ * Global component that listens to the user's active booking.
+ * 1. Triggers a push notification if the vendor arrives.
+ * 2. Auto-navigates to the RatingFeedback screen if the vendor completes the job.
  */
-function GlobalOTPListener() {
+function GlobalBookingListener() {
   const { user } = useAuth();
+  const navigation = useNavigation<any>();
   const prevStatus = useRef<string | null>(null);
 
   useEffect(() => {
@@ -96,7 +99,7 @@ function GlobalOTPListener() {
     const q = query(
       collection(db, "bookings"),
       where("customerId", "==", user.uid),
-      where("status", "in", ["assigned", "accepted", "en_route", "arrived"]),
+      where("status", "in", ["assigned", "accepted", "en_route", "arrived", "in_progress", "completed"]),
       limit(1)
     );
     const unsub = onSnapshot(q, (snap) => {
@@ -113,10 +116,16 @@ function GlobalOTPListener() {
           sendVendorArrivedOTPNotification(data.otp);
         }
       }
+
+      // If transition to completed, immediately open Rating/Feedback screen
+      if (prevStatus.current && prevStatus.current !== "completed" && newStatus === "completed") {
+        navigation.navigate("RatingFeedback", {});
+      }
+
       prevStatus.current = newStatus;
     });
     return () => unsub();
-  }, [user]);
+  }, [user, navigation]);
 
   return null;
 }
@@ -127,7 +136,7 @@ function GlobalOTPListener() {
 export function RootNavigator() {
   return (
     <>
-      <GlobalOTPListener />
+      <GlobalBookingListener />
       <Stack.Navigator
         initialRouteName="Splash"
       screenOptions={{
