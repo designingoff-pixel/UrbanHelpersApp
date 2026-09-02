@@ -21,7 +21,6 @@ import { SERVICE_CATEGORIES } from "./servicesData";
 import { getSubServiceImage } from "@/assets/serviceImages";
 import { useAuth } from "@/context/AuthContext";
 import { createBooking } from "@/services/bookingService";
-import { processRazorpayPayment } from "@/services/paymentService";
 
 const SLOT_START_HOUR = [8, 12, 16];
 
@@ -138,25 +137,6 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         }
       }
 
-      const priceVal = parsePrice(sub.price);
-      let paymentId: string | undefined;
-      let paymentStatus: "pending" | "paid" | "failed" | "refunded" = "pending";
-
-      try {
-        paymentId = await processRazorpayPayment({
-          amount: priceVal,
-          customerPhone: customerPhone.trim(),
-          customerName: user.displayName ?? "Urban Helpers Customer",
-          customerEmail: user.email ?? "customer@example.com",
-          description: `Booking for ${sub.name} (${category.name})`,
-        });
-        paymentStatus = "paid";
-      } catch (paymentError: any) {
-        setSubmitting(false);
-        Alert.alert("Payment Failed", paymentError.message || "Payment was cancelled or failed. Your booking has not been confirmed.");
-        return;
-      }
-
       const { bookingId, otp } = await createBooking({
         customerId:      user.uid,
         customerName:    user.displayName ?? "Urban Helpers customer",
@@ -165,12 +145,10 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         subServiceName:  sub.name,
         address:         address.trim(),
         scheduledAt:     selectedDate.toISOString(),
-        price:           priceVal,
+        price:           parsePrice(sub.price),
         priceLabel:      sub.price,
         customerLat:     finalLat,
         customerLng:     finalLng,
-        paymentStatus:   paymentStatus,
-        paymentId:       paymentId,
       });
 
       navigation.navigate("BookingConfirmed", {
