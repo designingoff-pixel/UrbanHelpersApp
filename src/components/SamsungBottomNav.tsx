@@ -1,64 +1,44 @@
-/**
- * SamsungBottomNav.tsx
- * Samsung Health One UI 2026 — 3-tab bottom navigation bar
- * Flat, no pill, accent color #2AC1BC teal
- */
 import React from "react";
-import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  Platform,
-} from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { RootStackParamList } from "@/navigation/types";
+import { useNavigation, useRoute } from "@react-navigation/native";
 
-export type HealthTab = "Home" | "Together" | "Discover";
-
-interface TabItem {
-  label: HealthTab;
-  outlineIcon: keyof typeof Ionicons.glyphMap;
-  solidIcon: keyof typeof Ionicons.glyphMap;
-}
-
-const TABS: TabItem[] = [
-  { label: "Home",     outlineIcon: "home-outline",    solidIcon: "home"    },
-  { label: "Together", outlineIcon: "people-outline",  solidIcon: "people"  },
-  { label: "Discover", outlineIcon: "compass-outline", solidIcon: "compass" },
+export const NAV_TABS = [
+  { icon: "home",            route: "HomeDashboard" as keyof RootStackParamList,    label: "Home" },
+  { icon: "flag-outline",    route: "FamilyDashboard" as keyof RootStackParamList,  label: "Together" },
+  { icon: "compass-outline", route: "Discover" as keyof RootStackParamList,         label: "Discover" },
+  { icon: "calendar-outline",route: "FitnessDashboard" as keyof RootStackParamList, label: "Fitness" },
 ];
 
-export const ACCENT = "#2AC1BC";
-export const INACTIVE = "#8C8C8C";
-
 interface Props {
-  activeTab: HealthTab;
-  onTabPress: (tab: HealthTab) => void;
+  activeRoute: keyof RootStackParamList;
 }
 
-export default function SamsungBottomNav({ activeTab, onTabPress }: Props) {
-  const insets = useSafeAreaInsets();
+export default function SamsungBottomNav({ activeRoute }: Props) {
+  const navigation = useNavigation<any>();
 
   return (
-    <View style={[s.bar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
-      {TABS.map((tab) => {
-        const isActive = activeTab === tab.label;
+    <View style={s.navBar}>
+      {NAV_TABS.map((n) => {
+        const isActive = activeRoute === n.route;
         return (
           <Pressable
-            key={tab.label}
-            onPress={() => onTabPress(tab.label)}
-            style={s.tabBtn}
-            android_ripple={null}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: isActive }}
+            key={n.route}
+            onPress={() => {
+              if (!isActive) navigation.navigate(n.route);
+            }}
+            style={s.navBtn}
           >
-            <Ionicons
-              name={isActive ? tab.solidIcon : tab.outlineIcon}
-              size={24}
-              color={isActive ? ACCENT : INACTIVE}
-            />
-            <Text style={[s.label, isActive && s.labelActive]}>
-              {tab.label}
+            <View style={[s.navIconWrapper, isActive && s.navIconWrapperActive]}>
+              <Ionicons
+                name={isActive ? n.icon.replace('-outline', '') as any : n.icon as any}
+                size={22}
+                color={isActive ? "#FFFFFF" : "rgba(255,255,255,0.6)"}
+              />
+            </View>
+            <Text style={[s.navLabel, isActive && s.navLabelActive]}>
+              {n.label}
             </Text>
           </Pressable>
         );
@@ -68,35 +48,51 @@ export default function SamsungBottomNav({ activeTab, onTabPress }: Props) {
 }
 
 const s = StyleSheet.create({
-  bar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+  navBar: {
+    position: "absolute", 
+    bottom: 0, 
+    left: 16, 
+    right: 16,
     flexDirection: "row",
-    height: 60,
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: 1,
-    borderTopColor: "#EAEAEA",
-    // flat — no shadow, no elevation
-    elevation: 0,
-    shadowOpacity: 0,
+    height: 64, // Reduced from 80 to 64
+    marginBottom: 20,
+    backgroundColor: "#1c232f", // Slightly brighter than #161b22 so it pops
+    borderRadius: 32,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    elevation: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.4,
+    shadowRadius: 15,
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 8,
   },
-  tabBtn: {
+  navBtn: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 4,
-    minHeight: 48,
   },
-  label: {
-    fontSize: 10,
-    fontWeight: "500",
-    color: INACTIVE,
-    letterSpacing: 0.1,
+  navIconWrapper: {
+    width: 44,
+    height: 28, // Reduced height for the active pill
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "transparent",
   },
-  labelActive: {
-    color: ACCENT,
-    fontWeight: "600",
+  navIconWrapperActive: {
+    backgroundColor: "rgba(255,255,255,0.15)",
+  },
+  navLabel: { 
+    fontSize: 10, // Adjusted font size
+    color: "rgba(255,255,255,0.6)", 
+    marginTop: 4, 
+    fontWeight: "500" 
+  },
+  navLabelActive: { 
+    color: "#FFFFFF", 
+    fontWeight: "700" 
   },
 });

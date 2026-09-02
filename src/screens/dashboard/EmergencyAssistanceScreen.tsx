@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
+import SamsungBottomNav from "@/components/SamsungBottomNav";
 
 type Props = NativeStackScreenProps<RootStackParamList, "EmergencyAssistance">;
 
@@ -23,12 +24,7 @@ const MEDICAL_ID = [
   { label: "Allergies", value: "Penicillin", bg: "#f97316" },
 ];
 
-const NAV = [
-  { icon: "alert-circle", route: "EmergencyAssistance", active: true },
-  { icon: "call-outline", route: "HomeDashboard" },
-  { icon: "medical-services-outline", route: "MedicalRecords" },
-  { icon: "location-outline", route: "HomeDashboard" },
-];
+// No NAV needed here anymore
 
 export default function EmergencyAssistanceScreen({ navigation }: Props) {
   return (
@@ -142,14 +138,7 @@ export default function EmergencyAssistanceScreen({ navigation }: Props) {
       </ScrollView>
 
       {/* Bottom Nav */}
-      <View style={s.navBar}>
-        {NAV.map((n, i) => (
-          <Pressable key={i} onPress={() => navigation.navigate(n.route as any)} style={[s.navBtn, n.active && s.navBtnActive]}>
-            <Ionicons name={n.icon as any} size={22} color={n.active ? colors.primary : colors.text.secondary} />
-            {n.active && <Text style={s.navActiveLabel}>Emergency</Text>}
-          </Pressable>
-        ))}
-      </View>
+      <SamsungBottomNav activeRoute="EmergencyAssistance" />
     </View>
   );
 }
@@ -199,8 +188,4 @@ const s = StyleSheet.create({
   locationCoords: { fontSize: 12, color: colors.text.secondary, marginBottom: 16 },
   shareBtn: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.primary, paddingVertical: 12, borderRadius: 12, justifyContent: "center" },
   shareBtnText: { fontSize: 14, fontWeight: "700", color: colors.onPrimary },
-  navBar: { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", justifyContent: "space-around", alignItems: "center", height: 80, marginHorizontal: 16, marginBottom: 16, backgroundColor: "rgba(4,20,35,0.6)", borderRadius: 32, borderWidth: 1, borderColor: colors.glass.border },
-  navBtn: { flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, paddingHorizontal: 12 },
-  navBtnActive: {},
-  navActiveLabel: { fontSize: 10, fontWeight: "700", color: colors.primary },
 });

@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
+import SamsungBottomNav from "@/components/SamsungBottomNav";
 
 type Props = NativeStackScreenProps<RootStackParamList, "FamilyDashboard">;
 
@@ -21,13 +22,7 @@ const HEALTH_TILES = [
   { icon: "flash", label: "Activity", sub: "8,400 steps", bg: "rgba(245,158,11,0.8)" },
 ];
 
-const NAV = [
-  { icon: "home-outline", route: "HomeDashboard" },
-  { icon: "heart-outline", route: "HealthDashboard" },
-  { icon: "compass-outline", route: "Discover" },
-  { icon: "barbell-outline", route: "FitnessDashboard" },
-  { icon: "person-outline", route: "Profile" },
-];
+// No NAV needed here anymore
 
 export default function FamilyDashboardScreen({ navigation }: Props) {
   return (
@@ -115,13 +110,7 @@ export default function FamilyDashboardScreen({ navigation }: Props) {
       </ScrollView>
 
       {/* Bottom Nav */}
-      <View style={s.navBar}>
-        {NAV.map((n) => (
-          <Pressable key={n.route} onPress={() => navigation.navigate(n.route as any)} style={s.navBtn}>
-            <Ionicons name={n.icon as any} size={22} color={colors.text.secondary} />
-          </Pressable>
-        ))}
-      </View>
+      <SamsungBottomNav activeRoute="FamilyDashboard" />
     </View>
   );
 }
@@ -160,6 +149,4 @@ const s = StyleSheet.create({
   quickLinks: { gap: 8, marginBottom: 8 },
   quickLink: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: colors.surface.containerHigh, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.glass.border },
   quickLinkLabel: { flex: 1, fontSize: 14, fontWeight: "600", color: colors.text.primary },
-  navBar: { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", justifyContent: "space-around", alignItems: "center", height: 80, marginHorizontal: 16, marginBottom: 16, backgroundColor: colors.glass.background, borderRadius: 32, borderWidth: 1, borderColor: colors.glass.border },
-  navBtn: { width: 48, height: 48, borderRadius: 24, justifyContent: "center", alignItems: "center" },
 });

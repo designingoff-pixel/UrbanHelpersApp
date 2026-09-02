@@ -26,7 +26,9 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
+import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
+import SamsungBottomNav from "@/components/SamsungBottomNav";
 
 type Props = NativeStackScreenProps<RootStackParamList, "HomeDashboard">;
 
@@ -85,14 +87,6 @@ const FEATURE_CARDS = [
   { id: "discover",  title: "Discover",        subtitle: "Explore wellness content.",              gradient: ["#134e4a", "#0d9488"] as string[],            icon: "compass",       route: "Discover",            wide: false, height: 150 },
 ];
 
-// ─── Bottom nav tabs ───────────────────────────────────────────────────────────
-const NAV_TABS = [
-  { icon: "home" as keyof typeof Ionicons.glyphMap,            route: "HomeDashboard" as keyof RootStackParamList,    label: "Home" },
-  { icon: "flag-outline" as keyof typeof Ionicons.glyphMap,    route: "FamilyDashboard" as keyof RootStackParamList,  label: "Together" },
-  { icon: "compass-outline" as keyof typeof Ionicons.glyphMap, route: "Discover" as keyof RootStackParamList,         label: "Discover" },
-  { icon: "calendar-outline" as keyof typeof Ionicons.glyphMap,route: "FitnessDashboard" as keyof RootStackParamList, label: "Fitness" },
-];
-
 // ─── Animated press-scale card ─────────────────────────────────────────────────
 interface PressCardProps {
   onPress: () => void;
@@ -126,20 +120,7 @@ function PressCard({ onPress, style, children, index = 0 }: PressCardProps) {
 // ─── Main screen ───────────────────────────────────────────────────────────────
 export default function HomeDashboardScreen({ navigation }: Props) {
   const [activePill, setActivePill] = useState(0);
-  const [activeNav, setActiveNav] = useState(0); // index 0 = Home
   const [heroIndex, setHeroIndex] = useState(0);
-
-  // Bottom nav sliding indicator
-  const indicatorX = useSharedValue(0);
-  const indicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: indicatorX.value }],
-  }));
-
-  const handleNav = useCallback((route: keyof RootStackParamList, index: number) => {
-    setActiveNav(index);
-    indicatorX.value = withSpring(index * NAV_TAB_W, { damping: 18, stiffness: 300 });
-    if (route !== "HomeDashboard") navigation.navigate(route as any);
-  }, [navigation]);
 
   // Hero auto-scroll
   const heroRef = useRef<FlatList>(null);
@@ -442,29 +423,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
       </ScrollView>
 
       {/* ── Animated Bottom Nav ──────────────────────────────── */}
-      <View style={s.navBar}>
-        {/* Sliding active pill indicator */}
-        <Animated.View style={[s.navIndicator, indicatorStyle]} />
-
-        {NAV_TABS.map((n, i) => (
-          <Pressable
-            key={n.route}
-            onPress={() => handleNav(n.route, i)}
-            style={s.navBtn}
-          >
-            <View style={[s.navIconWrapper, activeNav === i && s.navIconWrapperActive]}>
-              <Ionicons
-                name={activeNav === i ? n.icon.replace('-outline', '') as any : n.icon}
-                size={22}
-                color={activeNav === i ? "#FFFFFF" : "rgba(255,255,255,0.6)"}
-              />
-            </View>
-            <Text style={[s.navLabel, activeNav === i && s.navLabelActive]}>
-              {n.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <SamsungBottomNav activeRoute="HomeDashboard" />
 
     </View>
   );
@@ -673,48 +632,4 @@ const s = StyleSheet.create({
   halfTextWrap: { marginTop: 12 },
   halfTitle: { fontSize: 15, fontWeight: "700", color: "white", marginBottom: 4 },
   halfSub: { fontSize: 11, color: "rgba(255,255,255,0.75)", lineHeight: 16 },
-
-  // Bottom Nav
-  navBar: {
-    position: "absolute", bottom: 0, left: 16, right: 16,
-    flexDirection: "row",
-    height: 80,
-    marginBottom: 20,
-    backgroundColor: "#161b22", // Dark floating background
-    borderRadius: 40,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    elevation: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.4,
-    shadowRadius: 15,
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-  },
-  // Sliding pill behind active tab - disabled for Samsung style as it uses individual icon background
-  navIndicator: {
-    display: "none"
-  },
-  navBtn: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 8,
-  },
-  navIconWrapper: {
-    width: 44,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "transparent",
-  },
-  navIconWrapperActive: {
-    backgroundColor: "rgba(255,255,255,0.15)",
-  },
-  navLabel: { fontSize: 11, color: "rgba(255,255,255,0.6)", marginTop: 4, fontWeight: "500" },
-  navLabelActive: { color: "#FFFFFF", fontWeight: "700" },
 });

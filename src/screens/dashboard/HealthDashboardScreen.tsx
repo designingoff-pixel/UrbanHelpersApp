@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
+import SamsungBottomNav from "@/components/SamsungBottomNav";
 
 type Props = NativeStackScreenProps<RootStackParamList, "HealthDashboard">;
 
@@ -14,13 +15,7 @@ const VITALS = [
   { label: "PRESSURE", value: "120/80", unit: "", status: "Normal", gradient: ["#1e3a8a", "#4338ca"] as (string[]), icon: "pulse" },
 ];
 
-const NAV = [
-  { icon: "home-outline", route: "HomeDashboard", label: "Home" },
-  { icon: "heart", route: "HealthDashboard", label: "Health", active: true },
-  { icon: "compass-outline", route: "Discover", label: "Discover" },
-  { icon: "barbell-outline", route: "FitnessDashboard", label: "Fitness" },
-  { icon: "person-outline", route: "Profile", label: "Profile" },
-];
+// No NAV needed here anymore
 
 export default function HealthDashboardScreen({ navigation }: Props) {
   return (
@@ -133,13 +128,7 @@ export default function HealthDashboardScreen({ navigation }: Props) {
       </ScrollView>
 
       {/* Bottom Nav */}
-      <View style={s.navBar}>
-        {NAV.map((n) => (
-          <Pressable key={n.route} onPress={() => navigation.navigate(n.route as any)} style={[s.navBtn, n.active && s.navBtnActive]}>
-            <Ionicons name={n.icon as any} size={22} color={n.active ? colors.onPrimary : colors.text.secondary} />
-          </Pressable>
-        ))}
-      </View>
+      <SamsungBottomNav activeRoute="HealthDashboard" />
     </View>
   );
 }
@@ -189,7 +178,4 @@ const s = StyleSheet.create({
   quickGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 8 },
   quickCard: { width: "47%", borderRadius: 16, padding: 16, alignItems: "center", gap: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" },
   quickLabel: { fontSize: 12, color: "white", fontWeight: "600" },
-  navBar: { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", justifyContent: "space-around", alignItems: "center", height: 80, marginHorizontal: 16, marginBottom: 16, backgroundColor: colors.glass.background, borderRadius: 32, borderWidth: 1, borderColor: colors.glass.border },
-  navBtn: { width: 48, height: 48, borderRadius: 24, justifyContent: "center", alignItems: "center" },
-  navBtnActive: { backgroundColor: colors.primary },
 });

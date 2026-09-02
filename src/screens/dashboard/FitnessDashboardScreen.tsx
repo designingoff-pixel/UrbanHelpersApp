@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
+import SamsungBottomNav from "@/components/SamsungBottomNav";
 import {
   scheduleInactivityAlert,
   sendStepGoalNotification,
@@ -21,13 +22,7 @@ const MODULES = [
   { label: "Physio", value: "Session", icon: "accessibility", color: "#0d9488", route: "PhysiotherapyDashboard" },
 ];
 
-const NAV = [
-  { icon: "home-outline", route: "HomeDashboard" },
-  { icon: "heart-outline", route: "HealthDashboard" },
-  { icon: "compass-outline", route: "Discover" },
-  { icon: "barbell", route: "FitnessDashboard", active: true },
-  { icon: "person-outline", route: "Profile" },
-];
+// No NAV needed here anymore
 
 // Current step data (in production comes from health sensors)
 const CURRENT_STEPS = 8400;
@@ -124,13 +119,7 @@ export default function FitnessDashboardScreen({ navigation }: Props) {
       </ScrollView>
 
       {/* Bottom Nav */}
-      <View style={s.navBar}>
-        {NAV.map((n) => (
-          <Pressable key={n.route} onPress={() => navigation.navigate(n.route as any)} style={[s.navBtn, n.active && s.navBtnActive]}>
-            <Ionicons name={n.icon as any} size={22} color={n.active ? colors.onPrimary : colors.text.secondary} />
-          </Pressable>
-        ))}
-      </View>
+      <SamsungBottomNav activeRoute="FitnessDashboard" />
     </View>
   );
 }
@@ -170,7 +159,4 @@ const s = StyleSheet.create({
   weekBar: { width: 28, borderRadius: 8, position: "relative", overflow: "hidden" },
   weekBarGlow: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(180,197,255,0.3)" },
   weekBarLabel: { fontSize: 12, color: colors.text.secondary, fontWeight: "600" },
-  navBar: { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", justifyContent: "space-around", alignItems: "center", height: 80, marginHorizontal: 16, marginBottom: 16, backgroundColor: colors.glass.background, borderRadius: 32, borderWidth: 1, borderColor: colors.glass.border },
-  navBtn: { width: 48, height: 48, borderRadius: 24, justifyContent: "center", alignItems: "center" },
-  navBtnActive: { backgroundColor: colors.primary },
 });

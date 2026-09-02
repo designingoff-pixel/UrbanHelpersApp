@@ -8,6 +8,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
+import SamsungBottomNav from "@/components/SamsungBottomNav";
 import { AnimatedCard } from "@/components/AnimatedCard";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Discover">;
@@ -39,13 +40,7 @@ const EXPLORE_MORE = [
   { label: "Steps",           icon: "walk",          route: "DailyStepsDashboard",color: "#6d28d9" },
 ];
 
-const NAV_TABS = [
-  { icon: "home-outline" as const,   route: "HomeDashboard" as const,    label: "Home" },
-  { icon: "heart-outline" as const,  route: "HealthDashboard" as const,  label: "Health" },
-  { icon: "compass" as const,        route: "Discover" as const,         label: "Discover" },
-  { icon: "barbell-outline" as const,route: "FitnessDashboard" as const, label: "Fitness" },
-  { icon: "person-outline" as const, route: "Profile" as const,          label: "Profile" },
-];
+// No NAV_TABS needed here anymore
 
 export default function DiscoverScreen({ navigation }: Props) {
   return (
@@ -180,25 +175,7 @@ export default function DiscoverScreen({ navigation }: Props) {
       </ScrollView>
 
       {/* ── Bottom Nav ──────────────────────────────────────── */}
-      <View style={s.navBar}>
-        {NAV_TABS.map((n) => {
-          const isActive = n.route === "Discover";
-          return (
-            <Pressable
-              key={n.route}
-              onPress={() => n.route !== "Discover" && navigation.navigate(n.route as any)}
-              style={s.navBtn}
-            >
-              <Ionicons
-                name={n.icon}
-                size={22}
-                color={isActive ? colors.primary : colors.text.secondary}
-              />
-              <Text style={[s.navLabel, isActive && s.navLabelActive]}>{n.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <SamsungBottomNav activeRoute="Discover" />
 
     </View>
   );
@@ -316,16 +293,4 @@ const s = StyleSheet.create({
   },
   exploreLabel: { fontSize: 11, color: "white", fontWeight: "600", textAlign: "center" },
 
-  // Bottom nav
-  navBar: {
-    position: "absolute", bottom: 0, left: 0, right: 0,
-    flexDirection: "row",
-    height: 72, marginHorizontal: 12, marginBottom: 12,
-    backgroundColor: "rgba(10,22,36,0.97)",
-    borderRadius: 28, borderWidth: 1, borderColor: colors.glass.border,
-    elevation: 16, alignItems: "center",
-  },
-  navBtn: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 8 },
-  navLabel: { fontSize: 10, color: colors.text.secondary, marginTop: 3, fontWeight: "500" },
-  navLabelActive: { color: colors.primary, fontWeight: "700" },
 });
