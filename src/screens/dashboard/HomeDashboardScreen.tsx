@@ -31,7 +31,7 @@ import { colors } from "@/theme/colors";
 type Props = NativeStackScreenProps<RootStackParamList, "HomeDashboard">;
 
 const { width: SCREEN_W } = Dimensions.get("window");
-const NAV_TAB_W = (SCREEN_W - 24) / 5; // 5 tabs, 12px margin each side
+const NAV_TAB_W = (SCREEN_W - 32) / 4; // 4 tabs
 
 // ─── Category pills — each navigates to a screen ──────────────────────────────
 const PILLS: { name: string; icon: keyof typeof Ionicons.glyphMap; route: keyof RootStackParamList }[] = [
@@ -92,8 +92,6 @@ const NAV_TABS = [
   { icon: "compass-outline" as keyof typeof Ionicons.glyphMap, route: "Discover" as keyof RootStackParamList,         label: "Discover" },
   { icon: "calendar-outline" as keyof typeof Ionicons.glyphMap,route: "FitnessDashboard" as keyof RootStackParamList, label: "Fitness" },
 ];
-
-const NAV_TAB_W = (SCREEN_W - 32) / NAV_TABS.length; // Calculate width based on 4 tabs
 
 // ─── Animated press-scale card ─────────────────────────────────────────────────
 interface PressCardProps {
