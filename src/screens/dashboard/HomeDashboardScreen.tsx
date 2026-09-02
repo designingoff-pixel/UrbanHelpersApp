@@ -26,7 +26,6 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
-import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 import SamsungBottomNav from "@/components/SamsungBottomNav";
 
