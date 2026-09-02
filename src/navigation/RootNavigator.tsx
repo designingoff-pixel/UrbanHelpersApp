@@ -26,6 +26,7 @@ import FitnessDashboardScreen from "@/screens/dashboard/FitnessDashboardScreen";
 import FamilyDashboardScreen from "@/screens/dashboard/FamilyDashboardScreen";
 import DiscoverScreen from "@/screens/dashboard/DiscoverScreen";
 import HealthDashboardScreen from "@/screens/dashboard/HealthDashboardScreen";
+import VitalsScreen from "@/screens/health/VitalsScreen";
 import MedicalRecordsScreen from "@/screens/dashboard/MedicalRecordsScreen";
 import MedicationCenterScreen from "@/screens/dashboard/MedicationCenterScreen";
 import EmergencyAssistanceScreen from "@/screens/dashboard/EmergencyAssistanceScreen";
@@ -168,6 +169,7 @@ export function RootNavigator() {
       <Stack.Screen name="FamilyDashboard" component={FamilyDashboardScreen} />
       <Stack.Screen name="Discover" component={DiscoverScreen} />
       <Stack.Screen name="HealthDashboard" component={HealthDashboardScreen} />
+      <Stack.Screen name="VitalsScreen" component={VitalsScreen} />
       <Stack.Screen name="MedicalRecords" component={MedicalRecordsScreen} />
       <Stack.Screen name="MedicationCenter" component={MedicationCenterScreen} />
       <Stack.Screen name="EmergencyAssistance" component={EmergencyAssistanceScreen} />
