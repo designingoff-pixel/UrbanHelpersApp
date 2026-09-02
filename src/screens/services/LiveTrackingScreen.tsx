@@ -83,7 +83,9 @@ const STATUS_COLORS: Record<string, readonly [string, string]> = {
 };
 
 function buildSteps(status: BookingStatus, etaText: string) {
-  const idx = STATUS_ORDER.indexOf(status);
+  // Treat "accepted" as "assigned" for timeline progression
+  const effectiveStatus = status === "accepted" ? "assigned" : status;
+  const idx = STATUS_ORDER.indexOf(effectiveStatus as BookingStatus);
   return STATUS_ORDER.map((s, i) => ({
     label:  STATUS_LABELS[s],
     done:   i < idx,
@@ -121,7 +123,7 @@ export default function LiveTrackingScreen({ navigation }: Props) {
     const q = query(
       collection(db,"bookings"),
       where("customerId","==",user.uid),
-      where("status","in",["requested","assigned","accepted","en_route","arrived","in_progress"]),
+      where("status","in",["requested","assigned","accepted","en_route","arrived","in_progress","completed"]),
       limit(1),
     );
     return onSnapshot(q,(snap) => {
@@ -188,15 +190,15 @@ export default function LiveTrackingScreen({ navigation }: Props) {
     if (!booking && prevBookingRef.current) {
       const prev = prevBookingRef.current;
       if (prev.status === "in_progress" || prev.status === "arrived" || prev.status === "en_route" || prev.status === "accepted") {
-        sendServiceCompletedNotification(prev.serviceCategory ?? "Service");
-        setTimeout(() => navigation.navigate("RatingFeedback",{}), 500);
+        sendServiceCompletedNotification(prev.serviceCategory ?? "Service").catch(console.log);
+        setTimeout(() => navigation.navigate("RatingFeedback",{}), 3000);
       }
     }
     
     // Also handle if the query was updated to include "completed" at some point
-    if (booking?.status === "completed") {
-      sendServiceCompletedNotification(booking.serviceCategory ?? "Service");
-      setTimeout(() => navigation.navigate("RatingFeedback",{}), 500);
+    if (booking?.status === "completed" && prevBookingRef.current?.status !== "completed") {
+      sendServiceCompletedNotification(booking.serviceCategory ?? "Service").catch(console.log);
+      setTimeout(() => navigation.navigate("RatingFeedback",{}), 3000);
     }
     
     prevBookingRef.current = booking;

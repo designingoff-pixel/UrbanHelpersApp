@@ -50,6 +50,8 @@ export interface CreateBookingInput {
   priceLabel:      string;
   customerLat?:    number;   // GPS coords stored so vendor map + customer map can show both pins
   customerLng?:    number;
+  paymentStatus?:  "pending" | "paid" | "failed" | "refunded";
+  paymentId?:      string;
 }
 
 /** Generates a random 4-digit OTP string */
@@ -64,7 +66,8 @@ export async function createBooking(input: CreateBookingInput): Promise<{ bookin
     ...input,
     vendorName: "Vendor pending",
     status: "requested" as BookingStatus,
-    paymentStatus: "pending",
+    paymentStatus: input.paymentStatus || "pending",
+    paymentId: input.paymentId || null,
     safety: "normal",
     otp: generatedOTP,          // ← customer OTP for vendor verification
     createdAt: serverTimestamp(),
