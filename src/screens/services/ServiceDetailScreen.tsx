@@ -100,7 +100,10 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
           setGeocodeError("No locations found. Please try a more specific address.");
           setShowSuggestions(true);
         } else {
-          // Build suggestion labels via reverse-geocoding each result (up to 5)
+          // Build suggestion labels. We use the user's typed query as the primary
+          // label text and append city/region from reverse-geocode as context.
+          // This keeps the suggestion visually tied to what the user typed instead
+          // of showing a completely different canonical place name.
           const top = results.slice(0, 5);
           const labelled: AddressSuggestion[] = await Promise.all(
             top.map(async (r) => {
@@ -108,21 +111,24 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                 const rev = await Location.reverseGeocodeAsync({ latitude: r.latitude, longitude: r.longitude });
                 if (rev.length > 0) {
                   const p = rev[0];
-                  const label = [p.name, p.street, p.subregion, p.city, p.region, p.country]
-                    .filter(Boolean)
-                    .join(", ");
+                  // Context: city + region to disambiguate multiple matches
+                  const context = [p.city, p.region, p.country].filter(Boolean).join(", ");
+                  // Show the user's own query first, then the resolved city/region
+                  const label = context ? `${query}, ${context}` : query;
                   return { label, lat: r.latitude, lng: r.longitude };
                 }
               } catch (_) {}
-              // Fallback: just show coordinates if reverse-geocode fails
-              return {
-                label: `${r.latitude.toFixed(5)}, ${r.longitude.toFixed(5)}`,
-                lat: r.latitude,
-                lng: r.longitude,
-              };
+              return { label: query, lat: r.latitude, lng: r.longitude };
             })
           );
-          setSuggestions(labelled);
+          // Deduplicate by label so identical city matches don't repeat
+          const seen = new Set<string>();
+          const unique = labelled.filter((s) => {
+            if (seen.has(s.label)) return false;
+            seen.add(s.label);
+            return true;
+          });
+          setSuggestions(unique);
           setGeocodeError("");
           setShowSuggestions(true);
         }
@@ -225,15 +231,6 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
     }
     if (!addressText.trim()) {
       Alert.alert("Address required", "Please enter your service address.");
-      return;
-    }
-    // If the user has typed an address but not selected a suggestion yet, block booking.
-    if (addressDirty || (addressText.trim() && !resolvedAddr && !customerLat)) {
-      Alert.alert(
-        "Confirm your address",
-        "Please select an address from the suggestions that appear as you type, or use \"Locate on Map\" to pin your location.",
-        [{ text: "OK" }]
-      );
       return;
     }
 
@@ -453,10 +450,10 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               ) : null}
             </View>
 
-            {/* Search hint — shown when user is typing but hasn't selected yet */}
+            {/* Search hint — shown while typing, suggestions are optional */}
             {addressText.trim().length >= 4 && !addressConfirmed && !searchingAddress && (
               <Text style={s.addressHint}>
-                Select a suggestion below to confirm your location
+                Select a suggestion to pin the exact location, or just confirm your booking
               </Text>
             )}
 
