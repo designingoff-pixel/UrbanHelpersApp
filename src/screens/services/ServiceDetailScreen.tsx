@@ -121,18 +121,29 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 
     setSubmitting(true);
     try {
-      // Try to get customer GPS if not picked from map
+      // Try to get customer GPS if not picked from map.
+      // Uses a 5 s timeout so a slow/unavailable GPS fix never blocks manual-address bookings.
+      // Coordinates are optional — createBooking works with address alone.
       let finalLat = customerLat;
       let finalLng = customerLng;
       if (!finalLat || !finalLng) {
         try {
           const { status } = await Location.requestForegroundPermissionsAsync();
           if (status === "granted") {
-            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-            finalLat = loc.coords.latitude;
-            finalLng = loc.coords.longitude;
+            const locationTimeout = new Promise<null>((resolve) =>
+              setTimeout(() => resolve(null), 5000)
+            );
+            const locationFetch = Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            });
+            const loc = await Promise.race([locationFetch, locationTimeout]);
+            if (loc) {
+              finalLat = loc.coords.latitude;
+              finalLng = loc.coords.longitude;
+            }
           }
         } catch (e) {
+          // GPS unavailable — coordinates are optional, proceed with typed address
           console.warn("Location error:", e);
         }
       }
