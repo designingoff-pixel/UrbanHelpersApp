@@ -14,8 +14,8 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
-import { SERVICE_CATEGORIES, SubService } from "./servicesData";
-import { getCategoryImage } from "@/assets/serviceImages";
+import { useServiceCategories } from "@/services/firestoreServices";
+import { getCategoryImage, getSubServiceImage } from "@/assets/serviceImages";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceCategory">;
 
@@ -31,7 +31,8 @@ const TRUST_BADGES = [
 
 export default function ServiceCategoryScreen({ navigation, route }: Props) {
   const { categoryId } = route.params;
-  const category = SERVICE_CATEGORIES.find((c) => c.id === categoryId);
+  const { categories } = useServiceCategories();
+  const category = categories.find((c) => c.id === categoryId);
 
   if (!category) {
     return (
@@ -110,6 +111,12 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
               }
               style={({ pressed }) => [s.subCard, { opacity: pressed ? 0.88 : 1 }]}
             >
+              {/* Sub-service image thumbnail */}
+              <Image
+                source={{ uri: sub.imageUrl ?? getSubServiceImage(sub.id, category.id) }}
+                style={s.subCardImage}
+                resizeMode="cover"
+              />
               {/* Accent left bar */}
               <View style={[s.accentBar, { backgroundColor: category.accent }]} />
 
@@ -225,6 +232,10 @@ const s = StyleSheet.create({
     borderRadius: 20, marginBottom: 12,
     borderWidth: 1, borderColor: colors.glass.border,
     flexDirection: "row", overflow: "hidden",
+  },
+  subCardImage: {
+    width: 80, height: "100%" as any,
+    opacity: 0.85,
   },
   accentBar: { width: 4 },
   subCardBody: { flex: 1, padding: 16 },

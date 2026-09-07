@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import {
   ScrollView, Text, View, Pressable, StyleSheet,
-  TextInput, Dimensions, Image,
+  TextInput, Dimensions, Image, ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -12,7 +12,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
-import { SERVICE_CATEGORIES } from "./servicesData";
+import { useServiceCategories } from "@/services/firestoreServices";
 import { getCategoryImage } from "@/assets/serviceImages";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServicesDashboard">;
@@ -42,6 +42,7 @@ const SERVICE_NAV = [
 export default function ServicesDashboardScreen({ navigation }: Props) {
   const [showAll, setShowAll] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const { categories: SERVICE_CATEGORIES, loading: catLoading } = useServiceCategories();
 
   const headerOp = useSharedValue(0);
   const headerY  = useSharedValue(-24);
@@ -224,6 +225,14 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
           )}
         </View>
 
+        {/* Loading state */}
+        {catLoading && (
+          <View style={s.loadingRow}>
+            <ActivityIndicator size="small" color="#00bcd4" />
+            <Text style={s.loadingText}>Loading services…</Text>
+          </View>
+        )}
+
         {/* 2-column grid */}
         <View style={s.categoryGrid}>
           {displayedCategories.map((cat, i) => (
@@ -241,9 +250,9 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                   style={s.categoryGradient}
                 >
-                  {/* Background image */}
+                  {/* Background image — prefer Firestore imageUrl, fallback to static map */}
                   <Image
-                    source={{ uri: getCategoryImage(cat.id) }}
+                    source={{ uri: cat.imageUrl ?? getCategoryImage(cat.id) }}
                     style={s.catBgImage}
                     resizeMode="cover"
                   />
@@ -450,7 +459,14 @@ const s = StyleSheet.create({
   },
   sectionTitle: { fontSize: 20, fontWeight: "700", color: "white" },
   seeMoreBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
-  seeMoreText: { fontSize: 13, fontWeight: "600", color: "#00bcd4" },
+  seeMoreText: { fontSize: 13, fontWeight: "700", color: "#00bcd4" },
+
+  // Loading state
+  loadingRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, paddingVertical: 20,
+  },
+  loadingText: { fontSize: 13, color: "rgba(255,255,255,0.5)" },
 
   // 2-column category grid
   categoryGrid: {

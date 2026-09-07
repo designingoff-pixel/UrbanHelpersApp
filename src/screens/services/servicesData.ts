@@ -11,6 +11,7 @@ export interface SubService {
   duration: string;       // e.g. "60 min"
   description: string;
   popular?: boolean;
+  imageUrl?: string;      // override image from Firestore/Admin
 }
 
 export interface ServiceCategory {
@@ -20,6 +21,7 @@ export interface ServiceCategory {
   gradient: [string, string];
   accent: string;         // single colour for badges / highlights
   tagline: string;
+  imageUrl?: string;      // category hero image (overrides SERVICE_CATEGORY_IMAGES fallback)
   subServices: SubService[];
 }
 
