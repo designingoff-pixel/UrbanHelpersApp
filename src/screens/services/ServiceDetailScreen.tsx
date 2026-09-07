@@ -2,11 +2,11 @@
  * ServiceDetailScreen — booking flow
  * Package display → Address → Date/Time picker → Confirm button
  */
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   ActivityIndicator, Alert,
   ScrollView, Text, View, Pressable, StyleSheet,
-  TextInput, Dimensions, Image, Modal,
+  TextInput, Dimensions, Image, Modal, FlatList,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -22,15 +22,6 @@ import { getSubServiceImage } from "@/assets/serviceImages";
 import { useAuth } from "@/context/AuthContext";
 import { createBooking } from "@/services/bookingService";
 
-const SLOT_START_HOUR = [8, 12, 16];
-
-function slotToScheduledAt(dayIndex: number, slotIndex: number): string {
-  const date = new Date();
-  date.setDate(date.getDate() + dayIndex);
-  date.setHours(SLOT_START_HOUR[slotIndex] ?? 8, 0, 0, 0);
-  return date.toISOString();
-}
-
 function parsePrice(priceLabel: string): number {
   const digits = priceLabel.replace(/[^0-9]/g, "");
   return digits ? parseInt(digits, 10) : 0;
@@ -38,7 +29,12 @@ function parsePrice(priceLabel: string): number {
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceDetail">;
 
-const { width: W } = Dimensions.get("window");
+// A single geocoded suggestion shown in the dropdown
+interface AddressSuggestion {
+  label: string;   // formatted address shown to user
+  lat:   number;
+  lng:   number;
+}
 
 export default function ServiceDetailScreen({ navigation, route }: Props) {
   const { categoryId, subServiceId } = route.params;
@@ -49,21 +45,125 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
   const [pickerMode, setPickerMode] = useState<"date" | "time">("date");
-  const [address, setAddress] = useState("");
+
+  // ── Address state ──────────────────────────────────────────────────────────
+  // addressText  : what is shown in the TextInput
+  // resolvedAddr : the confirmed formatted address (set when user selects a suggestion OR map confirms)
+  // customerLat/Lng: coordinates matching the resolved address
+  // addressDirty : true when user has typed since last selection → coords invalidated
+  const [addressText,  setAddressText]  = useState("");
+  const [resolvedAddr, setResolvedAddr] = useState("");
+  const [customerLat,  setCustomerLat]  = useState<number | undefined>();
+  const [customerLng,  setCustomerLng]  = useState<number | undefined>();
+  const [addressDirty, setAddressDirty] = useState(false);
+
+  // ── Geocode suggestion state ───────────────────────────────────────────────
+  const [suggestions,      setSuggestions]      = useState<AddressSuggestion[]>([]);
+  const [searchingAddress, setSearchingAddress] = useState(false);
+  const [showSuggestions,  setShowSuggestions]  = useState(false);
+  const [geocodeError,     setGeocodeError]      = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [customerPhone, setCustomerPhone] = useState("");
-  const [locType, setLocType] = useState("Home");
-  const [customerLat, setCustomerLat] = useState<number | undefined>();
-  const [customerLng, setCustomerLng] = useState<number | undefined>();
-  
+  const [locType,       setLocType]       = useState("Home");
+
   // Map Modal State
   const [showMapModal, setShowMapModal] = useState(false);
-  const [mapRegion, setMapRegion] = useState<Region>({ latitude: 20.5937, longitude: 78.9629, latitudeDelta: 5, longitudeDelta: 5 });
-  const [pinCoords, setPinCoords] = useState<{lat: number; lng: number} | null>(null);
-  
+  const [mapRegion,    setMapRegion]    = useState<Region>({
+    latitude: 20.5937, longitude: 78.9629, latitudeDelta: 5, longitudeDelta: 5,
+  });
+  const [pinCoords, setPinCoords] = useState<{ lat: number; lng: number } | null>(null);
+
   const [submitting, setSubmitting] = useState(false);
   const { user } = useAuth();
 
-  // Open map and get current location
+  // ── Debounced geocode search ───────────────────────────────────────────────
+  // Fires 600 ms after the user stops typing; uses expo-location's geocodeAsync
+  // (backed by the Google Maps API key already configured in app.json).
+  useEffect(() => {
+    const query = addressText.trim();
+
+    // Clear previous results whenever the text changes
+    setSuggestions([]);
+    setGeocodeError("");
+    setShowSuggestions(false);
+
+    if (query.length < 4) return; // don't search on very short strings
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    debounceRef.current = setTimeout(async () => {
+      setSearchingAddress(true);
+      try {
+        const results = await Location.geocodeAsync(query);
+        if (results.length === 0) {
+          setGeocodeError("No locations found. Please try a more specific address.");
+          setShowSuggestions(true);
+        } else {
+          // Build suggestion labels via reverse-geocoding each result (up to 5)
+          const top = results.slice(0, 5);
+          const labelled: AddressSuggestion[] = await Promise.all(
+            top.map(async (r) => {
+              try {
+                const rev = await Location.reverseGeocodeAsync({ latitude: r.latitude, longitude: r.longitude });
+                if (rev.length > 0) {
+                  const p = rev[0];
+                  const label = [p.name, p.street, p.subregion, p.city, p.region, p.country]
+                    .filter(Boolean)
+                    .join(", ");
+                  return { label, lat: r.latitude, lng: r.longitude };
+                }
+              } catch (_) {}
+              // Fallback: just show coordinates if reverse-geocode fails
+              return {
+                label: `${r.latitude.toFixed(5)}, ${r.longitude.toFixed(5)}`,
+                lat: r.latitude,
+                lng: r.longitude,
+              };
+            })
+          );
+          setSuggestions(labelled);
+          setGeocodeError("");
+          setShowSuggestions(true);
+        }
+      } catch (err) {
+        setGeocodeError("Could not search for address. Check your connection and try again.");
+        setShowSuggestions(true);
+      } finally {
+        setSearchingAddress(false);
+      }
+    }, 600);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [addressText]);
+
+  // ── Called when user taps a suggestion row ────────────────────────────────
+  const handleSelectSuggestion = (item: AddressSuggestion) => {
+    setAddressText(item.label);
+    setResolvedAddr(item.label);
+    setCustomerLat(item.lat);
+    setCustomerLng(item.lng);
+    setAddressDirty(false);
+    setSuggestions([]);
+    setShowSuggestions(false);
+    setGeocodeError("");
+  };
+
+  // ── Called when user edits the address field after a selection ────────────
+  const handleAddressChange = (text: string) => {
+    setAddressText(text);
+    // If the user had already confirmed an address, invalidate the coordinates
+    if (resolvedAddr && text !== resolvedAddr) {
+      setResolvedAddr("");
+      setCustomerLat(undefined);
+      setCustomerLng(undefined);
+      setAddressDirty(true);
+    }
+  };
+
+  // ── Open map and center on current GPS location ───────────────────────────
   const handleOpenMap = async () => {
     setShowMapModal(true);
     try {
@@ -83,25 +183,34 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
     }
   };
 
-  // Confirm map location
+  // ── Confirm map pin location (existing behaviour, unchanged) ──────────────
   const handleConfirmLocation = async () => {
     if (pinCoords) {
       setCustomerLat(pinCoords.lat);
       setCustomerLng(pinCoords.lng);
       try {
-        const geocode = await Location.reverseGeocodeAsync({ latitude: pinCoords.lat, longitude: pinCoords.lng });
+        const geocode = await Location.reverseGeocodeAsync({
+          latitude: pinCoords.lat, longitude: pinCoords.lng,
+        });
         if (geocode.length > 0) {
           const place = geocode[0];
-          const addrStr = [place.name, place.street, place.subregion, place.city, place.region].filter(Boolean).join(", ");
-          setAddress(addrStr);
+          const addrStr = [place.name, place.street, place.subregion, place.city, place.region]
+            .filter(Boolean)
+            .join(", ");
+          setAddressText(addrStr);
+          setResolvedAddr(addrStr);
+          setAddressDirty(false);
         }
-      } catch (e) {}
+      } catch (_) {}
     }
     setShowMapModal(false);
+    setSuggestions([]);
+    setShowSuggestions(false);
   };
 
   if (!category || !sub) return null;
 
+  // ── Confirm Booking ───────────────────────────────────────────────────────
   const handleConfirmBooking = async () => {
     if (!user) {
       Alert.alert("Sign in required", "Please sign in to book a service.", [
@@ -114,16 +223,24 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       Alert.alert("Phone number required", "Please enter a valid phone number.");
       return;
     }
-    if (!address.trim()) {
+    if (!addressText.trim()) {
       Alert.alert("Address required", "Please enter your service address.");
+      return;
+    }
+    // If the user has typed an address but not selected a suggestion yet, block booking.
+    if (addressDirty || (addressText.trim() && !resolvedAddr && !customerLat)) {
+      Alert.alert(
+        "Confirm your address",
+        "Please select an address from the suggestions that appear as you type, or use \"Locate on Map\" to pin your location.",
+        [{ text: "OK" }]
+      );
       return;
     }
 
     setSubmitting(true);
     try {
-      // Try to get customer GPS if not picked from map.
-      // Uses a 5 s timeout so a slow/unavailable GPS fix never blocks manual-address bookings.
-      // Coordinates are optional — createBooking works with address alone.
+      // customerLat/Lng are already set from either map-selection or geocode-selection.
+      // If somehow still missing (edge case), attempt a quick GPS fallback.
       let finalLat = customerLat;
       let finalLng = customerLng;
       if (!finalLat || !finalLng) {
@@ -143,8 +260,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
             }
           }
         } catch (e) {
-          // GPS unavailable — coordinates are optional, proceed with typed address
-          console.warn("Location error:", e);
+          console.warn("GPS fallback error:", e);
         }
       }
 
@@ -154,7 +270,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         customerPhone:   customerPhone.trim(),
         serviceCategory: category.name,
         subServiceName:  sub.name,
-        address:         address.trim(),
+        address:         resolvedAddr || addressText.trim(),
         scheduledAt:     selectedDate.toISOString(),
         price:           parsePrice(sub.price),
         priceLabel:      sub.price,
@@ -177,6 +293,9 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
     }
   };
 
+  // ── Address confirmed indicator ───────────────────────────────────────────
+  const addressConfirmed = !!resolvedAddr && !addressDirty;
+
   return (
     <View style={s.root}>
 
@@ -194,7 +313,11 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         </Pressable>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={s.scroll}
+        keyboardShouldPersistTaps="handled"
+      >
 
         {/* ── Hero Service Image ─────────────────────────────── */}
         <Animated.View entering={FadeInDown.duration(300)} style={s.heroImageWrap}>
@@ -208,7 +331,6 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
             start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
             style={s.heroImageGradient}
           />
-          {/* Floating category pill on the image */}
           <View style={[s.heroImagePill, { backgroundColor: category.gradient[0] + "dd" }]}>
             <Ionicons name={category.icon as any} size={14} color="white" />
             <Text style={s.heroImagePillText}>{category.name}</Text>
@@ -287,18 +409,88 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               ))}
             </View>
 
+            {/* Map auto-fill button — unchanged */}
             <Pressable style={s.mapBtn} onPress={handleOpenMap}>
               <Ionicons name="navigate" size={16} color="white" />
               <Text style={s.mapBtnText}>Locate on Map (Auto-fill)</Text>
             </Pressable>
 
-            <TextInput
-              style={s.addressInput}
-              placeholder="House No / Flat / Villa…"
-              placeholderTextColor={colors.text.muted}
-              value={address}
-              onChangeText={setAddress}
-            />
+            {/* Address input with confirmed indicator */}
+            <View style={s.addressInputWrap}>
+              <TextInput
+                style={[
+                  s.addressInput,
+                  s.addressInputWithIcon,
+                  addressConfirmed && s.addressInputConfirmed,
+                ]}
+                placeholder="Type your address (e.g. 12, KK Nagar, Valapady)"
+                placeholderTextColor={colors.text.muted}
+                value={addressText}
+                onChangeText={handleAddressChange}
+                returnKeyType="search"
+              />
+              {/* Right-side status icon */}
+              {searchingAddress ? (
+                <ActivityIndicator
+                  size="small"
+                  color="#60a5fa"
+                  style={s.addressInputStatusIcon}
+                />
+              ) : addressConfirmed ? (
+                <Ionicons
+                  name="checkmark-circle"
+                  size={20}
+                  color="#22c55e"
+                  style={s.addressInputStatusIcon}
+                />
+              ) : addressText.trim().length >= 4 ? (
+                <Ionicons
+                  name="search-outline"
+                  size={18}
+                  color={colors.text.muted}
+                  style={s.addressInputStatusIcon}
+                />
+              ) : null}
+            </View>
+
+            {/* Search hint — shown when user is typing but hasn't selected yet */}
+            {addressText.trim().length >= 4 && !addressConfirmed && !searchingAddress && (
+              <Text style={s.addressHint}>
+                Select a suggestion below to confirm your location
+              </Text>
+            )}
+
+            {/* Suggestion dropdown */}
+            {showSuggestions && (
+              <View style={s.suggestionBox}>
+                {geocodeError ? (
+                  <View style={s.suggestionError}>
+                    <Ionicons name="alert-circle-outline" size={16} color="#f87171" />
+                    <Text style={s.suggestionErrorText}>{geocodeError}</Text>
+                  </View>
+                ) : (
+                  <FlatList
+                    data={suggestions}
+                    keyExtractor={(_, i) => String(i)}
+                    scrollEnabled={false}
+                    keyboardShouldPersistTaps="handled"
+                    renderItem={({ item }) => (
+                      <Pressable
+                        style={({ pressed }) => [
+                          s.suggestionItem,
+                          pressed && s.suggestionItemPressed,
+                        ]}
+                        onPress={() => handleSelectSuggestion(item)}
+                      >
+                        <Ionicons name="location-outline" size={16} color="#60a5fa" style={{ marginTop: 2 }} />
+                        <Text style={s.suggestionText} numberOfLines={2}>{item.label}</Text>
+                      </Pressable>
+                    )}
+                  />
+                )}
+              </View>
+            )}
+
             <TextInput
               style={[s.addressInput, { marginTop: 10 }]}
               placeholder="Landmark (optional)"
@@ -315,29 +507,29 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
             style={s.dateSection}
           >
             <Text style={s.dateSectionTitle}>Select Date & Time</Text>
-            
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 15 }}>
+
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 15 }}>
               <Pressable
-                style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.2)', padding: 12, borderRadius: 12, alignItems: 'center' }}
-                onPress={() => { setPickerMode('date'); setShowPicker(true); }}
+                style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.2)", padding: 12, borderRadius: 12, alignItems: "center" }}
+                onPress={() => { setPickerMode("date"); setShowPicker(true); }}
               >
                 <Ionicons name="calendar-outline" size={20} color="white" />
-                <Text style={{ color: 'white', marginTop: 4, fontWeight: '600' }}>
+                <Text style={{ color: "white", marginTop: 4, fontWeight: "600" }}>
                   {selectedDate.toLocaleDateString()}
                 </Text>
               </Pressable>
-              
+
               <Pressable
-                style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.2)', padding: 12, borderRadius: 12, alignItems: 'center' }}
-                onPress={() => { setPickerMode('time'); setShowPicker(true); }}
+                style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.2)", padding: 12, borderRadius: 12, alignItems: "center" }}
+                onPress={() => { setPickerMode("time"); setShowPicker(true); }}
               >
                 <Ionicons name="time-outline" size={20} color="white" />
-                <Text style={{ color: 'white', marginTop: 4, fontWeight: '600' }}>
-                  {selectedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <Text style={{ color: "white", marginTop: 4, fontWeight: "600" }}>
+                  {selectedDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </Text>
               </Pressable>
             </View>
-            
+
             {showPicker && (
               <DateTimePicker
                 value={selectedDate}
@@ -387,7 +579,10 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         <Pressable
           onPress={handleConfirmBooking}
           disabled={submitting}
-          style={({ pressed }) => [s.ctaBtn, { backgroundColor: category.gradient[0], opacity: pressed || submitting ? 0.7 : 1 }]}
+          style={({ pressed }) => [
+            s.ctaBtn,
+            { backgroundColor: category.gradient[0], opacity: pressed || submitting ? 0.7 : 1 },
+          ]}
         >
           {submitting ? (
             <ActivityIndicator size="small" color="white" />
@@ -410,7 +605,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
             <Text style={s.modalTitle}>Set Location</Text>
             <View style={{ width: 40 }} />
           </View>
-          
+
           <MapView
             style={s.modalMap}
             provider={PROVIDER_GOOGLE}
@@ -421,7 +616,12 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               <Marker
                 draggable
                 coordinate={{ latitude: pinCoords.lat, longitude: pinCoords.lng }}
-                onDragEnd={(e) => setPinCoords({ lat: e.nativeEvent.coordinate.latitude, lng: e.nativeEvent.coordinate.longitude })}
+                onDragEnd={(e) =>
+                  setPinCoords({
+                    lat: e.nativeEvent.coordinate.latitude,
+                    lng: e.nativeEvent.coordinate.longitude,
+                  })
+                }
               >
                 <View style={s.draggablePin}>
                   <Ionicons name="location" size={36} color="#ef4444" />
@@ -429,7 +629,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               </Marker>
             )}
           </MapView>
-          
+
           <View style={s.modalFooter}>
             <Text style={s.modalFooterText}>Drag the red pin to your exact location</Text>
             <Pressable style={s.modalConfirmBtn} onPress={handleConfirmLocation}>
@@ -457,7 +657,7 @@ const s = StyleSheet.create({
     justifyContent: "center", alignItems: "center",
   },
   topTitle: { fontSize: 18, fontWeight: "700", color: colors.text.primary, textAlign: "center" },
-  topSub: { fontSize: 12, color: colors.text.secondary, textAlign: "center" },
+  topSub:   { fontSize: 12, color: colors.text.secondary, textAlign: "center" },
   iconBtn: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: colors.surface.containerHigh,
@@ -469,39 +669,18 @@ const s = StyleSheet.create({
 
   // Hero Image
   heroImageWrap: {
-    marginHorizontal: -16,
-    height: 220,
-    position: "relative",
-    marginBottom: 16,
-    overflow: "hidden",
+    marginHorizontal: -16, height: 220,
+    position: "relative", marginBottom: 16, overflow: "hidden",
   },
-  heroImage: {
-    width: "100%",
-    height: "100%",
-  },
-  heroImageGradient: {
-    position: "absolute",
-    bottom: 0, left: 0, right: 0,
-    height: 100,
-  },
+  heroImage: { width: "100%", height: "100%" },
+  heroImageGradient: { position: "absolute", bottom: 0, left: 0, right: 0, height: 100 },
   heroImagePill: {
-    position: "absolute",
-    bottom: 14,
-    left: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.25)",
+    position: "absolute", bottom: 14, left: 16,
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.25)",
   },
-  heroImagePillText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "white",
-  },
+  heroImagePillText: { fontSize: 12, fontWeight: "700", color: "white" },
 
   // Service card
   serviceCard: {
@@ -514,17 +693,17 @@ const s = StyleSheet.create({
     marginBottom: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.25)",
   },
   serviceCardBadgeText: { fontSize: 10, fontWeight: "800", color: "white", letterSpacing: 1 },
-  serviceCardContent: { flexDirection: "row", gap: 16, alignItems: "flex-start" },
+  serviceCardContent:   { flexDirection: "row", gap: 16, alignItems: "flex-start" },
   serviceIconWrap: {
     width: 64, height: 64, borderRadius: 32,
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center", alignItems: "center", flexShrink: 0,
   },
-  serviceInfo: { flex: 1 },
-  serviceName: { fontSize: 20, fontWeight: "700", color: "white", marginBottom: 2 },
-  serviceCat: { fontSize: 12, color: "rgba(255,255,255,0.65)", marginBottom: 8 },
-  serviceDesc: { fontSize: 13, color: "rgba(255,255,255,0.8)", lineHeight: 18, marginBottom: 12 },
-  serviceMeta: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  serviceInfo:  { flex: 1 },
+  serviceName:  { fontSize: 20, fontWeight: "700", color: "white", marginBottom: 2 },
+  serviceCat:   { fontSize: 12, color: "rgba(255,255,255,0.65)", marginBottom: 8 },
+  serviceDesc:  { fontSize: 13, color: "rgba(255,255,255,0.8)", lineHeight: 18, marginBottom: 12 },
+  serviceMeta:  { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   metaChip: {
     flexDirection: "row", alignItems: "center", gap: 5,
     backgroundColor: "rgba(255,255,255,0.15)",
@@ -532,14 +711,14 @@ const s = StyleSheet.create({
   },
   metaChipText: { fontSize: 12, color: "white", fontWeight: "600" },
 
-  // Address section
+  // Sections
   section: {
     backgroundColor: colors.surface.container, borderRadius: 22,
     padding: 18, marginBottom: 14,
     borderWidth: 1, borderColor: colors.glass.border,
   },
   sectionTitle: { fontSize: 16, fontWeight: "700", color: colors.text.primary, marginBottom: 14 },
-  locChips: { flexDirection: "row", gap: 8, marginBottom: 14, flexWrap: "wrap" },
+  locChips:     { flexDirection: "row", gap: 8, marginBottom: 14, flexWrap: "wrap" },
   locChip: {
     flexDirection: "row", alignItems: "center", gap: 5,
     paddingHorizontal: 13, paddingVertical: 8,
@@ -547,13 +726,46 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: colors.glass.border,
   },
   locChipActive: { borderColor: "#00bcd4", backgroundColor: "rgba(0,188,212,0.1)" },
-  locChipText: { fontSize: 12, fontWeight: "600", color: colors.text.secondary },
+  locChipText:   { fontSize: 12, fontWeight: "600", color: colors.text.secondary },
+
   addressInput: {
     backgroundColor: colors.surface.containerHigh,
     borderRadius: 14, height: 50, paddingHorizontal: 16,
     color: colors.text.primary, fontSize: 14,
     borderWidth: 1, borderColor: colors.glass.border,
   },
+  // Address input wrapper — positions the status icon absolutely inside
+  addressInputWrap: { position: "relative" },
+  addressInputWithIcon:  { paddingRight: 44 },
+  addressInputConfirmed: { borderColor: "#22c55e" },
+  addressInputStatusIcon: {
+    position: "absolute", right: 14, top: 15,
+  },
+  addressHint: {
+    fontSize: 11, color: "#60a5fa",
+    marginTop: 6, marginLeft: 4,
+  },
+
+  // Suggestion dropdown
+  suggestionBox: {
+    backgroundColor: colors.surface.containerHigh,
+    borderRadius: 14, marginTop: 6,
+    borderWidth: 1, borderColor: colors.glass.border,
+    overflow: "hidden",
+  },
+  suggestionItem: {
+    flexDirection: "row", alignItems: "flex-start", gap: 10,
+    paddingHorizontal: 14, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: colors.glass.border,
+  },
+  suggestionItemPressed: { backgroundColor: "rgba(255,255,255,0.05)" },
+  suggestionText: { flex: 1, fontSize: 13, color: colors.text.primary, lineHeight: 18 },
+  suggestionError: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    padding: 14,
+  },
+  suggestionErrorText: { fontSize: 13, color: "#f87171", flex: 1 },
+
   mapBtn: {
     flexDirection: "row", alignItems: "center", gap: 8,
     backgroundColor: "rgba(37,99,235,0.2)",
@@ -569,37 +781,6 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", overflow: "hidden",
   },
   dateSectionTitle: { fontSize: 16, fontWeight: "700", color: "white", marginBottom: 14 },
-  expressRow: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 12,
-    padding: 10, marginBottom: 16,
-  },
-  expressText: { fontSize: 13, color: "white", fontWeight: "600" },
-  dayStrip: { gap: 8, paddingBottom: 4, marginBottom: 16 },
-  dayCard: {
-    width: 60, height: 70, borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.12)",
-    alignItems: "center", justifyContent: "center", gap: 4,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.15)",
-  },
-  dayCardActive: { backgroundColor: "white" },
-  dayName: { fontSize: 11, fontWeight: "600", color: "rgba(255,255,255,0.7)" },
-  dayNameActive: { color: "#4338ca" },
-  dayDate: { fontSize: 18, fontWeight: "700", color: "white" },
-  dayDateActive: { color: "#4338ca" },
-  slotGrid: { gap: 10 },
-  slotCard: {
-    backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 14,
-    padding: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.15)",
-  },
-  slotCardActive: {
-    backgroundColor: "white",
-    borderColor: "transparent",
-  },
-  slotLabel: { fontSize: 11, color: "rgba(255,255,255,0.65)", fontWeight: "600", marginBottom: 3 },
-  slotLabelActive: { color: "#4338ca" },
-  slotTime: { fontSize: 14, color: "white", fontWeight: "600" },
-  slotTimeActive: { color: "#4338ca" },
 
   // Promise
   promiseGrid: { flexDirection: "row", gap: 10 },
@@ -608,12 +789,9 @@ const s = StyleSheet.create({
     borderRadius: 16, padding: 12, gap: 6,
     borderWidth: 1, borderColor: colors.glass.border,
   },
-  promiseIcon: {
-    width: 40, height: 40, borderRadius: 20,
-    justifyContent: "center", alignItems: "center",
-  },
+  promiseIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
   promiseLabel: { fontSize: 12, fontWeight: "700", color: colors.text.primary, textAlign: "center" },
-  promiseSub: { fontSize: 10, color: colors.text.secondary, textAlign: "center" },
+  promiseSub:   { fontSize: 10, color: colors.text.secondary, textAlign: "center" },
 
   // Bottom CTA
   cta: {
@@ -625,7 +803,7 @@ const s = StyleSheet.create({
     borderRadius: 24, borderWidth: 1, borderColor: colors.glass.border,
     elevation: 14,
   },
-  ctaPrice: { fontSize: 22, fontWeight: "700", color: colors.text.primary },
+  ctaPrice:    { fontSize: 22, fontWeight: "700", color: colors.text.primary },
   ctaDuration: { fontSize: 12, color: colors.text.secondary, marginTop: 2 },
   ctaBtn: {
     flexDirection: "row", alignItems: "center", gap: 8,
@@ -635,13 +813,20 @@ const s = StyleSheet.create({
 
   // Map Modal
   modalContainer: { flex: 1, backgroundColor: "#081826" },
-  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingTop: 50, paddingBottom: 16, backgroundColor: "#081826" },
-  modalCloseBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.1)", justifyContent: "center", alignItems: "center" },
-  modalTitle: { fontSize: 18, fontWeight: "700", color: "white" },
-  modalMap: { flex: 1 },
-  draggablePin: { alignItems: "center", justifyContent: "center", marginTop: -18 },
-  modalFooter: { padding: 24, backgroundColor: "#081826", paddingBottom: 40 },
-  modalFooterText: { fontSize: 13, color: "rgba(255,255,255,0.7)", textAlign: "center", marginBottom: 16 },
-  modalConfirmBtn: { backgroundColor: "#2563eb", paddingVertical: 16, borderRadius: 16, alignItems: "center" },
+  modalHeader: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingHorizontal: 16, paddingTop: 50, paddingBottom: 16, backgroundColor: "#081826",
+  },
+  modalCloseBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    justifyContent: "center", alignItems: "center",
+  },
+  modalTitle:       { fontSize: 18, fontWeight: "700", color: "white" },
+  modalMap:         { flex: 1 },
+  draggablePin:     { alignItems: "center", justifyContent: "center", marginTop: -18 },
+  modalFooter:      { padding: 24, backgroundColor: "#081826", paddingBottom: 40 },
+  modalFooterText:  { fontSize: 13, color: "rgba(255,255,255,0.7)", textAlign: "center", marginBottom: 16 },
+  modalConfirmBtn:  { backgroundColor: "#2563eb", paddingVertical: 16, borderRadius: 16, alignItems: "center" },
   modalConfirmBtnText: { fontSize: 16, fontWeight: "700", color: "white" },
 });
