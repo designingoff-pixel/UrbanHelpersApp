@@ -25,6 +25,13 @@ import Animated, {
 import { RootStackParamList } from "@/navigation/types";
 import SamsungBottomNav from "@/components/SamsungBottomNav";
 import { useAuth } from "@/context/AuthContext";
+import {
+  getDailyNutritionTotals,
+  getMedications,
+  getDailyActivityTotals,
+  getTodayKey,
+  MedicationItem,
+} from "@/services/healthLogService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "HomeDashboard">;
 
@@ -123,6 +130,40 @@ export default function HomeDashboardScreen({ navigation }: Props) {
   const [heroIndex, setHeroIndex] = useState(0);
   const [syncDismissed, setSyncDismissed] = useState(false);
   const heroRef = useRef<FlatList>(null);
+
+  // Real user health logging data
+  const [nutritionTotals, setNutritionTotals] = useState({ totalCalories: 0, totalProtein: 0, totalCarbs: 0, totalFat: 0 });
+  const [medications, setMedications] = useState<MedicationItem[]>([]);
+  const [activityTotals, setActivityTotals] = useState({ totalMins: 0, totalCalories: 0 });
+
+  const todayKey = getTodayKey();
+
+  const loadHealthData = async () => {
+    try {
+      const [nutri, meds, acts] = await Promise.all([
+        getDailyNutritionTotals(),
+        getMedications(),
+        getDailyActivityTotals(),
+      ]);
+      setNutritionTotals({
+        totalCalories: nutri.totalCalories,
+        totalProtein: nutri.totalProtein,
+        totalCarbs: nutri.totalCarbs,
+        totalFat: nutri.totalFat,
+      });
+      setMedications(meds);
+      setActivityTotals({
+        totalMins: acts.totalMins,
+        totalCalories: acts.totalCalories,
+      });
+    } catch (e) {
+      console.log("Error loading health logs for home:", e);
+    }
+  };
+
+  useEffect(() => {
+    loadHealthData();
+  }, [activePill]);
 
   const firstName = user?.displayName?.split(" ")[0] ?? "You";
 
@@ -266,14 +307,14 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                       <View style={[s.actStatIconWrap, { backgroundColor: "#00bcd4" }]}>
                         <Ionicons name="time" size={13} color="white" />
                       </View>
-                      <Text style={s.actStatVal}>0 <Text style={s.actStatUnit}>mins</Text></Text>
+                      <Text style={s.actStatVal}>{activityTotals.totalMins} <Text style={s.actStatUnit}>mins</Text></Text>
                     </View>
                     {/* Calories */}
                     <View style={s.actStatItem}>
                       <View style={[s.actStatIconWrap, { backgroundColor: "#a855f7" }]}>
                         <Ionicons name="flame" size={13} color="white" />
                       </View>
-                      <Text style={s.actStatVal}>0 <Text style={s.actStatUnit}>kcal</Text></Text>
+                      <Text style={s.actStatVal}>{activityTotals.totalCalories} <Text style={s.actStatUnit}>kcal</Text></Text>
                     </View>
                   </View>
 
@@ -609,7 +650,11 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                     <Ionicons name="nutrition" size={62} color="rgba(255,200,100,0.35)" />
                   </View>
                   <Text style={s.halfTitle}>Food</Text>
-                  <Text style={s.halfSub}>Ready to log your first meal?</Text>
+                  <Text style={s.halfSub}>
+                    {nutritionTotals.totalCalories > 0
+                      ? `${nutritionTotals.totalCalories} kcal logged today`
+                      : "Ready to log your first meal?"}
+                  </Text>
                 </LinearGradient>
               </PressCard>
 
@@ -677,8 +722,14 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                     <Ionicons name="medical" size={28} color="#9c8ef5" />
                   </View>
                   <Text style={s.halfTitle}>Medications</Text>
-                  <Text style={s.medTime}>9:00 am</Text>
-                  <Text style={s.medName}>Scheduled</Text>
+                  <Text style={s.medTime}>
+                    {medications.length > 0 ? medications[0].scheduleTime : "None scheduled"}
+                  </Text>
+                  <Text style={s.medName} numberOfLines={1}>
+                    {medications.length > 0
+                      ? `${medications[0].name} (${medications.filter((m) => m.takenDates && m.takenDates.includes(todayKey)).length}/${medications.length})`
+                      : "Tap to add medicine"}
+                  </Text>
                 </View>
               </PressCard>
 
@@ -1275,7 +1326,11 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 </View>
 
                 <View style={{ flex: 1 }} />
-                <Text style={s.nutriCardDesc}>Ready to make logging meals a habit?</Text>
+                <Text style={s.nutriCardDesc}>
+                  {nutritionTotals.totalCalories > 0
+                    ? `${nutritionTotals.totalCalories} kcal logged today across meals.`
+                    : "Ready to make logging meals a habit?"}
+                </Text>
               </LinearGradient>
             </PressCard>
 
