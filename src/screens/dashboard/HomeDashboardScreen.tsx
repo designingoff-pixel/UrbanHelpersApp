@@ -41,7 +41,7 @@ const PILLS: PillItem[] = [
   { icon: "apps", lib: "Ionicons", name: "Overview" },
   { icon: "directions-run", lib: "MaterialIcons", name: "Activity" },
   { icon: "bedtime", lib: "MaterialIcons", name: "Sleep" },
-  { icon: "favorite", lib: "MaterialIcons", name: "Heart" },
+  { icon: "favorite", lib: "MaterialIcons", name: "Vitals" },
   { icon: "self-improvement", lib: "MaterialIcons", name: "Mindfulness" },
   { icon: "restaurant", lib: "MaterialIcons", name: "Nutrition" },
 ];
@@ -980,38 +980,175 @@ export default function HomeDashboardScreen({ navigation }: Props) {
         )}
 
         {/* ═══════════════════════════════════════════════════════════════
-            TAB 3: HEART (quick redirect)
+            TAB 3: VITALS (In-Page Sub-Category matching Samsung Health)
             ═══════════════════════════════════════════════════════════════ */}
         {activePill === 3 && (
-          <View style={s.otherSubView}>
+          <View style={s.vitalsSubView}>
+            {/* Header */}
             <Animated.View entering={FadeInDown.duration(350).springify()}>
-              <Text style={s.subCategoryTitle}>Heart</Text>
+              <Text style={s.subCategoryTitle}>Vitals</Text>
               <Text style={s.subCategoryAdvice}>
-                Monitor your heart health score and key vitals in one place.
+                Tracking your vitals on a regular basis helps you notice small changes in your health.
               </Text>
             </Animated.View>
+
+            {/* 1. Heart health — purple gradient */}
             <PressCard index={0} onPress={() => navigation.navigate("HealthDashboard")}>
-              <LinearGradient colors={["#9c27b0", "#c22f93", "#d63384"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.wideCard}>
-                <View style={s.wideBlob} />
-                <View style={s.wideTextWrap}>
-                  <Text style={s.wideLabel}>Heart health</Text>
-                  <Text style={s.wideDesc}>See your heart health score plus key health insights in one place.</Text>
+              <LinearGradient
+                colors={["#8b48ad", "#a259c4", "#b368d4"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={s.vitalsCard}
+              >
+                <Text style={s.vitalsCardLabel}>Heart health</Text>
+                
+                {/* 3D Glowing Heart with Concentric Ripple Rings */}
+                <View style={s.vtHeartHealthWrap}>
+                  <View style={s.vtHeartRingOuter}>
+                    <View style={s.vtHeartRingMid}>
+                      <Ionicons name="heart" size={32} color="#ff69b4" />
+                    </View>
+                  </View>
                 </View>
-                <View style={s.heartIconWrap}>
-                  <View style={s.heartRingLg}><View style={s.heartRingMd}><Ionicons name="heart" size={26} color="#ff4a8d" /></View></View>
-                </View>
+
+                <View style={{ flex: 1 }} />
+                <Text style={s.vitalsCardDesc}>
+                  See your heart health score plus key health insights in one place.
+                </Text>
               </LinearGradient>
             </PressCard>
+
+            {/* 2. Vitals (Radar Scan) — bright cyan/teal */}
             <PressCard index={1} onPress={() => navigation.navigate("VitalsScreen" as any)}>
-              <LinearGradient colors={["#006064", "#00838f", "#00acc1"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.wideCard}>
-                <View style={s.wideTextWrap}>
-                  <Text style={s.wideLabel}>Vitals</Text>
-                  <Text style={s.wideDesc}>Track heart rate, HRV, blood oxygen and respiratory rate.</Text>
+              <LinearGradient
+                colors={["#0086b5", "#009ecd", "#14b0df"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={s.vitalsCard}
+              >
+                <Text style={s.vitalsCardLabel}>Vitals</Text>
+
+                {/* 3D Radar/Sonar Scan Graphic */}
+                <View style={s.vtRadarWrap}>
+                  <View style={s.vtRadarOuter}>
+                    <View style={s.vtRadarSweep} />
+                    <View style={s.vtRadarDot1} />
+                    <View style={s.vtRadarDot2} />
+                    <View style={s.vtRadarDot3} />
+                    <View style={s.vtRadarDot4} />
+                  </View>
                 </View>
-                <View style={s.heartIconWrap}><Ionicons name="radio-outline" size={36} color="rgba(255,255,255,0.4)" /></View>
+
+                <View style={{ flex: 1 }} />
+                <Text style={s.vitalsCardDesc}>
+                  Learn how tracking vitals during sleep can help you spot meaningful changes in your body.
+                </Text>
               </LinearGradient>
             </PressCard>
-            <View style={s.editHomeWrap}><Pressable style={s.editHomeBtn} onPress={() => {}}><Text style={s.editHomeText}>Edit home</Text></Pressable></View>
+
+            {/* 3. Heart rate — coral/crimson gradient */}
+            <PressCard index={2} onPress={() => navigation.navigate("HealthDashboard")}>
+              <LinearGradient
+                colors={["#d13b55", "#e64a66", "#f45b77"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={s.vitalsCard}
+              >
+                <Text style={s.vitalsCardLabel}>Heart rate</Text>
+
+                {/* 3D Heart with contour wave highlights */}
+                <View style={s.vtHeartRateWrap}>
+                  <View style={s.vtHeartRateWaveOuter}>
+                    <View style={s.vtHeartRateWaveInner}>
+                      <Ionicons name="heart" size={44} color="#ff1744" />
+                    </View>
+                  </View>
+                </View>
+
+                <View style={{ flex: 1 }} />
+                <Text style={s.vitalsCardDesc}>Keep track of your heart rate.</Text>
+              </LinearGradient>
+            </PressCard>
+
+            {/* 4. Blood oxygen — royal blue gradient */}
+            <PressCard index={3} onPress={() => navigation.navigate("HealthDashboard")}>
+              <LinearGradient
+                colors={["#195fc7", "#236fe0", "#3884f2"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={s.vitalsCard}
+              >
+                <Text style={s.vitalsCardLabel}>Blood oxygen</Text>
+
+                {/* 3D Oxygen molecules & cells */}
+                <View style={s.vtOxygenWrap}>
+                  <View style={s.vtOxygenDisc1}><View style={s.vtOxygenCore} /></View>
+                  <View style={s.vtOxygenDisc2}><View style={s.vtOxygenCore} /></View>
+                  <View style={s.vtOxygenDisc3}><View style={s.vtOxygenCore} /></View>
+                </View>
+
+                <View style={{ flex: 1 }} />
+                <Text style={s.vitalsCardDesc}>Check to make sure you're getting enough oxygen.</Text>
+              </LinearGradient>
+            </PressCard>
+
+            {/* 5. Blood pressure — rose/crimson gradient */}
+            <PressCard index={4} onPress={() => navigation.navigate("HealthDashboard")}>
+              <LinearGradient
+                colors={["#c44662", "#d85572", "#e86582"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={s.vitalsCard}
+              >
+                <Text style={s.vitalsCardLabel}>Blood pressure</Text>
+
+                {/* 3D Floating Blood Cells */}
+                <View style={s.vtBpWrap}>
+                  <View style={s.vtBpDisc1} />
+                  <View style={s.vtBpDisc2} />
+                  <View style={s.vtBpDisc3} />
+                  <View style={s.vtBpDisc4} />
+                </View>
+
+                <View style={{ flex: 1 }} />
+                <Text style={s.vitalsCardDesc}>Keep tracking your blood pressure to see how it changes.</Text>
+              </LinearGradient>
+            </PressCard>
+
+            {/* 6. Vascular load — magenta gradient */}
+            <PressCard index={5} onPress={() => navigation.navigate("HealthDashboard")}>
+              <LinearGradient
+                colors={["#b0356c", "#c4427c", "#d5508c"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={s.vitalsCard}
+              >
+                <Text style={s.vitalsCardLabel}>Vascular load</Text>
+
+                {/* 3D Artery Tube & Beaker Badge */}
+                <View style={s.vtVascWrap}>
+                  <View style={s.vtVascTubeOuter}>
+                    <View style={s.vtVascTubeInner} />
+                    <View style={s.vtVascCell1} />
+                    <View style={s.vtVascCell2} />
+                  </View>
+                  <View style={s.flaskBadge}>
+                    <Ionicons name="flask" size={13} color="#ffffff" />
+                  </View>
+                </View>
+
+                <View style={{ flex: 1 }} />
+                <Text style={s.vitalsCardDesc}>
+                  Learn how monitoring stress on your vascular system can help you adjust your habits for better health.
+                </Text>
+              </LinearGradient>
+            </PressCard>
+
+            <View style={s.editHomeWrap}>
+              <Pressable style={s.editHomeBtn} onPress={() => {}}>
+                <Text style={s.editHomeText}>Edit home</Text>
+              </Pressable>
+            </View>
           </View>
         )}
 
@@ -2394,5 +2531,327 @@ const s = StyleSheet.create({
   agesCubeFront: {
     width: "100%",
     height: "50%",
+  },
+
+  // ═════════════════════════════════════════════════════════════
+  // VITALS SUB-CATEGORY STYLES (TAB 3)
+  // ═════════════════════════════════════════════════════════════
+  vitalsSubView: { gap: 14 },
+  vitalsCard: {
+    borderRadius: 24,
+    padding: 22,
+    minHeight: 160,
+    overflow: "hidden",
+    position: "relative",
+  },
+  vitalsCardLabel: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+  vitalsCardDesc: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "rgba(255,255,255,0.92)",
+    maxWidth: "72%",
+    lineHeight: 20,
+  },
+
+  // 1. Heart Health Graphic (3D Glowing Heart + Ripple Rings)
+  vtHeartHealthWrap: {
+    position: "absolute",
+    top: 14,
+    right: 14,
+    width: 100,
+    height: 100,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  vtHeartRingOuter: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: "rgba(255, 105, 180, 0.15)",
+    borderWidth: 2,
+    borderColor: "rgba(255, 182, 193, 0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  vtHeartRingMid: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "rgba(255, 105, 180, 0.35)",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#ff1493",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+
+  // 2. Vitals Radar Graphic (Sonar Scanner)
+  vtRadarWrap: {
+    position: "absolute",
+    top: 14,
+    right: 18,
+    width: 90,
+    height: 90,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  vtRadarOuter: {
+    width: 86,
+    height: 86,
+    borderRadius: 43,
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.35)",
+    backgroundColor: "rgba(20, 176, 223, 0.25)",
+    overflow: "hidden",
+    position: "relative",
+  },
+  vtRadarSweep: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: 43,
+    height: 43,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    borderTopRightRadius: 43,
+  },
+  vtRadarDot1: {
+    position: "absolute",
+    top: 24,
+    left: 28,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#ffffff",
+  },
+  vtRadarDot2: {
+    position: "absolute",
+    top: 50,
+    left: 40,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "#e0f7fa",
+  },
+  vtRadarDot3: {
+    position: "absolute",
+    top: 36,
+    right: 20,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: "#ffffff",
+  },
+  vtRadarDot4: {
+    position: "absolute",
+    bottom: 18,
+    left: 20,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "#b2ebf2",
+  },
+
+  // 3. Heart Rate Graphic
+  vtHeartRateWrap: {
+    position: "absolute",
+    top: 12,
+    right: 14,
+    width: 100,
+    height: 100,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  vtHeartRateWaveOuter: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  vtHeartRateWaveInner: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: "rgba(255, 23, 68, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#ff1744",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+
+  // 4. Blood Oxygen Graphic (3D Disc molecules)
+  vtOxygenWrap: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    width: 100,
+    height: 95,
+  },
+  vtOxygenDisc1: {
+    position: "absolute",
+    top: 4,
+    right: 22,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#1e40af",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "rgba(147, 197, 253, 0.5)",
+    shadowColor: "#3b82f6",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  vtOxygenDisc2: {
+    position: "absolute",
+    bottom: 8,
+    right: 6,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#1d4ed8",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "rgba(191, 219, 254, 0.5)",
+  },
+  vtOxygenDisc3: {
+    position: "absolute",
+    top: 14,
+    left: 8,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#2563eb",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  vtOxygenCore: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#ffffff",
+    shadowColor: "#60a5fa",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 4,
+  },
+
+  // 5. Blood Pressure Graphic (3D floating RBCs)
+  vtBpWrap: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    width: 100,
+    height: 95,
+  },
+  vtBpDisc1: {
+    position: "absolute",
+    top: 24,
+    right: 18,
+    width: 46,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#f43f5e",
+    transform: [{ rotate: "-20deg" }],
+    shadowColor: "#be123c",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  vtBpDisc2: {
+    position: "absolute",
+    bottom: 12,
+    right: 38,
+    width: 40,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#e11d48",
+    transform: [{ rotate: "15deg" }],
+  },
+  vtBpDisc3: {
+    position: "absolute",
+    top: 8,
+    right: 54,
+    width: 32,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#fb7185",
+    transform: [{ rotate: "35deg" }],
+  },
+  vtBpDisc4: {
+    position: "absolute",
+    bottom: 26,
+    right: 6,
+    width: 36,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#be123c",
+    transform: [{ rotate: "-35deg" }],
+  },
+
+  // 6. Vascular Load Graphic (3D Tube + Flask)
+  vtVascWrap: {
+    position: "absolute",
+    top: 14,
+    right: 14,
+    width: 95,
+    height: 95,
+  },
+  vtVascTubeOuter: {
+    position: "absolute",
+    top: 6,
+    right: 8,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: "#9d174d",
+    borderWidth: 6,
+    borderColor: "#f472b6",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#831843",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  vtVascTubeInner: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#500724",
+  },
+  vtVascCell1: {
+    position: "absolute",
+    bottom: 4,
+    left: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#f43f5e",
+  },
+  vtVascCell2: {
+    position: "absolute",
+    top: 6,
+    right: 48,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#fb7185",
   },
 });

@@ -1,296 +1,872 @@
 import React from "react";
 import {
-  ScrollView, Text, View, Pressable, StyleSheet, Dimensions,
+  ScrollView,
+  Text,
+  View,
+  Pressable,
+  StyleSheet,
+  Dimensions,
+  StatusBar,
+  Linking,
+  Alert,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
-import { colors } from "@/theme/colors";
 import SamsungBottomNav from "@/components/SamsungBottomNav";
-import { AnimatedCard } from "@/components/AnimatedCard";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Discover">;
 
-const { width: W } = Dimensions.get("window");
-const CARD_W = (W - 32 - 12) / 2; // 2-col grid, 16px side padding, 12px gap
-
-// ── Categories — horizontal 2×2 grid ─────────────────────────────────────────
-const CATEGORIES = [
-  { icon: "heart",        label: "Health",     sub: "24 services",  gradient: ["#be185d", "#8b5cf6"] as string[], route: "HealthDashboard" },
-  { icon: "flash",        label: "Fitness",    sub: "6 workouts",   gradient: ["#1e3a8a", "#38bdf8"] as string[], route: "FitnessDashboard" },
-  { icon: "alert-circle", label: "Emergency",  sub: "URGENT",       gradient: ["#7f1d1d", "#ef4444"] as string[], route: "EmergencyAssistance" },
-  { icon: "happy",        label: "Wellness",   sub: "Mind & Body",  gradient: ["#065f46", "#14b8a6"] as string[], route: "WellnessDashboard" },
-  { icon: "moon",         label: "Sleep",      sub: "Track rest",   gradient: ["#4338ca", "#8b5cf6"] as string[], route: "SleepDashboard" },
-  { icon: "nutrition",    label: "Nutrition",  sub: "Eat better",   gradient: ["#92400e", "#f59e0b"] as string[], route: "NutritionDashboard" },
-];
-
-const ARTICLES = [
-  { tag: "NUTRITION",   title: "The Future of Personalized Nutrition and Wellness", read: "5 min read", gradient: ["#1e3a8a", "#4338ca"] as string[] },
-  { tag: "SMART HOME",  title: "Integrating Health Tech into Your Living Space",     read: "8 min read", gradient: ["#134e4a", "#0d9488"] as string[] },
-];
-
-const EXPLORE_MORE = [
-  { label: "AI Coach",        icon: "sparkles",      route: "AICoach",           color: "#8343f4" },
-  { label: "Medication",      icon: "medical",       route: "MedicationCenter",  color: "#059669" },
-  { label: "Family",          icon: "people",        route: "FamilyDashboard",   color: "#d97706" },
-  { label: "Medical Records", icon: "document-text", route: "MedicalRecords",    color: "#1e3a8a" },
-  { label: "Hydration",       icon: "water",         route: "HydrationDashboard",color: "#0284c7" },
-  { label: "Steps",           icon: "walk",          route: "DailyStepsDashboard",color: "#6d28d9" },
-];
-
-// No NAV_TABS needed here anymore
+const { width: SW } = Dimensions.get("window");
+const PROMO_CARD_W = SW * 0.78;
 
 export default function DiscoverScreen({ navigation }: Props) {
+  const handleCarePress = (provider: string) => {
+    Alert.alert(
+      provider,
+      `Connecting to ${provider} partner services for health consultation and medicines.`
+    );
+  };
+
+  const handleCalmPress = (track: string) => {
+    navigation.navigate("MeditationDashboard");
+  };
+
   return (
     <View style={s.root}>
+      <StatusBar barStyle="light-content" backgroundColor="#0a0c10" />
 
-      {/* ── Header ──────────────────────────────────────────── */}
+      {/* ── Top Header ─────────────────────────────────────────── */}
       <View style={s.header}>
-        <View>
-          <Text style={s.pageTitle}>Discover</Text>
-          <Text style={s.pageSub}>Explore new ways to improve your health.</Text>
-        </View>
+        <Text style={s.pageTitle}>Discover</Text>
         <Pressable
-          style={s.iconBtn}
+          style={s.menuBtn}
           onPress={() => navigation.navigate("Notifications" as any)}
         >
-          <Ionicons name="notifications-outline" size={20} color={colors.text.secondary} />
-          <View style={s.notifDot} />
+          <Ionicons name="ellipsis-vertical" size={20} color="rgba(255,255,255,0.85)" />
+          <View style={s.menuDotBadge} />
         </Pressable>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-
-        {/* ── Hero Card ────────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.duration(400).springify()}>
-          <LinearGradient
-            colors={["#04b4a2", "#005048", "#041423"]}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={s.hero}
-          >
-            <View style={s.heroTag}>
-              <Text style={s.heroTagText}>FEATURED FOR YOU</Text>
-            </View>
-            <Text style={s.heroTitle}>Complete Family Wellness</Text>
-            <Text style={s.heroSub}>
-              Manage health, home care, emergency services and daily routines in one place.
-            </Text>
-            <Pressable
-              style={s.heroBtn}
-              onPress={() => navigation.navigate("HomeDashboard")}
-            >
-              <Text style={s.heroBtnText}>Explore Now</Text>
-              <Ionicons name="arrow-forward" size={14} color={colors.onPrimary} />
-            </Pressable>
-          </LinearGradient>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={s.scroll}
+      >
+        {/* ── Section Title: For healthy living ──────────────────── */}
+        <Animated.View entering={FadeInDown.duration(350).springify()}>
+          <Text style={s.sectionTitle}>For healthy living</Text>
         </Animated.View>
 
-        {/* ── Popular Categories — 2-col grid ─────────────── */}
-        <Text style={s.sectionTitle}>Popular Categories</Text>
-        <View style={s.categoryGrid}>
-          {CATEGORIES.map((c, i) => (
-            <AnimatedCard
-              key={c.label}
-              onPress={() => navigation.navigate(c.route as any)}
-              style={s.categoryOuter}
-            >
-              <Animated.View entering={FadeInDown.delay(i * 60).duration(350).springify()}>
-                <LinearGradient
-                  colors={c.gradient}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                  style={s.categoryCard}
-                >
-                  <View style={s.catIconWrap}>
-                    <Ionicons name={c.icon as any} size={26} color="white" />
-                  </View>
-                  <View style={s.catTextWrap}>
-                    <Text style={s.categoryLabel}>{c.label}</Text>
-                    {c.sub === "URGENT" ? (
-                      <View style={s.urgentBadge}>
-                        <Text style={s.urgentText}>URGENT</Text>
-                      </View>
-                    ) : (
-                      <Text style={s.categorySub}>{c.sub}</Text>
-                    )}
-                  </View>
-                  <Ionicons name="arrow-forward" size={16} color="rgba(255,255,255,0.5)" />
-                </LinearGradient>
-              </Animated.View>
-            </AnimatedCard>
-          ))}
-        </View>
-
-        {/* ── Articles ─────────────────────────────────────── */}
-        <Text style={s.sectionTitle}>Read & Inspire</Text>
-        {ARTICLES.map((a, i) => (
-          <Animated.View
-            key={a.title}
-            entering={FadeInDown.delay(i * 80).duration(400).springify()}
+        {/* ── CARD 1: PharmEasy Find Care ────────────────────────── */}
+        <Animated.View entering={FadeInDown.delay(80).duration(380).springify()}>
+          <Pressable
+            onPress={() => handleCarePress("PharmEasy")}
+            style={({ pressed }) => [s.cardWrapper, pressed && s.cardPressed]}
           >
-            <View style={s.articleCard}>
-              <LinearGradient colors={a.gradient} style={s.articleThumb}>
-                <Ionicons name="document-text" size={32} color="rgba(255,255,255,0.4)" />
-              </LinearGradient>
-              <View style={s.articleBody}>
-                <View style={s.articleTag}>
-                  <Text style={s.articleTagText}>{a.tag}</Text>
+            <LinearGradient
+              colors={["#054a36", "#09664c", "#0d7f5e"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={s.cardContainer}
+            >
+              {/* Header inside card */}
+              <View style={s.cardTopRow}>
+                <View>
+                  <Text style={s.cardCategory}>Find Care</Text>
+                  <Text style={s.cardPartner}>Powered by PharmEasy</Text>
                 </View>
-                <Text style={s.articleTitle}>{a.title}</Text>
-                <View style={s.articleFooter}>
-                  <Ionicons name="time-outline" size={13} color={colors.text.muted} />
-                  <Text style={s.articleRead}>{a.read}</Text>
-                  <View style={{ flex: 1 }} />
-                  <Ionicons name="bookmark-outline" size={18} color={colors.text.secondary} />
+                {/* PharmEasy Emblem Badge */}
+                <View style={s.pharmeasyBadge}>
+                  <Text style={s.pharmeasyIcon}>℞</Text>
                 </View>
               </View>
-            </View>
-          </Animated.View>
-        ))}
 
-        {/* ── Explore More ─────────────────────────────────── */}
-        <Text style={s.sectionTitle}>Explore More</Text>
-        <View style={s.exploreGrid}>
-          {EXPLORE_MORE.map((e, i) => (
-            <AnimatedCard
-              key={e.label}
-              onPress={() => navigation.navigate(e.route as any)}
-              style={s.exploreOuter}
-            >
-              <Animated.View
-                entering={FadeInDown.delay(i * 50).duration(350).springify()}
-                style={[s.exploreCard, { backgroundColor: e.color }]}
-              >
-                <View style={s.exploreIconWrap}>
-                  <Ionicons name={e.icon as any} size={22} color="white" />
+              {/* 3 Offer Badges Box */}
+              <View style={s.peOfferContainer}>
+                {/* Offer 1 */}
+                <View style={s.peOfferCol}>
+                  <View style={[s.peIconCircle, { backgroundColor: "#15803d" }]}>
+                    <Ionicons name="medkit" size={16} color="#ffffff" />
+                  </View>
+                  <Text style={s.peOfferTitle}>Save up to</Text>
+                  <Text style={s.peOfferHighlight}>25% on</Text>
+                  <Text style={s.peOfferSub}>medicine orders*</Text>
                 </View>
-                <Text style={s.exploreLabel}>{e.label}</Text>
-              </Animated.View>
-            </AnimatedCard>
-          ))}
-        </View>
 
+                {/* Divider */}
+                <View style={s.peDivider} />
+
+                {/* Offer 2 */}
+                <View style={s.peOfferCol}>
+                  <View style={[s.peIconCircle, { backgroundColor: "#7c3aed" }]}>
+                    <Ionicons name="flask" size={16} color="#ffffff" />
+                  </View>
+                  <Text style={s.peOfferTitle}>Buy 1 Get 1</Text>
+                  <Text style={[s.peOfferHighlight, { color: "#6d28d9" }]}>FREE</Text>
+                  <Text style={s.peOfferSub}>on Lab Tests*</Text>
+                </View>
+
+                {/* Divider */}
+                <View style={s.peDivider} />
+
+                {/* Offer 3 */}
+                <View style={s.peOfferCol}>
+                  <View style={[s.peIconCircle, { backgroundColor: "#0284c7" }]}>
+                    <FontAwesome5 name="stethoscope" size={14} color="#ffffff" />
+                  </View>
+                  <Text style={s.peOfferTitle}>Doctor Consults</Text>
+                  <Text style={s.peOfferSub}>Starting at</Text>
+                  <Text style={[s.peOfferHighlight, { color: "#0369a1" }]}>₹199 only*</Text>
+                </View>
+              </View>
+
+              {/* Headlines */}
+              <Text style={s.cardMainHeading}>
+                Get help with all of your healthcare needs
+              </Text>
+              <Text style={s.cardSubDesc}>
+                The best offers on medications, lab tests, doctor consults, and more are just a tap away!
+              </Text>
+            </LinearGradient>
+          </Pressable>
+        </Animated.View>
+
+        {/* ── CARD 2: Tata 1mg Find Care ─────────────────────────── */}
+        <Animated.View entering={FadeInDown.delay(140).duration(380).springify()}>
+          <Pressable
+            onPress={() => handleCarePress("Tata 1mg")}
+            style={({ pressed }) => [s.cardWrapper, pressed && s.cardPressed]}
+          >
+            <LinearGradient
+              colors={["#bd2a3d", "#d4374b", "#e7465c"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={s.cardContainer}
+            >
+              {/* Header inside card */}
+              <View style={s.cardTopRow}>
+                <View>
+                  <Text style={s.cardCategory}>Find Care</Text>
+                  <Text style={s.cardPartner}>Powered by Tata 1mg</Text>
+                </View>
+                {/* Tata 1mg Badge */}
+                <View style={s.tataBadge}>
+                  <Text style={s.tataBadgeBrand}>TATA</Text>
+                  <Text style={s.tataBadgeName}>1mg</Text>
+                </View>
+              </View>
+
+              {/* Promo Banner Peach Container */}
+              <View style={s.tataPromoContainer}>
+                <Text style={s.tataExclusiveTitle}>
+                  Additional Discounts Exclusively for Samsung Health Users
+                </Text>
+                <View style={s.tataRow}>
+                  {/* Item 1 */}
+                  <View style={s.tataCol}>
+                    <View style={s.tataIconBox}>
+                      <Ionicons name="medical" size={20} color="#e11d48" />
+                    </View>
+                    <Text style={s.tataColText}>Genuine Medicines</Text>
+                    <Text style={s.tataColHighlight}>Up to 25% off*</Text>
+                  </View>
+
+                  {/* Item 2 */}
+                  <View style={s.tataCol}>
+                    <View style={s.tataIconBox}>
+                      <Ionicons name="color-filter" size={20} color="#e11d48" />
+                    </View>
+                    <Text style={s.tataColText}>Lab Tests</Text>
+                    <Text style={s.tataColHighlight}>Up to 40% off*</Text>
+                  </View>
+
+                  {/* Item 3 */}
+                  <View style={s.tataCol}>
+                    <View style={s.tataIconBox}>
+                      <Ionicons name="phone-portrait" size={20} color="#e11d48" />
+                    </View>
+                    <Text style={s.tataColText}>Online</Text>
+                    <Text style={s.tataColHighlight}>Doctor Consults</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Headlines */}
+              <Text style={s.cardMainHeading}>Your healthcare, simplified</Text>
+              <Text style={s.cardSubDesc}>
+                Access to medicines, lab tests, and consultations is just a tap away.
+              </Text>
+            </LinearGradient>
+          </Pressable>
+        </Animated.View>
+
+        {/* ── CARD 3: Stay balanced (Powered by Calm) ─────────────── */}
+        <Animated.View entering={FadeInDown.delay(200).duration(380).springify()}>
+          <Pressable
+            onPress={() => navigation.navigate("MeditationDashboard")}
+            style={({ pressed }) => [s.cardWrapper, pressed && s.cardPressed]}
+          >
+            <LinearGradient
+              colors={["#4d2479", "#63309a", "#763cb3"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={s.cardContainer}
+            >
+              {/* Background Floral Overlay */}
+              <View style={s.calmPetalGlow} />
+
+              <Text style={s.calmTitle}>Stay balanced</Text>
+              <Text style={s.calmSub}>
+                Cultivate calm through mindful meditation.
+              </Text>
+
+              {/* 3 Calm Track Tiles */}
+              <View style={s.calmTilesRow}>
+                {/* Track 1 */}
+                <Pressable
+                  onPress={() => handleCalmPress("The Poetry")}
+                  style={s.calmTile}
+                >
+                  <LinearGradient
+                    colors={["#b45309", "#d97706"]}
+                    style={s.calmTileImg}
+                  >
+                    <Ionicons name="book" size={26} color="rgba(255,255,255,0.9)" />
+                    <View style={s.lockBadge}>
+                      <Ionicons name="lock-closed" size={11} color="#ffffff" />
+                    </View>
+                  </LinearGradient>
+                  <Text style={s.calmTileLabel} numberOfLines={1}>The Poetry ...</Text>
+                </Pressable>
+
+                {/* Track 2 */}
+                <Pressable
+                  onPress={() => handleCalmPress("7 Days of Sleep")}
+                  style={s.calmTile}
+                >
+                  <LinearGradient
+                    colors={["#1e3a8a", "#0284c7"]}
+                    style={s.calmTileImg}
+                  >
+                    <Ionicons name="moon" size={26} color="rgba(255,255,255,0.9)" />
+                  </LinearGradient>
+                  <Text style={s.calmTileLabel} numberOfLines={1}>7 Days of S...</Text>
+                </Pressable>
+
+                {/* Track 3 */}
+                <Pressable
+                  onPress={() => handleCalmPress("Escape to the Coast")}
+                  style={s.calmTile}
+                >
+                  <LinearGradient
+                    colors={["#0f766e", "#14b8a6"]}
+                    style={s.calmTileImg}
+                  >
+                    <Ionicons name="water" size={26} color="rgba(255,255,255,0.9)" />
+                    <View style={s.lockBadge}>
+                      <Ionicons name="lock-closed" size={11} color="#ffffff" />
+                    </View>
+                  </LinearGradient>
+                  <Text style={s.calmTileLabel} numberOfLines={1}>Escape to t...</Text>
+                </Pressable>
+              </View>
+
+              {/* Calm Branding Footer */}
+              <View style={s.calmFooter}>
+                <Text style={s.calmPowered}>Powered by <Text style={s.calmLogo}>Calm</Text></Text>
+              </View>
+            </LinearGradient>
+          </Pressable>
+        </Animated.View>
+
+        {/* ── PROMOTIONS SECTION ─────────────────────────────────── */}
+        <Animated.View entering={FadeInDown.delay(260).duration(380).springify()}>
+          <View style={s.promoHeaderRow}>
+            <View style={s.promoHeaderLeft}>
+              <Text style={s.promoTitle}>Promotions</Text>
+              <View style={s.promoDotBadge} />
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
+          </View>
+
+          {/* Horizontal Promotions Carousel */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.promoScrollContent}
+            style={s.promoScroll}
+          >
+            {/* Promo Card 1: Galaxy Watch Fitness Index */}
+            <Pressable
+              onPress={() => navigation.navigate("FitnessDashboard")}
+              style={s.promoCardOuter}
+            >
+              <View style={s.promoCardWhite}>
+                <View style={s.promoCardTop}>
+                  <Ionicons name="fitness" size={18} color="#0284c7" />
+                  <Text style={s.promoBrandText}>Samsung Health</Text>
+                </View>
+                <Text style={s.promoCardHeading}>
+                  Introducing Fitness Index and Daily Cardio Load
+                </Text>
+                <View style={s.watchGraphicsRow}>
+                  {/* Smart Watch Mock graphic 1 */}
+                  <View style={s.watchGraphicCircle1}>
+                    <View style={s.watchScreen1}>
+                      <Text style={s.watchScreenTxt}>86</Text>
+                    </View>
+                  </View>
+                  {/* Smart Watch Mock graphic 2 */}
+                  <View style={s.watchGraphicCircle2}>
+                    <View style={s.watchScreen2}>
+                      <Ionicons name="time" size={18} color="#22c55e" />
+                    </View>
+                  </View>
+                </View>
+                <Text style={s.promoDateText}>04.09.2026 ~ 20.09.2026</Text>
+              </View>
+            </Pressable>
+
+            {/* Promo Card 2: Walk-a-thon Redemption */}
+            <Pressable
+              onPress={() => navigation.navigate("DailyStepsDashboard")}
+              style={s.promoCardOuter}
+            >
+              <LinearGradient
+                colors={["#1e293b", "#0f172a"]}
+                style={s.promoCardDark}
+              >
+                {/* Tricolor Ribbon Gradient Accent */}
+                <LinearGradient
+                  colors={["#ff9933", "#ffffff", "#138808"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={s.tricolorRibbon}
+                />
+                <Text style={s.promoCardBadge}>Walk-a-thon</Text>
+                <Text style={s.promoCardHeadingDark}>
+                  Walk-a-thon Redemption
+                </Text>
+                <Text style={s.promoCardSubDark}>
+                  10,000 steps challenge awards & prizes
+                </Text>
+                <View style={{ flex: 1 }} />
+                <Text style={s.promoDateTextLight}>~ 30.09.2026</Text>
+              </LinearGradient>
+            </Pressable>
+
+            {/* Promo Card 3: PharmEasy discount */}
+            <Pressable
+              onPress={() => handleCarePress("PharmEasy")}
+              style={s.promoCardOuter}
+            >
+              <View style={s.promoCardWhite}>
+                <View style={s.promoCardTop}>
+                  <Ionicons name="shield-checkmark" size={18} color="#059669" />
+                  <Text style={s.promoBrandText}>Samsung Health</Text>
+                </View>
+                <Text style={s.promoCardHeading}>
+                  Save more on medicines with PharmEasy
+                </Text>
+                <Text style={s.peDiscountBig}>Up to 27% OFF</Text>
+                <View style={s.buyNowBtn}>
+                  <Text style={s.buyNowBtnText}>Buy now</Text>
+                </View>
+                <Text style={s.promoDateText}>03.09.2026 ~ 30.09.2026</Text>
+              </View>
+            </Pressable>
+          </ScrollView>
+        </Animated.View>
+
+        {/* Bottom clearance */}
         <View style={{ height: 110 }} />
       </ScrollView>
 
-      {/* ── Bottom Nav ──────────────────────────────────────── */}
+      {/* ── Fixed Samsung Bottom Nav (Discover Active) ─────────── */}
       <SamsungBottomNav activeRoute="Discover" />
-
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.surface.dim },
-
+  root: {
+    flex: 1,
+    backgroundColor: "#0a0c10",
+  },
   header: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start",
-    paddingHorizontal: 16, paddingTop: 52, paddingBottom: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingTop: 52,
+    paddingBottom: 14,
   },
-  pageTitle: { fontSize: 28, fontWeight: "700", color: colors.text.primary },
-  pageSub: { fontSize: 14, color: colors.text.secondary, marginTop: 4 },
-  iconBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: colors.surface.containerHigh,
-    borderWidth: 1, borderColor: colors.glass.border,
-    justifyContent: "center", alignItems: "center",
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#ffffff",
+    letterSpacing: -0.5,
   },
-  notifDot: {
-    position: "absolute", top: 9, right: 9,
-    width: 8, height: 8, borderRadius: 4,
-    backgroundColor: colors.error,
-    borderWidth: 1, borderColor: colors.surface.containerHigh,
+  menuBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+  },
+  menuDotBadge: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#ff6a00",
+    borderWidth: 1.5,
+    borderColor: "#0a0c10",
   },
 
-  scroll: { paddingHorizontal: 16, paddingTop: 4 },
-
-  // Hero
-  hero: {
-    borderRadius: 28, padding: 24,
-    marginBottom: 24, minHeight: 240,
-    justifyContent: "flex-end",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+  scroll: {
+    paddingHorizontal: 16,
+    paddingTop: 4,
   },
-  heroTag: {
-    backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20,
-    paddingHorizontal: 12, paddingVertical: 4,
-    alignSelf: "flex-start", marginBottom: 12,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.18)",
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#ffffff",
+    marginBottom: 14,
   },
-  heroTagText: { fontSize: 11, fontWeight: "700", color: colors.secondaryFixed },
-  heroTitle: { fontSize: 26, fontWeight: "700", color: "white", marginBottom: 8, lineHeight: 34 },
-  heroSub: { fontSize: 14, color: "rgba(255,255,255,0.75)", marginBottom: 20, lineHeight: 20 },
-  heroBtn: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 20, paddingVertical: 12,
-    borderRadius: 20, alignSelf: "flex-start",
+
+  // Cards
+  cardWrapper: {
+    marginBottom: 16,
+    borderRadius: 24,
+    overflow: "hidden",
   },
-  heroBtnText: { color: colors.onPrimary, fontSize: 14, fontWeight: "700" },
+  cardPressed: {
+    opacity: 0.95,
+    transform: [{ scale: 0.985 }],
+  },
+  cardContainer: {
+    borderRadius: 24,
+    padding: 20,
+    overflow: "hidden",
+    position: "relative",
+  },
+  cardTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 16,
+  },
+  cardCategory: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+  cardPartner: {
+    fontSize: 12.5,
+    color: "rgba(255,255,255,0.75)",
+    marginTop: 2,
+    fontWeight: "500",
+  },
 
-  sectionTitle: { fontSize: 20, fontWeight: "700", color: colors.text.primary, marginBottom: 12 },
+  // Badges
+  pharmeasyBadge: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "#0fa37f",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  pharmeasyIcon: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#ffffff",
+  },
 
-  // Category cards — 2-col, horizontal layout (icon + text + arrow in a row)
-  categoryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 24 },
-  categoryOuter: { width: CARD_W },
-  categoryCard: {
-    borderRadius: 20, padding: 16,
-    flexDirection: "row", alignItems: "center",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
-    minHeight: 72,
+  tataBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#ffffff",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  tataBadgeBrand: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#000000",
+    letterSpacing: 0.5,
+  },
+  tataBadgeName: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#e11d48",
+    lineHeight: 14,
+  },
+
+  // PharmEasy Offer Container
+  peOfferContainer: {
+    backgroundColor: "#a0e0cf",
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 18,
+  },
+  peOfferCol: {
+    flex: 1,
+    alignItems: "center",
+    paddingHorizontal: 2,
+  },
+  peIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  peOfferTitle: {
+    fontSize: 10.5,
+    color: "#064e3b",
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  peOfferHighlight: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#065f46",
+    textAlign: "center",
+    lineHeight: 16,
+  },
+  peOfferSub: {
+    fontSize: 9.5,
+    color: "#047857",
+    textAlign: "center",
+  },
+  peDivider: {
+    width: 1,
+    height: 44,
+    backgroundColor: "rgba(6, 95, 70, 0.2)",
+  },
+
+  // Tata 1mg Promo Container
+  tataPromoContainer: {
+    backgroundColor: "#fdece6",
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 18,
+  },
+  tataExclusiveTitle: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#9f1239",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  tataRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+  },
+  tataCol: {
+    alignItems: "center",
+  },
+  tataIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(225, 29, 72, 0.12)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  tataColText: {
+    fontSize: 10.5,
+    fontWeight: "600",
+    color: "#4c0519",
+    textAlign: "center",
+  },
+  tataColHighlight: {
+    fontSize: 11.5,
+    fontWeight: "800",
+    color: "#be123c",
+    textAlign: "center",
+  },
+
+  // Common Card Headings
+  cardMainHeading: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#ffffff",
+    textAlign: "center",
+    lineHeight: 28,
+    marginBottom: 8,
+  },
+  cardSubDesc: {
+    fontSize: 13.5,
+    color: "rgba(255,255,255,0.85)",
+    textAlign: "center",
+    lineHeight: 19,
+    paddingHorizontal: 12,
+  },
+
+  // Calm Meditation Card
+  calmPetalGlow: {
+    position: "absolute",
+    top: -40,
+    right: -40,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: "rgba(192, 132, 252, 0.15)",
+  },
+  calmTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#ffffff",
+    textAlign: "center",
+    marginBottom: 6,
+  },
+  calmSub: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.85)",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  calmTilesRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     gap: 10,
+    marginBottom: 16,
   },
-  catIconWrap: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center", alignItems: "center",
-    flexShrink: 0,
+  calmTile: {
+    flex: 1,
+    alignItems: "center",
   },
-  catTextWrap: { flex: 1 },
-  categoryLabel: { fontSize: 13, fontWeight: "700", color: "white" },
-  categorySub: { fontSize: 11, color: "rgba(255,255,255,0.65)", marginTop: 2 },
-  urgentBadge: {
-    backgroundColor: colors.error, borderRadius: 4,
-    paddingHorizontal: 5, paddingVertical: 2,
-    alignSelf: "flex-start", marginTop: 3,
+  calmTileImg: {
+    width: "100%",
+    aspectRatio: 1,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 6,
+    position: "relative",
   },
-  urgentText: { fontSize: 9, fontWeight: "700", color: "white" },
+  lockBadge: {
+    position: "absolute",
+    bottom: 6,
+    right: 6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  calmTileLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#ffffff",
+    textAlign: "center",
+  },
+  calmFooter: {
+    alignItems: "flex-end",
+    marginTop: 4,
+  },
+  calmPowered: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.7)",
+  },
+  calmLogo: {
+    fontStyle: "italic",
+    fontWeight: "800",
+    color: "#ffffff",
+    fontSize: 14,
+  },
 
-  // Articles
-  articleCard: {
-    backgroundColor: colors.surface.container,
-    borderRadius: 24, overflow: "hidden",
-    marginBottom: 14, borderWidth: 1, borderColor: colors.glass.border,
-    flexDirection: "row", alignItems: "stretch",
+  // Promotions Section
+  promoHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 10,
+    marginBottom: 14,
   },
-  articleThumb: {
-    width: 90, justifyContent: "center", alignItems: "center",
+  promoHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
-  articleBody: { flex: 1, padding: 16 },
-  articleTag: {
-    backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 8,
-    paddingHorizontal: 8, paddingVertical: 3, alignSelf: "flex-start",
+  promoTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+  promoDotBadge: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: "#ff6a00",
+  },
+  promoScroll: {
+    marginHorizontal: -16,
+  },
+  promoScrollContent: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  promoCardOuter: {
+    width: PROMO_CARD_W,
+    borderRadius: 22,
+    overflow: "hidden",
+  },
+  promoCardWhite: {
+    backgroundColor: "#ffffff",
+    borderRadius: 22,
+    padding: 18,
+    minHeight: 180,
+    justifyContent: "space-between",
+  },
+  promoCardDark: {
+    borderRadius: 22,
+    padding: 18,
+    minHeight: 180,
+    position: "relative",
+    overflow: "hidden",
+  },
+  tricolorRibbon: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 6,
+  },
+  promoCardBadge: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#f59e0b",
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  promoCardHeadingDark: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#ffffff",
+    lineHeight: 22,
+  },
+  promoCardSubDark: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.7)",
+    marginTop: 4,
+  },
+  promoDateTextLight: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.5)",
+    fontWeight: "500",
+  },
+  promoCardTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     marginBottom: 8,
   },
-  articleTagText: { fontSize: 10, fontWeight: "700", color: colors.secondary },
-  articleTitle: { fontSize: 14, fontWeight: "600", color: colors.text.primary, lineHeight: 20 },
-  articleFooter: { flexDirection: "row", alignItems: "center", marginTop: 10, gap: 4 },
-  articleRead: { fontSize: 12, color: colors.text.muted },
-
-  // Explore more — 3-col
-  exploreGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 8 },
-  exploreOuter: { width: (W - 32 - 24) / 3 },
-  exploreCard: {
-    borderRadius: 20, padding: 14, alignItems: "center",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.15)",
+  promoBrandText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#334155",
   },
-  exploreIconWrap: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center", alignItems: "center",
+  promoCardHeading: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#0f172a",
+    lineHeight: 20,
+  },
+  watchGraphicsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 14,
+    marginVertical: 10,
+  },
+  watchGraphicCircle1: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: "#e2e8f0",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#cbd5e1",
+  },
+  watchScreen1: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#0284c7",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  watchScreenTxt: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#ffffff",
+  },
+  watchGraphicCircle2: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: "#1e293b",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: "#475569",
+  },
+  watchScreen2: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#0f172a",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  peDiscountBig: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#059669",
+    marginVertical: 6,
+  },
+  buyNowBtn: {
+    backgroundColor: "#0f172a",
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    alignSelf: "flex-start",
     marginBottom: 8,
   },
-  exploreLabel: { fontSize: 11, color: "white", fontWeight: "600", textAlign: "center" },
-
+  buyNowBtnText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  promoDateText: {
+    fontSize: 11,
+    color: "#64748b",
+    fontWeight: "500",
+  },
 });
