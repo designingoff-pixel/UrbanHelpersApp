@@ -1,4 +1,11 @@
-import RazorpayCheckout from 'react-native-razorpay';
+// @ts-ignore
+let RazorpayCheckout: any = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  RazorpayCheckout = require('react-native-razorpay').default || require('react-native-razorpay');
+} catch {
+  // Native razorpay module not linked or web environment
+}
 
 export interface PaymentOptions {
   amount: number; // in Rupees

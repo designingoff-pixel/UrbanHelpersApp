@@ -10,7 +10,7 @@ import {
   ViewToken,
   StatusBar,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Animated, {
@@ -31,13 +31,19 @@ type Props = NativeStackScreenProps<RootStackParamList, "HomeDashboard">;
 const { width: SW } = Dimensions.get("window");
 
 // ─── Quick-action pills (top icon bar) ────────────────────────────────────────
-const PILLS: { icon: keyof typeof Ionicons.glyphMap; name: string }[] = [
-  { icon: "grid",               name: "Overview" },
-  { icon: "walk-outline",       name: "Activity" },
-  { icon: "moon-outline",       name: "Sleep" },
-  { icon: "heart-outline",      name: "Heart" },
-  { icon: "body-outline",       name: "Meditation" },
-  { icon: "restaurant-outline", name: "Food" },
+interface PillItem {
+  icon: string;
+  lib: "Ionicons" | "MaterialIcons";
+  name: string;
+}
+
+const PILLS: PillItem[] = [
+  { icon: "apps", lib: "Ionicons", name: "Overview" },
+  { icon: "directions-run", lib: "MaterialIcons", name: "Activity" },
+  { icon: "bedtime", lib: "MaterialIcons", name: "Sleep" },
+  { icon: "favorite", lib: "MaterialIcons", name: "Heart" },
+  { icon: "self-improvement", lib: "MaterialIcons", name: "Mindfulness" },
+  { icon: "restaurant", lib: "MaterialIcons", name: "Nutrition" },
 ];
 
 // ─── Hero promo slides (Overview tab) ─────────────────────────────────────────
@@ -201,11 +207,19 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 style={s.pillBtn}
               >
                 <View style={[s.pillBg, isActive && s.pillBgActive]}>
-                  <Ionicons
-                    name={p.icon}
-                    size={22}
-                    color={isActive ? "#FFFFFF" : "rgba(255,255,255,0.55)"}
-                  />
+                  {p.lib === "MaterialIcons" ? (
+                    <MaterialIcons
+                      name={p.icon as any}
+                      size={22}
+                      color={isActive ? "#FFFFFF" : "rgba(255,255,255,0.55)"}
+                    />
+                  ) : (
+                    <Ionicons
+                      name={p.icon as any}
+                      size={22}
+                      color={isActive ? "#FFFFFF" : "rgba(255,255,255,0.55)"}
+                    />
+                  )}
                 </View>
               </Pressable>
             );
@@ -966,27 +980,310 @@ export default function HomeDashboardScreen({ navigation }: Props) {
         )}
 
         {/* ═══════════════════════════════════════════════════════════════
-            TABS 3–5: Heart, Meditation, Food (simple navigate-through)
+            TAB 3: HEART (quick redirect)
             ═══════════════════════════════════════════════════════════════ */}
-        {activePill > 2 && (
+        {activePill === 3 && (
           <View style={s.otherSubView}>
-            <Text style={s.subCategoryTitle}>{PILLS[activePill].name}</Text>
-            <Text style={s.subCategoryAdvice}>
-              Track and optimize your {PILLS[activePill].name.toLowerCase()} health goals.
-            </Text>
-            <Pressable
-              style={s.exploreModuleBtn}
-              onPress={() => {
-                if (activePill === 3) navigation.navigate("HealthDashboard");
-                if (activePill === 4) navigation.navigate("MeditationDashboard");
-                if (activePill === 5) navigation.navigate("NutritionDashboard");
-              }}
-            >
-              <LinearGradient colors={["#2563eb", "#3b82f6"]} style={s.exploreModuleGrad}>
-                <Text style={s.exploreModuleText}>Open Full {PILLS[activePill].name} Dashboard</Text>
-                <Ionicons name="arrow-forward" size={16} color="white" />
+            <Animated.View entering={FadeInDown.duration(350).springify()}>
+              <Text style={s.subCategoryTitle}>Heart</Text>
+              <Text style={s.subCategoryAdvice}>
+                Monitor your heart health score and key vitals in one place.
+              </Text>
+            </Animated.View>
+            <PressCard index={0} onPress={() => navigation.navigate("HealthDashboard")}>
+              <LinearGradient colors={["#9c27b0", "#c22f93", "#d63384"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.wideCard}>
+                <View style={s.wideBlob} />
+                <View style={s.wideTextWrap}>
+                  <Text style={s.wideLabel}>Heart health</Text>
+                  <Text style={s.wideDesc}>See your heart health score plus key health insights in one place.</Text>
+                </View>
+                <View style={s.heartIconWrap}>
+                  <View style={s.heartRingLg}><View style={s.heartRingMd}><Ionicons name="heart" size={26} color="#ff4a8d" /></View></View>
+                </View>
               </LinearGradient>
-            </Pressable>
+            </PressCard>
+            <PressCard index={1} onPress={() => navigation.navigate("VitalsScreen" as any)}>
+              <LinearGradient colors={["#006064", "#00838f", "#00acc1"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.wideCard}>
+                <View style={s.wideTextWrap}>
+                  <Text style={s.wideLabel}>Vitals</Text>
+                  <Text style={s.wideDesc}>Track heart rate, HRV, blood oxygen and respiratory rate.</Text>
+                </View>
+                <View style={s.heartIconWrap}><Ionicons name="radio-outline" size={36} color="rgba(255,255,255,0.4)" /></View>
+              </LinearGradient>
+            </PressCard>
+            <View style={s.editHomeWrap}><Pressable style={s.editHomeBtn} onPress={() => {}}><Text style={s.editHomeText}>Edit home</Text></Pressable></View>
+          </View>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════════
+            TAB 4: MINDFULNESS / MEDITATION
+            ═══════════════════════════════════════════════════════════════ */}
+        {activePill === 4 && (
+          <View style={s.mindSubView}>
+            {/* Header */}
+            <Animated.View entering={FadeInDown.duration(350).springify()}>
+              <Text style={s.subCategoryTitle}>Mindfulness</Text>
+              <Text style={s.subCategoryAdvice}>
+                Purposeful pauses are a great way to keep your energy going. How about a few gentle stretches right now?
+              </Text>
+            </Animated.View>
+
+            {/* Mindfulness card with 3 sub-tiles */}
+            <PressCard index={0} onPress={() => navigation.navigate("MeditationDashboard")}>
+              <View style={s.mindMainCard}>
+                <View style={s.mindMainHeader}>
+                  <Text style={s.mindMainTitle}>Mindfulness</Text>
+                  <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.6)" />
+                </View>
+                <View style={s.mindTilesRow}>
+                  {/* 1. Mood check-in */}
+                  <Pressable style={s.mindTile} onPress={() => navigation.navigate("WellnessDashboard")}>
+                    <View style={s.moodGraphicBox}>
+                      <View style={s.moodWave1} />
+                      <View style={s.moodWave2} />
+                      <View style={s.moodWave3} />
+                    </View>
+                    <Text style={s.mindTileLabel}>Mood{"\n"}check-in</Text>
+                  </Pressable>
+
+                  {/* 2. Breathing exercises */}
+                  <Pressable style={s.mindTile} onPress={() => navigation.navigate("MeditationDashboard")}>
+                    <View style={s.breathGraphicBox}>
+                      <View style={s.breathOrb1} />
+                      <View style={s.breathOrb2} />
+                    </View>
+                    <Text style={s.mindTileLabel}>Breathing{"\n"}exercises</Text>
+                  </Pressable>
+
+                  {/* 3. Meditation */}
+                  <Pressable style={s.mindTile} onPress={() => navigation.navigate("MeditationDashboard")}>
+                    <View style={s.zenGraphicBox}>
+                      <View style={s.zenStone1} />
+                      <View style={s.zenStone2} />
+                      <View style={s.zenStone3} />
+                    </View>
+                    <Text style={s.mindTileLabel}>Meditation</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </PressCard>
+
+            {/* Stress card — ochre/yellow-amber */}
+            <PressCard index={1} onPress={() => navigation.navigate("WellnessDashboard")}>
+              <LinearGradient
+                colors={["#9e6400", "#b87600", "#cb8600"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={s.stressCard}
+              >
+                <Text style={s.stressLabel}>Stress</Text>
+
+                {/* 3D Spiral Spring Coil (Green -> Lime -> Yellow -> Orange) */}
+                <View style={s.springWrap}>
+                  <View style={[s.springRing, s.springRing1]} />
+                  <View style={[s.springRing, s.springRing2]} />
+                  <View style={[s.springRing, s.springRing3]} />
+                  <View style={[s.springRing, s.springRing4]} />
+                  <View style={[s.springRing, s.springRing5]} />
+                </View>
+
+                <View style={{ flex: 1 }} />
+                <Text style={s.stressDesc}>Learn how to track your stress level.</Text>
+              </LinearGradient>
+            </PressCard>
+
+            <View style={s.editHomeWrap}>
+              <Pressable style={s.editHomeBtn} onPress={() => {}}>
+                <Text style={s.editHomeText}>Edit home</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════════
+            TAB 5: NUTRITION
+            ═══════════════════════════════════════════════════════════════ */}
+        {activePill === 5 && (
+          <View style={s.nutriSubView}>
+            {/* Header */}
+            <Animated.View entering={FadeInDown.duration(350).springify()}>
+              <Text style={s.subCategoryTitle}>Nutrition</Text>
+              <Text style={s.subCategoryAdvice}>
+                Water helps your body refresh. Small habits like drinking water help promote good health.
+              </Text>
+            </Animated.View>
+
+            {/* 1. Food — vibrant orange card with 3D orange slice */}
+            <PressCard index={0} onPress={() => navigation.navigate("NutritionDashboard")}>
+              <LinearGradient
+                colors={["#cb4d11", "#dd5b1b", "#eb6724"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={s.nutriCard}
+              >
+                <Text style={s.nutriCardLabel}>Food</Text>
+                
+                {/* 3D Orange Slice */}
+                <View style={s.orangeSliceWrap}>
+                  <View style={s.orangeSlicePeel}>
+                    <View style={s.orangeSlicePith}>
+                      <View style={s.orangeSlicePulp}>
+                        <View style={s.orangeSegment1} />
+                        <View style={s.orangeSegment2} />
+                        <View style={s.orangeSegment3} />
+                        <View style={s.orangeCenterPip} />
+                      </View>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={{ flex: 1 }} />
+                <Text style={s.nutriCardDesc}>Ready to make logging meals a habit?</Text>
+              </LinearGradient>
+            </PressCard>
+
+            {/* 2. Body composition — sky-blue card with 3D organic fluid/ring */}
+            <PressCard index={1} onPress={() => navigation.navigate("WeightLogDashboard")}>
+              <LinearGradient
+                colors={["#007eb8", "#0091d6", "#0fa2e8"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={s.nutriCard}
+              >
+                <Text style={s.nutriCardLabel}>Body composition</Text>
+
+                {/* 3D Fluid Blob & Handle */}
+                <View style={s.bodyCompWrap}>
+                  <View style={s.bodyCompBlob1} />
+                  <View style={s.bodyCompBlob2} />
+                  <View style={s.bodyCompHandle} />
+                </View>
+
+                <View style={{ flex: 1 }} />
+                <Text style={s.nutriCardDesc}>Track your weight and body composition.</Text>
+              </LinearGradient>
+            </PressCard>
+
+            {/* 3. Water — vivid cyan card with realistic 3D glass of water */}
+            <PressCard index={2} onPress={() => navigation.navigate("HydrationDashboard")}>
+              <LinearGradient
+                colors={["#008bc7", "#009fe6", "#14adf2"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={s.nutriCard}
+              >
+                <Text style={s.nutriCardLabel}>Water</Text>
+
+                {/* 3D Glass of Water */}
+                <View style={s.waterGlassWrap}>
+                  <View style={s.waterGlassBody}>
+                    <View style={s.waterGlassRim} />
+                    <View style={s.waterGlassSheen} />
+                    <View style={s.waterGlassFill}>
+                      <View style={s.waterSurface} />
+                      <View style={s.waterBubble1} />
+                      <View style={s.waterBubble2} />
+                    </View>
+                  </View>
+                </View>
+
+                <View style={{ flex: 1 }} />
+                <Text style={s.nutriCardDesc}>Ready to make staying hydrated a habit?</Text>
+              </LinearGradient>
+            </PressCard>
+
+            {/* 4. Blood glucose — terracotta card with 3D red blood cells and molecule */}
+            <PressCard index={3} onPress={() => navigation.navigate("HealthDashboard")}>
+              <LinearGradient
+                colors={["#ba5132", "#ce5e3d", "#de6a46"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={s.nutriCard}
+              >
+                <Text style={s.nutriCardLabel}>Blood glucose</Text>
+
+                {/* 3D Red Blood Cells + Glucose Molecule */}
+                <View style={s.glucoseWrap}>
+                  <View style={s.rbc1}>
+                    <View style={s.rbcCenter} />
+                  </View>
+                  <View style={s.rbc2}>
+                    <View style={s.rbcCenter} />
+                  </View>
+                  <View style={s.glucoseAtom1} />
+                  <View style={s.glucoseAtom2} />
+                  <View style={s.glucoseAtom3} />
+                </View>
+
+                <View style={{ flex: 1 }} />
+                <Text style={s.nutriCardDesc}>Record your glucose levels to help you manage your blood sugar.</Text>
+              </LinearGradient>
+            </PressCard>
+
+            {/* 5. Antioxidant index — purple card with chemistry flask badge & 3D cell */}
+            <PressCard index={4} onPress={() => navigation.navigate("AdvancedNutritionDashboard")}>
+              <LinearGradient
+                colors={["#6f4ec2", "#815fd2", "#906ee0"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={s.nutriCard}
+              >
+                <Text style={s.nutriCardLabel}>Antioxidant index</Text>
+
+                {/* 3D Cell Graphic + Flask Badge */}
+                <View style={s.antioxWrap}>
+                  <View style={s.antioxOuterCell}>
+                    <View style={s.antioxMidCell}>
+                      <View style={s.antioxInnerCell} />
+                    </View>
+                  </View>
+                  <View style={s.antioxOuterCell2} />
+                  <View style={s.flaskBadge}>
+                    <Ionicons name="flask" size={13} color="#ffffff" />
+                  </View>
+                </View>
+
+                <View style={{ flex: 1 }} />
+                <Text style={s.nutriCardDesc}>Learn how this index helps you see if you're getting enough fruits and vegetables.</Text>
+              </LinearGradient>
+            </PressCard>
+
+            {/* 6. AGEs index — golden/mustard card with 3D crispy golden cubes */}
+            <PressCard index={5} onPress={() => navigation.navigate("AdvancedNutritionDashboard")}>
+              <LinearGradient
+                colors={["#ad801c", "#c29124", "#d3a12d"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={s.nutriCard}
+              >
+                <Text style={s.nutriCardLabel}>AGEs index</Text>
+
+                {/* 3D Crispy Golden Cubes */}
+                <View style={s.agesWrap}>
+                  <View style={s.agesCube1}>
+                    <View style={s.agesCubeTop} />
+                    <View style={s.agesCubeFront} />
+                  </View>
+                  <View style={s.agesCube2}>
+                    <View style={s.agesCubeTop} />
+                    <View style={s.agesCubeFront} />
+                  </View>
+                  <View style={s.agesCube3}>
+                    <View style={s.agesCubeTop} />
+                    <View style={s.agesCubeFront} />
+                  </View>
+                </View>
+
+                <View style={{ flex: 1 }} />
+                <Text style={s.nutriCardDesc}>Learn how your AGEs index can give you a sense of your metabolic health.</Text>
+              </LinearGradient>
+            </PressCard>
+
+            <View style={s.editHomeWrap}>
+              <Pressable style={s.editHomeBtn} onPress={() => {}}>
+                <Text style={s.editHomeText}>Edit home</Text>
+              </Pressable>
+            </View>
           </View>
         )}
 
@@ -1487,5 +1784,615 @@ const s = StyleSheet.create({
   slToggleThumb: {
     width: 20, height: 20, borderRadius: 10,
     backgroundColor: "white", alignSelf: "flex-end",
+  },
+
+  // ═════════════════════════════════════════════════════════════
+  // MINDFULNESS SUB-CATEGORY STYLES (TAB 4)
+  // ═════════════════════════════════════════════════════════════
+  mindSubView: { gap: 14 },
+  mindMainCard: {
+    backgroundColor: "#161821",
+    borderRadius: 24,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+  },
+  mindMainHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  mindMainTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+  mindTilesRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  mindTile: {
+    flex: 1,
+    backgroundColor: "#202430",
+    borderRadius: 20,
+    padding: 12,
+    minHeight: 128,
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.04)",
+  },
+  mindTileLabel: {
+    fontSize: 13.5,
+    fontWeight: "700",
+    color: "#ffffff",
+    lineHeight: 17,
+  },
+
+  // Mood Graphic (3D Stepped Waves)
+  moodGraphicBox: {
+    width: 48,
+    height: 48,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 4,
+  },
+  moodWave1: {
+    width: 22,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: "#f97316",
+    shadowColor: "#ea580c",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  moodWave2: {
+    width: 34,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#ea580c",
+    shadowColor: "#c2410c",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  moodWave3: {
+    width: 44,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#c2410c",
+    shadowColor: "#9a3412",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.7,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+
+  // Breathing Graphic (3D overlapping purple translucent spheres)
+  breathGraphicBox: {
+    width: 48,
+    height: 48,
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  breathOrb1: {
+    position: "absolute",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(168, 85, 247, 0.75)",
+    left: 2,
+    top: 4,
+    borderWidth: 1,
+    borderColor: "rgba(216, 180, 254, 0.6)",
+  },
+  breathOrb2: {
+    position: "absolute",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(126, 34, 206, 0.6)",
+    right: 2,
+    bottom: 4,
+    borderWidth: 1,
+    borderColor: "rgba(192, 132, 252, 0.5)",
+  },
+
+  // Zen Stones Graphic (Stacked Jade Green Pebbles)
+  zenGraphicBox: {
+    width: 48,
+    height: 48,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 3,
+  },
+  zenStone1: {
+    width: 16,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: "#6ee7b7",
+  },
+  zenStone2: {
+    width: 28,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: "#10b981",
+  },
+  zenStone3: {
+    width: 42,
+    height: 13,
+    borderRadius: 7,
+    backgroundColor: "#059669",
+  },
+
+  // Stress Card
+  stressCard: {
+    borderRadius: 24,
+    padding: 22,
+    minHeight: 180,
+    overflow: "hidden",
+    position: "relative",
+  },
+  stressLabel: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+  stressDesc: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "rgba(255,255,255,0.92)",
+    maxWidth: "72%",
+    lineHeight: 20,
+  },
+
+  // 3D Spring Coil
+  springWrap: {
+    position: "absolute",
+    top: 18,
+    right: 18,
+    width: 80,
+    height: 120,
+  },
+  springRing: {
+    position: "absolute",
+    width: 52,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 8,
+  },
+  springRing1: {
+    top: 0,
+    right: 12,
+    borderColor: "#84cc16",
+    transform: [{ rotate: "15deg" }],
+  },
+  springRing2: {
+    top: 22,
+    right: 6,
+    borderColor: "#a3e635",
+    transform: [{ rotate: "20deg" }],
+  },
+  springRing3: {
+    top: 44,
+    right: 16,
+    borderColor: "#eab308",
+    transform: [{ rotate: "25deg" }],
+  },
+  springRing4: {
+    top: 66,
+    right: 8,
+    borderColor: "#f59e0b",
+    transform: [{ rotate: "20deg" }],
+  },
+  springRing5: {
+    top: 86,
+    right: 0,
+    borderColor: "#f97316",
+    transform: [{ rotate: "15deg" }],
+  },
+
+  // ═════════════════════════════════════════════════════════════
+  // NUTRITION SUB-CATEGORY STYLES (TAB 5)
+  // ═════════════════════════════════════════════════════════════
+  nutriSubView: { gap: 14 },
+  nutriCard: {
+    borderRadius: 24,
+    padding: 22,
+    minHeight: 160,
+    overflow: "hidden",
+    position: "relative",
+  },
+  nutriCardLabel: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+  nutriCardDesc: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "rgba(255,255,255,0.92)",
+    maxWidth: "72%",
+    lineHeight: 20,
+  },
+
+  // 1. Food: 3D Orange Slice
+  orangeSliceWrap: {
+    position: "absolute",
+    top: -10,
+    right: -10,
+    width: 130,
+    height: 130,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  orangeSlicePeel: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "#ea580c",
+    borderWidth: 6,
+    borderColor: "#ff8c38",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  orangeSlicePith: {
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    backgroundColor: "#fff7ed",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  orangeSlicePulp: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "#f97316",
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  orangeSegment1: {
+    position: "absolute",
+    width: 96,
+    height: 2,
+    backgroundColor: "rgba(255,255,255,0.6)",
+  },
+  orangeSegment2: {
+    position: "absolute",
+    width: 96,
+    height: 2,
+    backgroundColor: "rgba(255,255,255,0.6)",
+    transform: [{ rotate: "60deg" }],
+  },
+  orangeSegment3: {
+    position: "absolute",
+    width: 96,
+    height: 2,
+    backgroundColor: "rgba(255,255,255,0.6)",
+    transform: [{ rotate: "120deg" }],
+  },
+  orangeCenterPip: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#fff7ed",
+  },
+
+  // 2. Body Composition: Fluid 3D blob & scanner handle
+  bodyCompWrap: {
+    position: "absolute",
+    top: 14,
+    right: 14,
+    width: 110,
+    height: 100,
+  },
+  bodyCompBlob1: {
+    position: "absolute",
+    top: 6,
+    right: 18,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#0284c7",
+    opacity: 0.85,
+    shadowColor: "#0369a1",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  bodyCompBlob2: {
+    position: "absolute",
+    bottom: 8,
+    right: 36,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#38bdf8",
+    opacity: 0.9,
+  },
+  bodyCompHandle: {
+    position: "absolute",
+    top: 4,
+    right: 0,
+    width: 32,
+    height: 70,
+    borderRadius: 16,
+    borderWidth: 6,
+    borderColor: "rgba(255,255,255,0.85)",
+    transform: [{ rotate: "-15deg" }],
+  },
+
+  // 3. Water Glass
+  waterGlassWrap: {
+    position: "absolute",
+    top: 14,
+    right: 24,
+    width: 76,
+    height: 100,
+  },
+  waterGlassBody: {
+    width: 68,
+    height: 94,
+    borderRadius: 8,
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.55)",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    overflow: "hidden",
+    justifyContent: "flex-end",
+  },
+  waterGlassRim: {
+    position: "absolute",
+    top: 0,
+    left: 4,
+    right: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.8)",
+  },
+  waterGlassSheen: {
+    position: "absolute",
+    top: 6,
+    left: 4,
+    width: 5,
+    height: 70,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.3)",
+  },
+  waterGlassFill: {
+    width: "100%",
+    height: 54,
+    backgroundColor: "#0284c7",
+    position: "relative",
+  },
+  waterSurface: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 4,
+    backgroundColor: "rgba(255,255,255,0.6)",
+  },
+  waterBubble1: {
+    position: "absolute",
+    bottom: 12,
+    left: 16,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.5)",
+  },
+  waterBubble2: {
+    position: "absolute",
+    bottom: 24,
+    right: 18,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "rgba(255,255,255,0.6)",
+  },
+
+  // 4. Blood Glucose
+  glucoseWrap: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    width: 100,
+    height: 95,
+  },
+  rbc1: {
+    position: "absolute",
+    top: 6,
+    right: 28,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: "#dc2626",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#991b1b",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  rbc2: {
+    position: "absolute",
+    bottom: 4,
+    right: 0,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#b91c1c",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  rbcCenter: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "rgba(127, 29, 29, 0.7)",
+  },
+  glucoseAtom1: {
+    position: "absolute",
+    top: 0,
+    right: 18,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#fef08a",
+    shadowColor: "#facc15",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  glucoseAtom2: {
+    position: "absolute",
+    top: 36,
+    left: 10,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#fef08a",
+  },
+  glucoseAtom3: {
+    position: "absolute",
+    top: 6,
+    right: 68,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#fef08a",
+  },
+
+  // 5. Antioxidant Index
+  antioxWrap: {
+    position: "absolute",
+    top: 14,
+    right: 14,
+    width: 100,
+    height: 95,
+  },
+  antioxOuterCell: {
+    position: "absolute",
+    top: 4,
+    right: 8,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: "rgba(192, 132, 252, 0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "rgba(233, 213, 255, 0.6)",
+  },
+  antioxMidCell: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: "#7e22ce",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  antioxInnerCell: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#3b0764",
+  },
+  antioxOuterCell2: {
+    position: "absolute",
+    top: 0,
+    right: 48,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "rgba(168, 85, 247, 0.3)",
+    borderWidth: 1,
+    borderColor: "rgba(216, 180, 254, 0.4)",
+  },
+  flaskBadge: {
+    position: "absolute",
+    top: 24,
+    right: 0,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#f97316",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#ffffff",
+    elevation: 5,
+  },
+
+  // 6. AGEs Index
+  agesWrap: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    width: 95,
+    height: 95,
+  },
+  agesCube1: {
+    position: "absolute",
+    top: 4,
+    right: 24,
+    width: 38,
+    height: 38,
+    borderRadius: 6,
+    backgroundColor: "#d97706",
+    transform: [{ rotate: "18deg" }],
+    shadowColor: "#78350f",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  agesCube2: {
+    position: "absolute",
+    bottom: 8,
+    right: 4,
+    width: 34,
+    height: 34,
+    borderRadius: 6,
+    backgroundColor: "#b45309",
+    transform: [{ rotate: "-12deg" }],
+  },
+  agesCube3: {
+    position: "absolute",
+    top: 12,
+    left: 4,
+    width: 32,
+    height: 32,
+    borderRadius: 5,
+    backgroundColor: "#92400e",
+    transform: [{ rotate: "35deg" }],
+  },
+  agesCubeTop: {
+    width: "100%",
+    height: "50%",
+    backgroundColor: "rgba(255,255,255,0.25)",
+    borderTopLeftRadius: 5,
+    borderTopRightRadius: 5,
+  },
+  agesCubeFront: {
+    width: "100%",
+    height: "50%",
   },
 });

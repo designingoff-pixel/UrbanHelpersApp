@@ -120,6 +120,7 @@ export default function MyBookingsScreen({ navigation }: Props) {
               <Pressable
                 onPress={() => navigation.navigate("BookingConfirmed", {
                   bookingId: booking.id,
+                  otp: (booking as any).otp ?? "1234",
                   categoryId: category?.id ?? SERVICE_CATEGORIES[0].id,
                   subServiceId: category?.subServices.find((sv) => sv.name === booking.subServiceName)?.id
                     ?? category?.subServices[0]?.id

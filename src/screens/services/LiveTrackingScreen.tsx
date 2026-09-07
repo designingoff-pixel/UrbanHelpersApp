@@ -42,7 +42,6 @@ interface LiveBooking {
   scheduledAt?: string;
   price?: number;
   priceLabel?: string;
-  priceLabel?: string;
   customerLat?: number;
   customerLng?: number;
   otp?: string;
@@ -58,9 +57,9 @@ const STATUS_LABELS: Record<string, string> = {
   requested:   "Booking Confirmed",
   assigned:    "Professional Assigned",
   en_route:    "On The Way",
-  arrived:     "Professional Arrived",
-  in_progress: "Service In Progress",
-  completed:   "Completed",
+  arrived:     "Professional\nArrived",
+  in_progress: "Service\nIn Progress",
+  completed:   "Service\nCompleted",
 };
 const HERO_TITLES: Partial<Record<BookingStatus, string>> = {
   requested:   "Finding\nProfessional",
@@ -72,7 +71,7 @@ const HERO_TITLES: Partial<Record<BookingStatus, string>> = {
   completed:   "Service\nCompleted",
 };
 
-const STATUS_COLORS: Record<string, readonly [string, string]> = {
+const STATUS_COLORS: Record<string, [string, string]> = {
   requested:   ["#f59e0b", "#d97706"], // amber
   assigned:    ["#3b82f6", "#2563eb"], // blue
   accepted:    ["#8b5cf6", "#7c3aed"], // purple
