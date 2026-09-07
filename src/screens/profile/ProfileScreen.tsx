@@ -1,457 +1,988 @@
-import React, { useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  ScrollView, Text, View, Pressable, StyleSheet,
+  ScrollView,
+  Text,
+  View,
+  Pressable,
+  StyleSheet,
+  Modal,
+  TextInput,
+  Alert,
+  StatusBar,
+  Dimensions,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import Animated, {
-  useSharedValue, useAnimatedStyle, withSpring,
-  FadeInDown, SlideInLeft,
-} from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
-import { colors } from "@/theme/colors";
+import { useAuth } from "@/context/AuthContext";
+import { getDailyActivityTotals } from "@/services/healthLogService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Profile">;
+const { width: SW } = Dimensions.get("window");
 
-// ── Quick-stat cards — 2×2 ────────────────────────────────────────────────────
-const STAT_CARDS = [
-  { label: "Health Score",       value: "82%",  icon: "heart",         gradient: ["#4a1532", "#2a0c1c"] as string[], accent: colors.error },
-  { label: "Steps This Week",    value: "4,820",icon: "walk",          gradient: ["#02332c", "#011a16"] as string[], accent: colors.secondary },
-  { label: "Active Bookings",    value: "2",    icon: "home",          gradient: ["#002a5c", "#00152e"] as string[], accent: colors.primary },
-  { label: "Coins",              value: "250",  icon: "star",          gradient: ["#4d2a00", "#261500"] as string[], accent: "#ffb74d" },
-];
+const PROFILE_STORAGE_KEY = "@urban_health_user_profile_v2";
 
-// ── Hero progress bars ────────────────────────────────────────────────────────
-const HERO_STATS = [
-  { label: "HEALTH",   value: "82%", icon: "heart",   iconColor: colors.error,     pct: 82 },
-  { label: "FITNESS",  value: "74%", icon: "walk",    iconColor: colors.secondary, pct: 74 },
-  { label: "SERVICES", value: "3 Active", icon: "home", iconColor: colors.primary, pct: 60 },
-];
+interface UserProfileData {
+  username: string;
+  gender: string;
+  height: string;
+  weight: string;
+  dob: string;
+  activityLevel: number; // 1 to 4
+  avatarIndex: number;
+}
 
-// ── Menu items ────────────────────────────────────────────────────────────────
-const MENU_ITEMS = [
-  { icon: "person-outline" as const,           label: "Personal Information", sub: "Edit your details",      color: colors.primary },
-  { icon: "location-outline" as const,         label: "My Addresses",         sub: "Saved locations",        color: colors.secondary },
-  { icon: "shield-checkmark-outline" as const, label: "Privacy & Security",   sub: "Manage your data",       color: colors.tertiary },
-  { icon: "notifications-outline" as const,    label: "Notifications",        sub: "Alerts & reminders",     color: "#fbbc04", nav: "Notifications" as keyof RootStackParamList },
-  { icon: "help-circle-outline" as const,      label: "Help & Support",       sub: "FAQs & contact us",      color: "#38bdf8" },
-  { icon: "information-circle-outline" as const, label: "About",              sub: "Version 2.0.0",          color: colors.text.muted },
+const AVATAR_PRESETS = [
+  { id: 0, bg: "#7fd3be", icon: "user-tie", color: "#1e3a8a" },
+  { id: 1, bg: "#fbcfe8", icon: "female", color: "#be185d" },
+  { id: 2, bg: "#fed7aa", icon: "user-alt", color: "#c2410c" },
+  { id: 3, bg: "#bbf7d0", icon: "running", color: "#15803d" },
+  { id: 4, bg: "#6ee7b7", icon: "user", color: "#047857" },
 ];
 
 export default function ProfileScreen({ navigation }: Props) {
-  // Avatar glow pulse
-  const glow = useSharedValue(0.4);
+  const { user } = useAuth();
+
+  // Profile data
+  const defaultUsername = user?.email ? user.email.split("@")[0] : "vichuvisweswaran82";
+  const [profile, setProfile] = useState<UserProfileData>({
+    username: defaultUsername,
+    gender: "Male",
+    height: "174 cm",
+    weight: "68 kg",
+    dob: "28 Jan 2001",
+    activityLevel: 2,
+    avatarIndex: 0,
+  });
+
+  // Edit Modal State
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editUsername, setEditUsername] = useState(defaultUsername);
+  const [editGender, setEditGender] = useState("Male");
+  const [editHeight, setEditHeight] = useState("174 cm");
+  const [editWeight, setEditWeight] = useState("68 kg");
+  const [editDob, setEditDob] = useState("28 Jan 2001");
+  const [editLevel, setEditLevel] = useState(2);
+  const [editAvatarIdx, setEditAvatarIdx] = useState(0);
+
+  // Dynamic activity stats
+  const [todaySteps, setTodaySteps] = useState(58);
+  const [todayDistKm, setTodayDistKm] = useState(0.04);
+
   useEffect(() => {
-    const animate = () => {
-      glow.value = withSpring(0.7, { damping: 6, stiffness: 40 }, () => {
-        glow.value = withSpring(0.4, { damping: 6, stiffness: 40 }, animate);
-      });
-    };
-    animate();
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(PROFILE_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          setProfile(parsed);
+          setEditUsername(parsed.username || defaultUsername);
+          setEditGender(parsed.gender || "Male");
+          setEditHeight(parsed.height || "174 cm");
+          setEditWeight(parsed.weight || "68 kg");
+          setEditDob(parsed.dob || "28 Jan 2001");
+          setEditLevel(parsed.activityLevel || 2);
+          setEditAvatarIdx(parsed.avatarIndex || 0);
+        }
+
+        const act = await getDailyActivityTotals();
+        if (act.count > 0) {
+          setTodaySteps(Math.max(58, act.totalMins * 105));
+          setTodayDistKm(act.totalDistanceKm > 0 ? act.totalDistanceKm : Number((act.totalMins * 0.07).toFixed(2)));
+        }
+      } catch (e) {
+        console.error("Error loading profile:", e);
+      }
+    })();
   }, []);
-  const glowStyle = useAnimatedStyle(() => ({
-    shadowOpacity: glow.value,
-    shadowRadius: 20,
-    shadowColor: colors.tertiaryContainer,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 10,
-  }));
+
+  const handleOpenEdit = () => {
+    setEditUsername(profile.username);
+    setEditGender(profile.gender);
+    setEditHeight(profile.height);
+    setEditWeight(profile.weight);
+    setEditDob(profile.dob);
+    setEditLevel(profile.activityLevel);
+    setEditAvatarIdx(profile.avatarIndex);
+    setEditModalVisible(true);
+  };
+
+  const handleSaveEdit = async () => {
+    const updated: UserProfileData = {
+      username: editUsername.trim() || defaultUsername,
+      gender: editGender.trim() || "Not specified",
+      height: editHeight.trim() || "174 cm",
+      weight: editWeight.trim() || "68 kg",
+      dob: editDob.trim() || "28 Jan 2001",
+      activityLevel: editLevel,
+      avatarIndex: editAvatarIdx,
+    };
+    setProfile(updated);
+    setEditModalVisible(false);
+    try {
+      await AsyncStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.error("Error saving profile:", e);
+    }
+  };
 
   return (
     <View style={s.root}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
-      {/* ── Header ──────────────────────────────────────────── */}
-      <Animated.View entering={FadeInDown.duration(350)} style={s.header}>
+      {/* ── Top Header ────────────────────────────────────────── */}
+      <View style={s.header}>
         <Pressable onPress={() => navigation.goBack()} style={s.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={colors.text.secondary} />
+          <Ionicons name="chevron-back" size={26} color="#ffffff" />
         </Pressable>
-        <Text style={s.headerTitle}>Profile</Text>
-        <Pressable style={s.settingsBtn}>
-          <Ionicons name="settings-outline" size={20} color={colors.text.secondary} />
-        </Pressable>
-      </Animated.View>
+        <Text style={s.headerTitle}>My page</Text>
+      </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-
-        {/* ── Avatar + Name ───────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(80).duration(400).springify()} style={s.avatarSection}>
-          <Animated.View style={[s.avatarRing, glowStyle]}>
-            <LinearGradient colors={["#8343f4", "#2563eb"]} style={s.avatarCircle}>
-              <Text style={s.avatarInitials}>AJ</Text>
-            </LinearGradient>
-          </Animated.View>
-          <View style={s.avatarInfo}>
-            <Text style={s.name}>Alex Johnson</Text>
-            <View style={s.emailRow}>
-              <Ionicons name="mail-outline" size={14} color={colors.text.secondary} />
-              <Text style={s.email}>alex@email.com</Text>
-            </View>
-            <View style={s.locationRow}>
-              <Ionicons name="location-outline" size={14} color={colors.primary} />
-              <Text style={s.location}>Chennai</Text>
-            </View>
-          </View>
-          <Pressable style={s.editBtn}>
+        {/* ── 1. Top Profile Card ───────────────────────────────── */}
+        <View style={s.profileCard}>
+          {/* Edit Button */}
+          <Pressable style={s.editBtn} onPress={handleOpenEdit}>
             <Text style={s.editBtnText}>Edit</Text>
           </Pressable>
-        </Animated.View>
 
-        {/* ── Hero Summary Card ────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(140).duration(420).springify()}>
-          <LinearGradient
-            colors={["rgba(131,67,244,0.8)", "#4a1c82"]}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={s.heroCard}
-          >
-            <View style={s.heroBlob} pointerEvents="none" />
-            <Text style={s.heroGreeting}>Good to see you, Alex 👋</Text>
-            <Text style={s.heroSub}>Your Urban Helpers journey</Text>
-            <View style={s.heroStats}>
-              {HERO_STATS.map((stat) => (
-                <View key={stat.label} style={s.heroStatItem}>
-                  <View style={[s.heroStatIcon, { backgroundColor: stat.iconColor + "22" }]}>
-                    <Ionicons name={stat.icon as any} size={18} color={stat.iconColor} />
-                  </View>
-                  <Text style={s.heroStatLabel}>{stat.label}</Text>
-                  <Text style={s.heroStatValue}>{stat.value}</Text>
-                </View>
-              ))}
-            </View>
-          </LinearGradient>
-        </Animated.View>
-
-        {/* ── 2×2 Stat Grid ───────────────────────────────── */}
-        <View style={s.statGrid}>
-          {STAT_CARDS.map((c, i) => (
-            <Animated.View
-              key={c.label}
-              entering={FadeInDown.delay(200 + i * 60).duration(380).springify()}
+          {/* Large Avatar */}
+          <View style={s.avatarWrap}>
+            <LinearGradient
+              colors={["#7fd3be", "#5cbda6"]}
+              style={s.avatarCircle}
             >
-              <LinearGradient colors={c.gradient} style={s.statCard}>
-                <View style={[s.statIconWrap, { backgroundColor: c.accent + "22" }]}>
-                  <Ionicons name={c.icon as any} size={20} color={c.accent} />
-                </View>
-                <Text style={s.statValue}>{c.value}</Text>
-                <Text style={[s.statLabel, { color: c.accent + "bb" }]}>{c.label}</Text>
-              </LinearGradient>
-            </Animated.View>
-          ))}
+              <Ionicons name="person" size={54} color="rgba(255,255,255,0.9)" />
+            </LinearGradient>
+          </View>
+
+          {/* Username */}
+          <Text style={s.usernameText}>{profile.username}</Text>
+
+          {/* Friends & QR Code Action Buttons */}
+          <View style={s.profileActionRow}>
+            <Pressable
+              style={s.profileActionBtn}
+              onPress={() => Alert.alert("Friends", "Syncing contacts with Samsung Health Together...")}
+            >
+              <Text style={s.profileActionBtnText}>Friends</Text>
+            </Pressable>
+            <Pressable
+              style={s.profileActionBtn}
+              onPress={() => Alert.alert("My QR code", `Your Health ID QR:\n${profile.username}`)}
+            >
+              <Text style={s.profileActionBtnText}>My QR code</Text>
+            </Pressable>
+          </View>
         </View>
 
-        {/* ── Coins Banner ─────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(440).duration(400).springify()}>
-          <LinearGradient
-            colors={["#d97706", "#f59e0b"]}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-            style={s.coinsBanner}
-          >
-            <View style={s.coinsLeft}>
-              <View style={s.coinsIconWrap}>
-                <Ionicons name="star" size={28} color="white" />
-              </View>
-              <View>
-                <Text style={s.coinsCaption}>AVAILABLE BALANCE</Text>
-                <Text style={s.coinsValue}>250</Text>
-              </View>
-            </View>
-            <View style={s.coinsRight}>
-              <Text style={s.coinsDesc}>Earn coins through fitness and activities.</Text>
-              <Pressable style={s.earnBtn}>
-                <Text style={s.earnBtnText}>Earn More</Text>
-              </Pressable>
-            </View>
-          </LinearGradient>
-        </Animated.View>
+        {/* ── 2. Weekly Report Card ─────────────────────────────── */}
+        <View style={s.card}>
+          <Text style={s.cardTitle}>Weekly report</Text>
+          <Text style={s.cardSubtitle}>30 Aug–5 Sept</Text>
 
-        {/* ── My Account Menu ──────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(500).duration(400).springify()}>
-          <View style={s.menuCard}>
-            <Text style={s.menuSectionTitle}>My Account</Text>
-            {MENU_ITEMS.map((item, i) => (
-              <Pressable
-                key={item.label}
-                onPress={() => item.nav && navigation.navigate(item.nav as any)}
-                style={({ pressed }) => [
-                  s.menuRow,
-                  i < MENU_ITEMS.length - 1 && s.menuRowBorder,
-                  { opacity: pressed ? 0.7 : 1 },
-                ]}
-              >
-                <View style={[s.menuIcon, { backgroundColor: item.color + "18" }]}>
-                  <Ionicons name={item.icon} size={20} color={item.color} />
-                </View>
-                <View style={s.menuText}>
-                  <Text style={s.menuLabel}>{item.label}</Text>
-                  <Text style={s.menuSub}>{item.sub}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color={colors.text.muted} />
-              </Pressable>
-            ))}
+          <View style={s.reportGrid}>
+            {/* Column 1: Average Daily Steps */}
+            <View style={s.reportCol}>
+              <View style={s.metricLabelRow}>
+                <Ionicons name="footsteps" size={14} color="#22c55e" />
+                <Text style={s.metricLabel}>Average daily steps</Text>
+              </View>
+              <Text style={s.prevWeekText}>Previous week 7,703</Text>
+
+              <View style={s.deltaBadgeGreen}>
+                <Ionicons name="caret-down" size={12} color="#86efac" />
+                <Text style={s.deltaBadgeText}>7,645</Text>
+              </View>
+
+              <Text style={s.bigStatValue}>{todaySteps}</Text>
+            </View>
+
+            {/* Vertical Divider */}
+            <View style={s.reportDivider} />
+
+            {/* Column 2: Average Distance */}
+            <View style={s.reportCol}>
+              <View style={s.metricLabelRow}>
+                <Ionicons name="footsteps" size={14} color="#22c55e" />
+                <Text style={s.metricLabel}>Average distance</Text>
+              </View>
+              <Text style={s.prevWeekText}>Previous week 5.48 km</Text>
+
+              <View style={s.deltaBadgeGreen}>
+                <Ionicons name="caret-down" size={12} color="#86efac" />
+                <Text style={s.deltaBadgeText}>5.44 km</Text>
+              </View>
+
+              <Text style={s.bigStatValue}>
+                {todayDistKm} <Text style={s.bigStatUnit}>km</Text>
+              </Text>
+            </View>
           </View>
-        </Animated.View>
+        </View>
 
-        {/* ── Support Banner ───────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(560).duration(400).springify()}>
-          <LinearGradient
-            colors={["#0284c7", "#1e3a8a"]}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-            style={s.supportCard}
+        {/* ── 3. Badges Card ────────────────────────────────────── */}
+        <View style={s.card}>
+          <Pressable
+            style={s.cardHeaderRow}
+            onPress={() => Alert.alert("Badges", "10,000 steps Badge earned on 15 Aug!")}
           >
-            <View style={s.supportLeft}>
-              <View style={s.supportIcon}>
-                <Ionicons name="headset" size={22} color="white" />
-              </View>
-              <View>
-                <Text style={s.supportTitle}>Need Help?</Text>
-                <Text style={s.supportSub}>Your Urban Helper is always here.</Text>
+            <Text style={s.cardTitle}>Badges</Text>
+            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
+          </Pressable>
+
+          {/* 3D Metallic 10,000 Steps Badge */}
+          <View style={s.badgeDisplayWrap}>
+            <View style={s.goldBadgeOuter}>
+              <LinearGradient colors={["#34d399", "#10b981", "#059669"]} style={s.goldBadgeInner}>
+                <Ionicons name="walk" size={38} color="#ffffff" style={{ opacity: 0.95 }} />
+                <View style={s.badgePill10000}>
+                  <Text style={s.badgePill10000Text}>10000</Text>
+                </View>
+              </LinearGradient>
+            </View>
+            <Text style={s.badgeName}>10,000 steps</Text>
+            <Text style={s.badgeDate}>15 Aug</Text>
+          </View>
+        </View>
+
+        {/* ── 4. Personal Best Card ─────────────────────────────── */}
+        <View style={s.card}>
+          <Pressable
+            style={s.cardHeaderRow}
+            onPress={() => Alert.alert("Personal Best", "Your all-time step record is 14,653 steps!")}
+          >
+            <Text style={s.cardTitle}>Personal best</Text>
+            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
+          </Pressable>
+
+          {/* 3D Golden Flying Running Shoe */}
+          <View style={s.personalBestWrap}>
+            <View style={s.goldenShoeArtWrap}>
+              <LinearGradient
+                colors={["#fde68a", "#d97706", "#b45309"]}
+                style={s.goldenRibbonBack}
+              />
+              <View style={s.goldenShoeIconWrap}>
+                <FontAwesome5 name="running" size={44} color="#fde047" />
               </View>
             </View>
-            <Pressable style={s.supportBtn}>
-              <Text style={s.supportBtnText}>Get Support</Text>
-            </Pressable>
-          </LinearGradient>
-        </Animated.View>
+            <Text style={s.personalBestValue}>14,653</Text>
+            <Text style={s.personalBestLabel}>Most steps</Text>
+          </View>
+        </View>
 
-        {/* ── Sign Out ─────────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(600).duration(380).springify()}>
+        {/* ── 5. Challenges Card ────────────────────────────────── */}
+        <View style={s.card}>
+          <Text style={s.cardTitle}>Challenges</Text>
+          <View style={s.emptyStateWrap}>
+            <Text style={s.emptyStateText}>No challenges</Text>
+          </View>
+        </View>
+
+        {/* ── 6. Global Challenge Card ──────────────────────────── */}
+        <View style={s.card}>
           <Pressable
-            onPress={() => navigation.navigate("Welcome")}
-            style={({ pressed }) => [s.signOutBtn, { opacity: pressed ? 0.7 : 1 }]}
+            style={s.cardHeaderRow}
+            onPress={() => Alert.alert("Global Challenge", "Join monthly Samsung Health Global walk-a-thons!")}
           >
-            <Ionicons name="log-out-outline" size={20} color={colors.error} />
-            <Text style={s.signOutText}>Sign Out</Text>
+            <Text style={s.cardTitle}>Global challenge</Text>
+            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
           </Pressable>
-        </Animated.View>
+          <View style={s.emptyStateWrap}>
+            <Text style={s.emptyStateText}>No badges earned this year</Text>
+          </View>
+        </View>
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 60 }} />
       </ScrollView>
 
-      {/* ── Bottom Nav (Home + Services) ──────────────────── */}
-      <View style={s.bottomBar}>
-        <Pressable
-          onPress={() => navigation.navigate("HomeDashboard")}
-          style={s.bottomBarBtn}
-        >
-          <Ionicons name="home-outline" size={22} color={colors.text.secondary} />
-          <Text style={s.bottomBarLabel}>Home</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => navigation.navigate("ServicesDashboard")}
-          style={s.bottomBarBtn}
-        >
-          <Ionicons name="construct-outline" size={22} color={colors.text.secondary} />
-          <Text style={s.bottomBarLabel}>Services</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => navigation.navigate("HealthDashboard")}
-          style={s.bottomBarBtn}
-        >
-          <Ionicons name="heart-outline" size={22} color={colors.text.secondary} />
-          <Text style={s.bottomBarLabel}>Health</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => navigation.navigate("FitnessDashboard")}
-          style={s.bottomBarBtn}
-        >
-          <Ionicons name="barbell-outline" size={22} color={colors.text.secondary} />
-          <Text style={s.bottomBarLabel}>Fitness</Text>
-        </Pressable>
-        <View style={s.bottomBarBtn}>
-          <Ionicons name="person" size={22} color={colors.primary} />
-          <Text style={[s.bottomBarLabel, { color: colors.primary }]}>Profile</Text>
+      {/* ═══════════════════════════════════════════════════════════
+          EDIT PROFILE MODAL (Matches Screenshot 3 & 4)
+          ═══════════════════════════════════════════════════════════ */}
+      <Modal visible={editModalVisible} transparent animationType="slide">
+        <View style={s.modalOverlay}>
+          <View style={s.editContainer}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.editScroll}>
+              {/* Squircle Profile Picture Card */}
+              <View style={s.editAvatarCard}>
+                <LinearGradient
+                  colors={["#7fd3be", "#5ebda6"]}
+                  style={s.editAvatarSquircle}
+                >
+                  <View style={s.thinWhiteCircle}>
+                    <Text style={s.addPicText}>Add a profile picture</Text>
+                  </View>
+                </LinearGradient>
+
+                {/* 5 Avatar Presets Row */}
+                <View style={s.avatarPresetsRow}>
+                  {AVATAR_PRESETS.map((av) => (
+                    <Pressable
+                      key={av.id}
+                      onPress={() => setEditAvatarIdx(av.id)}
+                      style={[
+                        s.avatarPresetCircle,
+                        { backgroundColor: av.bg },
+                        editAvatarIdx === av.id && s.avatarPresetCircleActive,
+                      ]}
+                    >
+                      <FontAwesome5 name={av.icon as any} size={18} color={av.color} />
+                    </Pressable>
+                  ))}
+                  {/* Plus button preset */}
+                  <Pressable
+                    style={s.avatarPresetPlus}
+                    onPress={() => Alert.alert("Upload Photo", "Choose photo from Gallery or take with Camera.")}
+                  >
+                    <Ionicons name="add" size={20} color="#ffffff" />
+                  </Pressable>
+                </View>
+
+                {/* Gallery / Camera Buttons */}
+                <View style={s.photoSourceRow}>
+                  <Pressable
+                    style={s.photoSourceBtn}
+                    onPress={() => Alert.alert("Gallery", "Opening device photo gallery...")}
+                  >
+                    <Text style={s.photoSourceBtnText}>Gallery</Text>
+                  </Pressable>
+                  <Pressable
+                    style={s.photoSourceBtn}
+                    onPress={() => Alert.alert("Camera", "Opening camera...")}
+                  >
+                    <Text style={s.photoSourceBtnText}>Camera</Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              {/* Username Input Card */}
+              <View style={s.editFieldCardSingle}>
+                <TextInput
+                  style={s.editInputUsername}
+                  value={editUsername}
+                  onChangeText={setEditUsername}
+                  placeholder="Username"
+                  placeholderTextColor="rgba(255,255,255,0.3)"
+                />
+              </View>
+
+              {/* Personal Details Card */}
+              <View style={s.editDetailsCard}>
+                {/* Gender */}
+                <View style={s.detailRow}>
+                  <Ionicons name="person" size={20} color="rgba(255,255,255,0.7)" style={s.detailIcon} />
+                  <TextInput
+                    style={s.detailInput}
+                    value={editGender}
+                    onChangeText={setEditGender}
+                    placeholder="Gender"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                  />
+                </View>
+                <View style={s.detailSeparator} />
+
+                {/* Height */}
+                <View style={s.detailRow}>
+                  <MaterialCommunityIcons name="human-male-height" size={22} color="rgba(255,255,255,0.7)" style={s.detailIcon} />
+                  <TextInput
+                    style={s.detailInput}
+                    value={editHeight}
+                    onChangeText={setEditHeight}
+                    placeholder="Height"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                  />
+                </View>
+                <View style={s.detailSeparator} />
+
+                {/* Weight */}
+                <View style={s.detailRow}>
+                  <MaterialCommunityIcons name="scale-bathroom" size={20} color="rgba(255,255,255,0.7)" style={s.detailIcon} />
+                  <TextInput
+                    style={s.detailInput}
+                    value={editWeight}
+                    onChangeText={setEditWeight}
+                    placeholder="Weight"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                  />
+                </View>
+                <View style={s.detailSeparator} />
+
+                {/* DOB */}
+                <View style={s.detailRow}>
+                  <Ionicons name="calendar-outline" size={20} color="rgba(255,255,255,0.7)" style={s.detailIcon} />
+                  <TextInput
+                    style={s.detailInput}
+                    value={editDob}
+                    onChangeText={setEditDob}
+                    placeholder="Date of Birth (e.g. 28 Jan 2001)"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                  />
+                </View>
+              </View>
+
+              {/* Disclaimer Note */}
+              <Text style={s.disclaimerText}>
+                Gender, height, weight, and date of birth are used to calculate values like calories burnt, optimal calorie intake, and heart rate ranges during exercise.{"\n\n"}
+                You don't have to provide this information, but the health recommendations you get will be more accurate if you do.
+              </Text>
+
+              {/* Activity Level Card */}
+              <View style={s.activityLevelCard}>
+                <Text style={s.activityLevelTitle}>Activity level</Text>
+
+                <View style={s.levelCirclesRow}>
+                  {[1, 2, 3, 4].map((lvl) => (
+                    <View key={lvl} style={s.levelCol}>
+                      <Pressable
+                        onPress={() => setEditLevel(lvl)}
+                        style={[
+                          s.levelCircle,
+                          editLevel === lvl && s.levelCircleActive,
+                        ]}
+                      >
+                        <Ionicons
+                          name={
+                            lvl === 1
+                              ? "body"
+                              : lvl === 2
+                              ? "walk"
+                              : lvl === 3
+                              ? "fitness"
+                              : "flash"
+                          }
+                          size={22}
+                          color={editLevel === lvl ? "#ffffff" : "rgba(255,255,255,0.5)"}
+                        />
+                      </Pressable>
+                      <Text style={[s.levelNumber, editLevel === lvl && s.levelNumberActive]}>
+                        {lvl}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+
+                <Text style={s.levelPrompt}>Select your activity level.</Text>
+              </View>
+
+              <View style={{ height: 90 }} />
+            </ScrollView>
+
+            {/* Bottom Floating Cancel / Save Dock */}
+            <View style={s.editBottomDock}>
+              <Pressable style={s.dockCancelBtn} onPress={() => setEditModalVisible(false)}>
+                <Text style={s.dockCancelText}>Cancel</Text>
+              </Pressable>
+              <View style={s.dockDivider} />
+              <Pressable style={s.dockSaveBtn} onPress={handleSaveEdit}>
+                <Text style={s.dockSaveText}>Save</Text>
+              </Pressable>
+            </View>
+          </View>
         </View>
-      </View>
+      </Modal>
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.surface.dim },
+  root: { flex: 1, backgroundColor: "#000000" },
 
+  // Header
   header: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 16, paddingTop: 52, paddingBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 52,
+    paddingBottom: 14,
+    gap: 12,
   },
   backBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: colors.surface.containerHigh,
-    borderWidth: 1, borderColor: colors.glass.border,
-    justifyContent: "center", alignItems: "center",
+    padding: 4,
   },
-  headerTitle: { fontSize: 20, fontWeight: "700", color: colors.text.primary },
-  settingsBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: colors.surface.containerHigh,
-    borderWidth: 1, borderColor: colors.glass.border,
-    justifyContent: "center", alignItems: "center",
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#ffffff",
   },
 
-  scroll: { paddingHorizontal: 16, paddingTop: 4 },
-
-  // Avatar
-  avatarSection: {
-    flexDirection: "row", alignItems: "center", gap: 16, marginBottom: 20,
+  scroll: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
-  avatarRing: {
-    borderRadius: 44, borderWidth: 2, borderColor: colors.tertiaryContainer,
+
+  // Profile Card
+  profileCard: {
+    backgroundColor: "#16181e",
+    borderRadius: 26,
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    marginBottom: 16,
+    position: "relative",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+  },
+  editBtn: {
+    position: "absolute",
+    top: 18,
+    right: 18,
+    backgroundColor: "#292b33",
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 18,
+  },
+  editBtnText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#ffffff",
+  },
+  avatarWrap: {
+    marginBottom: 16,
   },
   avatarCircle: {
-    width: 80, height: 80, borderRadius: 40,
-    justifyContent: "center", alignItems: "center",
+    width: 106,
+    height: 106,
+    borderRadius: 53,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: "rgba(255,255,255,0.15)",
   },
-  avatarInitials: { fontSize: 28, fontWeight: "700", color: "white" },
-  avatarInfo: { flex: 1 },
-  name: { fontSize: 20, fontWeight: "700", color: colors.text.primary },
-  emailRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 4 },
-  email: { fontSize: 13, color: colors.text.secondary },
-  locationRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 },
-  location: { fontSize: 13, color: colors.primary },
-  editBtn: {
-    paddingHorizontal: 14, paddingVertical: 7,
-    borderRadius: 20, borderWidth: 1, borderColor: colors.glass.border,
-    backgroundColor: colors.surface.containerHigh,
+  usernameText: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#ffffff",
+    marginBottom: 20,
+    letterSpacing: 0.3,
   },
-  editBtnText: { fontSize: 12, fontWeight: "600", color: colors.primary },
-
-  // Hero card
-  heroCard: {
-    borderRadius: 28, padding: 22, marginBottom: 16,
-    borderWidth: 1, borderColor: "rgba(210,187,255,0.2)",
-    overflow: "hidden",
-  },
-  heroBlob: {
-    position: "absolute", top: -40, right: -40,
-    width: 160, height: 160, borderRadius: 80,
-    backgroundColor: "rgba(210,187,255,0.08)",
-  },
-  heroGreeting: { fontSize: 20, fontWeight: "700", color: "white", marginBottom: 4 },
-  heroSub: { fontSize: 13, color: "rgba(210,187,255,0.8)", marginBottom: 16 },
-  heroStats: { flexDirection: "row", gap: 10 },
-  heroStatItem: {
-    flex: 1, alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.2)", borderRadius: 16,
-    padding: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
-  },
-  heroStatIcon: {
-    width: 36, height: 36, borderRadius: 18,
-    justifyContent: "center", alignItems: "center",
-    marginBottom: 6,
-  },
-  heroStatLabel: { fontSize: 9, fontWeight: "800", color: "rgba(255,255,255,0.6)", letterSpacing: 0.8 },
-  heroStatValue: { fontSize: 16, fontWeight: "700", color: "white", marginTop: 2 },
-
-  // Stat grid
-  statGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 16 },
-  statCard: {
-    width: "47.5%",
-    borderRadius: 24, padding: 18,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
-    minHeight: 130,
-    justifyContent: "space-between",
-  },
-  statIconWrap: {
-    width: 40, height: 40, borderRadius: 20,
-    justifyContent: "center", alignItems: "center",
-  },
-  statValue: { fontSize: 26, fontWeight: "700", color: "white" },
-  statLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 0.8, textTransform: "uppercase" },
-
-  // Coins banner
-  coinsBanner: {
-    borderRadius: 24, padding: 20, marginBottom: 16,
-    flexDirection: "row", alignItems: "center",
-    borderWidth: 1, borderColor: "rgba(252,211,77,0.3)",
-    gap: 16, overflow: "hidden",
-  },
-  coinsLeft: { flexDirection: "row", alignItems: "center", gap: 14 },
-  coinsIconWrap: {
-    width: 56, height: 56, borderRadius: 28,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center", alignItems: "center",
-  },
-  coinsCaption: { fontSize: 10, fontWeight: "700", color: "rgba(255,255,255,0.7)", letterSpacing: 1 },
-  coinsValue: { fontSize: 36, fontWeight: "700", color: "white", lineHeight: 40 },
-  coinsRight: { flex: 1, alignItems: "flex-end", gap: 8 },
-  coinsDesc: { fontSize: 12, color: "rgba(255,255,255,0.85)", textAlign: "right", lineHeight: 17 },
-  earnBtn: {
-    backgroundColor: "white", borderRadius: 20,
-    paddingHorizontal: 16, paddingVertical: 8,
-  },
-  earnBtnText: { fontSize: 13, fontWeight: "700", color: "#d97706" },
-
-  // Menu
-  menuCard: {
-    backgroundColor: colors.surface.container, borderRadius: 24, marginBottom: 16,
-    borderWidth: 1, borderColor: colors.glass.border, overflow: "hidden",
-  },
-  menuSectionTitle: {
-    fontSize: 16, fontWeight: "700", color: colors.text.primary,
-    paddingHorizontal: 20, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: colors.glass.borderSubtle,
-  },
-  menuRow: {
-    flexDirection: "row", alignItems: "center",
-    paddingVertical: 13, paddingHorizontal: 20, gap: 14,
-  },
-  menuRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.glass.borderSubtle },
-  menuIcon: {
-    width: 38, height: 38, borderRadius: 19,
-    justifyContent: "center", alignItems: "center",
-  },
-  menuText: { flex: 1 },
-  menuLabel: { fontSize: 15, fontWeight: "600", color: colors.text.primary },
-  menuSub: { fontSize: 12, color: colors.text.secondary, marginTop: 1 },
-
-  // Support
-  supportCard: {
-    borderRadius: 24, padding: 18, marginBottom: 16,
-    flexDirection: "row", alignItems: "center",
-    justifyContent: "space-between", gap: 12,
-    borderWidth: 1, borderColor: "rgba(56,189,248,0.2)",
-  },
-  supportLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
-  supportIcon: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    justifyContent: "center", alignItems: "center",
-  },
-  supportTitle: { fontSize: 16, fontWeight: "700", color: "white" },
-  supportSub: { fontSize: 12, color: "rgba(255,255,255,0.75)", marginTop: 2 },
-  supportBtn: {
-    backgroundColor: "rgba(255,255,255,0.12)",
-    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.2)",
-  },
-  supportBtnText: { fontSize: 13, fontWeight: "700", color: "white" },
-
-  // Sign out
-  signOutBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    backgroundColor: "rgba(255,180,171,0.08)", borderRadius: 20, padding: 16,
-    borderWidth: 1, borderColor: "rgba(255,180,171,0.2)",
-  },
-  signOutText: { fontSize: 15, fontWeight: "600", color: colors.error },
-
-  // Bottom nav bar
-  bottomBar: {
-    position: "absolute",
-    bottom: 24,
-    left: 12,
-    right: 12,
+  profileActionRow: {
     flexDirection: "row",
-    height: 72,
-    backgroundColor: "rgba(10,22,36,0.97)",
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: colors.glass.border,
-    elevation: 16,
+    gap: 14,
+    width: "100%",
+  },
+  profileActionBtn: {
+    flex: 1,
+    backgroundColor: "#292b33",
+    paddingVertical: 12,
+    borderRadius: 22,
     alignItems: "center",
   },
-  bottomBarBtn: {
-    flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 8,
+  profileActionBtnText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#ffffff",
   },
-  bottomBarLabel: {
-    fontSize: 10, color: colors.text.secondary, marginTop: 3, fontWeight: "500",
+
+  // Generic Card
+  card: {
+    backgroundColor: "#16181e",
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+  },
+  cardHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#ffffff",
+    marginBottom: 2,
+  },
+  cardSubtitle: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.55)",
+    marginBottom: 18,
+  },
+
+  // Weekly Report
+  reportGrid: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  reportCol: {
+    flex: 1,
+  },
+  metricLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 4,
+  },
+  metricLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.9)",
+  },
+  prevWeekText: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.45)",
+    marginBottom: 10,
+  },
+  deltaBadgeGreen: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#1e3a2b",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    alignSelf: "flex-start",
+    marginBottom: 10,
+  },
+  deltaBadgeText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#86efac",
+  },
+  bigStatValue: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+  bigStatUnit: {
+    fontSize: 18,
+    fontWeight: "400",
+    color: "rgba(255,255,255,0.7)",
+  },
+  reportDivider: {
+    width: 1,
+    height: "85%",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    marginHorizontal: 12,
+    marginTop: 6,
+  },
+
+  // Badge Display
+  badgeDisplayWrap: {
+    alignItems: "center",
+    paddingVertical: 12,
+  },
+  goldBadgeOuter: {
+    width: 86,
+    height: 94,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: "#fde047",
+    overflow: "hidden",
+    marginBottom: 12,
+    elevation: 6,
+  },
+  goldBadgeInner: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+  },
+  badgePill10000: {
+    position: "absolute",
+    bottom: 6,
+    borderWidth: 1.5,
+    borderColor: "#fde047",
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+  },
+  badgePill10000Text: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#fde047",
+    letterSpacing: 0.5,
+  },
+  badgeName: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#ffffff",
+    marginBottom: 2,
+  },
+  badgeDate: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.5)",
+  },
+
+  // Personal Best
+  personalBestWrap: {
+    alignItems: "center",
+    paddingVertical: 14,
+  },
+  goldenShoeArtWrap: {
+    width: 88,
+    height: 80,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  goldenRibbonBack: {
+    position: "absolute",
+    width: 50,
+    height: 70,
+    borderRadius: 16,
+    transform: [{ rotate: "35deg" }],
+    opacity: 0.5,
+  },
+  goldenShoeIconWrap: {
+    transform: [{ rotate: "-15deg" }],
+  },
+  personalBestValue: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#ffffff",
+    marginBottom: 2,
+  },
+  personalBestLabel: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.5)",
+  },
+
+  // Empty State in card
+  emptyStateWrap: {
+    paddingVertical: 20,
+    alignItems: "center",
+  },
+  emptyStateText: {
+    fontSize: 15,
+    color: "rgba(255,255,255,0.6)",
+    fontWeight: "500",
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // EDIT MODAL STYLES
+  // ═══════════════════════════════════════════════════════════
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.85)",
+    justifyContent: "flex-end",
+  },
+  editContainer: {
+    backgroundColor: "#000000",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    height: "92%",
+  },
+  editScroll: {
+    paddingHorizontal: 16,
+    paddingTop: 24,
+  },
+
+  // Squircle Picture Card
+  editAvatarCard: {
+    backgroundColor: "#16181e",
+    borderRadius: 24,
+    padding: 20,
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  editAvatarSquircle: {
+    width: 170,
+    height: 170,
+    borderRadius: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 18,
+  },
+  thinWhiteCircle: {
+    width: 154,
+    height: 154,
+    borderRadius: 77,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 16,
+  },
+  addPicText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#ffffff",
+    textAlign: "center",
+  },
+  avatarPresetsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 18,
+  },
+  avatarPresetCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  avatarPresetCircleActive: {
+    borderColor: "#ffffff",
+  },
+  avatarPresetPlus: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#334155",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  photoSourceRow: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+  },
+  photoSourceBtn: {
+    flex: 1,
+    backgroundColor: "#292b33",
+    paddingVertical: 12,
+    borderRadius: 22,
+    alignItems: "center",
+  },
+  photoSourceBtnText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#ffffff",
+  },
+
+  // Single Field Card
+  editFieldCardSingle: {
+    backgroundColor: "#16181e",
+    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    marginBottom: 14,
+  },
+  editInputUsername: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#ffffff",
+  },
+
+  // Details Multi-row Card
+  editDetailsCard: {
+    backgroundColor: "#16181e",
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingVertical: 6,
+    marginBottom: 14,
+  },
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+  },
+  detailIcon: {
+    width: 32,
+  },
+  detailInput: {
+    flex: 1,
+    fontSize: 15,
+    color: "#ffffff",
+    fontWeight: "500",
+  },
+  detailSeparator: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  disclaimerText: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.5)",
+    lineHeight: 18,
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+
+  // Activity Level Card
+  activityLevelCard: {
+    backgroundColor: "#16181e",
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 14,
+  },
+  activityLevelTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#ffffff",
+    marginBottom: 16,
+  },
+  levelCirclesRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  levelCol: {
+    alignItems: "center",
+    gap: 8,
+  },
+  levelCircle: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: "#292b33",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  levelCircleActive: {
+    backgroundColor: "#3b82f6",
+  },
+  levelNumber: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.5)",
+  },
+  levelNumberActive: {
+    color: "#ffffff",
+  },
+  levelPrompt: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.55)",
+    textAlign: "center",
+    marginTop: 4,
+  },
+
+  // Floating Bottom Dock
+  editBottomDock: {
+    position: "absolute",
+    bottom: 24,
+    alignSelf: "center",
+    width: 260,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(45, 50, 60, 0.95)",
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    elevation: 10,
+  },
+  dockCancelBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dockCancelText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+  dockDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  dockSaveBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dockSaveText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#ffffff",
   },
 });
