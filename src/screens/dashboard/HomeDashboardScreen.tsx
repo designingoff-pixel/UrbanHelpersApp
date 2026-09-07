@@ -774,9 +774,201 @@ export default function HomeDashboardScreen({ navigation }: Props) {
         )}
 
         {/* ═══════════════════════════════════════════════════════════════
-            TABS 2–5: OTHER SUB-CATEGORIES (Sleep, Heart, Meditation, Food)
+            TAB 2: SLEEP SUB-CATEGORY
             ═══════════════════════════════════════════════════════════════ */}
-        {activePill > 1 && (
+        {activePill === 2 && (
+          <View style={s.sleepSubView}>
+            {/* Header */}
+            <Animated.View entering={FadeInDown.duration(350).springify()}>
+              <Text style={s.subCategoryTitle}>Sleep</Text>
+              <Text style={s.subCategoryAdvice}>
+                Good sleep is the foundation of health. Track your patterns and improve your rest.
+              </Text>
+            </Animated.View>
+
+            {/* 1. Sleep Score + Duration — 2-col */}
+            <PressCard index={0} onPress={() => navigation.navigate("SleepDashboard")}>
+              <LinearGradient
+                colors={["#13084a", "#1a0f6b", "#2a1a9e"]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={s.slScoreCard}
+              >
+                {/* Stars */}
+                <Text style={s.slStar1}>✦</Text>
+                <Text style={s.slStar2}>✦</Text>
+                <Text style={s.slStar3}>·</Text>
+                <Text style={s.slStar4}>✦</Text>
+
+                <View style={s.slScoreRow}>
+                  {/* Score Ring */}
+                  <View style={s.slRingWrap}>
+                    <View style={s.slRingOuter}>
+                      <View style={s.slRingInner}>
+                        <Text style={s.slRingNum}>85</Text>
+                        <Text style={s.slRingLabel}>score</Text>
+                      </View>
+                    </View>
+                    <Text style={s.slRingQuality}>Excellent</Text>
+                  </View>
+
+                  {/* Stats */}
+                  <View style={s.slStatsList}>
+                    <View style={s.slStatItem}>
+                      <Ionicons name="moon" size={14} color="#a78bfa" />
+                      <View>
+                        <Text style={s.slStatVal}>7h 42m</Text>
+                        <Text style={s.slStatLabel}>Duration</Text>
+                      </View>
+                    </View>
+                    <View style={s.slStatItem}>
+                      <Ionicons name="bed" size={14} color="#60a5fa" />
+                      <View>
+                        <Text style={s.slStatVal}>11:08 PM</Text>
+                        <Text style={s.slStatLabel}>Bedtime</Text>
+                      </View>
+                    </View>
+                    <View style={s.slStatItem}>
+                      <Ionicons name="sunny" size={14} color="#fbbf24" />
+                      <View>
+                        <Text style={s.slStatVal}>6:50 AM</Text>
+                        <Text style={s.slStatLabel}>Wake up</Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              </LinearGradient>
+            </PressCard>
+
+            {/* 2. Sleep Stages bar chart */}
+            <PressCard index={1} onPress={() => navigation.navigate("SleepDashboard")}>
+              <View style={s.slStagesCard}>
+                <Text style={s.slCardTitle}>Sleep stages</Text>
+                <Text style={s.slCardSub}>Last night's cycles</Text>
+                <View style={s.slBarsRow}>
+                  {[
+                    { h: 90, c: "#facc15" },
+                    { h: 55, c: "#c084fc" },
+                    { h: 30, c: "#818cf8" },
+                    { h: 75, c: "#a78bfa" },
+                    { h: 25, c: "#818cf8" },
+                    { h: 95, c: "#facc15" },
+                    { h: 70, c: "#a78bfa" },
+                    { h: 40, c: "#c084fc" },
+                    { h: 20, c: "#818cf8" },
+                    { h: 60, c: "#a78bfa" },
+                    { h: 100, c: "#facc15" },
+                    { h: 35, c: "#c084fc" },
+                  ].map((b, i) => (
+                    <View key={i} style={s.slBarTrack}>
+                      <View style={[s.slBarFill, { height: `${b.h}%` as any, backgroundColor: b.c }]} />
+                    </View>
+                  ))}
+                </View>
+                <View style={s.slAxisRow}>
+                  <Text style={s.slAxisLabel}>11 PM</Text>
+                  <Text style={s.slAxisLabel}>2 AM</Text>
+                  <Text style={s.slAxisLabel}>7 AM</Text>
+                </View>
+                <View style={s.slLegendRow}>
+                  {[["#facc15", "Awake"], ["#c084fc", "REM"], ["#a78bfa", "Light"], ["#818cf8", "Deep"]].map(([c, l]) => (
+                    <View key={l} style={s.slLegendItem}>
+                      <View style={[s.slLegendDot, { backgroundColor: c }]} />
+                      <Text style={s.slLegendText}>{l}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </PressCard>
+
+            {/* 3. 7-Day History */}
+            <PressCard index={2} onPress={() => navigation.navigate("SleepDashboard")}>
+              <View style={s.slHistoryCard}>
+                <Text style={s.slCardTitle}>Sleep history</Text>
+                <Text style={s.slCardSub}>Last 7 nights</Text>
+                <View style={s.slHistRow}>
+                  {[
+                    { day: "Mon", h: 6.5, score: 72 },
+                    { day: "Tue", h: 7.2, score: 80 },
+                    { day: "Wed", h: 5.8, score: 65 },
+                    { day: "Thu", h: 8.1, score: 88 },
+                    { day: "Fri", h: 7.5, score: 83 },
+                    { day: "Sat", h: 8.5, score: 91 },
+                    { day: "Sun", h: 7.7, score: 85, today: true },
+                  ].map((d) => (
+                    <View key={d.day} style={s.slHistCol}>
+                      <Text style={[s.slHistScore, d.today && { color: "#a78bfa" }]}>{d.score}</Text>
+                      <View style={s.slHistBarTrack}>
+                        <View style={[
+                          s.slHistBarFill,
+                          { height: `${(d.h / 9) * 100}%` as any },
+                          d.today && { backgroundColor: "#a78bfa" }
+                        ]} />
+                      </View>
+                      <Text style={[s.slHistDayLabel, d.today && { color: "#a78bfa", fontWeight: "700" }]}>{d.day}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </PressCard>
+
+            {/* 4. Wind Down shortcuts (2×2 grid) */}
+            <View style={s.slWindSection}>
+              <Text style={s.slSectionHeading}>Wind down</Text>
+              <View style={s.slWindGrid}>
+                {[
+                  { label: "Meditation", icon: "body" as const, bg: "#064e3b", route: "MeditationDashboard" },
+                  { label: "Music", icon: "musical-notes" as const, bg: "#1e3a8a" },
+                  { label: "Breathing", icon: "aperture" as const, bg: "#7c2d12" },
+                  { label: "Sleep Alarm", icon: "alarm" as const, bg: "#312e81", route: "SleepDashboard" },
+                ].map((w) => (
+                  <Pressable
+                    key={w.label}
+                    style={[s.slWindCard, { backgroundColor: w.bg }]}
+                    onPress={() => w.route ? navigation.navigate(w.route as any) : {}}
+                  >
+                    <View style={s.slWindIcon}>
+                      <Ionicons name={w.icon} size={22} color="white" />
+                    </View>
+                    <Text style={s.slWindLabel}>{w.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            {/* 5. Smart alarm card */}
+            <PressCard index={4} onPress={() => navigation.navigate("SleepDashboard")}>
+              <View style={s.slAlarmCard}>
+                <View style={s.slAlarmLeft}>
+                  <View style={s.slAlarmIconBox}>
+                    <Ionicons name="alarm" size={22} color="#a78bfa" />
+                  </View>
+                  <View>
+                    <Text style={s.slAlarmTime}>07:15 <Text style={s.slAlarmAmPm}>AM</Text></Text>
+                    <View style={s.slAlarmMeta}>
+                      <Ionicons name="sparkles" size={11} color="#a78bfa" />
+                      <Text style={s.slAlarmMetaText}>Smart Alarm · Tomorrow</Text>
+                    </View>
+                  </View>
+                </View>
+                <View style={s.slToggleTrack}>
+                  <View style={s.slToggleThumb} />
+                </View>
+              </View>
+            </PressCard>
+
+            {/* Edit home */}
+            <View style={s.editHomeWrap}>
+              <Pressable style={s.editHomeBtn} onPress={() => {}}>
+                <Text style={s.editHomeText}>Edit home</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════════
+            TABS 3–5: Heart, Meditation, Food (simple navigate-through)
+            ═══════════════════════════════════════════════════════════════ */}
+        {activePill > 2 && (
           <View style={s.otherSubView}>
             <Text style={s.subCategoryTitle}>{PILLS[activePill].name}</Text>
             <Text style={s.subCategoryAdvice}>
@@ -785,7 +977,6 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             <Pressable
               style={s.exploreModuleBtn}
               onPress={() => {
-                if (activePill === 2) navigation.navigate("SleepDashboard");
                 if (activePill === 3) navigation.navigate("HealthDashboard");
                 if (activePill === 4) navigation.navigate("MeditationDashboard");
                 if (activePill === 5) navigation.navigate("NutritionDashboard");
@@ -1188,4 +1379,113 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.06)", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
   },
   editHomeText: { fontSize: 13, fontWeight: "600", color: "rgba(255,255,255,0.75)" },
+
+  // ═════════════════════════════════════════════════════════════
+  // SLEEP SUB-CATEGORY STYLES
+  // ═════════════════════════════════════════════════════════════
+  sleepSubView: { gap: 12 },
+
+  // 1. Score Card (deep navy gradient)
+  slScoreCard: {
+    borderRadius: 24, padding: 22, overflow: "hidden",
+    borderWidth: 1, borderColor: "rgba(167,139,250,0.2)",
+  },
+  slStar1: { position: "absolute", top: 14, left: 22, color: "#a78bfa", fontSize: 12 },
+  slStar2: { position: "absolute", top: 30, left: 50, color: "#a78bfa", fontSize: 8 },
+  slStar3: { position: "absolute", top: 20, left: 38, color: "#c4b5fd", fontSize: 18 },
+  slStar4: { position: "absolute", top: 12, right: 20, color: "#a78bfa", fontSize: 9 },
+  slScoreRow: { flexDirection: "row", alignItems: "center", gap: 24 },
+  slRingWrap: { alignItems: "center" },
+  slRingOuter: {
+    width: 100, height: 100, borderRadius: 50,
+    borderWidth: 6, borderColor: "#7c3aed",
+    justifyContent: "center", alignItems: "center",
+    backgroundColor: "rgba(124,58,237,0.12)",
+  },
+  slRingInner: { alignItems: "center" },
+  slRingNum: { fontSize: 32, fontWeight: "800", color: "#e9d5ff" },
+  slRingLabel: { fontSize: 10, color: "#a78bfa", fontWeight: "600", letterSpacing: 0.5 },
+  slRingQuality: { fontSize: 12, color: "#c4b5fd", fontWeight: "700", marginTop: 8 },
+  slStatsList: { flex: 1, gap: 16 },
+  slStatItem: { flexDirection: "row", alignItems: "center", gap: 10 },
+  slStatVal: { fontSize: 16, fontWeight: "700", color: "white" },
+  slStatLabel: { fontSize: 10.5, color: "rgba(255,255,255,0.5)", marginTop: 1 },
+
+  // 2. Sleep Stages Card
+  slStagesCard: {
+    backgroundColor: "#151222", borderRadius: 24, padding: 20,
+    borderWidth: 1, borderColor: "rgba(167,139,250,0.15)",
+  },
+  slCardTitle: { fontSize: 15, fontWeight: "700", color: "white", marginBottom: 3 },
+  slCardSub: { fontSize: 11.5, color: "rgba(255,255,255,0.45)", marginBottom: 14 },
+  slBarsRow: {
+    flexDirection: "row", alignItems: "flex-end", height: 80,
+    gap: 3, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.07)",
+    paddingBottom: 4, marginBottom: 8,
+  },
+  slBarTrack: { flex: 1, height: "100%", justifyContent: "flex-end" },
+  slBarFill: { borderRadius: 3 },
+  slAxisRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 },
+  slAxisLabel: { fontSize: 9.5, color: "rgba(255,255,255,0.4)" },
+  slLegendRow: { flexDirection: "row", gap: 12, flexWrap: "wrap" },
+  slLegendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
+  slLegendDot: { width: 8, height: 8, borderRadius: 4 },
+  slLegendText: { fontSize: 11, color: "rgba(255,255,255,0.6)" },
+
+  // 3. 7-Day History
+  slHistoryCard: {
+    backgroundColor: "#151222", borderRadius: 24, padding: 20,
+    borderWidth: 1, borderColor: "rgba(167,139,250,0.15)",
+  },
+  slHistRow: { flexDirection: "row", alignItems: "flex-end", gap: 4, marginTop: 4 },
+  slHistCol: { flex: 1, alignItems: "center", gap: 6 },
+  slHistScore: { fontSize: 10, fontWeight: "700", color: "rgba(255,255,255,0.5)" },
+  slHistBarTrack: {
+    width: "100%", height: 70, borderRadius: 6,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    justifyContent: "flex-end",
+  },
+  slHistBarFill: { borderRadius: 6, backgroundColor: "#6d28d9" },
+  slHistDayLabel: { fontSize: 10.5, color: "rgba(255,255,255,0.5)", fontWeight: "500" },
+
+  // 4. Wind Down
+  slWindSection: { marginTop: 4 },
+  slSectionHeading: { fontSize: 18, fontWeight: "700", color: "white", marginBottom: 12 },
+  slWindGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  slWindCard: {
+    width: "47%", borderRadius: 18, padding: 16, alignItems: "center", gap: 10,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
+  },
+  slWindIcon: {
+    width: 46, height: 46, borderRadius: 23,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    justifyContent: "center", alignItems: "center",
+  },
+  slWindLabel: { fontSize: 13, color: "white", fontWeight: "600" },
+
+  // 5. Smart Alarm
+  slAlarmCard: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    backgroundColor: "#151222", borderRadius: 22, padding: 20,
+    borderWidth: 1, borderColor: "rgba(167,139,250,0.15)",
+  },
+  slAlarmLeft: { flexDirection: "row", alignItems: "center", gap: 14 },
+  slAlarmIconBox: {
+    width: 46, height: 46, borderRadius: 23,
+    backgroundColor: "rgba(167,139,250,0.15)",
+    justifyContent: "center", alignItems: "center",
+    borderWidth: 1, borderColor: "rgba(167,139,250,0.25)",
+  },
+  slAlarmTime: { fontSize: 28, fontWeight: "800", color: "white" },
+  slAlarmAmPm: { fontSize: 14, color: "rgba(255,255,255,0.55)" },
+  slAlarmMeta: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 },
+  slAlarmMetaText: { fontSize: 11.5, color: "rgba(255,255,255,0.5)" },
+  slToggleTrack: {
+    width: 50, height: 26, borderRadius: 13,
+    backgroundColor: "#7c3aed", justifyContent: "center", paddingHorizontal: 3,
+  },
+  slToggleThumb: {
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: "white", alignSelf: "flex-end",
+  },
 });
