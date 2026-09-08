@@ -25,12 +25,7 @@ import Animated, {
   FadeIn,
   Easing,
 } from "react-native-reanimated";
-let Pedometer: any = null;
-try {
-  Pedometer = require("expo-sensors")?.Pedometer;
-} catch (_) {
-  Pedometer = null;
-}
+import { Pedometer } from "expo-sensors";
 import { RootStackParamList } from "@/navigation/types";
 import SamsungBottomNav from "@/components/SamsungBottomNav";
 import { useAuth } from "@/context/AuthContext";
