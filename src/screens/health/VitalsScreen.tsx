@@ -377,7 +377,7 @@ export default function VitalsScreen({ navigation }: Props) {
           </LinearGradient>
         </Animated.View>
 
-        {/* Samsung Health Info Banner */}
+        {/* Urban Health Info Banner */}
         <Animated.View entering={FadeInDown.delay(460).duration(380)}>
           <View style={s.infoCard}>
             <Ionicons name="information-circle" size={20} color="#0ea5e9" />

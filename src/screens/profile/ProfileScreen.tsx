@@ -165,7 +165,7 @@ export default function ProfileScreen({ navigation }: Props) {
           <View style={s.profileActionRow}>
             <Pressable
               style={s.profileActionBtn}
-              onPress={() => Alert.alert("Friends", "Syncing contacts with Samsung Health Together...")}
+              onPress={() => Alert.alert("Friends", "Syncing contacts with Urban Health Together...")}
             >
               <Text style={s.profileActionBtnText}>Friends</Text>
             </Pressable>
@@ -286,7 +286,7 @@ export default function ProfileScreen({ navigation }: Props) {
         <View style={s.card}>
           <Pressable
             style={s.cardHeaderRow}
-            onPress={() => Alert.alert("Global Challenge", "Join monthly Samsung Health Global walk-a-thons!")}
+            onPress={() => Alert.alert("Global Challenge", "Join monthly Urban Health Global walk-a-thons!")}
           >
             <Text style={s.cardTitle}>Global challenge</Text>
             <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />

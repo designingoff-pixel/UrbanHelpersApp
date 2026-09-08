@@ -142,7 +142,7 @@ export function RootNavigator() {
         initialRouteName="Splash"
       screenOptions={{
         headerShown: false,
-        // Samsung Health-style: fast slide-up with a slight fade
+        // Urban Health-style: fast slide-up with a slight fade
         animation: "slide_from_bottom",
         animationDuration: 320,
         contentStyle: { backgroundColor: "#041423" },

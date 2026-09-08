@@ -161,7 +161,7 @@ export default function DiscoverScreen({ navigation }: Props) {
               {/* Promo Banner Peach Container */}
               <View style={s.tataPromoContainer}>
                 <Text style={s.tataExclusiveTitle}>
-                  Additional Discounts Exclusively for Samsung Health Users
+                  Additional Discounts Exclusively for Urban Health Users
                 </Text>
                 <View style={s.tataRow}>
                   {/* Item 1 */}
@@ -306,7 +306,7 @@ export default function DiscoverScreen({ navigation }: Props) {
               <View style={s.promoCardWhite}>
                 <View style={s.promoCardTop}>
                   <Ionicons name="fitness" size={18} color="#0284c7" />
-                  <Text style={s.promoBrandText}>Samsung Health</Text>
+                  <Text style={s.promoBrandText}>Urban Health</Text>
                 </View>
                 <Text style={s.promoCardHeading}>
                   Introducing Fitness Index and Daily Cardio Load
@@ -365,7 +365,7 @@ export default function DiscoverScreen({ navigation }: Props) {
               <View style={s.promoCardWhite}>
                 <View style={s.promoCardTop}>
                   <Ionicons name="shield-checkmark" size={18} color="#059669" />
-                  <Text style={s.promoBrandText}>Samsung Health</Text>
+                  <Text style={s.promoBrandText}>Urban Health</Text>
                 </View>
                 <Text style={s.promoCardHeading}>
                   Save more on medicines with PharmEasy

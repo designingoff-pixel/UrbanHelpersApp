@@ -287,7 +287,7 @@ export default function FitnessDashboardScreen({ navigation }: Props) {
               <Text style={s.videoTitle} numberOfLines={1}>
                 [Day11] Align Your Pelvis & A...
               </Text>
-              <Text style={s.videoMeta}>12:01  Samsung Health</Text>
+              <Text style={s.videoMeta}>12:01  Urban Health</Text>
             </View>
           </View>
         </View>
@@ -323,7 +323,7 @@ export default function FitnessDashboardScreen({ navigation }: Props) {
               <Text style={s.videoTitle} numberOfLines={1}>
                 [Day11] Align Your Pelvis & Activat...
               </Text>
-              <Text style={s.videoMeta}>12:01  Samsung Health</Text>
+              <Text style={s.videoMeta}>12:01  Urban Health</Text>
             </View>
           </View>
         </View>
@@ -343,7 +343,7 @@ export default function FitnessDashboardScreen({ navigation }: Props) {
               >
                 <View style={s.runningGuideHeader}>
                   <Ionicons name="fitness" size={14} color="#1e3a8a" />
-                  <Text style={s.runningGuideBrand}>Samsung Health</Text>
+                  <Text style={s.runningGuideBrand}>Urban Health</Text>
                 </View>
                 <Text style={s.runningPartTag}>ESSENTIAL RUNNING GUIDE PART.03</Text>
                 <Text style={s.runningBigHeadline}>HOW TO LOSE{"\n"}WEIGHT{"\n"}BY RUNNING</Text>
@@ -357,7 +357,7 @@ export default function FitnessDashboardScreen({ navigation }: Props) {
               <Text style={s.videoTitle} numberOfLines={1}>
                 Essential Running Guide 03 - How ...
               </Text>
-              <Text style={s.videoMeta}>06:00  Samsung Health</Text>
+              <Text style={s.videoMeta}>06:00  Urban Health</Text>
             </View>
           </View>
         </View>
@@ -421,7 +421,7 @@ export default function FitnessDashboardScreen({ navigation }: Props) {
               </View>
               <Text style={s.miniTitle} numberOfLines={1}>Pre-Run</Text>
               <Text style={s.miniSub}>Stretching</Text>
-              <Text style={s.miniMeta}>05:12  Samsung Health</Text>
+              <Text style={s.miniMeta}>05:12  Urban Health</Text>
             </View>
 
             {/* Card 2: Post-Run Stretching */}
@@ -436,7 +436,7 @@ export default function FitnessDashboardScreen({ navigation }: Props) {
               </View>
               <Text style={s.miniTitle} numberOfLines={1}>Post-Run</Text>
               <Text style={s.miniSub}>Stretching</Text>
-              <Text style={s.miniMeta}>06:45  Samsung Health</Text>
+              <Text style={s.miniMeta}>06:45  Urban Health</Text>
             </View>
 
             {/* Card 3: Core Workout for Runners */}
@@ -451,7 +451,7 @@ export default function FitnessDashboardScreen({ navigation }: Props) {
               </View>
               <Text style={s.miniTitle} numberOfLines={1}>Core Workout</Text>
               <Text style={s.miniSub}>For Runners</Text>
-              <Text style={s.miniMeta}>09:25  Samsung Health</Text>
+              <Text style={s.miniMeta}>09:25  Urban Health</Text>
             </View>
           </ScrollView>
         </View>

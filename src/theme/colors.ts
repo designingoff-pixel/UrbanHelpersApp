@@ -1,5 +1,5 @@
 /**
- * Luminous Nocturne Design System (Samsung Health 2026)
+ * Luminous Nocturne Design System (Urban Health 2026)
  * Deep navy foundation with vibrant primary/secondary for modern, premium feel
  */
 export const colors = {

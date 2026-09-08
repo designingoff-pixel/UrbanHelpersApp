@@ -202,7 +202,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
     <View style={s.root}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
-      {/* ── Subtle warm amber glow at top (matching Samsung Health header glow) ── */}
+      {/* ── Subtle warm amber glow at top (matching Urban Health header glow) ── */}
       <LinearGradient
         colors={["rgba(120, 80, 10, 0.28)", "rgba(50, 40, 15, 0.12)", "transparent"]}
         style={s.topAmbientGlow}
@@ -211,7 +211,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
 
       {/* ── Top App Bar (Persistent) ─────────────────────────── */}
       <Animated.View style={[s.topBar, headerStyle]}>
-        <Text style={s.appTitle}>Samsung Health</Text>
+        <Text style={s.appTitle}>Urban Health</Text>
         <View style={s.topBarRight}>
           {/* Avatar */}
           <Pressable onPress={() => navigation.navigate("Profile")} style={s.avatarBtn}>
@@ -1031,7 +1031,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
         )}
 
         {/* ═══════════════════════════════════════════════════════════════
-            TAB 3: VITALS (In-Page Sub-Category matching Samsung Health)
+            TAB 3: VITALS (In-Page Sub-Category matching Urban Health)
             ═══════════════════════════════════════════════════════════════ */}
         {activePill === 3 && (
           <View style={s.vitalsSubView}>
