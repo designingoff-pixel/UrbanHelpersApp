@@ -36,6 +36,7 @@ export interface Booking {
   priceLabel: string;
   paymentStatus: "pending" | "paid" | "failed" | "refunded";
   safety: "normal" | "watch" | "alert";
+  otp?: string;
 }
 
 export interface CreateBookingInput {

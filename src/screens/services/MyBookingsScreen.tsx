@@ -26,10 +26,9 @@ function formatScheduledAt(iso: string): string {
   tomorrow.setDate(today.getDate() + 1);
   const isTomorrow = date.toDateString() === tomorrow.toDateString();
 
-  const time = date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
-  if (isToday) return `Today, ${time}`;
-  if (isTomorrow) return `Tomorrow, ${time}`;
-  return `${date.toLocaleDateString("en-IN", { month: "short", day: "numeric" })}, ${time}`;
+  if (isToday) return "Today";
+  if (isTomorrow) return "Tomorrow";
+  return date.toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" });
 }
 
 const STATUS_COLORS: Record<BookingStatus, string> = {
@@ -120,13 +119,12 @@ export default function MyBookingsScreen({ navigation }: Props) {
               <Pressable
                 onPress={() => navigation.navigate("BookingConfirmed", {
                   bookingId: booking.id,
-                  otp: (booking as any).otp ?? "1234",
+                  otp: booking.otp ?? "1234",
                   categoryId: category?.id ?? SERVICE_CATEGORIES[0].id,
                   subServiceId: category?.subServices.find((sv) => sv.name === booking.subServiceName)?.id
                     ?? category?.subServices[0]?.id
                     ?? SERVICE_CATEGORIES[0].subServices[0].id,
-                  dayIndex: 0,
-                  slotIndex: 1,
+                  scheduledDate: formatScheduledAt(booking.scheduledAt),
                 })}
                 style={s.bookingCard}
               >
@@ -171,6 +169,30 @@ export default function MyBookingsScreen({ navigation }: Props) {
                     </View>
                     <Text style={s.priceText}>{booking.priceLabel}</Text>
                   </View>
+
+                  {/* Active Booking OTP Display */}
+                  {booking.status !== "completed" && booking.status !== "cancelled" && booking.otp && (
+                    <View style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      backgroundColor: "rgba(0, 188, 212, 0.12)",
+                      borderWidth: 1,
+                      borderColor: "rgba(0, 188, 212, 0.3)",
+                      borderRadius: 8,
+                      paddingHorizontal: 10,
+                      paddingVertical: 6,
+                      marginTop: 8,
+                    }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                        <Ionicons name="keypad-outline" size={14} color="#00bcd4" />
+                        <Text style={{ fontSize: 12, color: "#80deea", fontWeight: "600" }}>OTP for Vendor</Text>
+                      </View>
+                      <Text style={{ fontSize: 15, fontWeight: "700", color: "#00e5ff", letterSpacing: 1.5 }}>
+                        {booking.otp}
+                      </Text>
+                    </View>
+                  )}
 
                   {/* Booking ID */}
                   <Text style={s.bookingId}>#{booking.id.slice(-8).toUpperCase()}</Text>

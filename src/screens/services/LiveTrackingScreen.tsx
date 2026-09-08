@@ -181,27 +181,20 @@ export default function LiveTrackingScreen({ navigation }: Props) {
     );
   }, [vendorCoords, customerCoords]);
 
-  // Auto navigate on complete
+  // Auto navigate on complete — ONLY when vendor completes the service in their app
   const prevBookingRef = useRef<LiveBooking | null>(null);
   useEffect(() => {
-    // If the booking drops out of the active query (becomes null), 
-    // and it was previously in progress/arrived, it means it just completed!
-    if (!booking && prevBookingRef.current) {
-      const prev = prevBookingRef.current;
-      if (prev.status === "in_progress" || prev.status === "arrived" || prev.status === "en_route" || prev.status === "accepted") {
-        sendServiceCompletedNotification(prev.serviceCategory ?? "Service").catch(console.log);
-        setTimeout(() => navigation.navigate("RatingFeedback",{}), 3000);
-      }
-    }
-    
-    // Also handle if the query was updated to include "completed" at some point
-    if (booking?.status === "completed" && prevBookingRef.current?.status !== "completed") {
+    // Only trigger when an active in-progress/arrived booking transitions directly to "completed"
+    if (
+      booking?.status === "completed" &&
+      (prevBookingRef.current?.status === "in_progress" || prevBookingRef.current?.status === "arrived")
+    ) {
       sendServiceCompletedNotification(booking.serviceCategory ?? "Service").catch(console.log);
-      setTimeout(() => navigation.navigate("RatingFeedback",{}), 3000);
+      setTimeout(() => navigation.navigate("RatingFeedback", {}), 1500);
     }
     
     prevBookingRef.current = booking;
-  }, [booking]);
+  }, [booking?.status]);
 
   const status   = booking?.status ?? "requested";
   const steps    = buildSteps(status as BookingStatus, etaText);

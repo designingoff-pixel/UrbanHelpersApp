@@ -44,7 +44,6 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
-  const [pickerMode, setPickerMode] = useState<"date" | "time">("date");
 
   // ── Address state ──────────────────────────────────────────────────────────
   // addressText  : what is shown in the TextInput
@@ -281,10 +280,14 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       navigation.navigate("BookingConfirmed", {
         bookingId,
         otp,
-        categoryId:   category.id,
-        subServiceId: sub.id,
-        dayIndex:     0,
-        slotIndex:    0,
+        categoryId:    category.id,
+        subServiceId:  sub.id,
+        scheduledDate: selectedDate.toLocaleDateString("en-US", {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
       });
     } catch (err) {
       Alert.alert("Booking failed", "Something went wrong while confirming your booking. Please try again.");
@@ -499,33 +502,36 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
           </View>
         </Animated.View>
 
-        {/* ── Native Date & Time Picker ──────────────────────────────────────── */}
+        {/* ── Native Date Picker (Date Only) ─────────────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(160).duration(380)}>
           <LinearGradient
             colors={["#4338ca", "#8b5cf6"]}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             style={s.dateSection}
           >
-            <Text style={s.dateSectionTitle}>Select Date & Time</Text>
+            <Text style={s.dateSectionTitle}>Select Service Date</Text>
 
-            <View style={{ flexDirection: "row", gap: 10, marginTop: 15 }}>
+            <View style={{ marginTop: 15 }}>
               <Pressable
-                style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.2)", padding: 12, borderRadius: 12, alignItems: "center" }}
-                onPress={() => { setPickerMode("date"); setShowPicker(true); }}
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.2)",
+                  padding: 14,
+                  borderRadius: 14,
+                  alignItems: "center",
+                  flexDirection: "row",
+                  justifyContent: "center",
+                  gap: 10,
+                }}
+                onPress={() => setShowPicker(true)}
               >
-                <Ionicons name="calendar-outline" size={20} color="white" />
-                <Text style={{ color: "white", marginTop: 4, fontWeight: "600" }}>
-                  {selectedDate.toLocaleDateString()}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.2)", padding: 12, borderRadius: 12, alignItems: "center" }}
-                onPress={() => { setPickerMode("time"); setShowPicker(true); }}
-              >
-                <Ionicons name="time-outline" size={20} color="white" />
-                <Text style={{ color: "white", marginTop: 4, fontWeight: "600" }}>
-                  {selectedDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                <Ionicons name="calendar-outline" size={22} color="white" />
+                <Text style={{ color: "white", fontWeight: "700", fontSize: 16 }}>
+                  {selectedDate.toLocaleDateString("en-US", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })}
                 </Text>
               </Pressable>
             </View>
@@ -533,8 +539,8 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
             {showPicker && (
               <DateTimePicker
                 value={selectedDate}
-                mode={pickerMode}
-                is24Hour={false}
+                mode="date"
+                minimumDate={new Date()}
                 display="default"
                 onChange={(event, date) => {
                   setShowPicker(false);

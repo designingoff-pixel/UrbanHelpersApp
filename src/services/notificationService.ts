@@ -310,13 +310,14 @@ export async function sendBookingConfirmation(
   serviceName: string,
   subServiceName: string,
   dateLabel: string,
-  timeLabel: string,
-  otp: string // ← added OTP
+  timeLabel?: string,
+  otp: string = ""
 ): Promise<void> {
+  const timing = timeLabel ? ` at ${timeLabel}` : "";
   await Notifications.scheduleNotificationAsync({
     content: {
       title: "✅ Booking Confirmed!",
-      body: `${subServiceName} (${serviceName}) on ${dateLabel} at ${timeLabel}. Your OTP for the vendor is: ${otp}`,
+      body: `${subServiceName} (${serviceName}) on ${dateLabel}${timing}. Your OTP for the vendor is: ${otp}`,
       sound: true,
       data: { screen: "MyBookings" },
     },

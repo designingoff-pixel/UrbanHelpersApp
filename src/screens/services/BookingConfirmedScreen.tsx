@@ -24,10 +24,12 @@ const DATES = ["11", "12", "13", "14", "15", "16", "17"];
 const SLOTS = ["8:00 AM – 11:00 AM", "12:00 PM – 3:00 PM", "4:00 PM – 7:00 PM"];
 
 export default function BookingConfirmedScreen({ navigation, route }: Props) {
-  const { bookingId, otp, categoryId, subServiceId, dayIndex, slotIndex } = route.params;
+  const { bookingId, otp, categoryId, subServiceId, dayIndex, scheduledDate } = route.params;
 
   const category = SERVICE_CATEGORIES.find((c) => c.id === categoryId);
   const sub = category?.subServices.find((s) => s.id === subServiceId);
+
+  const bookingDateStr = scheduledDate || (dayIndex !== undefined && DAYS[dayIndex] ? `${DAYS[dayIndex]}, Aug ${DATES[dayIndex]}` : new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }));
 
   // Checkmark ring animation
   const ringScale = useSharedValue(0);
@@ -41,11 +43,9 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
     checkScale.value = withDelay(200, withSpring(1, { damping: 10, stiffness: 260 }));
     confettiOp.value = withDelay(400, withTiming(1, { duration: 400 }));
 
-    // Fire booking confirmation notification
+    // Fire booking confirmation notification (date only, no time for customer)
     if (category && sub) {
-      const dayLabel = `${DAYS[dayIndex ?? 1]}, Aug ${DATES[dayIndex ?? 1]}`;
-      const timeLabel = SLOTS[slotIndex ?? 1];
-      sendBookingConfirmation(category.name, sub.name, dayLabel, timeLabel, otp);
+      sendBookingConfirmation(category.name, sub.name, bookingDateStr, undefined, otp);
     }
   }, []);
 
@@ -127,14 +127,10 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
 
             <View style={s.summaryDetails}>
               <View style={s.detailRow}>
-                <Ionicons name="calendar-outline" size={15} color={colors.text.muted} />
-                <Text style={s.detailText}>
-                  {DAYS[dayIndex ?? 1]}, Aug {DATES[dayIndex ?? 1]}
+                <Ionicons name="calendar-outline" size={16} color={category.accent} />
+                <Text style={[s.detailText, { fontWeight: "600", color: colors.text.primary }]}>
+                  {bookingDateStr}
                 </Text>
-              </View>
-              <View style={s.detailRow}>
-                <Ionicons name="time-outline" size={15} color={colors.text.muted} />
-                <Text style={s.detailText}>{SLOTS[slotIndex ?? 1]}</Text>
               </View>
               <View style={s.detailRow}>
                 <Ionicons name="hourglass-outline" size={15} color={colors.text.muted} />

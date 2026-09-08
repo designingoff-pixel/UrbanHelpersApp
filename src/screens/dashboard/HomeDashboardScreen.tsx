@@ -25,7 +25,12 @@ import Animated, {
   FadeIn,
   Easing,
 } from "react-native-reanimated";
-import { Pedometer } from "expo-sensors";
+let Pedometer: any = null;
+try {
+  Pedometer = require("expo-sensors")?.Pedometer;
+} catch (_) {
+  Pedometer = null;
+}
 import { RootStackParamList } from "@/navigation/types";
 import SamsungBottomNav from "@/components/SamsungBottomNav";
 import { useAuth } from "@/context/AuthContext";
@@ -187,18 +192,23 @@ export default function HomeDashboardScreen({ navigation }: Props) {
   useEffect(() => {
     let subscription: any = null;
     const startPedometer = async () => {
-      const isAvailable = await Pedometer.isAvailableAsync();
-      if (!isAvailable) return;
-      // Load persisted count first
-      const saved = await getTodayStepCount();
-      setLiveSteps(saved.steps);
-      // Watch start-of-day to now for today's steps
-      const start = new Date();
-      start.setHours(0, 0, 0, 0);
-      subscription = Pedometer.watchStepCount((result) => {
-        setLiveSteps(result.steps);
-        saveTodayStepCount(result.steps);
-      });
+      try {
+        if (!Pedometer || !Pedometer.isAvailableAsync) return;
+        const isAvailable = await Pedometer.isAvailableAsync();
+        if (!isAvailable) return;
+        // Load persisted count first
+        const saved = await getTodayStepCount();
+        setLiveSteps(saved.steps);
+        // Watch start-of-day to now for today's steps
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+        subscription = Pedometer.watchStepCount((result: any) => {
+          if (result && typeof result.steps === "number") {
+            setLiveSteps(result.steps);
+            saveTodayStepCount(result.steps);
+          }
+        });
+      } catch (_) {}
     };
     startPedometer();
     return () => { if (subscription) subscription.remove(); };
@@ -3192,28 +3202,5 @@ const s = StyleSheet.create({
     height: 1,
     backgroundColor: "rgba(255,255,255,0.08)",
     marginHorizontal: 12,
-  },
-
-  // Edit home button (updated to flex row for icon)
-  editHomeWrap: {
-    alignItems: "center",
-    paddingVertical: 20,
-    paddingBottom: 32,
-  },
-  editHomeBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 22,
-    paddingVertical: 10,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.18)",
-    backgroundColor: "rgba(255,255,255,0.05)",
-  },
-  editHomeText: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: 14,
-    fontWeight: "500",
-    letterSpacing: 0.3,
   },
 });

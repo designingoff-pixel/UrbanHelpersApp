@@ -5,7 +5,10 @@ import { RootStackParamList } from "./types";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/services/firebase";
 import { collection, query, where, onSnapshot, limit } from "firebase/firestore";
-import { sendVendorArrivedOTPNotification } from "@/services/notificationService";
+import {
+  sendVendorArrivedOTPNotification,
+  sendServiceCompletedNotification,
+} from "@/services/notificationService";
 
 // Module 1 — Onboarding / Auth
 import SplashScreen from "@/screens/auth/SplashScreen";
@@ -93,36 +96,68 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 function GlobalBookingListener() {
   const { user } = useAuth();
   const navigation = useNavigation<any>();
+  const activeBookingId = useRef<string | null>(null);
   const prevStatus = useRef<string | null>(null);
+  const isInitialMount = useRef<boolean>(true);
 
   useEffect(() => {
     if (!user) return;
     const q = query(
       collection(db, "bookings"),
       where("customerId", "==", user.uid),
-      where("status", "in", ["assigned", "accepted", "en_route", "arrived", "in_progress", "completed"]),
-      limit(1)
+      where("status", "in", ["assigned", "accepted", "en_route", "arrived", "in_progress", "completed"])
     );
     const unsub = onSnapshot(q, (snap) => {
       if (snap.empty) {
         prevStatus.current = null;
+        activeBookingId.current = null;
+        isInitialMount.current = false;
         return;
       }
-      const data = snap.docs[0].data();
+
+      // Prioritize actively ongoing bookings first
+      const activeDoc = snap.docs.find((d) =>
+        ["in_progress", "arrived", "en_route", "accepted", "assigned"].includes(d.data().status)
+      ) || snap.docs[0];
+
+      const data = activeDoc.data();
       const newStatus = data.status;
+      const currentId = activeDoc.id;
+
+      // On initial load, record initial state without firing transition notifications
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        activeBookingId.current = currentId;
+        prevStatus.current = newStatus;
+        return;
+      }
 
       // If transition to arrived, fire notification!
-      if (prevStatus.current && prevStatus.current !== "arrived" && newStatus === "arrived") {
+      if (
+        activeBookingId.current === currentId &&
+        prevStatus.current &&
+        prevStatus.current !== "arrived" &&
+        newStatus === "arrived"
+      ) {
         if (data.otp) {
-          sendVendorArrivedOTPNotification(data.otp);
+          sendVendorArrivedOTPNotification(String(data.otp));
         }
       }
 
-      // If transition to completed, immediately open Rating/Feedback screen
-      if (prevStatus.current && prevStatus.current !== "completed" && newStatus === "completed") {
-        navigation.navigate("RatingFeedback", {});
+      // ONLY when vendor explicitly completes the service in their app:
+      if (
+        activeBookingId.current === currentId &&
+        (prevStatus.current === "in_progress" || prevStatus.current === "arrived") &&
+        newStatus === "completed"
+      ) {
+        sendServiceCompletedNotification(data.serviceCategory ?? "Service").catch(console.log);
+        navigation.navigate("RatingFeedback", {
+          categoryId: data.serviceCategory,
+          subServiceId: data.subServiceName,
+        });
       }
 
+      activeBookingId.current = currentId;
       prevStatus.current = newStatus;
     });
     return () => unsub();
