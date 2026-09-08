@@ -46,6 +46,7 @@ export type RootStackParamList = {
   HydrationDashboard: undefined;
   WeightLogDashboard: undefined;
   WellnessDashboard: undefined;
+  CycleTracking: undefined;
   AdvancedNutritionDashboard: undefined;
 
   // Module 6 — Daily Care

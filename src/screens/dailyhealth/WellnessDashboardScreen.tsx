@@ -62,28 +62,16 @@ const ACTIVITIES = [
   },
 ];
 
-// Per PROJECT_DOCUMENTATION.md:
-// Coaching → AICoach | Nutrition → NutritionDashboard | Health (active)
-const NAV = [
-  { icon: "heart", label: "Health", route: "HealthDashboard", active: true },
-  { icon: "headset-outline", label: "Coaching", route: "AICoach" },
-  { icon: "add-circle-outline", label: "Log", route: "AdvancedNutritionDashboard" },
-  { icon: "restaurant-outline", label: "Nutrition", route: "NutritionDashboard" },
-  { icon: "person-outline", label: "Profile", route: "Profile" },
-];
-
 export default function WellnessDashboardScreen({ navigation }: Props) {
   return (
     <View style={s.root}>
       {/* Header */}
       <View style={s.header}>
         <Pressable onPress={() => navigation.goBack()} style={s.iconBtn}>
-          <Ionicons name="arrow-back" size={22} color={colors.text.secondary} />
+          <Ionicons name="arrow-back" size={22} color="#ffffff" />
         </Pressable>
-        <Text style={s.headerTitle}>Urban Helpers</Text>
-        <Pressable style={s.iconBtn}>
-          <Ionicons name="settings-outline" size={22} color={colors.text.secondary} />
-        </Pressable>
+        <Text style={s.headerTitle}>Wellness & Recovery</Text>
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
@@ -225,22 +213,8 @@ export default function WellnessDashboardScreen({ navigation }: Props) {
           ))}
         </View>
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 40 }} />
       </ScrollView>
-
-      {/* Bottom Nav */}
-      <View style={s.navBar}>
-        {NAV.map((n) => (
-          <Pressable
-            key={n.label}
-            onPress={() => navigation.navigate(n.route as any)}
-            style={s.navBtn}
-          >
-            <Ionicons name={n.icon as any} size={22} color={n.active ? colors.primary : colors.text.secondary} />
-            <Text style={[s.navLabel, n.active && s.navLabelActive]}>{n.label}</Text>
-          </Pressable>
-        ))}
-      </View>
     </View>
   );
 }

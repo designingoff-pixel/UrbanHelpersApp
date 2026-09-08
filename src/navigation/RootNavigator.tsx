@@ -57,6 +57,7 @@ import GymDashboardScreen from "@/screens/fitness/GymDashboardScreen";
 import HydrationDashboardScreen from "@/screens/dailyhealth/HydrationDashboardScreen";
 import WeightLogDashboardScreen from "@/screens/dailyhealth/WeightLogDashboardScreen";
 import WellnessDashboardScreen from "@/screens/dailyhealth/WellnessDashboardScreen";
+import CycleTrackingScreen from "@/screens/health/CycleTrackingScreen";
 import AdvancedNutritionDashboardScreen from "@/screens/dailyhealth/AdvancedNutritionDashboardScreen";
 
 // Module 6 — Daily Care
@@ -232,6 +233,7 @@ export function RootNavigator() {
       <Stack.Screen name="HydrationDashboard" component={HydrationDashboardScreen} />
       <Stack.Screen name="WeightLogDashboard" component={WeightLogDashboardScreen} />
       <Stack.Screen name="WellnessDashboard" component={WellnessDashboardScreen} />
+      <Stack.Screen name="CycleTracking" component={CycleTrackingScreen} />
       <Stack.Screen name="AdvancedNutritionDashboard" component={AdvancedNutritionDashboardScreen} />
 
       {/* Module 6 */}

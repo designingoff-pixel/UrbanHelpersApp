@@ -57,7 +57,11 @@ export default function ProfileScreen({ navigation }: Props) {
           onPress: async () => {
             try {
               await signOut();
-              navigation.replace("Welcome" as any);
+              await AsyncStorage.removeItem("@customer_logged_in");
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "Welcome" }],
+              });
             } catch (e) {
               Alert.alert("Error", "Failed to sign out. Please try again.");
             }

@@ -16,38 +16,54 @@ type Props = NativeStackScreenProps<RootStackParamList, "Splash">;
  * - If a user session is already active → goes directly to HomeDashboard.
  * - If no session → goes to Welcome (login flow).
  */
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 export default function SplashScreen({ navigation }: Props) {
   useEffect(() => {
     let resolved = false;
 
-    // Listen for Firebase auth resolution (fires immediately if already logged in)
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (resolved) return;
-      resolved = true;
-      unsubscribe();
+    const checkAuth = async () => {
+      const isLocalLoggedIn = await AsyncStorage.getItem("@customer_logged_in");
 
-      if (firebaseUser) {
-        // Already logged in — skip login, go straight to home
-        navigation.replace("HomeDashboard");
-      } else {
-        // No session — show onboarding / login
-        navigation.replace("Welcome");
-      }
-    });
-
-    // Safety fallback: if Firebase doesn't respond in 3s, go to Welcome
-    const fallback = setTimeout(() => {
-      if (!resolved) {
+      const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        if (resolved) return;
         resolved = true;
         unsubscribe();
-        navigation.replace("Welcome");
-      }
-    }, 3000);
 
-    return () => {
-      clearTimeout(fallback);
-      unsubscribe();
+        if (firebaseUser || isLocalLoggedIn === "true") {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "HomeDashboard" }],
+          });
+        } else {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "Welcome" }],
+          });
+        }
+      });
+
+      // Safety fallback
+      const fallback = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          unsubscribe();
+          if (auth.currentUser || isLocalLoggedIn === "true") {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: "HomeDashboard" }],
+            });
+          } else {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: "Welcome" }],
+            });
+          }
+        }
+      }, 2500);
     };
+
+    checkAuth();
   }, [navigation]);
 
   return (

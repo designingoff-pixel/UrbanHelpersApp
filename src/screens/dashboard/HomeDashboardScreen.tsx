@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { Pedometer } from "expo-sensors";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Animated, {
   useSharedValue,
@@ -461,7 +462,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             {/* 3. Daily cardio load (Blue Gradient Card) */}
-            <PressCard index={2} onPress={() => navigation.navigate("FitnessDashboard")}>
+            <PressCard index={2} onPress={() => navigation.navigate("CaloriesDashboard")}>
               <LinearGradient
                 colors={["#1655b3", "#1b65d4", "#2076f0"]}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -485,7 +486,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             {/* 4. Fitness index (Jade Green Gradient Card) */}
-            <PressCard index={3} onPress={() => navigation.navigate("FitnessDashboard")}>
+            <PressCard index={3} onPress={() => navigation.navigate("GymDashboard")}>
               <LinearGradient
                 colors={["#0d7a66", "#0f947b", "#14b897"]}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -577,7 +578,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 {/* Running */}
                 <Pressable
                   style={s.actExBtn}
-                  onPress={() => navigation.navigate("FitnessDashboard")}
+                  onPress={() => navigation.navigate("DailyStepsDashboard")}
                 >
                   <View style={[s.actExCircle, { backgroundColor: "#689f38" }]}>
                     <Ionicons name="fitness" size={26} color="white" />
@@ -588,7 +589,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 {/* Bike */}
                 <Pressable
                   style={s.actExBtn}
-                  onPress={() => navigation.navigate("FitnessDashboard")}
+                  onPress={() => navigation.navigate("GymDashboard")}
                 >
                   <View style={[s.actExCircle, { backgroundColor: "#e57373" }]}>
                     <Ionicons name="bicycle" size={26} color="white" />
@@ -599,7 +600,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 {/* More */}
                 <Pressable
                   style={s.actExBtn}
-                  onPress={() => navigation.navigate("FitnessDashboard")}
+                  onPress={() => navigation.navigate("Discover")}
                 >
                   <View style={[s.actExCircle, { backgroundColor: "#374151" }]}>
                     <Ionicons name="list" size={24} color="white" />
@@ -678,7 +679,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             {/* 3. Energy Score — full-width blue card */}
             {isVisible("energy") && (
               <View style={s.cardWrapper}>
-                <PressCard index={1} onPress={() => navigation.navigate("FitnessDashboard")}>
+                <PressCard index={1} onPress={() => navigation.navigate("WellnessDashboard")}>
                   <LinearGradient
                     colors={["#2a3fc7", "#3f51e8", "#4d6af5"]}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -717,7 +718,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               <View style={[s.row2, { marginTop: 10 }]}>
                 {isVisible("daily_activity") && (
                   <View style={[s.halfOuter, { position: "relative" }]}>
-                    <PressCard index={2} onPress={() => navigation.navigate("FitnessDashboard")} style={{ flex: 1 }}>
+                    <PressCard index={2} onPress={() => navigation.navigate("DailyStepsDashboard")} style={{ flex: 1 }}>
                       <View style={[s.halfCard, { backgroundColor: "#1c1c28" }]}>
                         <Text style={s.halfTitle}>Daily activity</Text>
                         <View style={s.heartRingWrap}>
@@ -808,7 +809,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             {/* 6. Heart Health — full-width purple card */}
             {isVisible("heart_health") && (
               <View style={s.cardWrapper}>
-                <PressCard index={5} onPress={() => navigation.navigate("HealthDashboard")}>
+                <PressCard index={5} onPress={() => navigation.navigate("VitalsScreen")}>
                   <LinearGradient
                     colors={["#9c27b0", "#c22f93", "#d63384"]}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -841,7 +842,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             {/* 7. Cycle Tracking — full-width pink card */}
             {isVisible("cycle") && (
               <View style={s.cardWrapper}>
-                <PressCard index={6} onPress={() => navigation.navigate("WellnessDashboard")}>
+                <PressCard index={6} onPress={() => navigation.navigate("CycleTracking")}>
                   <LinearGradient
                     colors={["#e91e8c", "#ec407a", "#f06292"]}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -922,7 +923,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               <View style={[s.row2, { marginTop: 10 }]}>
                 {isVisible("hearing") && (
                   <View style={[s.halfOuter, { position: "relative" }]}>
-                    <PressCard index={9} onPress={() => navigation.navigate("WellnessDashboard")} style={{ flex: 1 }}>
+                    <PressCard index={9} onPress={() => navigation.navigate("HealthPrecautions")} style={{ flex: 1 }}>
                       <LinearGradient
                         colors={["#795548", "#8d6e63", "#a1887f"]}
                         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -946,7 +947,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 )}
                 {isVisible("steps") && (
                   <View style={[s.halfOuter, { position: "relative" }]}>
-                    <PressCard index={10} onPress={() => navigation.navigate("FitnessDashboard")} style={{ flex: 1 }}>
+                    <PressCard index={10} onPress={() => navigation.navigate("DailyStepsDashboard")} style={{ flex: 1 }}>
                       <View style={[s.halfCard, { backgroundColor: "#1c1c28" }]}>
                         <Text style={s.halfTitle}>Steps</Text>
                         <Text style={s.stepsNumber}>{liveSteps.toLocaleString()}</Text>
@@ -993,7 +994,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 )}
                 {isVisible("cardio_load") && (
                   <View style={[s.halfOuter, { position: "relative" }]}>
-                    <PressCard index={12} onPress={() => navigation.navigate("FitnessDashboard")} style={{ flex: 1 }}>
+                    <PressCard index={12} onPress={() => navigation.navigate("CaloriesDashboard")} style={{ flex: 1 }}>
                       <LinearGradient
                         colors={["#0d47a1", "#1565c0", "#1976d2"]}
                         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -1265,7 +1266,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </Animated.View>
 
             {/* 1. Heart health — purple gradient */}
-            <PressCard index={0} onPress={() => navigation.navigate("HealthDashboard")}>
+            <PressCard index={0} onPress={() => navigation.navigate("VitalsScreen")}>
               <LinearGradient
                 colors={["#8b48ad", "#a259c4", "#b368d4"]}
                 start={{ x: 0, y: 0 }}
@@ -1291,7 +1292,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             {/* 2. Vitals (Radar Scan) — bright cyan/teal */}
-            <PressCard index={1} onPress={() => navigation.navigate("VitalsScreen" as any)}>
+            <PressCard index={1} onPress={() => navigation.navigate("VitalsScreen")}>
               <LinearGradient
                 colors={["#0086b5", "#009ecd", "#14b0df"]}
                 start={{ x: 0, y: 0 }}
@@ -1319,7 +1320,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             {/* 3. Heart rate — coral/crimson gradient */}
-            <PressCard index={2} onPress={() => navigation.navigate("HealthDashboard")}>
+            <PressCard index={2} onPress={() => navigation.navigate("VitalsScreen")}>
               <LinearGradient
                 colors={["#d13b55", "#e64a66", "#f45b77"]}
                 start={{ x: 0, y: 0 }}
@@ -1343,7 +1344,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             {/* 4. Blood oxygen — royal blue gradient */}
-            <PressCard index={3} onPress={() => navigation.navigate("HealthDashboard")}>
+            <PressCard index={3} onPress={() => navigation.navigate("VitalsScreen")}>
               <LinearGradient
                 colors={["#195fc7", "#236fe0", "#3884f2"]}
                 start={{ x: 0, y: 0 }}
@@ -1365,7 +1366,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             {/* 5. Blood pressure — rose/crimson gradient */}
-            <PressCard index={4} onPress={() => navigation.navigate("HealthDashboard")}>
+            <PressCard index={4} onPress={() => navigation.navigate("VitalsScreen")}>
               <LinearGradient
                 colors={["#c44662", "#d85572", "#e86582"]}
                 start={{ x: 0, y: 0 }}
@@ -1388,7 +1389,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             {/* 6. Vascular load — magenta gradient */}
-            <PressCard index={5} onPress={() => navigation.navigate("HealthDashboard")}>
+            <PressCard index={5} onPress={() => navigation.navigate("VitalsScreen")}>
               <LinearGradient
                 colors={["#b0356c", "#c4427c", "#d5508c"]}
                 start={{ x: 0, y: 0 }}
@@ -1606,7 +1607,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             {/* 4. Blood glucose — terracotta card with 3D red blood cells and molecule */}
-            <PressCard index={3} onPress={() => navigation.navigate("HealthDashboard")}>
+            <PressCard index={3} onPress={() => navigation.navigate("HealthDataAnalytics")}>
               <LinearGradient
                 colors={["#ba5132", "#ce5e3d", "#de6a46"]}
                 start={{ x: 0, y: 0 }}
