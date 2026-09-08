@@ -57,6 +57,8 @@ const STORAGE_KEYS = {
   MEDICATIONS: "@urban_health_medications_v1",
   ACTIVITIES: "@urban_health_activities_v1",
   CALORIE_GOAL: "@urban_health_calorie_goal_v1",
+  HIDDEN_CARDS: "@urban_health_hidden_cards_v1",
+  STEP_COUNT: "@urban_health_step_count_v1",
 };
 
 export const getTodayKey = (): string => {
@@ -329,4 +331,64 @@ export async function getDailyActivityTotals(date: string = getTodayKey()): Prom
     totalDistanceKm: Number(totalDistanceKm.toFixed(2)),
     count: list.length,
   };
+}
+
+// ═════════════════════════════════════════════════════════════
+// HOME SCREEN — HIDDEN CARDS PERSISTENCE
+// ═════════════════════════════════════════════════════════════
+
+export async function getHiddenCards(): Promise<string[]> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.HIDDEN_CARDS);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error("Error loading hidden cards:", e);
+    return [];
+  }
+}
+
+export async function saveHiddenCards(ids: string[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.HIDDEN_CARDS, JSON.stringify(ids));
+  } catch (e) {
+    console.error("Error saving hidden cards:", e);
+  }
+}
+
+export async function clearHiddenCards(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(STORAGE_KEYS.HIDDEN_CARDS);
+  } catch (e) {
+    console.error("Error clearing hidden cards:", e);
+  }
+}
+
+// ═════════════════════════════════════════════════════════════
+// STEP COUNT PERSISTENCE
+// ═════════════════════════════════════════════════════════════
+
+export async function getTodayStepCount(): Promise<{ steps: number; date: string }> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.STEP_COUNT);
+    if (!raw) return { steps: 0, date: getTodayKey() };
+    const parsed = JSON.parse(raw);
+    // Reset if it's a new day
+    if (parsed.date !== getTodayKey()) return { steps: 0, date: getTodayKey() };
+    return parsed;
+  } catch (e) {
+    console.error("Error loading step count:", e);
+    return { steps: 0, date: getTodayKey() };
+  }
+}
+
+export async function saveTodayStepCount(steps: number): Promise<void> {
+  try {
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.STEP_COUNT,
+      JSON.stringify({ steps, date: getTodayKey() })
+    );
+  } catch (e) {
+    console.error("Error saving step count:", e);
+  }
 }

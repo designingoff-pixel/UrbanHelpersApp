@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   ScrollView,
   Text,
@@ -9,6 +9,9 @@ import {
   FlatList,
   ViewToken,
   StatusBar,
+  Modal,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -22,6 +25,7 @@ import Animated, {
   FadeIn,
   Easing,
 } from "react-native-reanimated";
+import { Pedometer } from "expo-sensors";
 import { RootStackParamList } from "@/navigation/types";
 import SamsungBottomNav from "@/components/SamsungBottomNav";
 import { useAuth } from "@/context/AuthContext";
@@ -31,6 +35,11 @@ import {
   getDailyActivityTotals,
   getTodayKey,
   MedicationItem,
+  getHiddenCards,
+  saveHiddenCards,
+  clearHiddenCards,
+  getTodayStepCount,
+  saveTodayStepCount,
 } from "@/services/healthLogService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "HomeDashboard">;
@@ -126,7 +135,7 @@ const sq = StyleSheet.create({
 // ─── Main Screen Component ─────────────────────────────────────────────────────
 export default function HomeDashboardScreen({ navigation }: Props) {
   const { user } = useAuth();
-  const [activePill, setActivePill] = useState(0); // 0 = Overview, 1 = Activity, etc.
+  const [activePill, setActivePill] = useState(0);
   const [heroIndex, setHeroIndex] = useState(0);
   const [syncDismissed, setSyncDismissed] = useState(false);
   const heroRef = useRef<FlatList>(null);
@@ -135,6 +144,14 @@ export default function HomeDashboardScreen({ navigation }: Props) {
   const [nutritionTotals, setNutritionTotals] = useState({ totalCalories: 0, totalProtein: 0, totalCarbs: 0, totalFat: 0 });
   const [medications, setMedications] = useState<MedicationItem[]>([]);
   const [activityTotals, setActivityTotals] = useState({ totalMins: 0, totalCalories: 0 });
+
+  // Edit home & 3-dot menu state
+  const [hiddenCards, setHiddenCards] = useState<string[]>([]);
+  const [editMode, setEditMode] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+
+  // Real step count from phone pedometer
+  const [liveSteps, setLiveSteps] = useState(0);
 
   const todayKey = getTodayKey();
 
@@ -161,9 +178,51 @@ export default function HomeDashboardScreen({ navigation }: Props) {
     }
   };
 
+  // Load hidden cards from storage on mount
+  useEffect(() => {
+    getHiddenCards().then((ids) => setHiddenCards(ids));
+  }, []);
+
+  // Real-time pedometer (phone hardware step counter)
+  useEffect(() => {
+    let subscription: any = null;
+    const startPedometer = async () => {
+      const isAvailable = await Pedometer.isAvailableAsync();
+      if (!isAvailable) return;
+      // Load persisted count first
+      const saved = await getTodayStepCount();
+      setLiveSteps(saved.steps);
+      // Watch start-of-day to now for today's steps
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      subscription = Pedometer.watchStepCount((result) => {
+        setLiveSteps(result.steps);
+        saveTodayStepCount(result.steps);
+      });
+    };
+    startPedometer();
+    return () => { if (subscription) subscription.remove(); };
+  }, []);
+
   useEffect(() => {
     loadHealthData();
   }, [activePill]);
+
+  // Hide a card and persist
+  const hideCard = useCallback(async (cardId: string) => {
+    const updated = [...hiddenCards, cardId];
+    setHiddenCards(updated);
+    await saveHiddenCards(updated);
+  }, [hiddenCards]);
+
+  // Reset all hidden cards
+  const resetHome = useCallback(async () => {
+    setHiddenCards([]);
+    await clearHiddenCards();
+    setMenuVisible(false);
+  }, []);
+
+  const isVisible = (cardId: string) => !hiddenCards.includes(cardId);
 
   const firstName = user?.displayName?.split(" ")[0] ?? "You";
 
@@ -211,24 +270,61 @@ export default function HomeDashboardScreen({ navigation }: Props) {
 
       {/* ── Top App Bar (Persistent) ─────────────────────────── */}
       <Animated.View style={[s.topBar, headerStyle]}>
-        <Text style={s.appTitle}>Urban Health</Text>
+        {editMode ? (
+          <Pressable onPress={() => setEditMode(false)} style={s.doneBtn}>
+            <Text style={s.doneBtnText}>Done</Text>
+          </Pressable>
+        ) : (
+          <Text style={s.appTitle}>Urban Health</Text>
+        )}
         <View style={s.topBarRight}>
           {/* Avatar */}
-          <Pressable onPress={() => navigation.navigate("Profile")} style={s.avatarBtn}>
-            <LinearGradient colors={["#00c6aa", "#0f9b8e"]} style={s.avatarBtnInner}>
-              <Text style={s.avatarInitials}>
-                {firstName.charAt(0).toUpperCase()}
-              </Text>
-            </LinearGradient>
-            <View style={s.avatarOnlineDot} />
-          </Pressable>
+          {!editMode && (
+            <Pressable onPress={() => navigation.navigate("Profile")} style={s.avatarBtn}>
+              <LinearGradient colors={["#00c6aa", "#0f9b8e"]} style={s.avatarBtnInner}>
+                <Text style={s.avatarInitials}>
+                  {firstName.charAt(0).toUpperCase()}
+                </Text>
+              </LinearGradient>
+              <View style={s.avatarOnlineDot} />
+            </Pressable>
+          )}
           {/* 3-dot menu */}
-          <Pressable onPress={() => navigation.navigate("Notifications")} style={s.menuBtn}>
-            <Ionicons name="ellipsis-vertical" size={20} color="rgba(255,255,255,0.8)" />
-            <View style={s.menuDotBadge} />
-          </Pressable>
+          {!editMode && (
+            <Pressable onPress={() => setMenuVisible(true)} style={s.menuBtn}>
+              <Ionicons name="ellipsis-vertical" size={20} color="rgba(255,255,255,0.8)" />
+              <View style={s.menuDotBadge} />
+            </Pressable>
+          )}
         </View>
       </Animated.View>
+
+      {/* ── 3-Dot Dropdown Menu Modal ─────────────────────────── */}
+      <Modal transparent visible={menuVisible} animationType="fade" onRequestClose={() => setMenuVisible(false)}>
+        <TouchableWithoutFeedback onPress={() => setMenuVisible(false)}>
+          <View style={s.menuOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={s.menuDropdown}>
+                <TouchableOpacity
+                  style={s.menuItem}
+                  onPress={() => { setMenuVisible(false); navigation.navigate("Notifications"); }}
+                >
+                  <Ionicons name="notifications-outline" size={20} color="#e2e8f0" />
+                  <Text style={s.menuItemText}>Notifications</Text>
+                </TouchableOpacity>
+                <View style={s.menuDivider} />
+                <TouchableOpacity
+                  style={s.menuItem}
+                  onPress={resetHome}
+                >
+                  <Ionicons name="refresh-outline" size={20} color="#e2e8f0" />
+                  <Text style={s.menuItemText}>Reset home</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
 
       {/* ── Quick-action Pills Bar (Persistent within Home) ──── */}
       <Animated.View entering={FadeIn.delay(120).duration(400)}>
@@ -575,266 +671,386 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             )}
 
             {/* 3. Energy Score — full-width blue card */}
-            <PressCard index={1} onPress={() => navigation.navigate("FitnessDashboard")}>
-              <LinearGradient
-                colors={["#2a3fc7", "#3f51e8", "#4d6af5"]}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={s.energyCard}
-              >
-                <View style={s.energyBlob} />
-                <View style={s.energyTextWrap}>
-                  <Text style={s.energyLabel}>Energy score</Text>
-                  <Text style={s.energyDesc}>
-                    Learn how tracking your energy score can help you plan your day based on what's best for your body.
-                  </Text>
-                </View>
-                <View style={s.energyIconWrap}>
-                  <View style={s.flameOuter}>
-                    <Ionicons name="flame" size={52} color="#ff9500" />
-                  </View>
-                  <View style={s.flameSpark1}>
-                    <Ionicons name="sparkles" size={14} color="#60ccff" />
-                  </View>
-                  <View style={s.flameSpark2}>
-                    <Ionicons name="water" size={12} color="#60ccff" />
-                  </View>
-                </View>
-              </LinearGradient>
-            </PressCard>
+            {isVisible("energy") && (
+              <View style={s.cardWrapper}>
+                <PressCard index={1} onPress={() => navigation.navigate("FitnessDashboard")}>
+                  <LinearGradient
+                    colors={["#2a3fc7", "#3f51e8", "#4d6af5"]}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    style={s.energyCard}
+                  >
+                    <View style={s.energyBlob} />
+                    <View style={s.energyTextWrap}>
+                      <Text style={s.energyLabel}>Energy score</Text>
+                      <Text style={s.energyDesc}>
+                        Learn how tracking your energy score can help you plan your day based on what's best for your body.
+                      </Text>
+                    </View>
+                    <View style={s.energyIconWrap}>
+                      <View style={s.flameOuter}>
+                        <Ionicons name="flame" size={52} color="#ff9500" />
+                      </View>
+                      <View style={s.flameSpark1}>
+                        <Ionicons name="sparkles" size={14} color="#60ccff" />
+                      </View>
+                      <View style={s.flameSpark2}>
+                        <Ionicons name="water" size={12} color="#60ccff" />
+                      </View>
+                    </View>
+                  </LinearGradient>
+                </PressCard>
+                {editMode && (
+                  <Pressable style={s.removeBtn} onPress={() => hideCard("energy")}>
+                    <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                  </Pressable>
+                )}
+              </View>
+            )}
 
             {/* 4. Daily Activity + Sleep — 2-col */}
-            <View style={[s.row2, { marginTop: 10 }]}>
-              {/* Daily Activity */}
-              <PressCard index={2} onPress={() => navigation.navigate("FitnessDashboard")} style={s.halfOuter}>
-                <View style={[s.halfCard, { backgroundColor: "#1c1c28" }]}>
-                  <Text style={s.halfTitle}>Daily activity</Text>
-                  <View style={s.heartRingWrap}>
-                    <View style={[s.ring, { width: 80, height: 80, borderColor: "#1aab3e" }]}>
-                      <View style={[s.ring, { width: 62, height: 62, borderColor: "#b44aff" }]}>
-                        <View style={[s.ring, { width: 44, height: 44, borderColor: "#1aab3e", borderWidth: 2 }]}>
-                          <Ionicons name="heart" size={18} color="#333" />
+            {(isVisible("daily_activity") || isVisible("sleep")) && (
+              <View style={[s.row2, { marginTop: 10 }]}>
+                {isVisible("daily_activity") && (
+                  <View style={[s.halfOuter, { position: "relative" }]}>
+                    <PressCard index={2} onPress={() => navigation.navigate("FitnessDashboard")} style={{ flex: 1 }}>
+                      <View style={[s.halfCard, { backgroundColor: "#1c1c28" }]}>
+                        <Text style={s.halfTitle}>Daily activity</Text>
+                        <View style={s.heartRingWrap}>
+                          <View style={[s.ring, { width: 80, height: 80, borderColor: "#1aab3e" }]}>
+                            <View style={[s.ring, { width: 62, height: 62, borderColor: "#b44aff" }]}>
+                              <View style={[s.ring, { width: 44, height: 44, borderColor: "#1aab3e", borderWidth: 2 }]}>
+                                <Ionicons name="heart" size={18} color="#333" />
+                              </View>
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                    </PressCard>
+                    {editMode && (
+                      <Pressable style={s.removeBtn} onPress={() => hideCard("daily_activity")}>
+                        <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                      </Pressable>
+                    )}
+                  </View>
+                )}
+                {isVisible("sleep") && (
+                  <View style={[s.halfOuter, { position: "relative" }]}>
+                    <PressCard index={3} onPress={() => navigation.navigate("SleepDashboard")} style={{ flex: 1 }}>
+                      <LinearGradient
+                        colors={["#1e1060", "#2d1b7e", "#3a2a9e"]}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                        style={s.halfCard}
+                      >
+                        <Text style={s.sleepStar1}>✦</Text>
+                        <Text style={s.sleepStar2}>✦</Text>
+                        <Text style={s.sleepStar3}>·</Text>
+                        <Ionicons name="moon" size={52} color="#7b5fcc" style={s.sleepMoon} />
+                        <Text style={s.halfTitle}>Sleep</Text>
+                        <Text style={s.halfSub}>Track your sleep</Text>
+                      </LinearGradient>
+                    </PressCard>
+                    {editMode && (
+                      <Pressable style={s.removeBtn} onPress={() => hideCard("sleep")}>
+                        <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                      </Pressable>
+                    )}
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* 5. Food + Quick-Action 2×2 grid */}
+            {isVisible("food") && (
+              <View style={[s.row2, { marginTop: 10 }]}>
+                <View style={[s.halfOuter, { position: "relative" }]}>
+                  <PressCard index={4} onPress={() => navigation.navigate("NutritionDashboard")} style={{ flex: 1 }}>
+                    <LinearGradient
+                      colors={["#e05c00", "#f57c00", "#ff9800"]}
+                      start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+                      style={s.halfCard}
+                    >
+                      <View style={s.orangeDecor}>
+                        <Ionicons name="nutrition" size={62} color="rgba(255,200,100,0.35)" />
+                      </View>
+                      <Text style={s.halfTitle}>Food</Text>
+                      <Text style={s.halfSub}>
+                        {nutritionTotals.totalCalories > 0
+                          ? `${nutritionTotals.totalCalories} kcal logged today`
+                          : "Ready to log your first meal?"}
+                      </Text>
+                    </LinearGradient>
+                  </PressCard>
+                  {editMode && (
+                    <Pressable style={s.removeBtn} onPress={() => hideCard("food")}>
+                      <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                    </Pressable>
+                  )}
+                </View>
+                {/* 2×2 circle quick actions */}
+                <View style={[s.halfOuter, s.quickGrid]}>
+                  <View style={s.quickRow}>
+                    <QuickCircle icon="water-outline"  label="Water"   onPress={() => navigation.navigate("HydrationDashboard")} />
+                    <QuickCircle icon="barbell-outline" label="Weight"  onPress={() => navigation.navigate("WeightLogDashboard")} />
+                  </View>
+                  <View style={s.quickRow}>
+                    <QuickCircle icon="leaf-outline"   label="Meditate" onPress={() => navigation.navigate("MeditationDashboard")} />
+                    <QuickCircle icon="list-outline"   label="More"     onPress={() => navigation.navigate("Discover")} />
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* 6. Heart Health — full-width purple card */}
+            {isVisible("heart_health") && (
+              <View style={s.cardWrapper}>
+                <PressCard index={5} onPress={() => navigation.navigate("HealthDashboard")}>
+                  <LinearGradient
+                    colors={["#9c27b0", "#c22f93", "#d63384"]}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    style={s.wideCard}
+                  >
+                    <View style={s.wideBlob} />
+                    <View style={s.wideTextWrap}>
+                      <Text style={s.wideLabel}>Heart health</Text>
+                      <Text style={s.wideDesc}>
+                        See your heart health score plus key health insights in one place.
+                      </Text>
+                    </View>
+                    <View style={s.heartIconWrap}>
+                      <View style={s.heartRingLg}>
+                        <View style={s.heartRingMd}>
+                          <Ionicons name="heart" size={26} color="#ff4a8d" />
                         </View>
                       </View>
                     </View>
-                  </View>
-                </View>
-              </PressCard>
-
-              {/* Sleep */}
-              <PressCard index={3} onPress={() => navigation.navigate("SleepDashboard")} style={s.halfOuter}>
-                <LinearGradient
-                  colors={["#1e1060", "#2d1b7e", "#3a2a9e"]}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                  style={s.halfCard}
-                >
-                  <Text style={s.sleepStar1}>✦</Text>
-                  <Text style={s.sleepStar2}>✦</Text>
-                  <Text style={s.sleepStar3}>·</Text>
-                  <Ionicons name="moon" size={52} color="#7b5fcc" style={s.sleepMoon} />
-                  <Text style={s.halfTitle}>Sleep</Text>
-                  <Text style={s.halfSub}>Track your sleep</Text>
-                </LinearGradient>
-              </PressCard>
-            </View>
-
-            {/* 5. Food + Quick-Action 2×2 grid */}
-            <View style={[s.row2, { marginTop: 10 }]}>
-              {/* Food */}
-              <PressCard index={4} onPress={() => navigation.navigate("NutritionDashboard")} style={s.halfOuter}>
-                <LinearGradient
-                  colors={["#e05c00", "#f57c00", "#ff9800"]}
-                  start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-                  style={s.halfCard}
-                >
-                  <View style={s.orangeDecor}>
-                    <Ionicons name="nutrition" size={62} color="rgba(255,200,100,0.35)" />
-                  </View>
-                  <Text style={s.halfTitle}>Food</Text>
-                  <Text style={s.halfSub}>
-                    {nutritionTotals.totalCalories > 0
-                      ? `${nutritionTotals.totalCalories} kcal logged today`
-                      : "Ready to log your first meal?"}
-                  </Text>
-                </LinearGradient>
-              </PressCard>
-
-              {/* 2×2 circle quick actions */}
-              <View style={[s.halfOuter, s.quickGrid]}>
-                <View style={s.quickRow}>
-                  <QuickCircle icon="water-outline"  label="Water"   onPress={() => navigation.navigate("HydrationDashboard")} />
-                  <QuickCircle icon="barbell-outline" label="Weight"  onPress={() => navigation.navigate("WeightLogDashboard")} />
-                </View>
-                <View style={s.quickRow}>
-                  <QuickCircle icon="leaf-outline"   label="Meditate" onPress={() => navigation.navigate("MeditationDashboard")} />
-                  <QuickCircle icon="list-outline"   label="More"     onPress={() => navigation.navigate("Discover")} />
-                </View>
+                  </LinearGradient>
+                </PressCard>
+                {editMode && (
+                  <Pressable style={s.removeBtn} onPress={() => hideCard("heart_health")}>
+                    <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                  </Pressable>
+                )}
               </View>
-            </View>
-
-            {/* 6. Heart Health — full-width purple card */}
-            <PressCard index={5} onPress={() => navigation.navigate("HealthDashboard")}>
-              <LinearGradient
-                colors={["#9c27b0", "#c22f93", "#d63384"]}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={s.wideCard}
-              >
-                <View style={s.wideBlob} />
-                <View style={s.wideTextWrap}>
-                  <Text style={s.wideLabel}>Heart health</Text>
-                  <Text style={s.wideDesc}>
-                    See your heart health score plus key health insights in one place.
-                  </Text>
-                </View>
-                <View style={s.heartIconWrap}>
-                  <View style={s.heartRingLg}>
-                    <View style={s.heartRingMd}>
-                      <Ionicons name="heart" size={26} color="#ff4a8d" />
-                    </View>
-                  </View>
-                </View>
-              </LinearGradient>
-            </PressCard>
+            )}
 
             {/* 7. Cycle Tracking — full-width pink card */}
-            <PressCard index={6} onPress={() => navigation.navigate("WellnessDashboard")}>
-              <LinearGradient
-                colors={["#e91e8c", "#ec407a", "#f06292"]}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={s.wideCard}
-              >
-                <View style={s.wideTextWrap}>
-                  <Text style={s.wideLabel}>Cycle tracking</Text>
-                  <Text style={s.wideDesc}>
-                    Track your cycle to see your body's patterns.
-                  </Text>
-                </View>
-                <View style={s.flowerWrap}>
-                  <Ionicons name="rose" size={56} color="rgba(255,100,200,0.9)" />
-                </View>
-              </LinearGradient>
-            </PressCard>
+            {isVisible("cycle") && (
+              <View style={s.cardWrapper}>
+                <PressCard index={6} onPress={() => navigation.navigate("WellnessDashboard")}>
+                  <LinearGradient
+                    colors={["#e91e8c", "#ec407a", "#f06292"]}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    style={s.wideCard}
+                  >
+                    <View style={s.wideTextWrap}>
+                      <Text style={s.wideLabel}>Cycle tracking</Text>
+                      <Text style={s.wideDesc}>
+                        Track your cycle to see your body's patterns.
+                      </Text>
+                    </View>
+                    <View style={s.flowerWrap}>
+                      <Ionicons name="rose" size={56} color="rgba(255,100,200,0.9)" />
+                    </View>
+                  </LinearGradient>
+                </PressCard>
+                {editMode && (
+                  <Pressable style={s.removeBtn} onPress={() => hideCard("cycle")}>
+                    <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                  </Pressable>
+                )}
+              </View>
+            )}
 
             {/* 8. Medications + Health Records */}
-            <View style={[s.row2, { marginTop: 10 }]}>
-              <PressCard index={7} onPress={() => navigation.navigate("MedicationCenter")} style={s.halfOuter}>
-                <View style={[s.halfCard, { backgroundColor: "#1c1c28" }]}>
-                  <View style={s.pillIconBox}>
-                    <Ionicons name="medical" size={28} color="#9c8ef5" />
+            {(isVisible("medications") || isVisible("health_records")) && (
+              <View style={[s.row2, { marginTop: 10 }]}>
+                {isVisible("medications") && (
+                  <View style={[s.halfOuter, { position: "relative" }]}>
+                    <PressCard index={7} onPress={() => navigation.navigate("MedicationCenter")} style={{ flex: 1 }}>
+                      <View style={[s.halfCard, { backgroundColor: "#1c1c28" }]}>
+                        <View style={s.pillIconBox}>
+                          <Ionicons name="medical" size={28} color="#9c8ef5" />
+                        </View>
+                        <Text style={s.halfTitle}>Medications</Text>
+                        <Text style={s.medTime}>
+                          {medications.length > 0 ? medications[0].scheduleTime : "None scheduled"}
+                        </Text>
+                        <Text style={s.medName} numberOfLines={1}>
+                          {medications.length > 0
+                            ? `${medications[0].name} (${medications.filter((m) => m.takenDates && m.takenDates.includes(todayKey)).length}/${medications.length})`
+                            : "Tap to add medicine"}
+                        </Text>
+                      </View>
+                    </PressCard>
+                    {editMode && (
+                      <Pressable style={s.removeBtn} onPress={() => hideCard("medications")}>
+                        <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                      </Pressable>
+                    )}
                   </View>
-                  <Text style={s.halfTitle}>Medications</Text>
-                  <Text style={s.medTime}>
-                    {medications.length > 0 ? medications[0].scheduleTime : "None scheduled"}
-                  </Text>
-                  <Text style={s.medName} numberOfLines={1}>
-                    {medications.length > 0
-                      ? `${medications[0].name} (${medications.filter((m) => m.takenDates && m.takenDates.includes(todayKey)).length}/${medications.length})`
-                      : "Tap to add medicine"}
-                  </Text>
-                </View>
-              </PressCard>
-
-              <PressCard index={8} onPress={() => navigation.navigate("MedicalRecords")} style={s.halfOuter}>
-                <View style={[s.halfCard, { backgroundColor: "#252535" }]}>
-                  <View style={s.moleculeWrap}>
-                    <Ionicons name="git-network-outline" size={46} color="rgba(150,160,200,0.3)" />
+                )}
+                {isVisible("health_records") && (
+                  <View style={[s.halfOuter, { position: "relative" }]}>
+                    <PressCard index={8} onPress={() => navigation.navigate("MedicalRecords")} style={{ flex: 1 }}>
+                      <View style={[s.halfCard, { backgroundColor: "#252535" }]}>
+                        <View style={s.moleculeWrap}>
+                          <Ionicons name="git-network-outline" size={46} color="rgba(150,160,200,0.3)" />
+                        </View>
+                        <Text style={[s.halfTitle, { color: "#b0b8d0" }]}>Health records</Text>
+                        <Text style={[s.halfSub, { color: "#7a849a" }]}>
+                          Access or upload your health records.
+                        </Text>
+                      </View>
+                    </PressCard>
+                    {editMode && (
+                      <Pressable style={s.removeBtn} onPress={() => hideCard("health_records")}>
+                        <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                      </Pressable>
+                    )}
                   </View>
-                  <Text style={[s.halfTitle, { color: "#b0b8d0" }]}>Health records</Text>
-                  <Text style={[s.halfSub, { color: "#7a849a" }]}>
-                    Access or upload your health records.
-                  </Text>
-                </View>
-              </PressCard>
-            </View>
+                )}
+              </View>
+            )}
 
             {/* 9. Hearing + Steps */}
-            <View style={[s.row2, { marginTop: 10 }]}>
-              <PressCard index={9} onPress={() => navigation.navigate("WellnessDashboard")} style={s.halfOuter}>
-                <LinearGradient
-                  colors={["#795548", "#8d6e63", "#a1887f"]}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                  style={s.halfCard}
-                >
-                  <View style={s.soundWaveWrap}>
-                    <Ionicons name="volume-high-outline" size={40} color="rgba(255,255,255,0.15)" />
+            {(isVisible("hearing") || isVisible("steps")) && (
+              <View style={[s.row2, { marginTop: 10 }]}>
+                {isVisible("hearing") && (
+                  <View style={[s.halfOuter, { position: "relative" }]}>
+                    <PressCard index={9} onPress={() => navigation.navigate("WellnessDashboard")} style={{ flex: 1 }}>
+                      <LinearGradient
+                        colors={["#795548", "#8d6e63", "#a1887f"]}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                        style={s.halfCard}
+                      >
+                        <View style={s.soundWaveWrap}>
+                          <Ionicons name="volume-high-outline" size={40} color="rgba(255,255,255,0.15)" />
+                        </View>
+                        <Text style={s.halfTitle}>Hearing</Text>
+                        <Text style={s.halfSub}>
+                          Track sound exposure to help protect your hearing.
+                        </Text>
+                      </LinearGradient>
+                    </PressCard>
+                    {editMode && (
+                      <Pressable style={s.removeBtn} onPress={() => hideCard("hearing")}>
+                        <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                      </Pressable>
+                    )}
                   </View>
-                  <Text style={s.halfTitle}>Hearing</Text>
-                  <Text style={s.halfSub}>
-                    Track sound exposure to help protect your hearing.
-                  </Text>
-                </LinearGradient>
-              </PressCard>
-
-              <PressCard index={10} onPress={() => navigation.navigate("FitnessDashboard")} style={s.halfOuter}>
-                <View style={[s.halfCard, { backgroundColor: "#1c1c28" }]}>
-                  <Text style={s.halfTitle}>Steps</Text>
-                  <Text style={s.stepsNumber}>0</Text>
-                  <Text style={s.stepsGoal}>6,000 steps</Text>
-                  <View style={s.stepsBarBg}>
-                    <View style={[s.stepsBarFill, { width: "0%" }]} />
+                )}
+                {isVisible("steps") && (
+                  <View style={[s.halfOuter, { position: "relative" }]}>
+                    <PressCard index={10} onPress={() => navigation.navigate("FitnessDashboard")} style={{ flex: 1 }}>
+                      <View style={[s.halfCard, { backgroundColor: "#1c1c28" }]}>
+                        <Text style={s.halfTitle}>Steps</Text>
+                        <Text style={s.stepsNumber}>{liveSteps.toLocaleString()}</Text>
+                        <Text style={s.stepsGoal}>6,000 steps</Text>
+                        <View style={s.stepsBarBg}>
+                          <View style={[s.stepsBarFill, { width: `${Math.min((liveSteps / 6000) * 100, 100)}%` }]} />
+                        </View>
+                      </View>
+                    </PressCard>
+                    {editMode && (
+                      <Pressable style={s.removeBtn} onPress={() => hideCard("steps")}>
+                        <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                      </Pressable>
+                    )}
                   </View>
-                </View>
-              </PressCard>
-            </View>
+                )}
+              </View>
+            )}
 
             {/* 10. Vitals + Daily Cardio Load */}
-            <View style={[s.row2, { marginTop: 10 }]}>
-              <PressCard index={11} onPress={() => navigation.navigate("VitalsScreen")} style={s.halfOuter}>
-                <LinearGradient
-                  colors={["#006064", "#00838f", "#00acc1"]}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                  style={s.halfCard}
-                >
-                  <View style={s.radarWrap}>
-                    <Ionicons name="radio-outline" size={50} color="rgba(255,255,255,0.12)" />
+            {(isVisible("vitals") || isVisible("cardio_load")) && (
+              <View style={[s.row2, { marginTop: 10 }]}>
+                {isVisible("vitals") && (
+                  <View style={[s.halfOuter, { position: "relative" }]}>
+                    <PressCard index={11} onPress={() => navigation.navigate("VitalsScreen")} style={{ flex: 1 }}>
+                      <LinearGradient
+                        colors={["#006064", "#00838f", "#00acc1"]}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                        style={s.halfCard}
+                      >
+                        <View style={s.radarWrap}>
+                          <Ionicons name="radio-outline" size={50} color="rgba(255,255,255,0.12)" />
+                        </View>
+                        <Text style={s.halfTitle}>Vitals</Text>
+                        <Text style={s.halfSub}>Learn how vitals tracking works.</Text>
+                      </LinearGradient>
+                    </PressCard>
+                    {editMode && (
+                      <Pressable style={s.removeBtn} onPress={() => hideCard("vitals")}>
+                        <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                      </Pressable>
+                    )}
                   </View>
-                  <Text style={s.halfTitle}>Vitals</Text>
-                  <Text style={s.halfSub}>Learn how vitals tracking works.</Text>
-                </LinearGradient>
-              </PressCard>
-
-              <PressCard index={12} onPress={() => navigation.navigate("FitnessDashboard")} style={s.halfOuter}>
-                <LinearGradient
-                  colors={["#0d47a1", "#1565c0", "#1976d2"]}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                  style={s.halfCard}
-                >
-                  <View style={s.speedoWrap}>
-                    <Ionicons name="speedometer-outline" size={50} color="rgba(255,255,255,0.15)" />
+                )}
+                {isVisible("cardio_load") && (
+                  <View style={[s.halfOuter, { position: "relative" }]}>
+                    <PressCard index={12} onPress={() => navigation.navigate("FitnessDashboard")} style={{ flex: 1 }}>
+                      <LinearGradient
+                        colors={["#0d47a1", "#1565c0", "#1976d2"]}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                        style={s.halfCard}
+                      >
+                        <View style={s.speedoWrap}>
+                          <Ionicons name="speedometer-outline" size={50} color="rgba(255,255,255,0.15)" />
+                        </View>
+                        <Text style={s.halfTitle}>Daily cardio load</Text>
+                        <Text style={s.halfSub}>Find your daily training sweet spot.</Text>
+                      </LinearGradient>
+                    </PressCard>
+                    {editMode && (
+                      <Pressable style={s.removeBtn} onPress={() => hideCard("cardio_load")}>
+                        <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                      </Pressable>
+                    )}
                   </View>
-                  <Text style={s.halfTitle}>Daily cardio load</Text>
-                  <Text style={s.halfSub}>Find your daily training sweet spot.</Text>
-                </LinearGradient>
-              </PressCard>
-            </View>
+                )}
+              </View>
+            )}
 
             {/* Urban Helpers Services CTA */}
-            <PressCard index={13} onPress={() => navigation.navigate("ServicesDashboard")}>
-              <LinearGradient
-                colors={["#007c8a", "#00bcd4", "#26c6da"]}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                style={s.servicesBtn}
-              >
-                <View style={s.servicesBtnBlob} />
-                <View style={s.servicesBtnIconWrap}>
-                  <Ionicons name="construct" size={26} color="white" />
-                </View>
-                <View style={s.servicesBtnText}>
-                  <View style={s.servicesBadge}>
-                    <Text style={s.servicesBadgeTxt}>10 CATEGORIES</Text>
-                  </View>
-                  <Text style={s.servicesBtnTitle}>Urban Helpers Services</Text>
-                  <Text style={s.servicesBtnSub}>RO · Pest · Cleaning · Care & more</Text>
-                </View>
-                <Ionicons name="arrow-forward-circle" size={32} color="rgba(255,255,255,0.85)" />
-              </LinearGradient>
-            </PressCard>
+            {isVisible("services") && (
+              <View style={s.cardWrapper}>
+                <PressCard index={13} onPress={() => navigation.navigate("ServicesDashboard")}>
+                  <LinearGradient
+                    colors={["#007c8a", "#00bcd4", "#26c6da"]}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    style={s.servicesBtn}
+                  >
+                    <View style={s.servicesBtnBlob} />
+                    <View style={s.servicesBtnIconWrap}>
+                      <Ionicons name="construct" size={26} color="white" />
+                    </View>
+                    <View style={s.servicesBtnText}>
+                      <View style={s.servicesBadge}>
+                        <Text style={s.servicesBadgeTxt}>10 CATEGORIES</Text>
+                      </View>
+                      <Text style={s.servicesBtnTitle}>Urban Helpers Services</Text>
+                      <Text style={s.servicesBtnSub}>RO · Pest · Cleaning · Care & more</Text>
+                    </View>
+                    <Ionicons name="arrow-forward-circle" size={32} color="rgba(255,255,255,0.85)" />
+                  </LinearGradient>
+                </PressCard>
+                {editMode && (
+                  <Pressable style={s.removeBtn} onPress={() => hideCard("services")}>
+                    <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                  </Pressable>
+                )}
+              </View>
+            )}
 
             {/* Edit home button */}
-            <View style={s.editHomeWrap}>
-              <Pressable style={s.editHomeBtn} onPress={() => {}}>
-                <Text style={s.editHomeText}>Edit home</Text>
-              </Pressable>
-            </View>
+            {!editMode && (
+              <View style={s.editHomeWrap}>
+                <Pressable style={s.editHomeBtn} onPress={() => setEditMode(true)}>
+                  <Ionicons name="pencil-outline" size={16} color="rgba(255,255,255,0.6)" style={{ marginRight: 6 }} />
+                  <Text style={s.editHomeText}>Edit home</Text>
+                </Pressable>
+              </View>
+            )}
           </View>
         )}
 
@@ -2908,5 +3124,96 @@ const s = StyleSheet.create({
     height: 18,
     borderRadius: 9,
     backgroundColor: "#fb7185",
+  },
+
+  // ─── Edit Home + 3-Dot Menu Styles ───────────────────────────────────────
+  cardWrapper: {
+    position: "relative",
+  },
+  removeBtn: {
+    position: "absolute",
+    top: 6,
+    left: 6,
+    zIndex: 99,
+    backgroundColor: "rgba(10,10,20,0.7)",
+    borderRadius: 14,
+    padding: 1,
+  },
+  doneBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    backgroundColor: "rgba(0,198,170,0.18)",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(0,198,170,0.5)",
+  },
+  doneBtnText: {
+    color: "#00c6aa",
+    fontSize: 14,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+
+  // 3-dot dropdown
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.3)",
+  },
+  menuDropdown: {
+    position: "absolute",
+    top: 58,
+    right: 14,
+    backgroundColor: "#1a2235",
+    borderRadius: 14,
+    paddingVertical: 4,
+    minWidth: 190,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 20,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 13,
+    paddingHorizontal: 18,
+    gap: 12,
+  },
+  menuItemText: {
+    color: "#e2e8f0",
+    fontSize: 15,
+    fontWeight: "500",
+    letterSpacing: 0.2,
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    marginHorizontal: 12,
+  },
+
+  // Edit home button (updated to flex row for icon)
+  editHomeWrap: {
+    alignItems: "center",
+    paddingVertical: 20,
+    paddingBottom: 32,
+  },
+  editHomeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 22,
+    paddingVertical: 10,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  editHomeText: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 14,
+    fontWeight: "500",
+    letterSpacing: 0.3,
   },
 });
