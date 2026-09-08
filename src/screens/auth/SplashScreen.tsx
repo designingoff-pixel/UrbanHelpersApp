@@ -5,14 +5,49 @@ import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/services/firebase";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Splash">;
 
-/** Auto-advances to Welcome after 2s, matching the Figma AFTER_TIMEOUT reaction. */
+/**
+ * Splash screen shown on app launch.
+ * - Waits for Firebase to resolve auth state (max 2s).
+ * - If a user session is already active → goes directly to HomeDashboard.
+ * - If no session → goes to Welcome (login flow).
+ */
 export default function SplashScreen({ navigation }: Props) {
   useEffect(() => {
-    const timer = setTimeout(() => navigation.replace("Welcome"), 2000);
-    return () => clearTimeout(timer);
+    let resolved = false;
+
+    // Listen for Firebase auth resolution (fires immediately if already logged in)
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (resolved) return;
+      resolved = true;
+      unsubscribe();
+
+      if (firebaseUser) {
+        // Already logged in — skip login, go straight to home
+        navigation.replace("HomeDashboard");
+      } else {
+        // No session — show onboarding / login
+        navigation.replace("Welcome");
+      }
+    });
+
+    // Safety fallback: if Firebase doesn't respond in 3s, go to Welcome
+    const fallback = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        unsubscribe();
+        navigation.replace("Welcome");
+      }
+    }, 3000);
+
+    return () => {
+      clearTimeout(fallback);
+      unsubscribe();
+    };
   }, [navigation]);
 
   return (

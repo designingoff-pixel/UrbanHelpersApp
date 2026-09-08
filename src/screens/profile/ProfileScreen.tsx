@@ -43,7 +43,29 @@ const AVATAR_PRESETS = [
 ];
 
 export default function ProfileScreen({ navigation }: Props) {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await signOut();
+              navigation.replace("Welcome" as any);
+            } catch (e) {
+              Alert.alert("Error", "Failed to sign out. Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  };
 
   // Profile data
   const defaultUsername = user?.email ? user.email.split("@")[0] : "vichuvisweswaran82";
@@ -296,6 +318,12 @@ export default function ProfileScreen({ navigation }: Props) {
           </View>
         </View>
 
+        {/* ── Sign Out Button ───────────────────────────────── */}
+        <Pressable style={s.signOutBtn} onPress={handleSignOut}>
+          <Ionicons name="log-out-outline" size={20} color="#ff6b6b" />
+          <Text style={s.signOutBtnText}>Sign Out</Text>
+        </Pressable>
+
         <View style={{ height: 60 }} />
       </ScrollView>
 
@@ -488,6 +516,24 @@ export default function ProfileScreen({ navigation }: Props) {
 }
 
 const s = StyleSheet.create({
+  signOutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: "rgba(255,107,107,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,107,107,0.3)",
+    paddingVertical: 16,
+    borderRadius: 18,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  signOutBtnText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#ff6b6b",
+  },
   root: { flex: 1, backgroundColor: "#000000" },
 
   // Header
