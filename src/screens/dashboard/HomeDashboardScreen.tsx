@@ -200,15 +200,9 @@ export default function HomeDashboardScreen({ navigation }: Props) {
         </View>
       </Animated.View>
 
-      {/* ── Category Pills — visible, tappable, navigating ── */}
-      <Animated.View entering={SlideInLeft.delay(200).duration(400).springify()}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.pillsContent}
-          style={s.pillsScroll}
-          bounces={false}
-        >
+      {/* ── Category Pills — pill-shaped container, icon-only nav ── */}
+      <Animated.View entering={SlideInLeft.delay(200).duration(400).springify()} style={s.pillsOuter}>
+        <View style={s.pillsContainer}>
           {PILLS.map((p, i) => {
             const isActive = activePill === i;
             return (
@@ -218,20 +212,19 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                   setActivePill(i);
                   if (i !== 0) navigation.navigate(p.route as any);
                 }}
-                style={[s.pill, isActive && s.pillActive]}
+                style={s.pillItem}
               >
-                <Ionicons
-                  name={p.icon}
-                  size={14}
-                  color={isActive ? colors.primary : colors.text.secondary}
-                />
-                <Text style={[s.pillText, isActive && s.pillTextActive]}>
-                  {p.name}
-                </Text>
+                <View style={[s.pillIconWrap, isActive && s.pillIconWrapActive]}>
+                  <Ionicons
+                    name={p.icon}
+                    size={20}
+                    color={isActive ? "white" : colors.text.secondary}
+                  />
+                </View>
               </Pressable>
             );
           })}
-        </ScrollView>
+        </View>
       </Animated.View>
 
       {/* ── Main Scrollable Content ──────────────────────────── */}
@@ -516,39 +509,44 @@ const s = StyleSheet.create({
   },
   avatarBtnInitials: { fontSize: 14, fontWeight: "700", color: "white" },
 
-  // Pills — full height, proper padding, no clipping
-  pillsScroll: { flexGrow: 0 },
-  pillsContent: {
+  // Pills — single outer pill container with icon-only items
+  pillsOuter: {
     paddingHorizontal: 16,
-    paddingTop: 6,
+    paddingTop: 8,
     paddingBottom: 10,
-    flexDirection: "row",
-    alignItems: "center",
   },
-  pill: {
+  pillsContainer: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 22,
-    backgroundColor: colors.surface.containerHigh,
+    justifyContent: "space-between",
+    backgroundColor: "rgba(17,33,48,0.92)",
+    borderRadius: 50,           // fully rounded capsule
     borderWidth: 1,
     borderColor: colors.glass.border,
-    marginRight: 8,
-    // min width so short pills aren't too small
-    minWidth: 72,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    // subtle shadow matching reference
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  pillActive: {
-    backgroundColor: "rgba(180,197,255,0.14)",
-    borderColor: colors.primary,
+  pillItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  pillText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.text.secondary,
-    marginLeft: 6,
+  pillIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,           // circular highlight
+    justifyContent: "center",
+    alignItems: "center",
   },
-  pillTextActive: { color: colors.primary },
+  pillIconWrapActive: {
+    backgroundColor: "rgba(100,116,160,0.55)",  // muted blue-grey, matches reference
+  },
 
   // Scroll
   scroll: { paddingHorizontal: 16, paddingTop: 4 },
