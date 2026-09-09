@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   ScrollView,
   Text,
@@ -10,7 +10,10 @@ import {
   Switch,
   Alert,
   ActivityIndicator,
+  Modal,
+  PanResponder,
 } from "react-native";
+import Svg, { Circle, Path, G, Text as SvgText, Line } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -63,6 +66,285 @@ const SLEEP_TIPS = [
   { icon: "thermometer-outline" as const, title: "Cool room", desc: "Keep bedroom at 65–68°F for optimal rest.", c: "#042f2e" },
   { icon: "time-outline" as const, title: "Consistent schedule", desc: "Sleep and wake at the same times daily.", c: "#1c1060" },
 ];
+
+// ─── Clock picker constants ───────────────────────────────────────────────────
+const CLOCK_SIZE  = SW * 0.78;           // diameter of the SVG clock
+const CLOCK_R     = CLOCK_SIZE / 2;      // radius to centre
+const TRACK_R     = CLOCK_R * 0.72;      // arc track radius
+const HANDLE_R    = 16;                  // drag handle circle radius
+
+/** Convert hour+minute on a 24-h clock → angle in radians (0 = top = midnight) */
+function timeToAngle(hour: number, minute: number): number {
+  // 24 h = 2π rad.  0h00 is at the top (−π/2 in standard coords).
+  const totalMins = (hour * 60 + minute) % (24 * 60);
+  return (totalMins / (24 * 60)) * 2 * Math.PI - Math.PI / 2;
+}
+
+/** Convert angle (radians) back to { hour, minute } on 24-h clock, snapped to 15 min */
+function angleToTime(angle: number): { hour: number; minute: number } {
+  // Normalise to [0, 2π)
+  let a = ((angle + Math.PI / 2) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+  const totalMins = Math.round((a / (2 * Math.PI)) * 24 * 60 / 15) * 15;
+  const clamped = totalMins % (24 * 60);
+  return { hour: Math.floor(clamped / 60), minute: clamped % 60 };
+}
+
+/** Angle → x,y point on the track circle */
+function angleToPoint(angle: number): { x: number; y: number } {
+  return {
+    x: CLOCK_R + TRACK_R * Math.cos(angle),
+    y: CLOCK_R + TRACK_R * Math.sin(angle),
+  };
+}
+
+/** Build SVG arc path string between two angles, always going clock-wise */
+function arcPath(startAngle: number, endAngle: number): string {
+  // Ensure we go clockwise from start → end
+  let sweep = endAngle - startAngle;
+  if (sweep <= 0) sweep += 2 * Math.PI;
+
+  const s = angleToPoint(startAngle);
+  const e = angleToPoint(endAngle);
+  const largeArc = sweep > Math.PI ? 1 : 0;
+
+  return `M ${s.x} ${s.y} A ${TRACK_R} ${TRACK_R} 0 ${largeArc} 1 ${e.x} ${e.y}`;
+}
+
+/** Calculate sleep duration in minutes between bedtime and wake time */
+function calcSleepMins(btH: number, btM: number, wkH: number, wkM: number): number {
+  const btTotal = btH * 60 + btM;
+  const wkTotal = wkH * 60 + wkM;
+  return wkTotal >= btTotal
+    ? wkTotal - btTotal
+    : 24 * 60 - btTotal + wkTotal;
+}
+
+/** Format h/m display, e.g. "8 hours" or "7 hours 30 min" */
+function formatDurationLabel(mins: number): string {
+  if (mins === 0) return "0 min";
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h === 0) return `${m} min`;
+  if (m === 0) return `${h} hour${h > 1 ? "s" : ""}`;
+  return `${h} hour${h > 1 ? "s" : ""} ${m} min`;
+}
+
+/** Format 24h hour+minute to "H:MM am/pm" for display inside the clock */
+function fmt12(hour: number, minute: number): string {
+  const ampm = hour >= 12 ? "pm" : "am";
+  const h = hour % 12 || 12;
+  return `${h}:${String(minute).padStart(2, "0")} ${ampm}`;
+}
+
+// ─── Circular Sleep/Wake Clock Picker ────────────────────────────────────────
+interface SleepClockPickerProps {
+  visible: boolean;
+  initialBedtimeHour: number;
+  initialBedtimeMinute: number;
+  initialWakeHour: number;
+  initialWakeMinute: number;
+  onSave: (bedH: number, bedM: number, wakeH: number, wakeM: number) => void;
+  onCancel: () => void;
+}
+
+function SleepClockPicker({
+  visible, initialBedtimeHour, initialBedtimeMinute,
+  initialWakeHour, initialWakeMinute, onSave, onCancel,
+}: SleepClockPickerProps) {
+  const [bedH,  setBedH]  = useState(initialBedtimeHour);
+  const [bedM,  setBedM]  = useState(initialBedtimeMinute);
+  const [wakeH, setWakeH] = useState(initialWakeHour);
+  const [wakeM, setWakeM] = useState(initialWakeMinute);
+
+  // Reset draft state whenever the modal opens
+  useEffect(() => {
+    if (visible) {
+      setBedH(initialBedtimeHour);
+      setBedM(initialBedtimeMinute);
+      setWakeH(initialWakeHour);
+      setWakeM(initialWakeMinute);
+    }
+  }, [visible, initialBedtimeHour, initialBedtimeMinute, initialWakeHour, initialWakeMinute]);
+
+  // PanResponder for bedtime handle
+  const bedPan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderMove: (_, gs) => {
+        // gs.moveX/Y are page coords — centre is CLOCK_R offset inside the modal
+        const cx = gs.moveX - (SW - CLOCK_SIZE) / 2 - CLOCK_R;
+        const cy = gs.moveY - 180 - CLOCK_R; // 180 = approx top offset of clock
+        const angle = Math.atan2(cy, cx);
+        const { hour, minute } = angleToTime(angle);
+        setBedH(hour);
+        setBedM(minute);
+      },
+    })
+  ).current;
+
+  // PanResponder for wake handle
+  const wakePan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderMove: (_, gs) => {
+        const cx = gs.moveX - (SW - CLOCK_SIZE) / 2 - CLOCK_R;
+        const cy = gs.moveY - 180 - CLOCK_R;
+        const angle = Math.atan2(cy, cx);
+        const { hour, minute } = angleToTime(angle);
+        setWakeH(hour);
+        setWakeM(minute);
+      },
+    })
+  ).current;
+
+  const bedAngle  = timeToAngle(bedH, bedM);
+  const wakeAngle = timeToAngle(wakeH, wakeM);
+  const sleepMins = calcSleepMins(bedH, bedM, wakeH, wakeM);
+  const bedPt     = angleToPoint(bedAngle);
+  const wakePt    = angleToPoint(wakeAngle);
+  const arc       = arcPath(bedAngle, wakeAngle);
+
+  // Hour tick labels (0, 6, 12, 18)
+  const tickLabels = [
+    { label: "0",  angle: timeToAngle(0, 0)  },
+    { label: "6",  angle: timeToAngle(6, 0)  },
+    { label: "12", angle: timeToAngle(12, 0) },
+    { label: "18", angle: timeToAngle(18, 0) },
+  ];
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
+      <View style={cp.overlay}>
+        <View style={cp.sheet}>
+
+          {/* "Today" pill header */}
+          <View style={cp.todayPill}>
+            <Text style={cp.todayText}>Today</Text>
+          </View>
+
+          {/* SVG Clock */}
+          <View style={cp.clockWrap}>
+            <Svg width={CLOCK_SIZE} height={CLOCK_SIZE}>
+              {/* Outer track (grey ring) */}
+              <Circle
+                cx={CLOCK_R} cy={CLOCK_R} r={TRACK_R}
+                stroke="rgba(255,255,255,0.1)" strokeWidth={28} fill="none"
+              />
+
+              {/* Purple arc (sleep period) */}
+              <Path
+                d={arc}
+                stroke="#7c3aed" strokeWidth={28}
+                fill="none" strokeLinecap="round"
+              />
+
+              {/* Dotted inner track decoration */}
+              {Array.from({ length: 96 }).map((_, i) => {
+                const a = (i / 96) * 2 * Math.PI - Math.PI / 2;
+                const pr = TRACK_R - 20;
+                const px = CLOCK_R + pr * Math.cos(a);
+                const py = CLOCK_R + pr * Math.sin(a);
+                return (
+                  <Circle key={i} cx={px} cy={py} r={1}
+                    fill="rgba(255,255,255,0.18)" />
+                );
+              })}
+
+              {/* Hour labels: 0, 6, 12, 18 */}
+              {tickLabels.map(({ label, angle }) => {
+                const labelR = TRACK_R - 48;
+                const lx = CLOCK_R + labelR * Math.cos(angle);
+                const ly = CLOCK_R + labelR * Math.sin(angle);
+                return (
+                  <SvgText
+                    key={label}
+                    x={lx} y={ly + 5}
+                    textAnchor="middle"
+                    fontSize={13}
+                    fill="rgba(255,255,255,0.45)"
+                    fontWeight="600"
+                  >
+                    {label}
+                  </SvgText>
+                );
+              })}
+
+              {/* Centre display: bedtime + wake time */}
+              <SvgText
+                x={CLOCK_R} y={CLOCK_R - 18}
+                textAnchor="middle" fontSize={22}
+                fill="white" fontWeight="700"
+              >
+                🛏  {fmt12(bedH, bedM)}
+              </SvgText>
+              <SvgText
+                x={CLOCK_R} y={CLOCK_R + 18}
+                textAnchor="middle" fontSize={22}
+                fill="white" fontWeight="700"
+              >
+                ⏰  {fmt12(wakeH, wakeM)}
+              </SvgText>
+
+              {/* Bedtime handle */}
+              <G {...bedPan.panHandlers}>
+                <Circle
+                  cx={bedPt.x} cy={bedPt.y} r={HANDLE_R + 6}
+                  fill="rgba(124,58,237,0.0)" // invisible hit area
+                />
+                <Circle
+                  cx={bedPt.x} cy={bedPt.y} r={HANDLE_R}
+                  fill="#1a1a2e" stroke="#7c3aed" strokeWidth={3}
+                />
+                <SvgText
+                  x={bedPt.x} y={bedPt.y + 5}
+                  textAnchor="middle" fontSize={11} fill="#a78bfa"
+                >
+                  🛏
+                </SvgText>
+              </G>
+
+              {/* Wake handle */}
+              <G {...wakePan.panHandlers}>
+                <Circle
+                  cx={wakePt.x} cy={wakePt.y} r={HANDLE_R + 6}
+                  fill="rgba(124,58,237,0.0)"
+                />
+                <Circle
+                  cx={wakePt.x} cy={wakePt.y} r={HANDLE_R}
+                  fill="#1a1a2e" stroke="#a78bfa" strokeWidth={3}
+                />
+                <SvgText
+                  x={wakePt.x} y={wakePt.y + 5}
+                  textAnchor="middle" fontSize={11} fill="#e9d5ff"
+                >
+                  ⏰
+                </SvgText>
+              </G>
+            </Svg>
+          </View>
+
+          {/* Sleep duration label */}
+          <Text style={cp.durationLabel}>
+            Sleep time: {formatDurationLabel(sleepMins)}
+          </Text>
+
+          {/* Cancel / Save */}
+          <View style={cp.btnRow}>
+            <Pressable style={cp.cancelBtn} onPress={onCancel}>
+              <Text style={cp.cancelText}>Cancel</Text>
+            </Pressable>
+            <View style={cp.btnDivider} />
+            <Pressable style={cp.saveBtn} onPress={() => onSave(bedH, bedM, wakeH, wakeM)}>
+              <Text style={cp.saveText}>Save</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
 
 // ─── Derive dynamic insights from real data ────────────────────────────────────
 function buildInsights(entries: SleepEntry[]): { icon: "alarm" | "moon" | "trending-up" | "trending-down" | "information-circle"; text: string; bg: string }[] {
@@ -120,7 +402,8 @@ export default function SleepDashboardScreen({ navigation }: Props) {
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState<string | null>(null);
   const [entries, setEntries]       = useState<SleepEntry[]>([]);
-  const [alarm, setAlarm]           = useState<SleepAlarmConfig>({ enabled: false, hour: 7, minute: 15 });
+  const [alarm, setAlarm]           = useState<SleepAlarmConfig>({ enabled: false, hour: 7, minute: 0, bedtimeHour: 23, bedtimeMinute: 0 });
+  const [showPicker, setShowPicker] = useState(false);
 
   // ── Load data ──────────────────────────────────────────────────
   const loadData = useCallback(async () => {
@@ -169,7 +452,24 @@ export default function SleepDashboardScreen({ navigation }: Props) {
     await saveSleepAlarm(user.uid, updated);
   };
 
-  // ── Derived display values ─────────────────────────────────────
+  // ── Alarm picker save ──────────────────────────────────────────
+  const handlePickerSave = async (bedH: number, bedM: number, wakeH: number, wakeM: number) => {
+    if (!user) return;
+    setShowPicker(false);
+    const updated: SleepAlarmConfig = {
+      ...alarm,
+      bedtimeHour: bedH,
+      bedtimeMinute: bedM,
+      hour: wakeH,
+      minute: wakeM,
+    };
+    setAlarm(updated);
+    await saveSleepAlarm(user.uid, updated);
+    // Re-schedule notification if alarm is on
+    if (updated.enabled) {
+      try { await scheduleSleepReminder(updated.hour, updated.minute); } catch (_) {}
+    }
+  };
   const lastNight      = entries[0] ?? null;
   const weekEntries    = entries.slice(0, 7);
   const avgMins        = avgSleepDuration(weekEntries);
@@ -524,40 +824,7 @@ export default function SleepDashboardScreen({ navigation }: Props) {
             {/* Set new alarm */}
             <Pressable
               style={s.setAlarmBtn}
-              onPress={() => {
-                if (!user) return;
-                Alert.alert(
-                  "Set Wake-Up Time",
-                  "Choose your preferred alarm time:",
-                  [
-                    { text: "6:00 AM", onPress: async () => {
-                      const updated = { ...alarm, hour: 6, minute: 0 };
-                      setAlarm(updated);
-                      await saveSleepAlarm(user.uid, updated);
-                      if (updated.enabled) handleAlarmToggle(true);
-                    }},
-                    { text: "6:30 AM", onPress: async () => {
-                      const updated = { ...alarm, hour: 6, minute: 30 };
-                      setAlarm(updated);
-                      await saveSleepAlarm(user.uid, updated);
-                      if (updated.enabled) handleAlarmToggle(true);
-                    }},
-                    { text: "7:00 AM", onPress: async () => {
-                      const updated = { ...alarm, hour: 7, minute: 0 };
-                      setAlarm(updated);
-                      await saveSleepAlarm(user.uid, updated);
-                      if (updated.enabled) handleAlarmToggle(true);
-                    }},
-                    { text: "7:30 AM", onPress: async () => {
-                      const updated = { ...alarm, hour: 7, minute: 30 };
-                      setAlarm(updated);
-                      await saveSleepAlarm(user.uid, updated);
-                      if (updated.enabled) handleAlarmToggle(true);
-                    }},
-                    { text: "Cancel", style: "cancel" },
-                  ]
-                );
-              }}
+              onPress={() => { if (user) setShowPicker(true); }}
             >
               <Ionicons name="add-circle-outline" size={18} color="#a78bfa" />
               <Text style={s.setAlarmText}>Set a new alarm</Text>
@@ -591,6 +858,17 @@ export default function SleepDashboardScreen({ navigation }: Props) {
           <View style={{ height: 110 }} />
         </ScrollView>
       )}
+
+      {/* ── Sleep Clock Picker Modal ── */}
+      <SleepClockPicker
+        visible={showPicker}
+        initialBedtimeHour={alarm.bedtimeHour ?? 23}
+        initialBedtimeMinute={alarm.bedtimeMinute ?? 0}
+        initialWakeHour={alarm.hour}
+        initialWakeMinute={alarm.minute}
+        onSave={handlePickerSave}
+        onCancel={() => setShowPicker(false)}
+      />
 
       {/* ── Bottom Nav ── */}
       <SamsungBottomNav activeRoute="HomeDashboard" />
@@ -834,4 +1112,52 @@ const s = StyleSheet.create({
     borderRadius: 20, borderWidth: 1, borderColor: "rgba(124,58,237,0.3)",
   },
   logFabText: { fontSize: 14, fontWeight: "600", color: "#a78bfa" },
+});
+
+// ─── Clock Picker Styles ───────────────────────────────────────────────────────
+const cp = StyleSheet.create({
+  overlay: {
+    flex: 1, justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.72)",
+  },
+  sheet: {
+    backgroundColor: "#111118",
+    borderTopLeftRadius: 32, borderTopRightRadius: 32,
+    paddingBottom: 40,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(124,58,237,0.22)",
+  },
+  todayPill: {
+    marginTop: 20, marginBottom: 16,
+    paddingHorizontal: 32, paddingVertical: 10,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 30,
+  },
+  todayText: { fontSize: 16, fontWeight: "700", color: "white" },
+  clockWrap: {
+    width: CLOCK_SIZE, height: CLOCK_SIZE,
+    alignItems: "center", justifyContent: "center",
+  },
+  durationLabel: {
+    fontSize: 17, fontWeight: "700", color: "#7c3aed",
+    marginTop: 18, marginBottom: 28,
+  },
+  btnRow: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 30, overflow: "hidden",
+    marginHorizontal: 24, width: SW - 48,
+  },
+  cancelBtn: {
+    flex: 1, paddingVertical: 16, alignItems: "center",
+  },
+  cancelText: { fontSize: 16, fontWeight: "600", color: "rgba(255,255,255,0.65)" },
+  btnDivider: {
+    width: 1, height: 24, backgroundColor: "rgba(255,255,255,0.15)",
+  },
+  saveBtn: {
+    flex: 1, paddingVertical: 16, alignItems: "center",
+  },
+  saveText: { fontSize: 16, fontWeight: "700", color: "white" },
 });

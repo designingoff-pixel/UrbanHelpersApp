@@ -27,8 +27,10 @@ export interface SleepEntry {
 
 export interface SleepAlarmConfig {
   enabled: boolean;
-  hour: number;          // 0–23
-  minute: number;        // 0–59
+  hour: number;          // wake-up 0–23
+  minute: number;        // wake-up 0–59
+  bedtimeHour: number;   // bedtime 0–23 (default 23 = 11 PM)
+  bedtimeMinute: number; // bedtime 0–59
   notificationId?: string;
 }
 
@@ -107,11 +109,15 @@ export async function deleteSleepEntry(uid: string, id: string): Promise<void> {
 export async function getSleepAlarm(uid: string): Promise<SleepAlarmConfig> {
   try {
     const raw = await AsyncStorage.getItem(`${SLEEP_ALARM_KEY}_${uid}`);
-    if (!raw) return { enabled: false, hour: 7, minute: 15 };
-    return JSON.parse(raw) as SleepAlarmConfig;
+    if (!raw) return { enabled: false, hour: 7, minute: 0, bedtimeHour: 23, bedtimeMinute: 0 };
+    const parsed = JSON.parse(raw) as SleepAlarmConfig;
+    // Migrate older records that lack bedtime fields
+    if (parsed.bedtimeHour === undefined) parsed.bedtimeHour = 23;
+    if (parsed.bedtimeMinute === undefined) parsed.bedtimeMinute = 0;
+    return parsed;
   } catch (e) {
     console.error("Error loading sleep alarm:", e);
-    return { enabled: false, hour: 7, minute: 15 };
+    return { enabled: false, hour: 7, minute: 0, bedtimeHour: 23, bedtimeMinute: 0 };
   }
 }
 
