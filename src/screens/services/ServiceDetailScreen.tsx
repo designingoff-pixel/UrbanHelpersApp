@@ -31,9 +31,56 @@ type Props = NativeStackScreenProps<RootStackParamList, "ServiceDetail">;
 
 // A single geocoded suggestion shown in the dropdown
 interface AddressSuggestion {
-  label: string;   // formatted address shown to user
-  lat:   number;
-  lng:   number;
+  label:   string;  // formatted address shown to user
+  lat:     number;
+  lng:     number;
+  placeId: string;  // Google place_id, used to fetch accurate coords on selection
+  coordsResolved: boolean; // true once Place Details have been fetched
+}
+
+// ── Google Places Autocomplete + Place Details helpers ────────────────────────
+const MAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
+
+interface PlacePrediction {
+  description: string;
+  place_id:    string;
+}
+
+/** Autocomplete — returns up to 5 ranked predictions for a partial query. */
+async function fetchAutocompletePredictions(
+  input: string,
+  signal: AbortSignal,
+): Promise<PlacePrediction[]> {
+  const url =
+    `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
+    `?input=${encodeURIComponent(input)}` +
+    `&key=${MAPS_KEY}` +
+    `&language=en` +
+    `&components=country:in`;          // restrict to India — change if needed
+
+  const res  = await fetch(url, { signal });
+  const json = await res.json();
+  if (json.status !== "OK" && json.status !== "ZERO_RESULTS") {
+    throw new Error(json.status);
+  }
+  return (json.predictions ?? []).slice(0, 5) as PlacePrediction[];
+}
+
+/** Place Details — returns lat/lng for a given place_id. */
+async function fetchPlaceDetails(
+  placeId: string,
+): Promise<{ lat: number; lng: number }> {
+  const url =
+    `https://maps.googleapis.com/maps/api/place/details/json` +
+    `?place_id=${encodeURIComponent(placeId)}` +
+    `&fields=geometry` +
+    `&key=${MAPS_KEY}`;
+
+  const res  = await fetch(url);
+  const json = await res.json();
+  if (json.status !== "OK") throw new Error(json.status);
+  const loc = json.result.geometry.location;
+  return { lat: loc.lat, lng: loc.lng };
 }
 
 export default function ServiceDetailScreen({ navigation, route }: Props) {
@@ -76,9 +123,10 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const { user } = useAuth();
 
-  // ── Debounced geocode search ───────────────────────────────────────────────
-  // Fires 600 ms after the user stops typing; uses expo-location's geocodeAsync
-  // (backed by the Google Maps API key already configured in app.json).
+  // ── Debounced Places Autocomplete search ──────────────────────────────────
+  // Fires 400 ms after the user stops typing.
+  // Uses Google Places Autocomplete REST API (same key already in app.json).
+  // Coordinates are fetched lazily only when the user taps a suggestion.
   useEffect(() => {
     const query = addressText.trim();
 
@@ -87,67 +135,72 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
     setGeocodeError("");
     setShowSuggestions(false);
 
-    if (query.length < 4) return; // don't search on very short strings
+    // Require at least 2 characters before searching
+    if (query.length < 2) return;
+
+    // Keep an AbortController so stale in-flight requests are cancelled
+    // when the user keeps typing before the debounce fires.
+    let abortCtrl: AbortController | null = null;
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     debounceRef.current = setTimeout(async () => {
+      abortCtrl = new AbortController();
       setSearchingAddress(true);
       try {
-        const results = await Location.geocodeAsync(query);
-        if (results.length === 0) {
+        const predictions = await fetchAutocompletePredictions(query, abortCtrl.signal);
+        if (predictions.length === 0) {
           setGeocodeError("No locations found. Please try a more specific address.");
-          setShowSuggestions(true);
         } else {
-          // Build suggestion labels via reverse-geocoding each result (up to 5)
-          const top = results.slice(0, 5);
-          const labelled: AddressSuggestion[] = await Promise.all(
-            top.map(async (r) => {
-              try {
-                const rev = await Location.reverseGeocodeAsync({ latitude: r.latitude, longitude: r.longitude });
-                if (rev.length > 0) {
-                  const p = rev[0];
-                  const label = [p.name, p.street, p.subregion, p.city, p.region, p.country]
-                    .filter(Boolean)
-                    .join(", ");
-                  return { label, lat: r.latitude, lng: r.longitude };
-                }
-              } catch (_) {}
-              // Fallback: just show coordinates if reverse-geocode fails
-              return {
-                label: `${r.latitude.toFixed(5)}, ${r.longitude.toFixed(5)}`,
-                lat: r.latitude,
-                lng: r.longitude,
-              };
-            })
-          );
-          setSuggestions(labelled);
+          // Build lightweight suggestion objects — coords are 0,0 until the
+          // user taps a row, at which point Place Details is called.
+          const items: AddressSuggestion[] = predictions.map((p) => ({
+            label:          p.description,
+            lat:            0,
+            lng:            0,
+            placeId:        p.place_id,
+            coordsResolved: false,
+          }));
+          setSuggestions(items);
           setGeocodeError("");
-          setShowSuggestions(true);
         }
-      } catch (err) {
+        setShowSuggestions(true);
+      } catch (err: any) {
+        if (err?.name === "AbortError") return; // query changed — ignore
         setGeocodeError("Could not search for address. Check your connection and try again.");
         setShowSuggestions(true);
       } finally {
         setSearchingAddress(false);
       }
-    }, 600);
+    }, 400);
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      abortCtrl?.abort();
     };
   }, [addressText]);
 
   // ── Called when user taps a suggestion row ────────────────────────────────
-  const handleSelectSuggestion = (item: AddressSuggestion) => {
+  // Fetches accurate lat/lng via Place Details before confirming.
+  const handleSelectSuggestion = async (item: AddressSuggestion) => {
+    // Immediately show the label in the input and close the dropdown
     setAddressText(item.label);
     setResolvedAddr(item.label);
-    setCustomerLat(item.lat);
-    setCustomerLng(item.lng);
     setAddressDirty(false);
     setSuggestions([]);
     setShowSuggestions(false);
     setGeocodeError("");
+
+    // Fetch accurate coordinates from Place Details
+    try {
+      const { lat, lng } = await fetchPlaceDetails(item.placeId);
+      setCustomerLat(lat);
+      setCustomerLng(lng);
+    } catch (_) {
+      // Coords unavailable — booking will still proceed with typed address
+      setCustomerLat(undefined);
+      setCustomerLng(undefined);
+    }
   };
 
   // ── Called when user edits the address field after a selection ────────────
@@ -224,15 +277,6 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
     }
     if (!addressText.trim()) {
       Alert.alert("Address required", "Please enter your service address.");
-      return;
-    }
-    // If the user has typed an address but not selected a suggestion yet, block booking.
-    if (addressDirty || (addressText.trim() && !resolvedAddr && !customerLat)) {
-      Alert.alert(
-        "Confirm your address",
-        "Please select an address from the suggestions that appear as you type, or use \"Locate on Map\" to pin your location.",
-        [{ text: "OK" }]
-      );
       return;
     }
 
@@ -456,10 +500,10 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               ) : null}
             </View>
 
-            {/* Search hint — shown when user is typing but hasn't selected yet */}
+            {/* Search hint — shown while typing, suggestions are optional */}
             {addressText.trim().length >= 4 && !addressConfirmed && !searchingAddress && (
               <Text style={s.addressHint}>
-                Select a suggestion below to confirm your location
+                Select a suggestion to pin the exact location, or just confirm your booking
               </Text>
             )}
 
