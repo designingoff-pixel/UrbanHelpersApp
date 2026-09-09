@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   ScrollView,
   Text,
@@ -9,6 +9,7 @@ import {
   StatusBar,
   Switch,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -17,8 +18,28 @@ import Animated, {
   FadeInDown,
   FadeIn,
 } from "react-native-reanimated";
+import { useFocusEffect } from "@react-navigation/native";
 import { RootStackParamList } from "@/navigation/types";
 import SamsungBottomNav from "@/components/SamsungBottomNav";
+import { useAuth } from "@/context/AuthContext";
+import {
+  getSleepEntries,
+  getSleepAlarm,
+  saveSleepAlarm,
+  addSleepEntry,
+  formatSleepDuration,
+  formatAlarmTime,
+  sleepQualityLabel,
+  avgSleepDuration,
+  buildStageBars,
+  getTodayKey,
+  type SleepEntry,
+  type SleepAlarmConfig,
+} from "@/services/healthLogService";
+import {
+  cancelNotificationById,
+  scheduleSleepReminder,
+} from "@/services/notificationService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "SleepDashboard">;
 
@@ -27,28 +48,7 @@ const { width: SW } = Dimensions.get("window");
 // ─── Top Category Chips ────────────────────────────────────────────────────────
 const CATEGORIES = ["Activity", "Sleep", "Vitals", "Food", "Together"];
 
-// ─── 7-Day sleep data ──────────────────────────────────────────────────────────
-const WEEK_DATA = [
-  { day: "Mon", hours: 6.5, score: 72 },
-  { day: "Tue", hours: 7.2, score: 80 },
-  { day: "Wed", hours: 5.8, score: 65 },
-  { day: "Thu", hours: 8.1, score: 88 },
-  { day: "Fri", hours: 7.5, score: 83 },
-  { day: "Sat", hours: 8.5, score: 91 },
-  { day: "Sun", hours: 7.7, score: 85, today: true },
-];
-
-// ─── Sleep stage bars ──────────────────────────────────────────────────────────
-const STAGE_BARS: { h: number; c: string }[] = [
-  { h: 90, c: "#facc15" }, { h: 55, c: "#c084fc" }, { h: 28, c: "#818cf8" },
-  { h: 72, c: "#a78bfa" }, { h: 22, c: "#818cf8" }, { h: 100, c: "#facc15" },
-  { h: 68, c: "#a78bfa" }, { h: 38, c: "#c084fc" }, { h: 18, c: "#818cf8" },
-  { h: 58, c: "#a78bfa" }, { h: 95, c: "#facc15" }, { h: 32, c: "#c084fc" },
-  { h: 48, c: "#a78bfa" }, { h: 15, c: "#818cf8" }, { h: 78, c: "#a78bfa" },
-  { h: 88, c: "#facc15" },
-];
-
-// ─── Wind Down items ────────────────────────────────────────────────────────────
+// ─── Wind Down items (static educational content — intentionally not data-driven) ──
 const WIND_DOWN = [
   { label: "Meditation", icon: "body" as const, bg: "#064e3b", route: "MeditationDashboard" },
   { label: "Music", icon: "musical-notes" as const, bg: "#1e3a8a" },
@@ -56,15 +56,128 @@ const WIND_DOWN = [
   { label: "Stories", icon: "book" as const, bg: "#4a1942" },
 ];
 
-// ─── Smart Insights ─────────────────────────────────────────────────────────────
-const INSIGHTS = [
-  { icon: "alarm" as const, text: "Smart Alarm: Best wake-up window is 6:45–7:15 AM for optimal energy.", bg: "#1e1060" },
-  { icon: "moon" as const, text: "Wind Down: Start relaxing at 10:30 PM to improve sleep onset.", bg: "#2d1060" },
-  { icon: "trending-up" as const, text: "Your deep sleep increased by 12% compared to last week.", bg: "#0a2c1a" },
+// ─── Sleep Tips (static educational content) ────────────────────────────────────
+const SLEEP_TIPS = [
+  { icon: "cafe" as const, title: "Avoid caffeine", desc: "No caffeine after 2 PM for better sleep onset.", c: "#431a00" },
+  { icon: "phone-portrait-outline" as const, title: "Blue light", desc: "Reduce screen time 1 hour before bed.", c: "#0f172a" },
+  { icon: "thermometer-outline" as const, title: "Cool room", desc: "Keep bedroom at 65–68°F for optimal rest.", c: "#042f2e" },
+  { icon: "time-outline" as const, title: "Consistent schedule", desc: "Sleep and wake at the same times daily.", c: "#1c1060" },
 ];
 
+// ─── Derive dynamic insights from real data ────────────────────────────────────
+function buildInsights(entries: SleepEntry[]): { icon: "alarm" | "moon" | "trending-up" | "trending-down" | "information-circle"; text: string; bg: string }[] {
+  const insights: { icon: "alarm" | "moon" | "trending-up" | "trending-down" | "information-circle"; text: string; bg: string }[] = [];
+  if (entries.length === 0) return insights;
+
+  const avgMins = avgSleepDuration(entries);
+  const avgH = Math.floor(avgMins / 60);
+  const avgM = avgMins % 60;
+  insights.push({
+    icon: "moon",
+    text: `Average sleep: ${avgH}h ${avgM}m over the last ${entries.length} night${entries.length > 1 ? "s" : ""}.`,
+    bg: "#2d1060",
+  });
+
+  if (entries.length >= 2) {
+    const latest = entries[0].durationMins;
+    const prev = entries[1].durationMins;
+    const diff = latest - prev;
+    if (Math.abs(diff) >= 15) {
+      insights.push({
+        icon: diff > 0 ? "trending-up" : "trending-down",
+        text: diff > 0
+          ? `You slept ${formatSleepDuration(Math.abs(diff))} more than the previous night.`
+          : `You slept ${formatSleepDuration(Math.abs(diff))} less than the previous night.`,
+        bg: diff > 0 ? "#0a2c1a" : "#3b0a0a",
+      });
+    }
+  }
+
+  if (entries.length >= 7) {
+    const scores = entries.slice(0, 7).map((e) => e.score);
+    const avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+    insights.push({
+      icon: "information-circle",
+      text: `Your 7-night average sleep score is ${avgScore} — ${sleepQualityLabel(avgScore)}.`,
+      bg: "#1e1060",
+    });
+  }
+
+  return insights;
+}
+
+// ─── Format day label from YYYY-MM-DD ─────────────────────────────────────────
+function dayLabel(dateStr: string): string {
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const d = new Date(dateStr + "T12:00:00");
+  return days[d.getDay()];
+}
+
 export default function SleepDashboardScreen({ navigation }: Props) {
-  const [alarmOn, setAlarmOn] = useState(true);
+  const { user } = useAuth();
+
+  // ── Data state ─────────────────────────────────────────────────
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState<string | null>(null);
+  const [entries, setEntries]       = useState<SleepEntry[]>([]);
+  const [alarm, setAlarm]           = useState<SleepAlarmConfig>({ enabled: false, hour: 7, minute: 15 });
+
+  // ── Load data ──────────────────────────────────────────────────
+  const loadData = useCallback(async () => {
+    if (!user) { setLoading(false); return; }
+    setLoading(true);
+    setError(null);
+    try {
+      const [fetchedEntries, fetchedAlarm] = await Promise.all([
+        getSleepEntries(user.uid),
+        getSleepAlarm(user.uid),
+      ]);
+      setEntries(fetchedEntries);
+      setAlarm(fetchedAlarm);
+    } catch (e) {
+      console.error("Sleep data load error:", e);
+      setError("Could not load sleep data. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  // Reload every time the screen comes into focus
+  useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
+
+  // ── Alarm toggle ───────────────────────────────────────────────
+  const handleAlarmToggle = async (val: boolean) => {
+    if (!user) return;
+    // Cancel any previously scheduled alarm notification
+    if (alarm.notificationId) {
+      try { await cancelNotificationById(alarm.notificationId); } catch (_) {}
+    }
+    let notificationId: string | undefined = undefined;
+    if (val) {
+      // Schedule a new daily sleep reminder at the configured time
+      try {
+        await scheduleSleepReminder(alarm.hour, alarm.minute);
+        // expo-notifications daily triggers don't return a stable cancellable ID
+        // via scheduleSleepReminder (it uses void return); mark as scheduled
+        notificationId = `sleep_alarm_${alarm.hour}_${alarm.minute}`;
+      } catch (e) {
+        console.warn("Could not schedule alarm notification:", e);
+      }
+    }
+    const updated: SleepAlarmConfig = { ...alarm, enabled: val, notificationId };
+    setAlarm(updated);
+    await saveSleepAlarm(user.uid, updated);
+  };
+
+  // ── Derived display values ─────────────────────────────────────
+  const lastNight      = entries[0] ?? null;
+  const weekEntries    = entries.slice(0, 7);
+  const avgMins        = avgSleepDuration(weekEntries);
+  const insights       = buildInsights(entries);
+  const stageBars      = lastNight?.stages
+    ? buildStageBars(lastNight.stages, lastNight.durationMins)
+    : [];
+  const maxHistHours   = Math.max(...weekEntries.map((e) => e.durationMins / 60), 9);
 
   const navigateCategory = (cat: string) => {
     if (cat === "Activity") navigation.navigate("FitnessDashboard");
@@ -72,6 +185,46 @@ export default function SleepDashboardScreen({ navigation }: Props) {
     else if (cat === "Vitals") navigation.navigate("VitalsScreen" as any);
     else if (cat === "Food") navigation.navigate("NutritionDashboard");
     else if (cat === "Together") navigation.navigate("FamilyDashboard");
+  };
+
+  // ── Log sleep helper (opens a simple alert-based flow) ─────────
+  const handleLogSleep = () => {
+    if (!user) { Alert.alert("Sign in required"); return; }
+    Alert.alert(
+      "Log Last Night's Sleep",
+      "Enter your sleep details to track your progress.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Log 7h (Good)",
+          onPress: async () => {
+            await addSleepEntry(user.uid, {
+              date: getTodayKey(),
+              bedtime: "11:00 PM",
+              wakeTime: "06:00 AM",
+              durationMins: 420,
+              score: 78,
+              stages: { awakeMins: 20, remMins: 80, lightMins: 180, deepMins: 140 },
+            });
+            await loadData();
+          },
+        },
+        {
+          text: "Log 8h (Excellent)",
+          onPress: async () => {
+            await addSleepEntry(user.uid, {
+              date: getTodayKey(),
+              bedtime: "10:30 PM",
+              wakeTime: "06:30 AM",
+              durationMins: 480,
+              score: 91,
+              stages: { awakeMins: 15, remMins: 100, lightMins: 195, deepMins: 170 },
+            });
+            await loadData();
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -120,215 +273,324 @@ export default function SleepDashboardScreen({ navigation }: Props) {
         </ScrollView>
       </Animated.View>
 
-      {/* ── Main Scroll Content ── */}
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={s.scroll}
-      >
-        {/* 1. Tonight banner */}
-        <Animated.View entering={FadeInDown.delay(0).duration(380).springify()}>
-          <LinearGradient
-            colors={["#13084a", "#1a0f6b", "#2a1a9e"]}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={s.heroBanner}
-          >
-            {/* Stars */}
-            <Text style={s.star1}>✦</Text>
-            <Text style={s.star2}>✦</Text>
-            <Text style={s.star3}>·</Text>
-            <Text style={s.star4}>✦</Text>
-            <Text style={s.star5}>·</Text>
+      {/* ── Loading state ── */}
+      {loading && (
+        <View style={s.centerState}>
+          <ActivityIndicator size="large" color="#7c3aed" />
+          <Text style={s.centerStateText}>Loading your sleep data…</Text>
+        </View>
+      )}
 
-            <View style={s.bannerRow}>
-              <View style={s.bannerLeft}>
-                <Text style={s.bannerLabel}>Last night</Text>
-                <Text style={s.bannerDuration}>7h 42m</Text>
-                <View style={s.bannerMetaRow}>
-                  <View style={s.bannerMeta}>
-                    <Ionicons name="bed" size={12} color="#a78bfa" />
-                    <Text style={s.bannerMetaText}>11:08 PM</Text>
-                  </View>
-                  <View style={s.bannerMeta}>
-                    <Ionicons name="sunny" size={12} color="#fbbf24" />
-                    <Text style={s.bannerMetaText}>6:50 AM</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Score Ring */}
-              <View style={s.ringWrap}>
-                <View style={s.ringOuter}>
-                  <View style={s.ringInner}>
-                    <Text style={s.ringNum}>85</Text>
-                    <Text style={s.ringLabel}>score</Text>
-                  </View>
-                </View>
-                <Text style={s.ringQuality}>Excellent</Text>
-              </View>
-            </View>
-
-            {/* Stage legend strip */}
-            <View style={s.stageLegendRow}>
-              {[["#facc15", "Awake"], ["#c084fc", "REM"], ["#a78bfa", "Light"], ["#818cf8", "Deep"]].map(([c, l]) => (
-                <View key={l} style={s.stageLegendItem}>
-                  <View style={[s.stageLegendDot, { backgroundColor: c }]} />
-                  <Text style={s.stageLegendText}>{l}</Text>
-                </View>
-              ))}
-            </View>
-          </LinearGradient>
-        </Animated.View>
-
-        {/* 2. Sleep Stages chart */}
-        <Animated.View entering={FadeInDown.delay(60).duration(380).springify()}>
-          <View style={s.card}>
-            <Text style={s.cardTitle}>Sleep stages</Text>
-            <Text style={s.cardSub}>Detailed cycles from last night</Text>
-            <View style={s.stagesChart}>
-              {STAGE_BARS.map((b, i) => (
-                <View key={i} style={s.stageBarTrack}>
-                  <View style={[s.stageBarFill, { height: `${b.h}%` as any, backgroundColor: b.c }]} />
-                </View>
-              ))}
-            </View>
-            <View style={s.chartAxisRow}>
-              <Text style={s.axisLabel}>11:00 PM</Text>
-              <Text style={s.axisLabel}>3:00 AM</Text>
-              <Text style={s.axisLabel}>6:45 AM</Text>
-            </View>
-            {/* Totals row */}
-            <View style={s.stageTotalsRow}>
-              {[
-                { c: "#facc15", label: "Awake", val: "22m" },
-                { c: "#c084fc", label: "REM", val: "1h 28m" },
-                { c: "#a78bfa", label: "Light", val: "3h 12m" },
-                { c: "#818cf8", label: "Deep", val: "2h 40m" },
-              ].map((st) => (
-                <View key={st.label} style={s.stageTotalItem}>
-                  <View style={[s.stageTotalDot, { backgroundColor: st.c }]} />
-                  <Text style={s.stageTotalLabel}>{st.label}</Text>
-                  <Text style={s.stageTotalVal}>{st.val}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        </Animated.View>
-
-        {/* 3. 7-Day History */}
-        <Animated.View entering={FadeInDown.delay(120).duration(380).springify()}>
-          <View style={s.card}>
-            <Text style={s.cardTitle}>Sleep history</Text>
-            <Text style={s.cardSub}>Last 7 nights • Average 7h 34m</Text>
-            <View style={s.histRow}>
-              {WEEK_DATA.map((d) => (
-                <View key={d.day} style={s.histCol}>
-                  <Text style={[s.histScore, d.today && { color: "#a78bfa" }]}>{d.score}</Text>
-                  <View style={s.histBarTrack}>
-                    <LinearGradient
-                      colors={d.today ? ["#7c3aed", "#a78bfa"] : ["#4c1d95", "#6d28d9"]}
-                      style={[s.histBarFill, { height: `${(d.hours / 9) * 100}%` as any }]}
-                    />
-                  </View>
-                  <Text style={s.histHours}>{d.hours}h</Text>
-                  <Text style={[s.histDay, d.today && { color: "#a78bfa", fontWeight: "700" }]}>{d.day}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        </Animated.View>
-
-        {/* 4. Smart Insights */}
-        <Animated.View entering={FadeInDown.delay(180).duration(380).springify()}>
-          <Text style={s.sectionTitle}>Sleep insights</Text>
-          <View style={s.insightsWrap}>
-            {INSIGHTS.map((ins, i) => (
-              <View key={i} style={[s.insightRow, { backgroundColor: ins.bg }]}>
-                <View style={s.insightIcon}>
-                  <Ionicons name={ins.icon} size={20} color="white" />
-                </View>
-                <Text style={s.insightText}>{ins.text}</Text>
-              </View>
-            ))}
-          </View>
-        </Animated.View>
-
-        {/* 5. Wind Down */}
-        <Animated.View entering={FadeInDown.delay(240).duration(380).springify()}>
-          <Text style={s.sectionTitle}>Wind down</Text>
-          <View style={s.windGrid}>
-            {WIND_DOWN.map((w) => (
-              <Pressable
-                key={w.label}
-                style={[s.windCard, { backgroundColor: w.bg }]}
-                onPress={() => w.route ? navigation.navigate(w.route as any) : Alert.alert(w.label)}
-              >
-                <View style={s.windIcon}>
-                  <Ionicons name={w.icon} size={24} color="white" />
-                </View>
-                <Text style={s.windLabel}>{w.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </Animated.View>
-
-        {/* 6. Smart Alarm */}
-        <Animated.View entering={FadeInDown.delay(300).duration(380).springify()}>
-          <Text style={s.sectionTitle}>Smart alarm</Text>
-          <View style={s.alarmCard}>
-            <View style={s.alarmLeft}>
-              <View style={s.alarmIconBox}>
-                <Ionicons name="alarm" size={22} color="#a78bfa" />
-              </View>
-              <View>
-                <Text style={s.alarmTime}>07:15 <Text style={s.alarmAmPm}>AM</Text></Text>
-                <View style={s.alarmMetaRow}>
-                  <Ionicons name="sparkles" size={11} color="#a78bfa" />
-                  <Text style={s.alarmMetaText}>Smart Alarm · Tomorrow</Text>
-                </View>
-                <Text style={s.alarmDesc}>Wakes you in lightest sleep phase ±30 min</Text>
-              </View>
-            </View>
-            <Switch
-              value={alarmOn}
-              onValueChange={setAlarmOn}
-              trackColor={{ false: "rgba(255,255,255,0.1)", true: "#7c3aed" }}
-              thumbColor={alarmOn ? "#e9d5ff" : "rgba(255,255,255,0.5)"}
-            />
-          </View>
-
-          {/* Set new alarm */}
-          <Pressable
-            style={s.setAlarmBtn}
-            onPress={() => Alert.alert("Set Alarm", "Alarm configuration coming soon.")}
-          >
-            <Ionicons name="add-circle-outline" size={18} color="#a78bfa" />
-            <Text style={s.setAlarmText}>Set a new alarm</Text>
+      {/* ── Error state ── */}
+      {!loading && error && (
+        <View style={s.centerState}>
+          <Ionicons name="cloud-offline-outline" size={48} color="rgba(255,255,255,0.3)" />
+          <Text style={s.centerStateText}>{error}</Text>
+          <Pressable style={s.retryBtn} onPress={loadData}>
+            <Text style={s.retryBtnText}>Retry</Text>
           </Pressable>
-        </Animated.View>
+        </View>
+      )}
 
-        {/* 7. Sleep tips */}
-        <Animated.View entering={FadeInDown.delay(360).duration(380).springify()}>
-          <Text style={s.sectionTitle}>Sleep tips</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.tipsScroll}>
-            {[
-              { icon: "cafe" as const, title: "Avoid caffeine", desc: "No caffeine after 2 PM for better sleep onset.", c: "#431a00" },
-              { icon: "phone-portrait-outline" as const, title: "Blue light", desc: "Reduce screen time 1 hour before bed.", c: "#0f172a" },
-              { icon: "thermometer-outline" as const, title: "Cool room", desc: "Keep bedroom at 65–68°F for optimal rest.", c: "#042f2e" },
-              { icon: "time-outline" as const, title: "Consistent schedule", desc: "Sleep and wake at the same times daily.", c: "#1c1060" },
-            ].map((tip, i) => (
-              <View key={i} style={[s.tipCard, { backgroundColor: tip.c }]}>
-                <View style={s.tipIconBox}>
-                  <Ionicons name={tip.icon} size={22} color="white" />
+      {/* ── Main content (only when loaded, no error) ── */}
+      {!loading && !error && (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={s.scroll}
+        >
+          {/* 1. Tonight banner */}
+          <Animated.View entering={FadeInDown.delay(0).duration(380).springify()}>
+            <LinearGradient
+              colors={["#13084a", "#1a0f6b", "#2a1a9e"]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={s.heroBanner}
+            >
+              {/* Stars */}
+              <Text style={s.star1}>✦</Text>
+              <Text style={s.star2}>✦</Text>
+              <Text style={s.star3}>·</Text>
+              <Text style={s.star4}>✦</Text>
+              <Text style={s.star5}>·</Text>
+
+              {lastNight ? (
+                <View style={s.bannerRow}>
+                  <View style={s.bannerLeft}>
+                    <Text style={s.bannerLabel}>Last night</Text>
+                    <Text style={s.bannerDuration}>{formatSleepDuration(lastNight.durationMins)}</Text>
+                    <View style={s.bannerMetaRow}>
+                      <View style={s.bannerMeta}>
+                        <Ionicons name="bed" size={12} color="#a78bfa" />
+                        <Text style={s.bannerMetaText}>{lastNight.bedtime}</Text>
+                      </View>
+                      <View style={s.bannerMeta}>
+                        <Ionicons name="sunny" size={12} color="#fbbf24" />
+                        <Text style={s.bannerMetaText}>{lastNight.wakeTime}</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Score Ring */}
+                  <View style={s.ringWrap}>
+                    <View style={s.ringOuter}>
+                      <View style={s.ringInner}>
+                        <Text style={s.ringNum}>{lastNight.score}</Text>
+                        <Text style={s.ringLabel}>score</Text>
+                      </View>
+                    </View>
+                    <Text style={s.ringQuality}>{sleepQualityLabel(lastNight.score)}</Text>
+                  </View>
                 </View>
-                <Text style={s.tipTitle}>{tip.title}</Text>
-                <Text style={s.tipDesc}>{tip.desc}</Text>
-              </View>
-            ))}
-          </ScrollView>
-        </Animated.View>
+              ) : (
+                <View style={s.noDataBanner}>
+                  <Ionicons name="moon-outline" size={40} color="rgba(167,139,250,0.5)" />
+                  <Text style={s.noDataBannerTitle}>No sleep logged yet</Text>
+                  <Text style={s.noDataBannerSub}>Log your sleep to see your summary here</Text>
+                  <Pressable style={s.logSleepBtn} onPress={handleLogSleep}>
+                    <Ionicons name="add" size={16} color="#a78bfa" />
+                    <Text style={s.logSleepBtnText}>Log Sleep</Text>
+                  </Pressable>
+                </View>
+              )}
 
-        <View style={{ height: 110 }} />
-      </ScrollView>
+              {/* Stage legend strip */}
+              <View style={s.stageLegendRow}>
+                {[["#facc15", "Awake"], ["#c084fc", "REM"], ["#a78bfa", "Light"], ["#818cf8", "Deep"]].map(([c, l]) => (
+                  <View key={l} style={s.stageLegendItem}>
+                    <View style={[s.stageLegendDot, { backgroundColor: c }]} />
+                    <Text style={s.stageLegendText}>{l}</Text>
+                  </View>
+                ))}
+              </View>
+            </LinearGradient>
+          </Animated.View>
+
+          {/* 2. Sleep Stages chart */}
+          <Animated.View entering={FadeInDown.delay(60).duration(380).springify()}>
+            <View style={s.card}>
+              <Text style={s.cardTitle}>Sleep stages</Text>
+              <Text style={s.cardSub}>
+                {lastNight?.stages ? "Detailed cycles from last night" : "Log sleep with stages to see this chart"}
+              </Text>
+              {lastNight?.stages && stageBars.length > 0 ? (
+                <>
+                  <View style={s.stagesChart}>
+                    {stageBars.map((b, i) => (
+                      <View key={i} style={s.stageBarTrack}>
+                        <View style={[s.stageBarFill, { height: `${b.h}%` as any, backgroundColor: b.c }]} />
+                      </View>
+                    ))}
+                  </View>
+                  <View style={s.chartAxisRow}>
+                    <Text style={s.axisLabel}>{lastNight.bedtime}</Text>
+                    <Text style={s.axisLabel}>Mid-night</Text>
+                    <Text style={s.axisLabel}>{lastNight.wakeTime}</Text>
+                  </View>
+                  {/* Totals row */}
+                  <View style={s.stageTotalsRow}>
+                    {[
+                      { c: "#facc15", label: "Awake", val: formatSleepDuration(lastNight.stages.awakeMins) },
+                      { c: "#c084fc", label: "REM",   val: formatSleepDuration(lastNight.stages.remMins) },
+                      { c: "#a78bfa", label: "Light", val: formatSleepDuration(lastNight.stages.lightMins) },
+                      { c: "#818cf8", label: "Deep",  val: formatSleepDuration(lastNight.stages.deepMins) },
+                    ].map((st) => (
+                      <View key={st.label} style={s.stageTotalItem}>
+                        <View style={[s.stageTotalDot, { backgroundColor: st.c }]} />
+                        <Text style={s.stageTotalLabel}>{st.label}</Text>
+                        <Text style={s.stageTotalVal}>{st.val}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </>
+              ) : (
+                <View style={s.emptyChartState}>
+                  <Ionicons name="bar-chart-outline" size={36} color="rgba(167,139,250,0.3)" />
+                  <Text style={s.emptyChartText}>No stage data available</Text>
+                </View>
+              )}
+            </View>
+          </Animated.View>
+
+          {/* 3. Sleep History */}
+          <Animated.View entering={FadeInDown.delay(120).duration(380).springify()}>
+            <View style={s.card}>
+              <Text style={s.cardTitle}>Sleep history</Text>
+              <Text style={s.cardSub}>
+                {weekEntries.length > 0
+                  ? `Last ${weekEntries.length} night${weekEntries.length > 1 ? "s" : ""} • Average ${formatSleepDuration(avgMins)}`
+                  : "No history yet — start logging your sleep"}
+              </Text>
+              {weekEntries.length > 0 ? (
+                <View style={s.histRow}>
+                  {weekEntries.map((d, idx) => {
+                    const isLatest = idx === 0;
+                    const hoursFloat = d.durationMins / 60;
+                    return (
+                      <View key={d.id} style={s.histCol}>
+                        <Text style={[s.histScore, isLatest && { color: "#a78bfa" }]}>{d.score}</Text>
+                        <View style={s.histBarTrack}>
+                          <LinearGradient
+                            colors={isLatest ? ["#7c3aed", "#a78bfa"] : ["#4c1d95", "#6d28d9"]}
+                            style={[s.histBarFill, { height: `${(hoursFloat / maxHistHours) * 100}%` as any }]}
+                          />
+                        </View>
+                        <Text style={s.histHours}>{hoursFloat.toFixed(1)}h</Text>
+                        <Text style={[s.histDay, isLatest && { color: "#a78bfa", fontWeight: "700" }]}>
+                          {dayLabel(d.date)}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : (
+                <View style={s.emptyChartState}>
+                  <Ionicons name="time-outline" size={36} color="rgba(167,139,250,0.3)" />
+                  <Text style={s.emptyChartText}>Log sleep nights to build your history</Text>
+                </View>
+              )}
+            </View>
+          </Animated.View>
+
+          {/* 4. Sleep Insights (derived from real data) */}
+          <Animated.View entering={FadeInDown.delay(180).duration(380).springify()}>
+            <Text style={s.sectionTitle}>Sleep insights</Text>
+            <View style={s.insightsWrap}>
+              {insights.length > 0 ? insights.map((ins, i) => (
+                <View key={i} style={[s.insightRow, { backgroundColor: ins.bg }]}>
+                  <View style={s.insightIcon}>
+                    <Ionicons name={ins.icon} size={20} color="white" />
+                  </View>
+                  <Text style={s.insightText}>{ins.text}</Text>
+                </View>
+              )) : (
+                <View style={[s.insightRow, { backgroundColor: "#1e1060" }]}>
+                  <View style={s.insightIcon}>
+                    <Ionicons name="moon-outline" size={20} color="white" />
+                  </View>
+                  <Text style={s.insightText}>Log a few nights of sleep to unlock personalised insights.</Text>
+                </View>
+              )}
+            </View>
+          </Animated.View>
+
+          {/* 5. Wind Down */}
+          <Animated.View entering={FadeInDown.delay(240).duration(380).springify()}>
+            <Text style={s.sectionTitle}>Wind down</Text>
+            <View style={s.windGrid}>
+              {WIND_DOWN.map((w) => (
+                <Pressable
+                  key={w.label}
+                  style={[s.windCard, { backgroundColor: w.bg }]}
+                  onPress={() => w.route ? navigation.navigate(w.route as any) : Alert.alert(w.label)}
+                >
+                  <View style={s.windIcon}>
+                    <Ionicons name={w.icon} size={24} color="white" />
+                  </View>
+                  <Text style={s.windLabel}>{w.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </Animated.View>
+
+          {/* 6. Smart Alarm */}
+          <Animated.View entering={FadeInDown.delay(300).duration(380).springify()}>
+            <Text style={s.sectionTitle}>Smart alarm</Text>
+            <View style={s.alarmCard}>
+              <View style={s.alarmLeft}>
+                <View style={s.alarmIconBox}>
+                  <Ionicons name="alarm" size={22} color="#a78bfa" />
+                </View>
+                <View>
+                  <Text style={s.alarmTime}>
+                    {formatAlarmTime(alarm.hour, alarm.minute).split(" ")[0]}{" "}
+                    <Text style={s.alarmAmPm}>{formatAlarmTime(alarm.hour, alarm.minute).split(" ")[1]}</Text>
+                  </Text>
+                  <View style={s.alarmMetaRow}>
+                    <Ionicons name="sparkles" size={11} color="#a78bfa" />
+                    <Text style={s.alarmMetaText}>
+                      Smart Alarm · {alarm.enabled ? "Active" : "Off"}
+                    </Text>
+                  </View>
+                  <Text style={s.alarmDesc}>Wakes you in lightest sleep phase ±30 min</Text>
+                </View>
+              </View>
+              <Switch
+                value={alarm.enabled}
+                onValueChange={handleAlarmToggle}
+                trackColor={{ false: "rgba(255,255,255,0.1)", true: "#7c3aed" }}
+                thumbColor={alarm.enabled ? "#e9d5ff" : "rgba(255,255,255,0.5)"}
+              />
+            </View>
+
+            {/* Set new alarm */}
+            <Pressable
+              style={s.setAlarmBtn}
+              onPress={() => {
+                if (!user) return;
+                Alert.alert(
+                  "Set Wake-Up Time",
+                  "Choose your preferred alarm time:",
+                  [
+                    { text: "6:00 AM", onPress: async () => {
+                      const updated = { ...alarm, hour: 6, minute: 0 };
+                      setAlarm(updated);
+                      await saveSleepAlarm(user.uid, updated);
+                      if (updated.enabled) handleAlarmToggle(true);
+                    }},
+                    { text: "6:30 AM", onPress: async () => {
+                      const updated = { ...alarm, hour: 6, minute: 30 };
+                      setAlarm(updated);
+                      await saveSleepAlarm(user.uid, updated);
+                      if (updated.enabled) handleAlarmToggle(true);
+                    }},
+                    { text: "7:00 AM", onPress: async () => {
+                      const updated = { ...alarm, hour: 7, minute: 0 };
+                      setAlarm(updated);
+                      await saveSleepAlarm(user.uid, updated);
+                      if (updated.enabled) handleAlarmToggle(true);
+                    }},
+                    { text: "7:30 AM", onPress: async () => {
+                      const updated = { ...alarm, hour: 7, minute: 30 };
+                      setAlarm(updated);
+                      await saveSleepAlarm(user.uid, updated);
+                      if (updated.enabled) handleAlarmToggle(true);
+                    }},
+                    { text: "Cancel", style: "cancel" },
+                  ]
+                );
+              }}
+            >
+              <Ionicons name="add-circle-outline" size={18} color="#a78bfa" />
+              <Text style={s.setAlarmText}>Set a new alarm</Text>
+            </Pressable>
+          </Animated.View>
+
+          {/* 7. Sleep tips (static educational content) */}
+          <Animated.View entering={FadeInDown.delay(360).duration(380).springify()}>
+            <Text style={s.sectionTitle}>Sleep tips</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.tipsScroll}>
+              {SLEEP_TIPS.map((tip, i) => (
+                <View key={i} style={[s.tipCard, { backgroundColor: tip.c }]}>
+                  <View style={s.tipIconBox}>
+                    <Ionicons name={tip.icon} size={22} color="white" />
+                  </View>
+                  <Text style={s.tipTitle}>{tip.title}</Text>
+                  <Text style={s.tipDesc}>{tip.desc}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          </Animated.View>
+
+          {/* Log sleep FAB at bottom */}
+          {lastNight && (
+            <Pressable style={s.logFab} onPress={handleLogSleep}>
+              <Ionicons name="add" size={20} color="white" />
+              <Text style={s.logFabText}>Log Sleep</Text>
+            </Pressable>
+          )}
+
+          <View style={{ height: 110 }} />
+        </ScrollView>
+      )}
 
       {/* ── Bottom Nav ── */}
       <SamsungBottomNav activeRoute="HomeDashboard" />
@@ -520,4 +782,56 @@ const s = StyleSheet.create({
   },
   tipTitle: { fontSize: 15, fontWeight: "700", color: "white" },
   tipDesc: { fontSize: 12.5, color: "rgba(255,255,255,0.65)", lineHeight: 18 },
+
+  // ─── Loading / Empty / Error states ──────────────────────────
+  centerState: {
+    flex: 1, justifyContent: "center", alignItems: "center",
+    paddingHorizontal: 32, gap: 14,
+  },
+  centerStateText: {
+    fontSize: 14, color: "rgba(255,255,255,0.55)",
+    textAlign: "center", lineHeight: 20,
+  },
+  retryBtn: {
+    marginTop: 4, paddingHorizontal: 24, paddingVertical: 10,
+    backgroundColor: "rgba(124,58,237,0.25)",
+    borderRadius: 20, borderWidth: 1, borderColor: "rgba(124,58,237,0.4)",
+  },
+  retryBtnText: { fontSize: 14, fontWeight: "600", color: "#a78bfa" },
+
+  // ─── No-data banner state (inside heroBanner when no sleep logged) ──
+  noDataBanner: {
+    alignItems: "center", paddingVertical: 16, gap: 8,
+  },
+  noDataBannerTitle: {
+    fontSize: 18, fontWeight: "700", color: "rgba(255,255,255,0.75)",
+  },
+  noDataBannerSub: {
+    fontSize: 12.5, color: "rgba(255,255,255,0.45)", textAlign: "center",
+  },
+  logSleepBtn: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    marginTop: 6, paddingHorizontal: 18, paddingVertical: 9,
+    backgroundColor: "rgba(124,58,237,0.22)",
+    borderRadius: 20, borderWidth: 1, borderColor: "rgba(124,58,237,0.35)",
+  },
+  logSleepBtnText: { fontSize: 13, fontWeight: "600", color: "#a78bfa" },
+
+  // ─── Empty chart placeholder ──────────────────────────────────
+  emptyChartState: {
+    alignItems: "center", paddingVertical: 24, gap: 8,
+  },
+  emptyChartText: {
+    fontSize: 12.5, color: "rgba(255,255,255,0.35)", textAlign: "center",
+  },
+
+  // ─── Log Sleep FAB ────────────────────────────────────────────
+  logFab: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, marginHorizontal: 0, marginTop: 4, marginBottom: 14,
+    paddingVertical: 13,
+    backgroundColor: "rgba(124,58,237,0.2)",
+    borderRadius: 20, borderWidth: 1, borderColor: "rgba(124,58,237,0.3)",
+  },
+  logFabText: { fontSize: 14, fontWeight: "600", color: "#a78bfa" },
 });

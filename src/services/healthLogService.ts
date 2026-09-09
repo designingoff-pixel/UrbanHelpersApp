@@ -1,5 +1,160 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+// ═════════════════════════════════════════════════════════════
+// SLEEP LOGGING
+// ═════════════════════════════════════════════════════════════
+
+const SLEEP_KEY = "@urban_health_sleep_v1";
+const SLEEP_ALARM_KEY = "@urban_health_sleep_alarm_v1";
+
+export interface SleepStages {
+  awakeMins: number;   // minutes spent awake
+  remMins: number;     // REM sleep
+  lightMins: number;   // light sleep
+  deepMins: number;    // deep sleep
+}
+
+export interface SleepEntry {
+  id: string;
+  date: string;          // YYYY-MM-DD (the date the person woke up / "night of")
+  bedtime: string;       // e.g. "11:08 PM"
+  wakeTime: string;      // e.g. "06:50 AM"
+  durationMins: number;  // total sleep in minutes
+  score: number;         // 0–100
+  stages?: SleepStages;
+  timestamp: number;
+}
+
+export interface SleepAlarmConfig {
+  enabled: boolean;
+  hour: number;          // 0–23
+  minute: number;        // 0–59
+  notificationId?: string;
+}
+
+/** Format minutes as "Xh Ym" */
+export function formatSleepDuration(mins: number): string {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
+/** Format 24h hour+minute to "HH:MM AM/PM" */
+export function formatAlarmTime(hour: number, minute: number): string {
+  const ampm = hour >= 12 ? "PM" : "AM";
+  const h = hour % 12 || 12;
+  const m = String(minute).padStart(2, "0");
+  return `${String(h).padStart(2, "0")}:${m} ${ampm}`;
+}
+
+/** Derive a quality label from score */
+export function sleepQualityLabel(score: number): string {
+  if (score >= 90) return "Excellent";
+  if (score >= 75) return "Good";
+  if (score >= 60) return "Fair";
+  return "Poor";
+}
+
+export async function getSleepEntries(uid: string): Promise<SleepEntry[]> {
+  try {
+    const raw = await AsyncStorage.getItem(`${SLEEP_KEY}_${uid}`);
+    if (!raw) return [];
+    return JSON.parse(raw) as SleepEntry[];
+  } catch (e) {
+    console.error("Error loading sleep entries:", e);
+    return [];
+  }
+}
+
+export async function addSleepEntry(
+  uid: string,
+  entry: Omit<SleepEntry, "id" | "timestamp">
+): Promise<SleepEntry> {
+  const newEntry: SleepEntry = {
+    ...entry,
+    id: `sleep_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    timestamp: Date.now(),
+  };
+  try {
+    const raw = await AsyncStorage.getItem(`${SLEEP_KEY}_${uid}`);
+    const all: SleepEntry[] = raw ? JSON.parse(raw) : [];
+    // Replace same-date entry if one already exists
+    const filtered = all.filter((e) => e.date !== newEntry.date);
+    filtered.unshift(newEntry);
+    await AsyncStorage.setItem(`${SLEEP_KEY}_${uid}`, JSON.stringify(filtered));
+  } catch (e) {
+    console.error("Error saving sleep entry:", e);
+  }
+  return newEntry;
+}
+
+export async function deleteSleepEntry(uid: string, id: string): Promise<void> {
+  try {
+    const raw = await AsyncStorage.getItem(`${SLEEP_KEY}_${uid}`);
+    if (!raw) return;
+    const all: SleepEntry[] = JSON.parse(raw);
+    await AsyncStorage.setItem(
+      `${SLEEP_KEY}_${uid}`,
+      JSON.stringify(all.filter((e) => e.id !== id))
+    );
+  } catch (e) {
+    console.error("Error deleting sleep entry:", e);
+  }
+}
+
+export async function getSleepAlarm(uid: string): Promise<SleepAlarmConfig> {
+  try {
+    const raw = await AsyncStorage.getItem(`${SLEEP_ALARM_KEY}_${uid}`);
+    if (!raw) return { enabled: false, hour: 7, minute: 15 };
+    return JSON.parse(raw) as SleepAlarmConfig;
+  } catch (e) {
+    console.error("Error loading sleep alarm:", e);
+    return { enabled: false, hour: 7, minute: 15 };
+  }
+}
+
+export async function saveSleepAlarm(uid: string, config: SleepAlarmConfig): Promise<void> {
+  try {
+    await AsyncStorage.setItem(`${SLEEP_ALARM_KEY}_${uid}`, JSON.stringify(config));
+  } catch (e) {
+    console.error("Error saving sleep alarm:", e);
+  }
+}
+
+/** Average sleep duration in minutes over a list of entries */
+export function avgSleepDuration(entries: SleepEntry[]): number {
+  if (entries.length === 0) return 0;
+  return Math.round(entries.reduce((s, e) => s + e.durationMins, 0) / entries.length);
+}
+
+/** Build stage bar data (16 segments) from a SleepStages object */
+export function buildStageBars(stages: SleepStages, totalMins: number): { h: number; c: string }[] {
+  if (totalMins === 0) return [];
+  const { awakeMins, remMins, lightMins, deepMins } = stages;
+  // Distribute each stage across segments proportionally
+  const stageList = [
+    { mins: awakeMins, c: "#facc15" },
+    { mins: remMins,   c: "#c084fc" },
+    { mins: lightMins, c: "#a78bfa" },
+    { mins: deepMins,  c: "#818cf8" },
+  ];
+  const bars: { h: number; c: string }[] = [];
+  for (const st of stageList) {
+    const segs = Math.max(1, Math.round((st.mins / totalMins) * 16 * (st.mins / totalMins + 0.5)));
+    const heightPct = Math.round((st.mins / totalMins) * 100);
+    for (let i = 0; i < Math.min(segs, 16 - bars.length); i++) {
+      bars.push({ h: Math.max(10, heightPct + (Math.random() * 20 - 10)), c: st.c });
+    }
+  }
+  // Pad or trim to exactly 16 bars
+  while (bars.length < 16) bars.push({ h: 15, c: "#818cf8" });
+  return bars.slice(0, 16);
+}
+
+
+
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
 
 export interface MealItem {
