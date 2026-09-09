@@ -333,21 +333,15 @@ export default function HomeDashboardScreen({ navigation }: Props) {
       </Modal>
 
       {/* ── Quick-action Pills Bar (Persistent within Home) ──── */}
-      <Animated.View entering={FadeIn.delay(120).duration(400)}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.pillsContent}
-          style={s.pillsScroll}
-          bounces={false}
-        >
+      <Animated.View entering={FadeIn.delay(120).duration(400)} style={s.pillsOuter}>
+        <View style={s.pillsContainer}>
           {PILLS.map((p, i) => {
             const isActive = activePill === i;
             return (
               <Pressable
                 key={i}
                 onPress={() => setActivePill(i)}
-                style={s.pillBtn}
+                style={s.pillItem}
               >
                 <View style={[s.pillBg, isActive && s.pillBgActive]}>
                   {p.lib === "MaterialIcons" ? (
@@ -367,7 +361,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               </Pressable>
             );
           })}
-        </ScrollView>
+        </View>
       </Animated.View>
 
       {/* ── Main Scrollable Content Area ─────────────────────── */}
@@ -1758,19 +1752,32 @@ const s = StyleSheet.create({
   },
 
   // Pills Bar
-  pillsScroll: { marginHorizontal: 12, marginBottom: 10 },
-  pillsContent: {
-    paddingHorizontal: 4,
-    paddingVertical: 6,
+  pillsOuter: {
+    marginHorizontal: 12,
+    marginBottom: 10,
+  },
+  pillsContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 2,
+    justifyContent: "space-between",
+    paddingHorizontal: 6,
+    paddingVertical: 6,
     backgroundColor: "rgba(255,255,255,0.055)",
-    borderRadius: 50,
+    borderRadius: 50,             // fully rounded pill capsule
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.05)",
+    borderColor: "rgba(255,255,255,0.08)",
+    // subtle shadow to lift it off the background
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  pillBtn: { paddingHorizontal: 2 },
+  pillItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   pillBg: {
     width: 48, height: 48, borderRadius: 24,
     justifyContent: "center", alignItems: "center",
