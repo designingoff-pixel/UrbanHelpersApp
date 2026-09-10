@@ -123,12 +123,15 @@ export async function scheduleMedicineReminder(
   medicineName: string,
   dosage: string,
   hour: number,
-  minute: number
+  minute: number,
+  instructions?: string
 ): Promise<string> {
+  const bodyLine = `Time to take ${medicineName} ${dosage}`;
+  const fullBody = instructions ? `${bodyLine}\n${instructions}` : bodyLine;
   return Notifications.scheduleNotificationAsync({
     content: {
-      title: "💊 Medicine Reminder",
-      body: `Time to take ${medicineName} — ${dosage}`,
+      title: "🔔 Medication Reminder",
+      body: fullBody,
       sound: true,
       data: { screen: "MedicationCenter", medicine: medicineName },
     },
@@ -454,7 +457,9 @@ export async function sendHealthScoreNotification(score: number): Promise<void> 
 
 export async function setupDefaultNotifications(): Promise<void> {
   try {
-    await Notifications.cancelAllScheduledNotificationsAsync();
+    // NOTE: Do NOT call cancelAllScheduledNotificationsAsync() here.
+    // That would wipe all medication reminders that were individually scheduled.
+    // Instead, each category manages its own notifications.
     await scheduleMorningHealthReminder();   // 7:00 AM
     await scheduleHydrationReminders();      // every 2 hrs 9am–9pm
     await scheduleCalorieReminder();         // 6:00 PM
