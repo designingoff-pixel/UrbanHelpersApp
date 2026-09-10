@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { cancelNotificationById } from "@/services/notificationService";
 
 // ═════════════════════════════════════════════════════════════
 // SLEEP LOGGING
@@ -189,6 +190,7 @@ export interface MedicationItem {
   takenDates: string[]; // array of YYYY-MM-DD when marked taken
   instructions?: string; // e.g. "After food"
   createdAt: number;
+  notificationId?: string; // expo-notifications identifier for the daily reminder
 }
 
 export type ActivityType =
@@ -409,10 +411,60 @@ export async function deleteMedication(id: string): Promise<void> {
     const raw = await AsyncStorage.getItem(STORAGE_KEYS.MEDICATIONS);
     if (!raw) return;
     const allMeds: MedicationItem[] = JSON.parse(raw);
+    // Cancel the scheduled notification before removing the record
+    const target = allMeds.find((m) => m.id === id);
+    if (target?.notificationId) {
+      try {
+        await cancelNotificationById(target.notificationId);
+      } catch (ne) {
+        console.warn("Could not cancel medication notification:", ne);
+      }
+    }
     const filtered = allMeds.filter((m) => m.id !== id);
     await AsyncStorage.setItem(STORAGE_KEYS.MEDICATIONS, JSON.stringify(filtered));
   } catch (e) {
     console.error("Error deleting medication:", e);
+  }
+}
+
+/**
+ * Parse a time string like "08:00 AM" / "11:30 PM" into { hour, minute }.
+ * Returns null if the string is not recognisable.
+ */
+export function parseScheduleTime(time: string): { hour: number; minute: number } | null {
+  // Expected format: "HH:MM AM" or "HH:MM PM" (case-insensitive)
+  const match = time.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) return null;
+  let hour = parseInt(match[1], 10);
+  const minute = parseInt(match[2], 10);
+  const period = match[3].toUpperCase();
+  if (hour < 1 || hour > 12 || minute < 0 || minute > 59) return null;
+  // Convert to 24-hour
+  if (period === "AM") {
+    hour = hour === 12 ? 0 : hour;        // 12:xx AM → 0:xx
+  } else {
+    hour = hour === 12 ? 12 : hour + 12;  // 12:xx PM → 12:xx, 1–11 PM → 13–23
+  }
+  return { hour, minute };
+}
+
+/**
+ * Persist the notification ID on an existing medication record after scheduling.
+ */
+export async function updateMedicationNotificationId(
+  id: string,
+  notificationId: string
+): Promise<void> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.MEDICATIONS);
+    if (!raw) return;
+    const allMeds: MedicationItem[] = JSON.parse(raw);
+    const index = allMeds.findIndex((m) => m.id === id);
+    if (index === -1) return;
+    allMeds[index] = { ...allMeds[index], notificationId };
+    await AsyncStorage.setItem(STORAGE_KEYS.MEDICATIONS, JSON.stringify(allMeds));
+  } catch (e) {
+    console.error("Error updating medication notificationId:", e);
   }
 }
 

@@ -14,6 +14,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
+import * as Notifications from "expo-notifications";
 import {
   MedicationItem,
   PillForm,
@@ -22,8 +23,11 @@ import {
   getMedications,
   toggleMedicationTaken,
   deleteMedication,
+  parseScheduleTime,
+  updateMedicationNotificationId,
   getTodayKey,
 } from "@/services/healthLogService";
+import { scheduleMedicineReminder } from "@/services/notificationService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "MedicationCenter">;
 
@@ -64,12 +68,17 @@ export default function MedicationCenterScreen({ navigation }: Props) {
       return;
     }
 
-    await addMedication({
-      name: medName.trim(),
-      dose: dose.trim() || "1 dose",
+    const finalTime = scheduleTime.trim() || "08:00 AM";
+    const finalName = medName.trim();
+    const finalDose = dose.trim() || "1 dose";
+
+    // Save medication first so the record always exists even if notification fails
+    const newItem = await addMedication({
+      name: finalName,
+      dose: finalDose,
       form: selectedForm,
       color: selectedColor,
-      scheduleTime: scheduleTime.trim() || "08:00 AM",
+      scheduleTime: finalTime,
       instructions: instructions.trim() || "After food",
     });
 
@@ -77,6 +86,41 @@ export default function MedicationCenterScreen({ navigation }: Props) {
     setDose("500mg");
     setModalVisible(false);
     await loadData();
+
+    // ── Schedule daily notification ───────────────────────────────────────────
+    const parsed = parseScheduleTime(finalTime);
+    if (!parsed) {
+      // Invalid time format — medication is saved but no notification
+      console.warn("[MedReminder] Could not parse scheduleTime:", finalTime);
+      return;
+    }
+
+    // Check / request notification permission
+    let { status } = await Notifications.getPermissionsAsync();
+    if (status !== "granted") {
+      const { status: asked } = await Notifications.requestPermissionsAsync();
+      status = asked;
+    }
+    if (status !== "granted") {
+      Alert.alert(
+        "Notifications Disabled",
+        `${finalName} was saved but we couldn't set a reminder.\n\nEnable notifications in your device settings to receive medication reminders.`
+      );
+      return;
+    }
+
+    try {
+      const notifId = await scheduleMedicineReminder(
+        finalName,
+        finalDose,
+        parsed.hour,
+        parsed.minute
+      );
+      // Persist the notification ID so we can cancel it later
+      await updateMedicationNotificationId(newItem.id, notifId);
+    } catch (e) {
+      console.warn("[MedReminder] Scheduling failed:", e);
+    }
   };
 
   const handleToggleTaken = async (id: string, name: string) => {
@@ -94,6 +138,7 @@ export default function MedicationCenterScreen({ navigation }: Props) {
         text: "Remove",
         style: "destructive",
         onPress: async () => {
+          // deleteMedication automatically cancels the scheduled notification
           await deleteMedication(id);
           await loadData();
         },
