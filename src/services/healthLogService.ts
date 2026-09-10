@@ -1,6 +1,4 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as ExpoNotifications from "expo-notifications";
-import { cancelNotificationById, scheduleMedicineReminder } from "@/services/notificationService";
 
 // ═════════════════════════════════════════════════════════════
 // SLEEP LOGGING
@@ -191,7 +189,6 @@ export interface MedicationItem {
   takenDates: string[]; // array of YYYY-MM-DD when marked taken
   instructions?: string; // e.g. "After food"
   createdAt: number;
-  notificationId?: string; // expo-notifications identifier for the daily reminder
 }
 
 export type ActivityType =
@@ -412,174 +409,10 @@ export async function deleteMedication(id: string): Promise<void> {
     const raw = await AsyncStorage.getItem(STORAGE_KEYS.MEDICATIONS);
     if (!raw) return;
     const allMeds: MedicationItem[] = JSON.parse(raw);
-    // Cancel the scheduled notification before removing the record
-    const target = allMeds.find((m) => m.id === id);
-    if (target?.notificationId) {
-      try {
-        await cancelNotificationById(target.notificationId);
-      } catch (ne) {
-        console.warn("Could not cancel medication notification:", ne);
-      }
-    }
     const filtered = allMeds.filter((m) => m.id !== id);
     await AsyncStorage.setItem(STORAGE_KEYS.MEDICATIONS, JSON.stringify(filtered));
   } catch (e) {
     console.error("Error deleting medication:", e);
-  }
-}
-
-/**
- * Update an existing medication's fields.
- * Cancels the old scheduled notification and re-schedules a new one
- * with the updated time/name/dose/instructions.
- */
-export async function updateMedication(
-  id: string,
-  updates: Partial<Pick<MedicationItem, "name" | "dose" | "scheduleTime" | "instructions" | "form" | "color">>
-): Promise<MedicationItem | null> {
-  try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.MEDICATIONS);
-    if (!raw) return null;
-    const allMeds: MedicationItem[] = JSON.parse(raw);
-    const index = allMeds.findIndex((m) => m.id === id);
-    if (index === -1) return null;
-
-    const existing = allMeds[index];
-
-    // Cancel the old notification if one exists
-    if (existing.notificationId) {
-      try {
-        await cancelNotificationById(existing.notificationId);
-      } catch (ne) {
-        console.warn("Could not cancel old medication notification:", ne);
-      }
-    }
-
-    // Merge updates
-    const updated: MedicationItem = { ...existing, ...updates, notificationId: undefined };
-    allMeds[index] = updated;
-    await AsyncStorage.setItem(STORAGE_KEYS.MEDICATIONS, JSON.stringify(allMeds));
-
-    // Schedule a new notification for the updated medication
-    const parsed = parseScheduleTime(updated.scheduleTime);
-    if (parsed) {
-      try {
-        const notifId = await scheduleMedicineReminder(
-          updated.name,
-          updated.dose,
-          parsed.hour,
-          parsed.minute,
-          updated.instructions
-        );
-        allMeds[index] = { ...allMeds[index], notificationId: notifId };
-        await AsyncStorage.setItem(STORAGE_KEYS.MEDICATIONS, JSON.stringify(allMeds));
-        return allMeds[index];
-      } catch (ne) {
-        console.warn("Could not schedule updated medication notification:", ne);
-      }
-    }
-
-    return allMeds[index];
-  } catch (e) {
-    console.error("Error updating medication:", e);
-    return null;
-  }
-}
-
-/**
- * Parse a time string like "08:00 AM" / "11:30 PM" into { hour, minute }.
- * Returns null if the string is not recognisable.
- */
-export function parseScheduleTime(time: string): { hour: number; minute: number } | null {
-  // Expected format: "HH:MM AM" or "HH:MM PM" (case-insensitive)
-  const match = time.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-  if (!match) return null;
-  let hour = parseInt(match[1], 10);
-  const minute = parseInt(match[2], 10);
-  const period = match[3].toUpperCase();
-  if (hour < 1 || hour > 12 || minute < 0 || minute > 59) return null;
-  // Convert to 24-hour
-  if (period === "AM") {
-    hour = hour === 12 ? 0 : hour;        // 12:xx AM → 0:xx
-  } else {
-    hour = hour === 12 ? 12 : hour + 12;  // 12:xx PM → 12:xx, 1–11 PM → 13–23
-  }
-  return { hour, minute };
-}
-
-/**
- * Persist the notification ID on an existing medication record after scheduling.
- */
-export async function updateMedicationNotificationId(
-  id: string,
-  notificationId: string
-): Promise<void> {
-  try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.MEDICATIONS);
-    if (!raw) return;
-    const allMeds: MedicationItem[] = JSON.parse(raw);
-    const index = allMeds.findIndex((m) => m.id === id);
-    if (index === -1) return;
-    allMeds[index] = { ...allMeds[index], notificationId };
-    await AsyncStorage.setItem(STORAGE_KEYS.MEDICATIONS, JSON.stringify(allMeds));
-  } catch (e) {
-    console.error("Error updating medication notificationId:", e);
-  }
-}
-
-/**
- * Re-schedules medication reminders for any medication whose stored
- * notificationId no longer exists in the OS notification queue.
- *
- * Safe to call on every app start — it checks before scheduling to
- * prevent duplicates. Updates the stored notificationId after rescheduling.
- */
-export async function rescheduleAllMedicationReminders(): Promise<void> {
-  try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.MEDICATIONS);
-    if (!raw) return;
-    const allMeds: MedicationItem[] = JSON.parse(raw);
-    if (allMeds.length === 0) return;
-
-    // Get the identifiers of all currently scheduled OS notifications
-    const scheduled = await ExpoNotifications.getAllScheduledNotificationsAsync();
-    const scheduledIds = new Set(scheduled.map((n) => n.identifier));
-
-    let needsSave = false;
-
-    for (let i = 0; i < allMeds.length; i++) {
-      const med = allMeds[i];
-
-      // Skip if this medication already has a live notification
-      if (med.notificationId && scheduledIds.has(med.notificationId)) {
-        continue;
-      }
-
-      // Notification is missing — reschedule it
-      const parsed = parseScheduleTime(med.scheduleTime);
-      if (!parsed) continue;
-
-      try {
-        const notifId = await scheduleMedicineReminder(
-          med.name,
-          med.dose,
-          parsed.hour,
-          parsed.minute,
-          med.instructions
-        );
-        allMeds[i] = { ...med, notificationId: notifId };
-        needsSave = true;
-        console.log(`[MedReminder] Rescheduled reminder for ${med.name} at ${med.scheduleTime}`);
-      } catch (ne) {
-        console.warn(`[MedReminder] Could not reschedule ${med.name}:`, ne);
-      }
-    }
-
-    if (needsSave) {
-      await AsyncStorage.setItem(STORAGE_KEYS.MEDICATIONS, JSON.stringify(allMeds));
-    }
-  } catch (e) {
-    console.error("Error rescheduling medication reminders:", e);
   }
 }
 

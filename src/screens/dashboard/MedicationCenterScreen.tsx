@@ -14,7 +14,6 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
-import * as Notifications from "expo-notifications";
 import {
   MedicationItem,
   PillForm,
@@ -23,13 +22,8 @@ import {
   getMedications,
   toggleMedicationTaken,
   deleteMedication,
-  parseScheduleTime,
-  updateMedicationNotificationId,
-  updateMedication,
-  rescheduleAllMedicationReminders,
   getTodayKey,
 } from "@/services/healthLogService";
-import { scheduleMedicineReminder } from "@/services/notificationService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "MedicationCenter">;
 
@@ -45,23 +39,13 @@ export default function MedicationCenterScreen({ navigation }: Props) {
   const [medications, setMedications] = useState<MedicationItem[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
 
-  // Form states (add)
+  // Form states
   const [medName, setMedName] = useState("");
   const [dose, setDose] = useState("500mg");
   const [selectedForm, setSelectedForm] = useState<PillForm>("tablet");
   const [selectedColor, setSelectedColor] = useState(PILL_COLORS[4].hex); // Sky blue default
   const [scheduleTime, setScheduleTime] = useState("08:00 AM");
   const [instructions, setInstructions] = useState("After food");
-
-  // Edit states
-  const [editModalVisible, setEditModalVisible] = useState(false);
-  const [editingMed, setEditingMed] = useState<MedicationItem | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editDose, setEditDose] = useState("");
-  const [editForm, setEditForm] = useState<PillForm>("tablet");
-  const [editColor, setEditColor] = useState(PILL_COLORS[4].hex);
-  const [editTime, setEditTime] = useState("08:00 AM");
-  const [editInstructions, setEditInstructions] = useState("");
 
   const todayKey = getTodayKey();
 
@@ -72,12 +56,6 @@ export default function MedicationCenterScreen({ navigation }: Props) {
 
   useEffect(() => {
     loadData();
-    // On every mount: silently recover any missing reminders (e.g. after app restart).
-    // rescheduleAllMedicationReminders checks existing OS notifications first
-    // to avoid creating duplicates.
-    rescheduleAllMedicationReminders().catch((e) =>
-      console.warn("[MedReminder] reschedule on mount failed:", e)
-    );
   }, []);
 
   const handleAddMedication = async () => {
@@ -86,109 +64,18 @@ export default function MedicationCenterScreen({ navigation }: Props) {
       return;
     }
 
-    const finalTime = scheduleTime.trim() || "08:00 AM";
-    const finalName = medName.trim();
-    const finalDose = dose.trim() || "1 dose";
-    const finalInstructions = instructions.trim() || "After food";
-
-    // Save medication first so the record always exists even if notification fails
-    const newItem = await addMedication({
-      name: finalName,
-      dose: finalDose,
+    await addMedication({
+      name: medName.trim(),
+      dose: dose.trim() || "1 dose",
       form: selectedForm,
       color: selectedColor,
-      scheduleTime: finalTime,
-      instructions: finalInstructions,
+      scheduleTime: scheduleTime.trim() || "08:00 AM",
+      instructions: instructions.trim() || "After food",
     });
 
     setMedName("");
     setDose("500mg");
     setModalVisible(false);
-    await loadData();
-
-    // ── Schedule daily notification ───────────────────────────────────────────
-    const parsed = parseScheduleTime(finalTime);
-    if (!parsed) {
-      // Invalid time format — medication is saved but no notification
-      console.warn("[MedReminder] Could not parse scheduleTime:", finalTime);
-      return;
-    }
-
-    // Check / request notification permission
-    let { status } = await Notifications.getPermissionsAsync();
-    if (status !== "granted") {
-      const { status: asked } = await Notifications.requestPermissionsAsync();
-      status = asked;
-    }
-    if (status !== "granted") {
-      Alert.alert(
-        "Notifications Disabled",
-        `${finalName} was saved but we couldn't set a reminder.\n\nEnable notifications in your device settings to receive medication reminders.`
-      );
-      return;
-    }
-
-    try {
-      const notifId = await scheduleMedicineReminder(
-        finalName,
-        finalDose,
-        parsed.hour,
-        parsed.minute,
-        finalInstructions
-      );
-      // Persist the notification ID so we can cancel it later
-      await updateMedicationNotificationId(newItem.id, notifId);
-    } catch (e) {
-      console.warn("[MedReminder] Scheduling failed:", e);
-    }
-  };
-
-  // ── Edit handlers ────────────────────────────────────────────────────────
-
-  const handleEditOpen = (med: MedicationItem) => {
-    setEditingMed(med);
-    setEditName(med.name);
-    setEditDose(med.dose);
-    setEditForm(med.form);
-    setEditColor(med.color);
-    setEditTime(med.scheduleTime);
-    setEditInstructions(med.instructions || "");
-    setEditModalVisible(true);
-  };
-
-  const handleEditSave = async () => {
-    if (!editingMed) return;
-    if (!editName.trim()) {
-      Alert.alert("Missing Name", "Please enter the medication name.");
-      return;
-    }
-
-    // Check / request notification permission before scheduling
-    let { status } = await Notifications.getPermissionsAsync();
-    if (status !== "granted") {
-      const { status: asked } = await Notifications.requestPermissionsAsync();
-      status = asked;
-    }
-    if (status !== "granted") {
-      Alert.alert(
-        "Notifications Disabled",
-        `Changes saved but we couldn't update the reminder.\n\nEnable notifications in your device settings.`
-      );
-    }
-
-    setEditModalVisible(false);
-
-    // updateMedication cancels old notification and schedules a new one
-    await updateMedication(editingMed.id, {
-      name: editName.trim(),
-      dose: editDose.trim() || editingMed.dose,
-      form: editForm,
-      color: editColor,
-      scheduleTime: editTime.trim() || editingMed.scheduleTime,
-      instructions: editInstructions.trim() || editingMed.instructions,
-    });
-
-    setEditingMed(null);
     await loadData();
   };
 
@@ -207,7 +94,6 @@ export default function MedicationCenterScreen({ navigation }: Props) {
         text: "Remove",
         style: "destructive",
         onPress: async () => {
-          // deleteMedication automatically cancels the scheduled notification
           await deleteMedication(id);
           await loadData();
         },
@@ -315,10 +201,6 @@ export default function MedicationCenterScreen({ navigation }: Props) {
                       <View style={s.timeRow}>
                         <Ionicons name="time-outline" size={13} color="rgba(255,255,255,0.5)" />
                         <Text style={s.timeText}>{m.scheduleTime}</Text>
-                        {/* Bell icon confirms a reminder is active */}
-                        {m.notificationId ? (
-                          <Ionicons name="notifications" size={11} color="rgba(139,92,246,0.7)" style={{ marginLeft: 4 }} />
-                        ) : null}
                       </View>
                     </View>
                   </View>
@@ -336,14 +218,6 @@ export default function MedicationCenterScreen({ navigation }: Props) {
                       <Text style={[s.takenLabel, isTaken && s.takenLabelActive]}>
                         {isTaken ? "Taken" : "Take"}
                       </Text>
-                    </Pressable>
-
-                    {/* Edit button */}
-                    <Pressable
-                      style={s.editBtn}
-                      onPress={() => handleEditOpen(m)}
-                    >
-                      <Ionicons name="pencil-outline" size={15} color="rgba(255,255,255,0.45)" />
                     </Pressable>
 
                     <Pressable
@@ -460,109 +334,6 @@ export default function MedicationCenterScreen({ navigation }: Props) {
 
             <Pressable style={s.saveMedBtn} onPress={handleAddMedication}>
               <Text style={s.saveMedBtnText}>Add to Daily Schedule</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ── Edit Medication Modal ─────────────────────────────────── */}
-      <Modal visible={editModalVisible} transparent animationType="slide">
-        <View style={s.modalOverlay}>
-          <View style={s.modalContent}>
-            <View style={s.modalHeader}>
-              <Text style={s.modalTitle}>Edit Medication</Text>
-              <Pressable onPress={() => setEditModalVisible(false)}>
-                <Ionicons name="close" size={24} color="rgba(255,255,255,0.7)" />
-              </Pressable>
-            </View>
-
-            {/* Medicine Name */}
-            <Text style={s.inputLabel}>Medication Name</Text>
-            <TextInput
-              style={s.input}
-              placeholder="e.g. Paracetamol"
-              placeholderTextColor="rgba(255,255,255,0.3)"
-              value={editName}
-              onChangeText={setEditName}
-            />
-
-            {/* Dosage / Time */}
-            <View style={s.inputRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={s.inputLabel}>Dose / Weight</Text>
-                <TextInput
-                  style={s.input}
-                  placeholder="500mg or 10g"
-                  placeholderTextColor="rgba(255,255,255,0.3)"
-                  value={editDose}
-                  onChangeText={setEditDose}
-                />
-              </View>
-              <View style={{ width: 12 }} />
-              <View style={{ flex: 1 }}>
-                <Text style={s.inputLabel}>Scheduled Time</Text>
-                <TextInput
-                  style={s.input}
-                  placeholder="08:00 AM"
-                  placeholderTextColor="rgba(255,255,255,0.3)"
-                  value={editTime}
-                  onChangeText={setEditTime}
-                />
-              </View>
-            </View>
-
-            {/* Pill Form */}
-            <Text style={s.inputLabel}>Form</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.formScroll}>
-              {PILL_FORMS.map((f) => (
-                <Pressable
-                  key={f.form}
-                  onPress={() => setEditForm(f.form)}
-                  style={[s.formChip, editForm === f.form && s.formChipActive]}
-                >
-                  <Text style={[s.formChipText, editForm === f.form && s.formChipTextActive]}>
-                    {f.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-
-            {/* Pill Color Picker */}
-            <Text style={s.inputLabel}>Pill Color</Text>
-            <View style={s.colorRow}>
-              {PILL_COLORS.map((c) => (
-                <Pressable
-                  key={c.hex}
-                  onPress={() => setEditColor(c.hex)}
-                  style={[
-                    s.colorCircle,
-                    { backgroundColor: c.hex },
-                    editColor === c.hex && s.colorCircleActive,
-                  ]}
-                >
-                  {editColor === c.hex && (
-                    <Ionicons
-                      name="checkmark"
-                      size={14}
-                      color={c.hex === "#f8fafc" ? "#0c0e12" : "#ffffff"}
-                    />
-                  )}
-                </Pressable>
-              ))}
-            </View>
-
-            {/* Instructions */}
-            <Text style={s.inputLabel}>Instructions</Text>
-            <TextInput
-              style={s.input}
-              placeholder="e.g. After food, Before breakfast"
-              placeholderTextColor="rgba(255,255,255,0.3)"
-              value={editInstructions}
-              onChangeText={setEditInstructions}
-            />
-
-            <Pressable style={s.saveMedBtn} onPress={handleEditSave}>
-              <Text style={s.saveMedBtnText}>Save Changes</Text>
             </Pressable>
           </View>
         </View>
@@ -750,9 +521,6 @@ const s = StyleSheet.create({
     color: "#4ade80",
   },
   deleteBtn: {
-    padding: 4,
-  },
-  editBtn: {
     padding: 4,
   },
 
