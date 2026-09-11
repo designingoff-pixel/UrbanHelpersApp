@@ -220,6 +220,9 @@ const STORAGE_KEYS = {
   CALORIE_GOAL: "@urban_health_calorie_goal_v1",
   HIDDEN_CARDS: "@urban_health_hidden_cards_v1",
   STEP_COUNT: "@urban_health_step_count_v1",
+  STEP_BASELINE: "@urban_health_step_baseline_v1",
+  STEP_HISTORY: "@urban_health_step_history_v1",
+  STEP_GOAL: "@urban_health_step_goal_v1",
   WATER: "@urban_health_water_v1",
   BODY_COMP: "@urban_health_body_comp_v1",
 };
@@ -531,6 +534,25 @@ export async function clearHiddenCards(): Promise<void> {
 // STEP COUNT PERSISTENCE
 // ═════════════════════════════════════════════════════════════
 
+export interface StepBaselineData {
+  date: string; // YYYY-MM-DD
+  startOfDaySensorSteps: number; // Baseline cumulative sensor count at midnight / day start
+  lastSensorSteps: number; // Most recent reading from hardware sensor
+  recordedSteps: number; // Current day's calculated steps
+  rebootOffset: number; // Compensating offset if phone rebooted during day
+  lastUpdated: number; // Unix timestamp
+}
+
+export interface DailyStepRecord {
+  date: string; // YYYY-MM-DD
+  dayLabel: string; // "Mon", "Tue", etc.
+  steps: number;
+  goal: number;
+  completed: boolean;
+  distanceKm: number;
+  caloriesKcal: number;
+}
+
 export async function getTodayStepCount(): Promise<{ steps: number; date: string }> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEYS.STEP_COUNT);
@@ -553,6 +575,68 @@ export async function saveTodayStepCount(steps: number): Promise<void> {
     );
   } catch (e) {
     console.error("Error saving step count:", e);
+  }
+}
+
+export async function getStepBaseline(): Promise<StepBaselineData | null> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.STEP_BASELINE);
+    if (!raw) return null;
+    return JSON.parse(raw) as StepBaselineData;
+  } catch (e) {
+    console.error("Error loading step baseline:", e);
+    return null;
+  }
+}
+
+export async function saveStepBaseline(data: StepBaselineData): Promise<void> {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.STEP_BASELINE, JSON.stringify(data));
+  } catch (e) {
+    console.error("Error saving step baseline:", e);
+  }
+}
+
+export async function getStepHistory(): Promise<DailyStepRecord[]> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.STEP_HISTORY);
+    if (!raw) return [];
+    return JSON.parse(raw) as DailyStepRecord[];
+  } catch (e) {
+    console.error("Error loading step history:", e);
+    return [];
+  }
+}
+
+export async function saveDailyStepRecord(record: DailyStepRecord): Promise<void> {
+  try {
+    const existing = await getStepHistory();
+    // Replace if same date exists, else unshift
+    const filtered = existing.filter((r) => r.date !== record.date);
+    filtered.unshift(record);
+    // Keep up to 60 days
+    await AsyncStorage.setItem(STORAGE_KEYS.STEP_HISTORY, JSON.stringify(filtered.slice(0, 60)));
+  } catch (e) {
+    console.error("Error saving step record to history:", e);
+  }
+}
+
+export async function getStoredStepGoal(): Promise<number> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.STEP_GOAL);
+    if (!raw) return 6000;
+    const val = parseInt(raw, 10);
+    return isNaN(val) || val <= 0 ? 6000 : val;
+  } catch (e) {
+    return 6000;
+  }
+}
+
+export async function saveStoredStepGoal(goal: number): Promise<void> {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.STEP_GOAL, String(goal));
+  } catch (e) {
+    console.error("Error saving step goal:", e);
   }
 }
 

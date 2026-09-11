@@ -16,8 +16,13 @@ import {
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Path, Circle } from "react-native-svg";
-import { Pedometer } from "expo-sensors";
-import { initializeStepTracking, subscribeToStepCount } from "@/services/pedometerService";
+import {
+  initializeStepTracking,
+  subscribeToStepCount,
+  getWeeklyStepTotal,
+  getStepGoal,
+  WeeklyStepData,
+} from "@/services/stepCounterService";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Animated, {
   useSharedValue,
@@ -157,8 +162,10 @@ export default function HomeDashboardScreen({ navigation }: Props) {
   const [editMode, setEditMode] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
 
-  // Real step count from phone pedometer
+  // Real step count & weekly history from native step counter
   const [liveSteps, setLiveSteps] = useState(0);
+  const [liveStepGoal, setLiveStepGoal] = useState(6000);
+  const [weeklySteps, setWeeklySteps] = useState<WeeklyStepData | null>(null);
 
   const todayKey = getTodayKey();
 
@@ -196,11 +203,15 @@ export default function HomeDashboardScreen({ navigation }: Props) {
     getHiddenCards().then((ids) => setHiddenCards(ids));
   }, []);
 
-  // Real-time pedometer (phone hardware step counter + permissions + midnight-to-now query + fallback)
+  // Real-time pedometer (native Android SensorManager TYPE_STEP_COUNTER + persistent baseline)
   useEffect(() => {
     initializeStepTracking();
+    getStepGoal().then(setLiveStepGoal);
+    getWeeklyStepTotal().then(setWeeklySteps);
+
     const unsubscribe = subscribeToStepCount((steps) => {
       setLiveSteps(steps);
+      getWeeklyStepTotal().then(setWeeklySteps);
     });
     return () => {
       unsubscribe();
@@ -505,27 +516,44 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               <View style={s.actStepsCard}>
                 <Text style={s.actStepsTitle}>Steps</Text>
                 <Text style={s.actStepsValue}>{liveSteps.toLocaleString()}</Text>
-                <Text style={s.actStepsGoal}>6,000 steps</Text>
+                <Text style={s.actStepsGoal}>{liveStepGoal.toLocaleString()} steps</Text>
 
-                {/* 7-day bar chart at right / bottom */}
+                {/* 7-day bar chart from real recorded daily steps */}
                 <View style={s.actBarChartRow}>
-                  {[1, 2, 3, 4, 5, 6, 7].map((day) => {
-                    const isToday = day === 6;
-                    const fillH = Math.min(Math.round((liveSteps / 6000) * 52), 52);
+                  {(
+                    weeklySteps?.days || [
+                      { day: "Mon", steps: 0, isToday: false },
+                      { day: "Tue", steps: 0, isToday: false },
+                      { day: "Wed", steps: 0, isToday: false },
+                      { day: "Thu", steps: 0, isToday: false },
+                      { day: "Fri", steps: 0, isToday: false },
+                      { day: "Sat", steps: 0, isToday: false },
+                      { day: "Sun", steps: 0, isToday: false },
+                    ]
+                  ).map((d, idx) => {
+                    const fillH = Math.min(
+                      Math.round((d.steps / Math.max(liveStepGoal, 1)) * 52),
+                      52
+                    );
                     return (
-                      <View key={day} style={s.actBarCol}>
+                      <View key={d.day + idx} style={s.actBarCol}>
                         <View style={s.actBarTrack}>
-                          {isToday && (
+                          {d.steps > 0 && (
                             <View
                               style={[
-                                s.actBarFillGreen,
-                                { height: Math.max(fillH, 6) },
+                                d.isToday
+                                  ? s.actBarFillGreen
+                                  : {
+                                      backgroundColor: "rgba(255,255,255,0.35)",
+                                      borderRadius: 3,
+                                    },
+                                { height: Math.max(fillH, 4) },
                               ]}
                             />
                           )}
                         </View>
-                        <Text style={[s.actBarDayLabel, isToday && s.actBarDayToday]}>
-                          {day}
+                        <Text style={[s.actBarDayLabel, d.isToday && s.actBarDayToday]}>
+                          {d.day[0]}
                         </Text>
                       </View>
                     );
@@ -950,9 +978,19 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                       <View style={[s.halfCard, { backgroundColor: "#1c1c28" }]}>
                         <Text style={s.halfTitle}>Steps</Text>
                         <Text style={s.stepsNumber}>{liveSteps.toLocaleString()}</Text>
-                        <Text style={s.stepsGoal}>6,000 steps</Text>
+                        <Text style={s.stepsGoal}>{liveStepGoal.toLocaleString()} steps</Text>
                         <View style={s.stepsBarBg}>
-                          <View style={[s.stepsBarFill, { width: `${Math.min((liveSteps / 6000) * 100, 100)}%` }]} />
+                          <View
+                            style={[
+                              s.stepsBarFill,
+                              {
+                                width: `${Math.min(
+                                  (liveSteps / Math.max(liveStepGoal, 1)) * 100,
+                                  100
+                                )}%`,
+                              },
+                            ]}
+                          />
                         </View>
                       </View>
                     </PressCard>
