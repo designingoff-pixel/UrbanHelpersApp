@@ -69,6 +69,10 @@ import WeightLogDashboardScreen from "@/screens/dailyhealth/WeightLogDashboardSc
 import WellnessDashboardScreen from "@/screens/dailyhealth/WellnessDashboardScreen";
 import CycleTrackingScreen from "@/screens/health/CycleTrackingScreen";
 import AdvancedNutritionDashboardScreen from "@/screens/dailyhealth/AdvancedNutritionDashboardScreen";
+import BodyCompositionScreen from "@/screens/dailyhealth/BodyCompositionScreen";
+import BloodGlucoseScreen from "@/screens/health/BloodGlucoseScreen";
+import AntioxidantIndexScreen from "@/screens/health/AntioxidantIndexScreen";
+import AgesIndexScreen from "@/screens/health/AgesIndexScreen";
 
 // Module 6 — Daily Care
 import MedicineAlarmScreen from "@/screens/dailycare/MedicineAlarmScreen";
@@ -255,6 +259,10 @@ export function RootNavigator() {
       <Stack.Screen name="WellnessDashboard" component={WellnessDashboardScreen} />
       <Stack.Screen name="CycleTracking" component={CycleTrackingScreen} />
       <Stack.Screen name="AdvancedNutritionDashboard" component={AdvancedNutritionDashboardScreen} />
+      <Stack.Screen name="BodyComposition" component={BodyCompositionScreen} />
+      <Stack.Screen name="BloodGlucose" component={BloodGlucoseScreen} />
+      <Stack.Screen name="AntioxidantIndex" component={AntioxidantIndexScreen} />
+      <Stack.Screen name="AgesIndex" component={AgesIndexScreen} />
 
       {/* Module 6 */}
       <Stack.Screen name="MedicineAlarm" component={MedicineAlarmScreen} />

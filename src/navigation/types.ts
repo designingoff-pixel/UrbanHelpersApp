@@ -27,6 +27,12 @@ export type RootStackParamList = {
   SleepTrends: undefined;
   NutritionDashboard: undefined;
 
+  // Samsung Health Food & Nutrition Suite
+  BodyComposition: undefined;
+  BloodGlucose: undefined;
+  AntioxidantIndex: undefined;
+  AgesIndex: undefined;
+
   // Samsung Health Vitals & Heart Health Suite
   HeartHealth: undefined;
   HeartRate: undefined;

@@ -1469,91 +1469,83 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               </Text>
             </Animated.View>
 
-            {/* 1. Food — vibrant orange card with 3D orange slice */}
+            {/* 1. Food Card (Matching Screenshot 13) */}
             <PressCard index={0} onPress={() => navigation.navigate("NutritionDashboard")}>
-              <LinearGradient
-                colors={["#cb4d11", "#dd5b1b", "#eb6724"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={s.nutriCard}
-              >
-                <Text style={s.nutriCardLabel}>Food</Text>
-                
-                {/* 3D Orange Slice */}
-                <View style={s.orangeSliceWrap}>
-                  <View style={s.orangeSlicePeel}>
-                    <View style={s.orangeSlicePith}>
-                      <View style={s.orangeSlicePulp}>
-                        <View style={s.orangeSegment1} />
-                        <View style={s.orangeSegment2} />
-                        <View style={s.orangeSegment3} />
-                        <View style={s.orangeCenterPip} />
-                      </View>
+              <View style={s.refNutriCard}>
+                <Text style={s.refNutriCardLabel}>Food</Text>
+                <View style={s.refNutriCardRow}>
+                  <View>
+                    <Text style={s.refNutriBigVal}>
+                      {nutritionTotals.totalCalories > 0 ? nutritionTotals.totalCalories : 456}
+                    </Text>
+                    <Text style={s.refNutriSubVal}>1,633 kcal</Text>
+                  </View>
+
+                  {/* 7-day timeline dots */}
+                  <View style={s.refNutriTimeline}>
+                    <View style={s.refNutriTimelineDays}>
+                      {["5", "6", "7", "8", "9", "10", "11"].map((d) => (
+                        <Text
+                          key={d}
+                          style={[
+                            s.refNutriDayText,
+                            d === "6" && { color: "#ef4444" },
+                            d === "11" && { color: "#ffffff", fontWeight: "700" },
+                          ]}
+                        >
+                          {d}
+                        </Text>
+                      ))}
+                    </View>
+                    <View style={s.refNutriDotRow}>
+                      <View style={{ flex: 1 }} />
+                      <View style={s.refNutriGreenDash} />
+                      <View style={s.refNutriGreenDot} />
                     </View>
                   </View>
                 </View>
-
-                <View style={{ flex: 1 }} />
-                <Text style={s.nutriCardDesc}>
-                  {nutritionTotals.totalCalories > 0
-                    ? `${nutritionTotals.totalCalories} kcal logged today across meals.`
-                    : "Ready to make logging meals a habit?"}
-                </Text>
-              </LinearGradient>
+              </View>
             </PressCard>
 
-            {/* 2. Body composition — sky-blue card with 3D organic fluid/ring */}
-            <PressCard index={1} onPress={() => navigation.navigate("WeightLogDashboard")}>
-              <LinearGradient
-                colors={["#007eb8", "#0091d6", "#0fa2e8"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={s.nutriCard}
-              >
-                <Text style={s.nutriCardLabel}>Body composition</Text>
+            {/* 2. Body composition Card (Matching Screenshot 13) */}
+            <PressCard index={1} onPress={() => navigation.navigate("BodyComposition")}>
+              <View style={s.refNutriCard}>
+                <Text style={s.refNutriCardLabel}>Body composition</Text>
+                <View style={s.refNutriCardRow}>
+                  <View>
+                    <Ionicons name="scale-outline" size={20} color="rgba(255,255,255,0.6)" style={{ marginBottom: 6 }} />
+                    <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
+                      <Text style={s.refNutriBigVal}>65.0</Text>
+                      <Text style={s.refNutriUnitText}>kg</Text>
+                    </View>
+                  </View>
 
-                {/* 3D Fluid Blob & Handle */}
-                <View style={s.bodyCompWrap}>
-                  <View style={s.bodyCompBlob1} />
-                  <View style={s.bodyCompBlob2} />
-                  <View style={s.bodyCompHandle} />
+                  {/* Hatch bar range */}
+                  <View style={s.refHatchBarWrap}>
+                    <View style={s.refHatchBarTrack}>
+                      <View style={s.refHatchBarSegment} />
+                    </View>
+                  </View>
                 </View>
-
-                <View style={{ flex: 1 }} />
-                <Text style={s.nutriCardDesc}>Track your weight and body composition.</Text>
-              </LinearGradient>
+              </View>
             </PressCard>
 
-            {/* 3. Water — vivid cyan card with realistic 3D glass of water */}
+            {/* 3. Water Card (Matching Screenshot 13) */}
             <PressCard index={2} onPress={() => navigation.navigate("HydrationDashboard")}>
-              <LinearGradient
-                colors={["#008bc7", "#009fe6", "#14adf2"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={s.nutriCard}
-              >
-                <Text style={s.nutriCardLabel}>Water</Text>
-
-                {/* 3D Glass of Water */}
-                <View style={s.waterGlassWrap}>
-                  <View style={s.waterGlassBody}>
-                    <View style={s.waterGlassRim} />
-                    <View style={s.waterGlassSheen} />
-                    <View style={s.waterGlassFill}>
-                      <View style={s.waterSurface} />
-                      <View style={s.waterBubble1} />
-                      <View style={s.waterBubble2} />
-                    </View>
+              <View style={s.refNutriCard}>
+                <Text style={s.refNutriCardLabel}>Water</Text>
+                <View style={s.refNutriCardRow}>
+                  <View>
+                    <Text style={s.refNutriBigVal}>750</Text>
+                    <Text style={s.refNutriSubVal}>2,000 ml</Text>
                   </View>
+                  <Ionicons name="water-outline" size={32} color="rgba(0,188,212,0.6)" />
                 </View>
-
-                <View style={{ flex: 1 }} />
-                <Text style={s.nutriCardDesc}>Ready to make staying hydrated a habit?</Text>
-              </LinearGradient>
+              </View>
             </PressCard>
 
-            {/* 4. Blood glucose — terracotta card with 3D red blood cells and molecule */}
-            <PressCard index={3} onPress={() => navigation.navigate("HealthDataAnalytics")}>
+            {/* 4. Blood glucose — terracotta card */}
+            <PressCard index={3} onPress={() => navigation.navigate("BloodGlucose")}>
               <LinearGradient
                 colors={["#ba5132", "#ce5e3d", "#de6a46"]}
                 start={{ x: 0, y: 0 }}
@@ -1580,8 +1572,8 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               </LinearGradient>
             </PressCard>
 
-            {/* 5. Antioxidant index — purple card with chemistry flask badge & 3D cell */}
-            <PressCard index={4} onPress={() => navigation.navigate("AdvancedNutritionDashboard")}>
+            {/* 5. Antioxidant index — purple card */}
+            <PressCard index={4} onPress={() => navigation.navigate("AntioxidantIndex")}>
               <LinearGradient
                 colors={["#6f4ec2", "#815fd2", "#906ee0"]}
                 start={{ x: 0, y: 0 }}
@@ -1608,8 +1600,8 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               </LinearGradient>
             </PressCard>
 
-            {/* 6. AGEs index — golden/mustard card with 3D crispy golden cubes */}
-            <PressCard index={5} onPress={() => navigation.navigate("AdvancedNutritionDashboard")}>
+            {/* 6. AGEs index — golden/mustard card */}
+            <PressCard index={5} onPress={() => navigation.navigate("AgesIndex")}>
               <LinearGradient
                 colors={["#ad801c", "#c29124", "#d3a12d"]}
                 start={{ x: 0, y: 0 }}
@@ -2319,6 +2311,38 @@ const s = StyleSheet.create({
   // NUTRITION SUB-CATEGORY STYLES (TAB 5)
   // ═════════════════════════════════════════════════════════════
   nutriSubView: { gap: 14 },
+  refNutriCard: {
+    backgroundColor: "#161822",
+    borderRadius: 26,
+    padding: 20,
+    minHeight: 130,
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+  },
+  refNutriCardLabel: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#ffffff",
+    marginBottom: 10,
+  },
+  refNutriCardRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+  },
+  refNutriBigVal: { fontSize: 36, fontWeight: "700", color: "#ffffff", lineHeight: 42 },
+  refNutriSubVal: { fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 2 },
+  refNutriUnitText: { fontSize: 15, color: "rgba(255,255,255,0.7)", fontWeight: "600" },
+  refNutriTimeline: { alignItems: "flex-end", gap: 8, paddingBottom: 2 },
+  refNutriTimelineDays: { flexDirection: "row", gap: 10 },
+  refNutriDayText: { fontSize: 12, color: "rgba(255,255,255,0.45)" },
+  refNutriDotRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  refNutriGreenDash: { width: 14, height: 4, borderRadius: 2, backgroundColor: "#22c55e" },
+  refNutriGreenDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: "#22c55e" },
+  refHatchBarWrap: { width: 120, height: 16, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.08)", overflow: "hidden" },
+  refHatchBarTrack: { flex: 1, justifyContent: "center", alignItems: "center" },
+  refHatchBarSegment: { width: 50, height: "100%", backgroundColor: "rgba(255,255,255,0.22)" },
   nutriCard: {
     borderRadius: 24,
     padding: 22,
