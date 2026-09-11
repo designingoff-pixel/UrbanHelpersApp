@@ -24,6 +24,7 @@ export type RootStackParamList = {
   EmergencyAssistance: undefined;
   AICoach: undefined;
   SleepDashboard: undefined;
+  SleepTrends: undefined;
   NutritionDashboard: undefined;
 
   // Module 3 — Medical Records

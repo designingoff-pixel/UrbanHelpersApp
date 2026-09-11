@@ -35,6 +35,7 @@ import MedicationCenterScreen from "@/screens/dashboard/MedicationCenterScreen";
 import EmergencyAssistanceScreen from "@/screens/dashboard/EmergencyAssistanceScreen";
 import AICoachScreen from "@/screens/dashboard/AICoachScreen";
 import SleepDashboardScreen from "@/screens/dashboard/SleepDashboardScreen";
+import SleepTrendsScreen from "@/screens/dashboard/SleepTrendsScreen";
 import NutritionDashboardScreen from "@/screens/dashboard/NutritionDashboardScreen";
 
 // Module 3 — Medical Records
@@ -211,6 +212,7 @@ export function RootNavigator() {
       <Stack.Screen name="EmergencyAssistance" component={EmergencyAssistanceScreen} />
       <Stack.Screen name="AICoach" component={AICoachScreen} />
       <Stack.Screen name="SleepDashboard" component={SleepDashboardScreen} />
+      <Stack.Screen name="SleepTrends" component={SleepTrendsScreen} />
       <Stack.Screen name="NutritionDashboard" component={NutritionDashboardScreen} />
 
       {/* Module 3 */}
