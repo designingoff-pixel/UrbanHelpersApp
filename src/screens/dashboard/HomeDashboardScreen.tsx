@@ -1012,10 +1012,60 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               </View>
             )}
 
+            {/* 11. Mindfulness + Stress */}
+            {(isVisible("mindfulness") || isVisible("stress")) && (
+              <View style={[s.row2, { marginTop: 10 }]}>
+                {isVisible("mindfulness") && (
+                  <View style={[s.halfOuter, { position: "relative" }]}>
+                    <PressCard index={13} onPress={() => navigation.navigate("Mindfulness")} style={{ flex: 1 }}>
+                      <LinearGradient
+                        colors={["#23285c", "#323984", "#424ba8"]}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                        style={s.halfCard}
+                      >
+                        <View style={s.radarWrap}>
+                          <Ionicons name="flower-outline" size={46} color="rgba(255,255,255,0.18)" />
+                        </View>
+                        <Text style={s.halfTitle}>Mindfulness</Text>
+                        <Text style={s.halfSub}>Mood, breath & meditation</Text>
+                      </LinearGradient>
+                    </PressCard>
+                    {editMode && (
+                      <Pressable style={s.removeBtn} onPress={() => hideCard("mindfulness")}>
+                        <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                      </Pressable>
+                    )}
+                  </View>
+                )}
+                {isVisible("stress") && (
+                  <View style={[s.halfOuter, { position: "relative" }]}>
+                    <PressCard index={14} onPress={() => navigation.navigate("Stress")} style={{ flex: 1 }}>
+                      <LinearGradient
+                        colors={["#9e6400", "#b87600", "#cb8600"]}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                        style={s.halfCard}
+                      >
+                        <View style={s.radarWrap}>
+                          <Ionicons name="pulse-outline" size={46} color="rgba(255,255,255,0.18)" />
+                        </View>
+                        <Text style={s.halfTitle}>Stress</Text>
+                        <Text style={s.halfSub}>Keep track of your stress.</Text>
+                      </LinearGradient>
+                    </PressCard>
+                    {editMode && (
+                      <Pressable style={s.removeBtn} onPress={() => hideCard("stress")}>
+                        <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                      </Pressable>
+                    )}
+                  </View>
+                )}
+              </View>
+            )}
+
             {/* Urban Helpers Services CTA */}
             {isVisible("services") && (
               <View style={s.cardWrapper}>
-                <PressCard index={13} onPress={() => navigation.navigate("ServicesDashboard")}>
+                <PressCard index={15} onPress={() => navigation.navigate("ServicesDashboard")}>
                   <LinearGradient
                     colors={["#007c8a", "#00bcd4", "#26c6da"]}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
@@ -1341,7 +1391,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </Animated.View>
 
             {/* Mindfulness card with 3 sub-tiles */}
-            <PressCard index={0} onPress={() => navigation.navigate("MeditationDashboard")}>
+            <PressCard index={0} onPress={() => navigation.navigate("Mindfulness")}>
               <View style={s.mindMainCard}>
                 <View style={s.mindMainHeader}>
                   <Text style={s.mindMainTitle}>Mindfulness</Text>
@@ -1349,7 +1399,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 </View>
                 <View style={s.mindTilesRow}>
                   {/* 1. Mood check-in */}
-                  <Pressable style={s.mindTile} onPress={() => navigation.navigate("WellnessDashboard")}>
+                  <Pressable style={s.mindTile} onPress={() => navigation.navigate("MoodCheckIn")}>
                     <View style={s.moodGraphicBox}>
                       <View style={s.moodWave1} />
                       <View style={s.moodWave2} />
@@ -1359,7 +1409,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                   </Pressable>
 
                   {/* 2. Breathing exercises */}
-                  <Pressable style={s.mindTile} onPress={() => navigation.navigate("MeditationDashboard")}>
+                  <Pressable style={s.mindTile} onPress={() => navigation.navigate("BreathingExercises")}>
                     <View style={s.breathGraphicBox}>
                       <View style={s.breathOrb1} />
                       <View style={s.breathOrb2} />
@@ -1368,7 +1418,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                   </Pressable>
 
                   {/* 3. Meditation */}
-                  <Pressable style={s.mindTile} onPress={() => navigation.navigate("MeditationDashboard")}>
+                  <Pressable style={s.mindTile} onPress={() => navigation.navigate("Meditation")}>
                     <View style={s.zenGraphicBox}>
                       <View style={s.zenStone1} />
                       <View style={s.zenStone2} />
@@ -1381,7 +1431,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             {/* Stress card — ochre/yellow-amber */}
-            <PressCard index={1} onPress={() => navigation.navigate("WellnessDashboard")}>
+            <PressCard index={1} onPress={() => navigation.navigate("Stress")}>
               <LinearGradient
                 colors={["#9e6400", "#b87600", "#cb8600"]}
                 start={{ x: 0, y: 0 }}
