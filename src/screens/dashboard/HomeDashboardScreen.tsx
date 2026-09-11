@@ -17,6 +17,7 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Path, Circle } from "react-native-svg";
 import { Pedometer } from "expo-sensors";
+import { initializeStepTracking, subscribeToStepCount } from "@/services/pedometerService";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Animated, {
   useSharedValue,
@@ -185,30 +186,15 @@ export default function HomeDashboardScreen({ navigation }: Props) {
     getHiddenCards().then((ids) => setHiddenCards(ids));
   }, []);
 
-  // Real-time pedometer (phone hardware step counter)
+  // Real-time pedometer (phone hardware step counter + permissions + midnight-to-now query + fallback)
   useEffect(() => {
-    let subscription: any = null;
-    const startPedometer = async () => {
-      try {
-        if (!Pedometer || !Pedometer.isAvailableAsync) return;
-        const isAvailable = await Pedometer.isAvailableAsync();
-        if (!isAvailable) return;
-        // Load persisted count first
-        const saved = await getTodayStepCount();
-        setLiveSteps(saved.steps);
-        // Watch start-of-day to now for today's steps
-        const start = new Date();
-        start.setHours(0, 0, 0, 0);
-        subscription = Pedometer.watchStepCount((result: any) => {
-          if (result && typeof result.steps === "number") {
-            setLiveSteps(result.steps);
-            saveTodayStepCount(result.steps);
-          }
-        });
-      } catch (_) {}
+    initializeStepTracking();
+    const unsubscribe = subscribeToStepCount((steps) => {
+      setLiveSteps(steps);
+    });
+    return () => {
+      unsubscribe();
     };
-    startPedometer();
-    return () => { if (subscription) subscription.remove(); };
   }, []);
 
   useEffect(() => {
@@ -397,7 +383,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                       <View style={[s.actStatIconWrap, { backgroundColor: "#1aab3e" }]}>
                         <Ionicons name="footsteps" size={13} color="white" />
                       </View>
-                      <Text style={s.actStatVal}>0 <Text style={s.actStatUnit}>steps</Text></Text>
+                      <Text style={s.actStatVal}>{liveSteps.toLocaleString()} <Text style={s.actStatUnit}>steps</Text></Text>
                     </View>
                     {/* Minutes */}
                     <View style={s.actStatItem}>
@@ -508,17 +494,25 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             <PressCard index={4} onPress={() => navigation.navigate("DailyStepsDashboard")}>
               <View style={s.actStepsCard}>
                 <Text style={s.actStepsTitle}>Steps</Text>
-                <Text style={s.actStepsValue}>0</Text>
+                <Text style={s.actStepsValue}>{liveSteps.toLocaleString()}</Text>
                 <Text style={s.actStepsGoal}>6,000 steps</Text>
 
                 {/* 7-day bar chart at right / bottom */}
                 <View style={s.actBarChartRow}>
                   {[1, 2, 3, 4, 5, 6, 7].map((day) => {
                     const isToday = day === 6;
+                    const fillH = Math.min(Math.round((liveSteps / 6000) * 52), 52);
                     return (
                       <View key={day} style={s.actBarCol}>
                         <View style={s.actBarTrack}>
-                          {isToday && <View style={s.actBarFillGreen} />}
+                          {isToday && (
+                            <View
+                              style={[
+                                s.actBarFillGreen,
+                                { height: Math.max(fillH, 6) },
+                              ]}
+                            />
+                          )}
                         </View>
                         <Text style={[s.actBarDayLabel, isToday && s.actBarDayToday]}>
                           {day}

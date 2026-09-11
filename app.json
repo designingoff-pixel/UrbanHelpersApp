@@ -40,7 +40,8 @@
         "SCHEDULE_EXACT_ALARM",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
-        "INTERNET"
+        "INTERNET",
+        "ACTIVITY_RECOGNITION"
       ],
       "config": {
         "googleMaps": {
@@ -55,7 +56,8 @@
         "googleMapsApiKey": "AIzaSyAMzsDmDdT2c7r5j1dWTSxev6XSHJZTf-s"
       },
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Urban Helpers needs your location to show your professional's route."
+        "NSLocationWhenInUseUsageDescription": "Urban Helpers needs your location to show your professional's route.",
+        "NSMotionUsageDescription": "Urban Helpers tracks your daily steps and physical activity."
       }
     }
   }

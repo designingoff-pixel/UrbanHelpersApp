@@ -1,29 +1,28 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { ScrollView, Text, View, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
+import {
+  initializeStepTracking,
+  subscribeToStepCount,
+  getCurrentLiveSteps,
+} from "@/services/pedometerService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "DailyStepsDashboard">;
 
-const WEEK = [
-  { day: "Mon", steps: 7200, active: false },
-  { day: "Tue", steps: 9400, active: false },
-  { day: "Wed", steps: 8100, active: false },
-  { day: "Thu", steps: 11200, active: false },
-  { day: "Fri", steps: 8400, active: true },
-  { day: "Sat", steps: 6500, active: false },
-  { day: "Sun", steps: 4300, active: false },
+const BASE_WEEK = [
+  { day: "Mon", steps: 7200 },
+  { day: "Tue", steps: 9400 },
+  { day: "Wed", steps: 8100 },
+  { day: "Thu", steps: 11200 },
+  { day: "Fri", steps: 8400 },
+  { day: "Sat", steps: 6500 },
+  { day: "Sun", steps: 4300 },
 ];
 const MAX_STEPS = 12000;
-
-const ACTIVITIES = [
-  { icon: "walk", label: "Walking", value: "5.2 km", color: "#2563eb" },
-  { icon: "bicycle", label: "Cycling", value: "3.8 km", color: "#10b981" },
-  { icon: "fitness", label: "Running", value: "1.4 km", color: "#e11d48" },
-];
 
 const NAV = [
   { icon: "home-outline", label: "Home", route: "HomeDashboard" },
@@ -34,9 +33,40 @@ const NAV = [
 ];
 
 export default function DailyStepsDashboardScreen({ navigation }: Props) {
-  const todaySteps = 8400;
+  const [todaySteps, setTodaySteps] = useState(getCurrentLiveSteps() || 0);
   const goal = 10000;
-  const pct = todaySteps / goal;
+  const pct = Math.min(todaySteps / goal, 1);
+
+  useEffect(() => {
+    initializeStepTracking();
+    const unsub = subscribeToStepCount((steps) => {
+      setTodaySteps(steps);
+    });
+    return () => unsub();
+  }, []);
+
+  // Standard step metrics
+  // Average stride distance: ~0.762m
+  const distanceKm = ((todaySteps * 0.762) / 1000).toFixed(1);
+  // Average calories burned: ~0.04 kcal/step
+  const caloriesKcal = Math.round(todaySteps * 0.04);
+  // Average walking cadence: ~100 steps/min
+  const activeMinutes = Math.round(todaySteps / 100);
+
+  const walkingKm = distanceKm;
+  const cyclingKm = (Number(distanceKm) * 0.6).toFixed(1);
+  const runningKm = (Number(distanceKm) * 0.4).toFixed(1);
+
+  const pctDisplay = Math.round((todaySteps / goal) * 100);
+  const remainingSteps = Math.max(goal - todaySteps, 0);
+
+  // Today index (0 = Mon, 6 = Sun)
+  const todayIdx = (new Date().getDay() + 6) % 7;
+  const weekData = BASE_WEEK.map((w, idx) => ({
+    ...w,
+    steps: idx === todayIdx ? Math.max(todaySteps, 500) : w.steps,
+    active: idx === todayIdx,
+  }));
 
   return (
     <View style={s.root}>
@@ -74,17 +104,17 @@ export default function DailyStepsDashboardScreen({ navigation }: Props) {
           </View>
           <View style={s.heroStatsRow}>
             <View style={s.heroStat}>
-              <Text style={s.heroStatVal}>5.2</Text>
+              <Text style={s.heroStatVal}>{distanceKm}</Text>
               <Text style={s.heroStatLbl}>km</Text>
             </View>
             <View style={s.heroStatDiv} />
             <View style={s.heroStat}>
-              <Text style={s.heroStatVal}>320</Text>
+              <Text style={s.heroStatVal}>{caloriesKcal}</Text>
               <Text style={s.heroStatLbl}>kcal</Text>
             </View>
             <View style={s.heroStatDiv} />
             <View style={s.heroStat}>
-              <Text style={s.heroStatVal}>42</Text>
+              <Text style={s.heroStatVal}>{activeMinutes}</Text>
               <Text style={s.heroStatLbl}>min</Text>
             </View>
           </View>
@@ -94,12 +124,12 @@ export default function DailyStepsDashboardScreen({ navigation }: Props) {
         <Text style={s.sectionTitle}>Weekly Progress</Text>
         <View style={s.chartCard}>
           <View style={s.barChart}>
-            {WEEK.map((w, i) => (
+            {weekData.map((w, i) => (
               <View key={i} style={s.barWrap}>
                 <Text style={s.barVal}>{w.steps >= 1000 ? `${(w.steps / 1000).toFixed(1)}k` : w.steps}</Text>
                 <LinearGradient
                   colors={w.active ? ["#2563eb", "#0d9488"] : ["rgba(37,99,235,0.3)", "rgba(13,148,136,0.3)"]}
-                  style={[s.bar, { height: (w.steps / MAX_STEPS) * 110 }]}
+                  style={[s.bar, { height: Math.min((w.steps / MAX_STEPS) * 110, 110) }]}
                 />
                 <Text style={[s.barDay, w.active && s.barDayActive]}>{w.day}</Text>
               </View>
@@ -113,7 +143,11 @@ export default function DailyStepsDashboardScreen({ navigation }: Props) {
         {/* Today's Breakdown */}
         <Text style={s.sectionTitle}>Today's Activity</Text>
         <View style={s.activitiesGrid}>
-          {ACTIVITIES.map((a) => (
+          {[
+            { icon: "walk", label: "Walking", value: `${walkingKm} km`, color: "#2563eb" },
+            { icon: "bicycle", label: "Cycling", value: `${cyclingKm} km`, color: "#10b981" },
+            { icon: "fitness", label: "Running", value: `${runningKm} km`, color: "#e11d48" },
+          ].map((a) => (
             <View key={a.label} style={[s.actCard, { borderLeftColor: a.color, borderLeftWidth: 4 }]}>
               <View style={[s.actIcon, { backgroundColor: `${a.color}22` }]}>
                 <Ionicons name={a.icon as any} size={22} color={a.color} />
@@ -137,8 +171,12 @@ export default function DailyStepsDashboardScreen({ navigation }: Props) {
             </View>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={s.achieveTitle}>84% of your goal!</Text>
-            <Text style={s.achieveSub}>1,600 more steps to hit your target today.</Text>
+            <Text style={s.achieveTitle}>{pctDisplay}% of your goal!</Text>
+            <Text style={s.achieveSub}>
+              {remainingSteps > 0
+                ? `${remainingSteps.toLocaleString()} more steps to hit your target today.`
+                : "Target reached! Excellent work today!"}
+            </Text>
           </View>
           <Pressable
             onPress={() => navigation.navigate("FitnessDashboard")}
@@ -153,7 +191,7 @@ export default function DailyStepsDashboardScreen({ navigation }: Props) {
         <View style={s.leaderCard}>
           {[
             { rank: 1, name: "Alex M.", steps: "12,450", you: false },
-            { rank: 2, name: "You", steps: "8,400", you: true },
+            { rank: 2, name: "You", steps: todaySteps.toLocaleString(), you: true },
             { rank: 3, name: "Jamie R.", steps: "7,980", you: false },
           ].map((l) => (
             <View key={l.rank} style={[s.leaderRow, l.you && s.leaderRowActive]}>
