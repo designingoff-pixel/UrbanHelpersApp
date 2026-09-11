@@ -33,6 +33,13 @@ export type RootStackParamList = {
   BloodOxygen: undefined;
   VascularLoad: undefined;
 
+  // Samsung Health Mindfulness & Stress Suite
+  Mindfulness: undefined;
+  MoodCheckIn: undefined;
+  BreathingExercises: undefined;
+  Meditation: undefined;
+  Stress: undefined;
+
   // Module 3 — Medical Records
   HealthDataAnalytics: undefined;
   LabReportsHub: undefined;

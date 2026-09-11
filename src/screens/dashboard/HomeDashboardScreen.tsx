@@ -794,7 +794,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                     <QuickCircle icon="barbell-outline" label="Weight"  onPress={() => navigation.navigate("WeightLogDashboard")} />
                   </View>
                   <View style={s.quickRow}>
-                    <QuickCircle icon="leaf-outline"   label="Meditate" onPress={() => navigation.navigate("MeditationDashboard")} />
+                    <QuickCircle icon="leaf-outline"   label="Meditate" onPress={() => navigation.navigate("Mindfulness")} />
                     <QuickCircle icon="list-outline"   label="More"     onPress={() => navigation.navigate("Discover")} />
                   </View>
                 </View>

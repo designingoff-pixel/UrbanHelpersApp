@@ -41,6 +41,11 @@ import HeartHealthScreen from "@/screens/health/HeartHealthScreen";
 import HeartRateScreen from "@/screens/health/HeartRateScreen";
 import BloodOxygenScreen from "@/screens/health/BloodOxygenScreen";
 import VascularLoadScreen from "@/screens/health/VascularLoadScreen";
+import MindfulnessScreen from "@/screens/health/MindfulnessScreen";
+import MoodCheckInScreen from "@/screens/health/MoodCheckInScreen";
+import BreathingExercisesScreen from "@/screens/health/BreathingExercisesScreen";
+import MeditationScreen from "@/screens/health/MeditationScreen";
+import StressScreen from "@/screens/health/StressScreen";
 
 // Module 3 — Medical Records
 import HealthDataAnalyticsScreen from "@/screens/medical/HealthDataAnalyticsScreen";
@@ -222,6 +227,11 @@ export function RootNavigator() {
       <Stack.Screen name="HeartRate" component={HeartRateScreen} />
       <Stack.Screen name="BloodOxygen" component={BloodOxygenScreen} />
       <Stack.Screen name="VascularLoad" component={VascularLoadScreen} />
+      <Stack.Screen name="Mindfulness" component={MindfulnessScreen} />
+      <Stack.Screen name="MoodCheckIn" component={MoodCheckInScreen} />
+      <Stack.Screen name="BreathingExercises" component={BreathingExercisesScreen} />
+      <Stack.Screen name="Meditation" component={MeditationScreen} />
+      <Stack.Screen name="Stress" component={StressScreen} />
 
       {/* Module 3 */}
       <Stack.Screen name="HealthDataAnalytics" component={HealthDataAnalyticsScreen} />
