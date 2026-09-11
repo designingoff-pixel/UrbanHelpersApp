@@ -233,13 +233,13 @@ const FOOD_DATABASE: FoodDefinition[] = [
 ];
 
 // Meal Categories exactly matching Samsung Health Food page
-const MEAL_CATEGORIES: { key: MealType; title: string; defaultKcal: number }[] = [
-  { key: "breakfast", title: "Breakfast", defaultKcal: 40 },
-  { key: "lunch", title: "Lunch", defaultKcal: 348 },
-  { key: "dinner", title: "Dinner", defaultKcal: 68 },
-  { key: "snack", title: "Morning snack", defaultKcal: 0 },
-  { key: "snack", title: "Afternoon snack", defaultKcal: 0 },
-  { key: "snack", title: "Evening snack", defaultKcal: 0 },
+const MEAL_CATEGORIES: { key: MealType; title: string }[] = [
+  { key: "breakfast", title: "Breakfast" },
+  { key: "lunch", title: "Lunch" },
+  { key: "dinner", title: "Dinner" },
+  { key: "snack", title: "Morning snack" },
+  { key: "snack", title: "Afternoon snack" },
+  { key: "snack", title: "Evening snack" },
 ];
 
 export default function NutritionDashboardScreen({ navigation }: Props) {
@@ -249,10 +249,10 @@ export default function NutritionDashboardScreen({ navigation }: Props) {
   // Real logged meals & metrics from healthLogService
   const [meals, setMeals] = useState<MealItem[]>([]);
   const [nutritionTotals, setNutritionTotals] = useState({
-    totalCalories: 456,
-    totalCarbs: 68.8,
-    totalFat: 10.5,
-    totalProtein: 20.1,
+    totalCalories: 0,
+    totalCarbs: 0,
+    totalFat: 0,
+    totalProtein: 0,
   });
 
   // Modal states for full logging flow
@@ -284,15 +284,12 @@ export default function NutritionDashboardScreen({ navigation }: Props) {
       const storedMeals = await getMeals();
       const totals = await getDailyNutritionTotals();
       setMeals(storedMeals);
-
-      if (totals.totalCalories > 0) {
-        setNutritionTotals({
-          totalCalories: totals.totalCalories,
-          totalCarbs: Math.round(totals.totalCarbs * 10) / 10,
-          totalFat: Math.round(totals.totalFat * 10) / 10,
-          totalProtein: Math.round(totals.totalProtein * 10) / 10,
-        });
-      }
+      setNutritionTotals({
+        totalCalories: totals.totalCalories,
+        totalCarbs: Math.round(totals.totalCarbs * 10) / 10,
+        totalFat: Math.round(totals.totalFat * 10) / 10,
+        totalProtein: Math.round(totals.totalProtein * 10) / 10,
+      });
     } catch (e) {
       console.log("Error loading nutrition totals:", e);
     }
@@ -351,10 +348,11 @@ export default function NutritionDashboardScreen({ navigation }: Props) {
 
   // Calculate current dynamic macro percentages
   const totalMacrosWeight =
-    nutritionTotals.totalCarbs + nutritionTotals.totalFat + nutritionTotals.totalProtein || 1;
-  const carbPct = Math.round((nutritionTotals.totalCarbs / totalMacrosWeight) * 100);
-  const fatPct = Math.round((nutritionTotals.totalFat / totalMacrosWeight) * 100);
-  const proteinPct = Math.max(100 - carbPct - fatPct, 0);
+    nutritionTotals.totalCarbs + nutritionTotals.totalFat + nutritionTotals.totalProtein;
+  const hasMacros = totalMacrosWeight > 0;
+  const carbPct = hasMacros ? Math.round((nutritionTotals.totalCarbs / totalMacrosWeight) * 100) : 0;
+  const fatPct = hasMacros ? Math.round((nutritionTotals.totalFat / totalMacrosWeight) * 100) : 0;
+  const proteinPct = hasMacros ? Math.max(100 - carbPct - fatPct, 0) : 0;
 
   // Filter food search
   const filteredFoods = FOOD_DATABASE.filter((f) =>
@@ -451,7 +449,7 @@ export default function NutritionDashboardScreen({ navigation }: Props) {
           </View>
         </View>
 
-        {/* 2. Nutrition Info Card (Carb, Fat, Protein + Actual vs Recommended) */}
+        {/* 2. Nutrition info Card (Screenshot 2 & 12) */}
         <View style={s.nutriInfoCard}>
           <View style={s.nutriHeaderRow}>
             <Text style={s.nutriTitle}>Nutrition info</Text>
@@ -491,9 +489,15 @@ export default function NutritionDashboardScreen({ navigation }: Props) {
             <Text style={s.ratioNum}>{proteinPct}%</Text>
           </View>
           <View style={s.ratioBarWrap}>
-            <View style={[s.barCarb, { flex: carbPct || 61 }]} />
-            <View style={[s.barFat, { flex: fatPct || 21 }]} />
-            <View style={[s.barProtein, { flex: proteinPct || 18 }]} />
+            {hasMacros ? (
+              <>
+                <View style={[s.barCarb, { flex: Math.max(carbPct, 1) }]} />
+                <View style={[s.barFat, { flex: Math.max(fatPct, 1) }]} />
+                <View style={[s.barProtein, { flex: Math.max(proteinPct, 1) }]} />
+              </>
+            ) : (
+              <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 7 }} />
+            )}
           </View>
 
           {/* Recommended Macro Ratio Bar */}
@@ -512,13 +516,8 @@ export default function NutritionDashboardScreen({ navigation }: Props) {
           {MEAL_CATEGORIES.map((cat, idx) => {
             // Find logged items matching this category
             const loggedForMeal = meals.filter((m) => m.mealType === cat.key);
-            const mealCalories = loggedForMeal.length > 0
-              ? loggedForMeal.reduce((sum, item) => sum + item.calories, 0)
-              : (selectedDayOffset === 0 && cat.defaultKcal > 0 ? cat.defaultKcal : 0);
-
-            const loggedFoodNames = loggedForMeal.length > 0
-              ? loggedForMeal.map((m) => m.name).join(", ")
-              : (cat.title === "Breakfast" && mealCalories === 40 ? "Idli" : cat.title === "Lunch" && mealCalories === 348 ? "Chicken Biryani" : cat.title === "Dinner" && mealCalories === 68 ? "Chapati" : "");
+            const mealCalories = loggedForMeal.reduce((sum, item) => sum + item.calories, 0);
+            const loggedFoodNames = loggedForMeal.map((m) => m.name).join(", ");
 
             return (
               <View key={`${cat.title}-${idx}`}>
@@ -535,9 +534,13 @@ export default function NutritionDashboardScreen({ navigation }: Props) {
                   {/* Meal Title & logged foods subtitle */}
                   <View style={s.mealInfoWrap}>
                     <Text style={s.mealName}>{cat.title}</Text>
-                    {loggedFoodNames.length > 0 && (
+                    {loggedFoodNames.length > 0 ? (
                       <Text style={s.mealSubFoods} numberOfLines={1}>
                         {loggedFoodNames}
+                      </Text>
+                    ) : (
+                      <Text style={[s.mealSubFoods, { color: "rgba(255,255,255,0.3)" }]} numberOfLines={1}>
+                        No food logged yet
                       </Text>
                     )}
                   </View>
@@ -586,7 +589,7 @@ export default function NutritionDashboardScreen({ navigation }: Props) {
               ].map((item, i) => (
                 <View key={i} style={s.dayCol}>
                   <View style={s.dotSlot}>
-                    {item.isToday && <View style={s.greenDot} />}
+                    {item.isToday && nutritionTotals.totalCalories > 0 && <View style={s.greenDot} />}
                   </View>
                   <Text
                     style={[

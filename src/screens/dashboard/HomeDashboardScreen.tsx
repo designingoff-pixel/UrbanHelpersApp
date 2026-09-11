@@ -43,6 +43,8 @@ import {
   clearHiddenCards,
   getTodayStepCount,
   saveTodayStepCount,
+  getTodayWaterIntake,
+  getLatestBodyComp,
 } from "@/services/healthLogService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "HomeDashboard">;
@@ -147,6 +149,8 @@ export default function HomeDashboardScreen({ navigation }: Props) {
   const [nutritionTotals, setNutritionTotals] = useState({ totalCalories: 0, totalProtein: 0, totalCarbs: 0, totalFat: 0 });
   const [medications, setMedications] = useState<MedicationItem[]>([]);
   const [activityTotals, setActivityTotals] = useState({ totalMins: 0, totalCalories: 0 });
+  const [waterIntake, setWaterIntake] = useState(0);
+  const [bodyWeight, setBodyWeight] = useState<number | null>(null);
 
   // Edit home & 3-dot menu state
   const [hiddenCards, setHiddenCards] = useState<string[]>([]);
@@ -160,10 +164,12 @@ export default function HomeDashboardScreen({ navigation }: Props) {
 
   const loadHealthData = async () => {
     try {
-      const [nutri, meds, acts] = await Promise.all([
+      const [nutri, meds, acts, water, body] = await Promise.all([
         getDailyNutritionTotals(),
         getMedications(),
         getDailyActivityTotals(),
+        getTodayWaterIntake(),
+        getLatestBodyComp(),
       ]);
       setNutritionTotals({
         totalCalories: nutri.totalCalories,
@@ -176,6 +182,10 @@ export default function HomeDashboardScreen({ navigation }: Props) {
         totalMins: acts.totalMins,
         totalCalories: acts.totalCalories,
       });
+      setWaterIntake(water);
+      if (body) {
+        setBodyWeight(body.weight);
+      }
     } catch (e) {
       console.log("Error loading health logs for home:", e);
     }
@@ -1476,7 +1486,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 <View style={s.refNutriCardRow}>
                   <View>
                     <Text style={s.refNutriBigVal}>
-                      {nutritionTotals.totalCalories > 0 ? nutritionTotals.totalCalories : 456}
+                      {nutritionTotals.totalCalories}
                     </Text>
                     <Text style={s.refNutriSubVal}>1,633 kcal</Text>
                   </View>
@@ -1500,7 +1510,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                     <View style={s.refNutriDotRow}>
                       <View style={{ flex: 1 }} />
                       <View style={s.refNutriGreenDash} />
-                      <View style={s.refNutriGreenDot} />
+                      {nutritionTotals.totalCalories > 0 && <View style={s.refNutriGreenDot} />}
                     </View>
                   </View>
                 </View>
@@ -1515,7 +1525,9 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                   <View>
                     <Ionicons name="scale-outline" size={20} color="rgba(255,255,255,0.6)" style={{ marginBottom: 6 }} />
                     <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
-                      <Text style={s.refNutriBigVal}>65.0</Text>
+                      <Text style={s.refNutriBigVal}>
+                        {bodyWeight != null ? bodyWeight.toFixed(1) : "--"}
+                      </Text>
                       <Text style={s.refNutriUnitText}>kg</Text>
                     </View>
                   </View>
@@ -1523,7 +1535,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                   {/* Hatch bar range */}
                   <View style={s.refHatchBarWrap}>
                     <View style={s.refHatchBarTrack}>
-                      <View style={s.refHatchBarSegment} />
+                      {bodyWeight != null && <View style={s.refHatchBarSegment} />}
                     </View>
                   </View>
                 </View>
@@ -1536,7 +1548,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 <Text style={s.refNutriCardLabel}>Water</Text>
                 <View style={s.refNutriCardRow}>
                   <View>
-                    <Text style={s.refNutriBigVal}>750</Text>
+                    <Text style={s.refNutriBigVal}>{waterIntake}</Text>
                     <Text style={s.refNutriSubVal}>2,000 ml</Text>
                   </View>
                   <Ionicons name="water-outline" size={32} color="rgba(0,188,212,0.6)" />

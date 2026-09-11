@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ScrollView,
   Text,
@@ -14,32 +14,61 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 
+import {
+  getLatestBodyComp,
+  saveBodyComp,
+  BodyCompEntry,
+} from "@/services/healthLogService";
+
 type Props = NativeStackScreenProps<RootStackParamList, "BodyComposition">;
 
 const { width: SW } = Dimensions.get("window");
 
 export default function BodyCompositionScreen({ navigation }: Props) {
-  const [weight, setWeight] = useState(65.0);
-  const [muscle, setMuscle] = useState("28.4");
-  const [bodyFat, setBodyFat] = useState("18.5");
+  const [weight, setWeight] = useState<number | null>(null);
+  const [muscle, setMuscle] = useState("");
+  const [bodyFat, setBodyFat] = useState("");
   const [notes, setNotes] = useState("");
+  const [timeStr, setTimeStr] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
 
   // Temporary state for the modal
   const [tempWeightInt, setTempWeightInt] = useState(65);
   const [tempWeightDec, setTempWeightDec] = useState(0);
 
+  useEffect(() => {
+    loadBodyComp();
+  }, []);
+
+  const loadBodyComp = async () => {
+    const latest = await getLatestBodyComp();
+    if (latest) {
+      setWeight(latest.weight);
+      setMuscle(latest.muscle || "");
+      setBodyFat(latest.bodyFat || "");
+      setTimeStr(latest.time || "");
+    }
+  };
+
   const handleOpenModal = () => {
-    const intPart = Math.floor(weight);
-    const decPart = Math.round((weight - intPart) * 10);
+    const currentWeight = weight != null ? weight : 65.0;
+    const intPart = Math.floor(currentWeight);
+    const decPart = Math.round((currentWeight - intPart) * 10);
     setTempWeightInt(intPart);
     setTempWeightDec(decPart);
     setModalVisible(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const newWeight = parseFloat(`${tempWeightInt}.${tempWeightDec}`);
+    const saved = await saveBodyComp({
+      weight: newWeight,
+      muscle: muscle.trim() || undefined,
+      bodyFat: bodyFat.trim() || undefined,
+      notes: notes.trim() || undefined,
+    });
     setWeight(newWeight);
+    setTimeStr(saved.time);
     setModalVisible(false);
   };
 
@@ -83,11 +112,13 @@ export default function BodyCompositionScreen({ navigation }: Props) {
             <MaterialCommunityIcons name="scale-bathroom" size={24} color="rgba(255,255,255,0.5)" />
           </View>
           <View style={s.weightNumRow}>
-            <Text style={s.weightNum}>{weight.toFixed(1)}</Text>
+            <Text style={s.weightNum}>{weight != null ? weight.toFixed(1) : "--"}</Text>
             <Text style={s.weightUnit}>kg</Text>
           </View>
         </View>
-        <Text style={s.manualTimeLabel}>2:45 pm (manual input)</Text>
+        <Text style={s.manualTimeLabel}>
+          {timeStr || (weight != null ? "Manual input" : "No data recorded (tap Enter data below)")}
+        </Text>
 
         {/* 2. Weight over last 7 days */}
         <View style={s.chartCard}>
@@ -99,7 +130,7 @@ export default function BodyCompositionScreen({ navigation }: Props) {
           {/* Chart area */}
           <View style={s.chartBody}>
             <View style={s.dottedLine} />
-            <Text style={s.axisValLabel}>65</Text>
+            <Text style={s.axisValLabel}>{weight != null ? Math.round(weight) : "--"}</Text>
 
             {/* Timeline days */}
             <View style={s.daysRow}>
@@ -114,7 +145,7 @@ export default function BodyCompositionScreen({ navigation }: Props) {
               ].map((item, i) => (
                 <View key={i} style={s.dayCol}>
                   <View style={s.dotSlot}>
-                    {item.isToday && <View style={s.activeDot} />}
+                    {item.isToday && weight != null && <View style={s.activeDot} />}
                   </View>
                   <Text
                     style={[

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ScrollView,
   Text,
@@ -10,31 +10,36 @@ import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 
+import {
+  WaterEntry,
+  getWaterLogs,
+  addWaterLog,
+} from "@/services/healthLogService";
+
 type Props = NativeStackScreenProps<RootStackParamList, "HydrationDashboard">;
 
-interface WaterLog {
-  id: string;
-  amount: number;
-  time: string;
-}
-
 export default function HydrationDashboardScreen({ navigation }: Props) {
-  const [intake, setIntake] = useState(750);
-  const [logs, setLogs] = useState<WaterLog[]>([
-    { id: "1", amount: 250, time: "2:45 pm" },
-    { id: "2", amount: 250, time: "2:45 pm" },
-    { id: "3", amount: 250, time: "2:45 pm" },
-  ]);
+  const [intake, setIntake] = useState(0);
+  const [logs, setLogs] = useState<WaterEntry[]>([]);
+
+  useEffect(() => {
+    loadWaterData();
+  }, []);
+
+  const loadWaterData = async () => {
+    const list = await getWaterLogs();
+    const total = list.reduce((sum, item) => sum + (item.amount || 0), 0);
+    setLogs(list);
+    setIntake(total);
+  };
 
   const target = 2000;
   const progressRatio = Math.min(intake / target, 1);
 
-  const handleAddWater = (amount: number = 250) => {
-    const newIntake = intake + amount;
-    setIntake(newIntake);
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }).toLowerCase();
-    setLogs((prev) => [{ id: Date.now().toString(), amount, time: timeStr }, ...prev]);
+  const handleAddWater = async (amount: number = 250) => {
+    const newEntry = await addWaterLog(amount);
+    setLogs((prev) => [newEntry, ...prev]);
+    setIntake((prev) => prev + amount);
   };
 
   return (
@@ -101,9 +106,9 @@ export default function HydrationDashboardScreen({ navigation }: Props) {
         </View>
 
         {/* 2. Logged Entries Card */}
-        {logs.length > 0 && (
-          <View style={s.entriesCard}>
-            {logs.map((item, idx) => (
+        <View style={s.entriesCard}>
+          {logs.length > 0 ? (
+            logs.map((item, idx) => (
               <View key={item.id}>
                 <View style={s.entryRow}>
                   <Text style={s.entryAmount}>{item.amount} ml</Text>
@@ -111,9 +116,14 @@ export default function HydrationDashboardScreen({ navigation }: Props) {
                 </View>
                 {idx < logs.length - 1 && <View style={s.entryDivider} />}
               </View>
-            ))}
-          </View>
-        )}
+            ))
+          ) : (
+            <View style={{ paddingVertical: 16, alignItems: "center" }}>
+              <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, fontWeight: "500" }}>No water logged today</Text>
+              <Text style={{ color: "rgba(255,255,255,0.28)", fontSize: 12, marginTop: 4 }}>Tap "+ 250 ml" to record your first drink.</Text>
+            </View>
+          )}
+        </View>
 
         {/* 3. Water Intake over last 7 days */}
         <View style={s.trendCard}>
@@ -126,7 +136,7 @@ export default function HydrationDashboardScreen({ navigation }: Props) {
             <View style={s.dottedLine} />
             <View style={s.avgBadge}>
               <Text style={s.avgBadgeLabel}>Avg.</Text>
-              <Text style={s.avgBadgeVal}>750</Text>
+              <Text style={s.avgBadgeVal}>{intake > 0 ? intake : 0}</Text>
             </View>
 
             {/* Days timeline */}
@@ -142,7 +152,7 @@ export default function HydrationDashboardScreen({ navigation }: Props) {
               ].map((item, i) => (
                 <View key={i} style={s.dayCol}>
                   <View style={s.dotSlot}>
-                    {item.isToday && <View style={s.greenDot} />}
+                    {item.isToday && intake > 0 && <View style={s.greenDot} />}
                   </View>
                   <Text
                     style={[

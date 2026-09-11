@@ -220,6 +220,8 @@ const STORAGE_KEYS = {
   CALORIE_GOAL: "@urban_health_calorie_goal_v1",
   HIDDEN_CARDS: "@urban_health_hidden_cards_v1",
   STEP_COUNT: "@urban_health_step_count_v1",
+  WATER: "@urban_health_water_v1",
+  BODY_COMP: "@urban_health_body_comp_v1",
 };
 
 export const getTodayKey = (): string => {
@@ -553,3 +555,121 @@ export async function saveTodayStepCount(steps: number): Promise<void> {
     console.error("Error saving step count:", e);
   }
 }
+
+// ═════════════════════════════════════════════════════════════
+// WATER / HYDRATION LOGGING
+// ═════════════════════════════════════════════════════════════
+
+export interface WaterEntry {
+  id: string;
+  amount: number; // ml
+  time: string; // e.g. "2:45 pm"
+  date: string; // YYYY-MM-DD
+  timestamp: number;
+}
+
+export async function getWaterLogs(date: string = getTodayKey()): Promise<WaterEntry[]> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.WATER);
+    if (!raw) return [];
+    const all: WaterEntry[] = JSON.parse(raw);
+    return all.filter((w) => w.date === date);
+  } catch (e) {
+    console.error("Error loading water logs:", e);
+    return [];
+  }
+}
+
+export async function addWaterLog(amount: number = 250, date: string = getTodayKey()): Promise<WaterEntry> {
+  const now = new Date();
+  const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }).toLowerCase();
+  const newEntry: WaterEntry = {
+    id: `water_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    amount,
+    time,
+    date,
+    timestamp: Date.now(),
+  };
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.WATER);
+    const all: WaterEntry[] = raw ? JSON.parse(raw) : [];
+    all.unshift(newEntry);
+    await AsyncStorage.setItem(STORAGE_KEYS.WATER, JSON.stringify(all));
+  } catch (e) {
+    console.error("Error saving water log:", e);
+  }
+  return newEntry;
+}
+
+export async function getTodayWaterIntake(date: string = getTodayKey()): Promise<number> {
+  const logs = await getWaterLogs(date);
+  return logs.reduce((sum, item) => sum + (item.amount || 0), 0);
+}
+
+// ═════════════════════════════════════════════════════════════
+// BODY COMPOSITION / WEIGHT LOGGING
+// ═════════════════════════════════════════════════════════════
+
+export interface BodyCompEntry {
+  id: string;
+  weight: number; // kg
+  muscle?: string;
+  bodyFat?: string;
+  notes?: string;
+  date: string;
+  time: string;
+  timestamp: number;
+}
+
+export async function getLatestBodyComp(): Promise<BodyCompEntry | null> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.BODY_COMP);
+    if (!raw) return null;
+    const all: BodyCompEntry[] = JSON.parse(raw);
+    return all.length > 0 ? all[0] : null;
+  } catch (e) {
+    console.error("Error loading body comp:", e);
+    return null;
+  }
+}
+
+export async function getAllBodyComp(): Promise<BodyCompEntry[]> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.BODY_COMP);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error("Error loading all body comp entries:", e);
+    return [];
+  }
+}
+
+export async function saveBodyComp(data: {
+  weight: number;
+  muscle?: string;
+  bodyFat?: string;
+  notes?: string;
+}): Promise<BodyCompEntry> {
+  const now = new Date();
+  const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }).toLowerCase();
+  const newEntry: BodyCompEntry = {
+    id: `body_${Date.now()}`,
+    weight: data.weight,
+    muscle: data.muscle,
+    bodyFat: data.bodyFat,
+    notes: data.notes,
+    date: getTodayKey(),
+    time: `${time} (manual input)`,
+    timestamp: Date.now(),
+  };
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.BODY_COMP);
+    const all: BodyCompEntry[] = raw ? JSON.parse(raw) : [];
+    all.unshift(newEntry);
+    await AsyncStorage.setItem(STORAGE_KEYS.BODY_COMP, JSON.stringify(all));
+  } catch (e) {
+    console.error("Error saving body comp:", e);
+  }
+  return newEntry;
+}
+
