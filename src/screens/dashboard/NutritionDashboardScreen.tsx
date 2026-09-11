@@ -21,216 +21,17 @@ import {
   MealItem,
   MealType,
 } from "@/services/healthLogService";
+import {
+  FoodDefinition,
+  FoodCategory,
+  FOOD_CATEGORIES,
+  searchFoodDatabase,
+  searchOpenFoodFacts,
+} from "@/services/foodDatabase";
 
 type Props = NativeStackScreenProps<RootStackParamList, "NutritionDashboard">;
 
 const { width: SW } = Dimensions.get("window");
-
-// Standard Food Database for realistic search & logging
-interface FoodDefinition {
-  id: string;
-  name: string;
-  brand?: string;
-  calories: number;
-  unit: string;
-  grams: number;
-  carbs: number;
-  fat: number;
-  protein: number;
-  satFat: number;
-  cholesterol: number;
-  sodium: number;
-  fibre: number;
-  sugars: number;
-  vitaminA: number;
-  vitaminC: number;
-  calcium: number;
-  iron: number;
-  potassium: number;
-}
-
-const FOOD_DATABASE: FoodDefinition[] = [
-  {
-    id: "idli_std",
-    name: "Idli",
-    calories: 40,
-    unit: "piece (30 g)",
-    grams: 30,
-    carbs: 7.8,
-    fat: 0.1,
-    protein: 1.9,
-    satFat: 0,
-    cholesterol: 0,
-    sodium: 207,
-    fibre: 1.5,
-    sugars: 0.2,
-    vitaminA: 0,
-    vitaminC: 0.3,
-    calcium: 7.8,
-    iron: 0.98,
-    potassium: 63,
-  },
-  {
-    id: "idli_mccain",
-    name: "Idli (McCain)",
-    calories: 500,
-    unit: "serving (180 g)",
-    grams: 180,
-    carbs: 94.0,
-    fat: 2.5,
-    protein: 14.0,
-    satFat: 0.5,
-    cholesterol: 0,
-    sodium: 480,
-    fibre: 4.2,
-    sugars: 1.0,
-    vitaminA: 0,
-    vitaminC: 0,
-    calcium: 20,
-    iron: 2.1,
-    potassium: 150,
-  },
-  {
-    id: "idli_mtr_rice",
-    name: "Rice Idli (MTR)",
-    calories: 340,
-    unit: "serving (100 g)",
-    grams: 100,
-    carbs: 68.0,
-    fat: 1.8,
-    protein: 11.2,
-    satFat: 0.3,
-    cholesterol: 0,
-    sodium: 410,
-    fibre: 3.5,
-    sugars: 0.8,
-    vitaminA: 0,
-    vitaminC: 0.5,
-    calcium: 15,
-    iron: 1.8,
-    potassium: 120,
-  },
-  {
-    id: "idli_mtr_oats",
-    name: "Oats Idli (MTR)",
-    calories: 395,
-    unit: "serving (100 g)",
-    grams: 100,
-    carbs: 64.0,
-    fat: 7.5,
-    protein: 13.5,
-    satFat: 1.2,
-    cholesterol: 0,
-    sodium: 520,
-    fibre: 6.8,
-    sugars: 1.2,
-    vitaminA: 20,
-    vitaminC: 1.0,
-    calcium: 45,
-    iron: 2.8,
-    potassium: 210,
-  },
-  {
-    id: "idli_batter_mtr",
-    name: "Idli Batter (MTR)",
-    calories: 127,
-    unit: "serving (100 g)",
-    grams: 100,
-    carbs: 26.0,
-    fat: 0.4,
-    protein: 4.2,
-    satFat: 0.1,
-    cholesterol: 0,
-    sodium: 190,
-    fibre: 1.2,
-    sugars: 0.3,
-    vitaminA: 0,
-    vitaminC: 0.2,
-    calcium: 8,
-    iron: 0.9,
-    potassium: 75,
-  },
-  {
-    id: "idli_rava_mtr",
-    name: "Rava Idli (MTR)",
-    calories: 388,
-    unit: "serving (100 g)",
-    grams: 100,
-    carbs: 67.0,
-    fat: 8.2,
-    protein: 10.4,
-    satFat: 2.1,
-    cholesterol: 5,
-    sodium: 490,
-    fibre: 3.1,
-    sugars: 1.4,
-    vitaminA: 15,
-    vitaminC: 0.4,
-    calcium: 32,
-    iron: 2.2,
-    potassium: 140,
-  },
-  {
-    id: "idli_homemade",
-    name: "Rice Idli (Hommade)",
-    calories: 62,
-    unit: "serving (50 g)",
-    grams: 50,
-    carbs: 13.0,
-    fat: 0.2,
-    protein: 2.4,
-    satFat: 0,
-    cholesterol: 0,
-    sodium: 110,
-    fibre: 0.9,
-    sugars: 0.2,
-    vitaminA: 0,
-    vitaminC: 0.1,
-    calcium: 6,
-    iron: 0.7,
-    potassium: 45,
-  },
-  {
-    id: "biryani_chicken",
-    name: "Chicken Biryani",
-    calories: 348,
-    unit: "plate (250 g)",
-    grams: 250,
-    carbs: 42.0,
-    fat: 12.0,
-    protein: 18.0,
-    satFat: 3.5,
-    cholesterol: 45,
-    sodium: 680,
-    fibre: 2.2,
-    sugars: 1.8,
-    vitaminA: 60,
-    vitaminC: 4.2,
-    calcium: 35,
-    iron: 2.5,
-    potassium: 280,
-  },
-  {
-    id: "chapati_std",
-    name: "Chapati",
-    calories: 68,
-    unit: "piece (40 g)",
-    grams: 40,
-    carbs: 14.2,
-    fat: 0.4,
-    protein: 2.6,
-    satFat: 0.1,
-    cholesterol: 0,
-    sodium: 85,
-    fibre: 2.1,
-    sugars: 0.4,
-    vitaminA: 0,
-    vitaminC: 0,
-    calcium: 12,
-    iron: 1.1,
-    potassium: 82,
-  },
-];
 
 // Meal Categories exactly matching Samsung Health Food page
 const MEAL_CATEGORIES: { key: MealType; title: string }[] = [
@@ -266,6 +67,9 @@ export default function NutritionDashboardScreen({ navigation }: Props) {
   // Search modal state
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<FoodCategory>("All");
+  const [onlineSearching, setOnlineSearching] = useState(false);
+  const [onlineResults, setOnlineResults] = useState<FoodDefinition[]>([]);
   const [selectedFood, setSelectedFood] = useState<FoodDefinition | null>(null);
 
   // Portion size modal state
@@ -346,6 +150,14 @@ export default function NutritionDashboardScreen({ navigation }: Props) {
     }
   };
 
+  const handleOnlineSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setOnlineSearching(true);
+    const results = await searchOpenFoodFacts(searchQuery);
+    setOnlineResults(results);
+    setOnlineSearching(false);
+  };
+
   // Calculate current dynamic macro percentages
   const totalMacrosWeight =
     nutritionTotals.totalCarbs + nutritionTotals.totalFat + nutritionTotals.totalProtein;
@@ -354,10 +166,9 @@ export default function NutritionDashboardScreen({ navigation }: Props) {
   const fatPct = hasMacros ? Math.round((nutritionTotals.totalFat / totalMacrosWeight) * 100) : 0;
   const proteinPct = hasMacros ? Math.max(100 - carbPct - fatPct, 0) : 0;
 
-  // Filter food search
-  const filteredFoods = FOOD_DATABASE.filter((f) =>
-    f.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter food search from database + online results
+  const localFoods = searchFoodDatabase(searchQuery, selectedCategory);
+  const filteredFoods = onlineResults.length > 0 ? [...localFoods, ...onlineResults] : localFoods;
 
   return (
     <View style={s.root}>
@@ -718,37 +529,94 @@ export default function NutritionDashboardScreen({ navigation }: Props) {
             </Pressable>
           </View>
 
-          {/* Filters Card */}
-          <View style={s.filtersCard}>
-            <Text style={s.filtersHeading}>Filters</Text>
-            <View style={s.filterChipsRow}>
-              <View style={s.filterChip}><Text style={s.filterChipText}>Recently added</Text></View>
-              <View style={s.filterChip}><Text style={s.filterChipText}>Frequently added</Text></View>
-            </View>
-            <View style={s.filterChipsRow}>
-              <View style={s.filterChip}><Text style={s.filterChipText}>Favourites</Text></View>
-              <View style={s.filterChip}><Text style={s.filterChipText}>My foods</Text></View>
-              <View style={s.filterChip}><Text style={s.filterChipText}>My meals</Text></View>
-            </View>
+          {/* Category Filter Chips Bar */}
+          <View style={s.catBarWrap}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.catBarScroll}
+            >
+              {FOOD_CATEGORIES.map((cat) => {
+                const isActive = selectedCategory === cat;
+                return (
+                  <Pressable
+                    key={cat}
+                    style={[s.catChip, isActive && s.catChipActive]}
+                    onPress={() => {
+                      setSelectedCategory(cat);
+                      setOnlineResults([]);
+                    }}
+                  >
+                    <Text style={[s.catChipText, isActive && s.catChipTextActive]}>
+                      {cat}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
           </View>
 
           {/* Search results list */}
-          <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}>
+          <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120 }}>
+            <Text style={s.resultsCountText}>
+              {filteredFoods.length} {filteredFoods.length === 1 ? "food" : "foods"} in {selectedCategory}
+            </Text>
+
             {filteredFoods.map((food) => (
               <Pressable
                 key={food.id}
-                style={s.foodSearchRow}
+                style={s.foodSearchCard}
                 onPress={() => handleSelectFood(food)}
               >
-                <View style={s.foodRadioCircle} />
-                <View style={s.foodTextWrap}>
-                  <Text style={s.foodSearchName}>{food.name}</Text>
-                  <Text style={s.foodSearchSub}>
-                    {food.calories} kcal, {food.unit}
-                  </Text>
+                <View style={s.foodCardMain}>
+                  <View style={s.foodRadioCircle} />
+                  <View style={s.foodTextWrap}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <Text style={s.foodSearchName}>{food.name}</Text>
+                      {food.category && food.category !== "All" && (
+                        <View style={s.categoryBadge}>
+                          <Text style={s.categoryBadgeText}>{food.category}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={s.foodSearchSub}>{food.unit}</Text>
+
+                    {/* Macro breakdown pills */}
+                    <View style={s.foodMacroPillRow}>
+                      <Text style={[s.foodMacroMini, { color: "#c084fc" }]}>C: {food.carbs}g</Text>
+                      <Text style={[s.foodMacroMini, { color: "#fb7185" }]}>F: {food.fat}g</Text>
+                      <Text style={[s.foodMacroMini, { color: "#facc15" }]}>P: {food.protein}g</Text>
+                    </View>
+                  </View>
+
+                  {/* Prominent Average Calorie Badge */}
+                  <View style={s.caloriePillBadge}>
+                    <Text style={s.caloriePillVal}>{food.calories}</Text>
+                    <Text style={s.caloriePillUnit}>kcal</Text>
+                  </View>
                 </View>
               </Pressable>
             ))}
+
+            {filteredFoods.length === 0 && (
+              <View style={s.noResultsWrap}>
+                <Ionicons name="restaurant-outline" size={40} color="rgba(255,255,255,0.25)" />
+                <Text style={s.noResultsTitle}>No matching foods found</Text>
+                <Text style={s.noResultsSub}>Try a different category or search term.</Text>
+                {searchQuery.trim().length >= 2 && (
+                  <Pressable
+                    style={s.onlineSearchBtn}
+                    onPress={handleOnlineSearch}
+                    disabled={onlineSearching}
+                  >
+                    <Ionicons name="globe-outline" size={16} color="#00e676" />
+                    <Text style={s.onlineSearchText}>
+                      {onlineSearching ? "Searching Open Food Facts..." : "Search Open Food Facts online"}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+            )}
           </ScrollView>
 
           {/* Bottom Floating Search Bar */}
@@ -1401,42 +1269,137 @@ const s = StyleSheet.create({
   },
   addFoodPillText: { fontSize: 15, fontWeight: "600", color: "#ffffff" },
 
-  // Filters
-  filtersCard: {
-    backgroundColor: "#161822",
-    borderRadius: 28,
-    padding: 20,
-    marginHorizontal: 16,
-    marginBottom: 16,
+  // Category Filter Bar
+  catBarWrap: {
+    paddingVertical: 10,
+    marginBottom: 8,
   },
-  filtersHeading: { fontSize: 13.5, color: "rgba(255,255,255,0.6)", marginBottom: 12 },
-  filterChipsRow: { flexDirection: "row", gap: 8, marginBottom: 8 },
-  filterChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 16,
+  catBarScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  catChip: {
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
     backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
   },
-  filterChipText: { fontSize: 12.5, color: "#ffffff", fontWeight: "500" },
+  catChipActive: {
+    backgroundColor: "#2ECC71",
+    borderColor: "#2ECC71",
+  },
+  catChipText: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.75)",
+    fontWeight: "600",
+  },
+  catChipTextActive: {
+    color: "#000000",
+    fontWeight: "700",
+  },
 
-  foodSearchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 14,
+  resultsCountText: {
+    fontSize: 12.5,
+    color: "rgba(255,255,255,0.45)",
+    fontWeight: "500",
+    marginBottom: 8,
+  },
+
+  foodSearchCard: {
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255,255,255,0.06)",
-    gap: 14,
+  },
+  foodCardMain: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
   foodRadioCircle: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.4)",
+    borderColor: "rgba(255,255,255,0.35)",
   },
   foodTextWrap: { flex: 1 },
   foodSearchName: { fontSize: 15.5, fontWeight: "600", color: "#ffffff" },
+  categoryBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  categoryBadgeText: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.7)",
+    fontWeight: "600",
+  },
   foodSearchSub: { fontSize: 12.5, color: "rgba(255,255,255,0.45)", marginTop: 2 },
+  foodMacroPillRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 4,
+  },
+  foodMacroMini: {
+    fontSize: 11.5,
+    fontWeight: "600",
+  },
+
+  caloriePillBadge: {
+    backgroundColor: "rgba(46,204,113,0.15)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(46,204,113,0.3)",
+  },
+  caloriePillVal: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#2ECC71",
+  },
+  caloriePillUnit: {
+    fontSize: 10,
+    color: "rgba(255,255,255,0.6)",
+    fontWeight: "500",
+  },
+
+  noResultsWrap: {
+    alignItems: "center",
+    paddingVertical: 48,
+    gap: 8,
+  },
+  noResultsTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.8)",
+  },
+  noResultsSub: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.45)",
+    textAlign: "center",
+  },
+  onlineSearchBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(0,230,118,0.12)",
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(0,230,118,0.3)",
+    marginTop: 12,
+  },
+  onlineSearchText: {
+    fontSize: 13.5,
+    color: "#00e676",
+    fontWeight: "600",
+  },
 
   floatingSearchBox: {
     position: "absolute",

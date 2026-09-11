@@ -24,6 +24,13 @@ import {
   deleteMedication,
   getTodayKey,
 } from "@/services/healthLogService";
+import {
+  MedicineDefinition,
+  MedicineCategory,
+  MEDICINE_CATEGORIES,
+  searchMedicineDatabase,
+  searchRxNormDrugs,
+} from "@/services/medicineDatabase";
 
 type Props = NativeStackScreenProps<RootStackParamList, "MedicationCenter">;
 
@@ -47,6 +54,13 @@ export default function MedicationCenterScreen({ navigation }: Props) {
   const [scheduleTime, setScheduleTime] = useState("08:00 AM");
   const [instructions, setInstructions] = useState("After food");
 
+  // Medicine search & auto-suggest states
+  const [selectedMedCategory, setSelectedMedCategory] = useState<MedicineCategory>("All");
+  const [selectedMedDef, setSelectedMedDef] = useState<MedicineDefinition | null>(null);
+  const [rxSearching, setRxSearching] = useState(false);
+  const [rxResults, setRxResults] = useState<MedicineDefinition[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
   const todayKey = getTodayKey();
 
   const loadData = async () => {
@@ -57,6 +71,26 @@ export default function MedicationCenterScreen({ navigation }: Props) {
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleSelectMedicine = (med: MedicineDefinition) => {
+    setSelectedMedDef(med);
+    setMedName(med.name);
+    if (med.commonDosages && med.commonDosages.length > 0) {
+      setDose(med.commonDosages[0]);
+    }
+    setSelectedForm(med.defaultForm);
+    setSelectedColor(med.color);
+    setInstructions(med.defaultTiming);
+    setShowSuggestions(false);
+  };
+
+  const handleRxNormSearch = async () => {
+    if (!medName.trim()) return;
+    setRxSearching(true);
+    const list = await searchRxNormDrugs(medName);
+    setRxResults(list);
+    setRxSearching(false);
+  };
 
   const handleAddMedication = async () => {
     if (!medName.trim()) {
@@ -75,6 +109,8 @@ export default function MedicationCenterScreen({ navigation }: Props) {
 
     setMedName("");
     setDose("500mg");
+    setSelectedMedDef(null);
+    setShowSuggestions(false);
     setModalVisible(false);
     await loadData();
   };
@@ -247,94 +283,245 @@ export default function MedicationCenterScreen({ navigation }: Props) {
               </Pressable>
             </View>
 
-            {/* Medicine Name */}
-            <Text style={s.inputLabel}>Medication Name</Text>
-            <TextInput
-              style={s.input}
-              placeholder="e.g. Paracetamol, Metformin, Vitamin D3"
-              placeholderTextColor="rgba(255,255,255,0.3)"
-              value={medName}
-              onChangeText={setMedName}
-            />
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+              {/* Category Filter */}
+              <Text style={s.inputLabel}>Medicine Category</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.medCatScroll}>
+                {MEDICINE_CATEGORIES.map((cat) => {
+                  const isSelected = selectedMedCategory === cat;
+                  return (
+                    <Pressable
+                      key={cat}
+                      onPress={() => {
+                        setSelectedMedCategory(cat);
+                        setShowSuggestions(true);
+                      }}
+                      style={[s.medCatChip, isSelected && s.medCatChipActive]}
+                    >
+                      <Text style={[s.medCatChipText, isSelected && s.medCatChipTextActive]}>
+                        {cat}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
 
-            {/* Dosage in Grams / mg */}
-            <View style={s.inputRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={s.inputLabel}>Dose / Weight</Text>
+              {/* Medicine Search & Input */}
+              <Text style={s.inputLabel}>Medication / Tablet Name</Text>
+              <View style={s.searchWrap}>
                 <TextInput
-                  style={s.input}
-                  placeholder="500mg or 10g"
+                  style={s.searchInput}
+                  placeholder="e.g. Dolo 650, Pan 40, Metformin, Shelcal..."
                   placeholderTextColor="rgba(255,255,255,0.3)"
-                  value={dose}
-                  onChangeText={setDose}
+                  value={medName}
+                  onChangeText={(text) => {
+                    setMedName(text);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
                 />
+                {medName.length > 0 && (
+                  <Pressable
+                    onPress={() => {
+                      setMedName("");
+                      setSelectedMedDef(null);
+                    }}
+                    style={s.clearInputBtn}
+                  >
+                    <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.4)" />
+                  </Pressable>
+                )}
               </View>
-              <View style={{ width: 12 }} />
-              <View style={{ flex: 1 }}>
-                <Text style={s.inputLabel}>Scheduled Time</Text>
-                <TextInput
-                  style={s.input}
-                  placeholder="08:00 AM"
-                  placeholderTextColor="rgba(255,255,255,0.3)"
-                  value={scheduleTime}
-                  onChangeText={setScheduleTime}
-                />
-              </View>
-            </View>
 
-            {/* Pill Form */}
-            <Text style={s.inputLabel}>Form</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.formScroll}>
-              {PILL_FORMS.map((f) => (
-                <Pressable
-                  key={f.form}
-                  onPress={() => setSelectedForm(f.form)}
-                  style={[s.formChip, selectedForm === f.form && s.formChipActive]}
-                >
-                  <Text style={[s.formChipText, selectedForm === f.form && s.formChipTextActive]}>
-                    {f.label}
-                  </Text>
-                </Pressable>
-              ))}
+              {/* Auto-suggest Suggestions Dropdown */}
+              {showSuggestions && (
+                <View style={s.suggestionsBox}>
+                  {(() => {
+                    const suggestions = searchMedicineDatabase(medName, selectedMedCategory).slice(0, 6);
+                    return (
+                      <>
+                        {suggestions.length > 0 ? (
+                          suggestions.map((item) => (
+                            <Pressable
+                              key={item.id}
+                              style={s.suggestionItem}
+                              onPress={() => handleSelectMedicine(item)}
+                            >
+                              <View style={{ flex: 1 }}>
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                  <Text style={s.suggestionTitle}>{item.name}</Text>
+                                  <View style={s.suggestionBadge}>
+                                    <Text style={s.suggestionBadgeText}>{item.category}</Text>
+                                  </View>
+                                </View>
+                                <Text style={s.suggestionGeneric}>{item.genericName}</Text>
+                              </View>
+                              <View style={s.suggestionDosages}>
+                                {item.commonDosages.slice(0, 2).map((mg) => (
+                                  <View key={mg} style={s.miniDosePill}>
+                                    <Text style={s.miniDoseText}>{mg}</Text>
+                                  </View>
+                                ))}
+                              </View>
+                            </Pressable>
+                          ))
+                        ) : (
+                          <View style={s.suggestionEmpty}>
+                            <Text style={s.suggestionEmptyText}>No matching preset tablet</Text>
+                            <Pressable
+                              style={s.rxSearchBtn}
+                              onPress={handleRxNormSearch}
+                              disabled={rxSearching}
+                            >
+                              <Ionicons name="search" size={14} color="#a855f7" />
+                              <Text style={s.rxSearchBtnText}>
+                                {rxSearching ? "Searching NIH RxNorm..." : "Search NIH Clinical Drugs"}
+                              </Text>
+                            </Pressable>
+                          </View>
+                        )}
+
+                        {/* RxNorm results if any */}
+                        {rxResults.length > 0 && (
+                          <View style={s.rxSection}>
+                            <Text style={s.rxSectionTitle}>NIH Clinical Database Results</Text>
+                            {rxResults.slice(0, 4).map((rx) => (
+                              <Pressable
+                                key={rx.id}
+                                style={s.suggestionItem}
+                                onPress={() => handleSelectMedicine(rx)}
+                              >
+                                <View style={{ flex: 1 }}>
+                                  <Text style={s.suggestionTitle}>{rx.name}</Text>
+                                  <Text style={s.suggestionGeneric}>{rx.category}</Text>
+                                </View>
+                                <View style={s.miniDosePill}>
+                                  <Text style={s.miniDoseText}>{rx.commonDosages[0]}</Text>
+                                </View>
+                              </Pressable>
+                            ))}
+                          </View>
+                        )}
+                      </>
+                    );
+                  })()}
+                </View>
+              )}
+
+              {/* Quick Dosage (mg) Selector */}
+              <Text style={s.inputLabel}>
+                {selectedMedDef ? `Standard Strengths for ${selectedMedDef.name}` : "Common Strengths (mg / ml)"}
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.doseScroll}>
+                {(
+                  selectedMedDef?.commonDosages || [
+                    "250mg",
+                    "500mg",
+                    "650mg",
+                    "1000mg",
+                    "5mg",
+                    "10mg",
+                    "20mg",
+                    "40mg",
+                    "10g",
+                    "5ml",
+                    "10ml",
+                  ]
+                ).map((d) => {
+                  const isSelected = dose === d;
+                  return (
+                    <Pressable
+                      key={d}
+                      onPress={() => setDose(d)}
+                      style={[s.doseChip, isSelected && s.doseChipActive]}
+                    >
+                      <Text style={[s.doseChipText, isSelected && s.doseChipTextActive]}>
+                        {d}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+
+              {/* Dosage & Scheduled Time manual fields */}
+              <View style={s.inputRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.inputLabel}>Dose / Weight</Text>
+                  <TextInput
+                    style={s.input}
+                    placeholder="500mg or 10g"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    value={dose}
+                    onChangeText={setDose}
+                  />
+                </View>
+                <View style={{ width: 12 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.inputLabel}>Scheduled Time</Text>
+                  <TextInput
+                    style={s.input}
+                    placeholder="08:00 AM"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    value={scheduleTime}
+                    onChangeText={setScheduleTime}
+                  />
+                </View>
+              </View>
+
+              {/* Pill Form */}
+              <Text style={s.inputLabel}>Form</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.formScroll}>
+                {PILL_FORMS.map((f) => (
+                  <Pressable
+                    key={f.form}
+                    onPress={() => setSelectedForm(f.form)}
+                    style={[s.formChip, selectedForm === f.form && s.formChipActive]}
+                  >
+                    <Text style={[s.formChipText, selectedForm === f.form && s.formChipTextActive]}>
+                      {f.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+
+              {/* Pill Color Picker */}
+              <Text style={s.inputLabel}>Pill Color</Text>
+              <View style={s.colorRow}>
+                {PILL_COLORS.map((c) => (
+                  <Pressable
+                    key={c.hex}
+                    onPress={() => setSelectedColor(c.hex)}
+                    style={[
+                      s.colorCircle,
+                      { backgroundColor: c.hex },
+                      selectedColor === c.hex && s.colorCircleActive,
+                    ]}
+                  >
+                    {selectedColor === c.hex && (
+                      <Ionicons
+                        name="checkmark"
+                        size={14}
+                        color={c.hex === "#f8fafc" ? "#0c0e12" : "#ffffff"}
+                      />
+                    )}
+                  </Pressable>
+                ))}
+              </View>
+
+              {/* Instructions */}
+              <Text style={s.inputLabel}>Instructions / Timing</Text>
+              <TextInput
+                style={s.input}
+                placeholder="e.g. After food, Before breakfast"
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                value={instructions}
+                onChangeText={setInstructions}
+              />
+
+              <Pressable style={s.saveMedBtn} onPress={handleAddMedication}>
+                <Text style={s.saveMedBtnText}>Add to Daily Schedule</Text>
+              </Pressable>
             </ScrollView>
-
-            {/* Pill Color Picker */}
-            <Text style={s.inputLabel}>Pill Color</Text>
-            <View style={s.colorRow}>
-              {PILL_COLORS.map((c) => (
-                <Pressable
-                  key={c.hex}
-                  onPress={() => setSelectedColor(c.hex)}
-                  style={[
-                    s.colorCircle,
-                    { backgroundColor: c.hex },
-                    selectedColor === c.hex && s.colorCircleActive,
-                  ]}
-                >
-                  {selectedColor === c.hex && (
-                    <Ionicons
-                      name="checkmark"
-                      size={14}
-                      color={c.hex === "#f8fafc" ? "#0c0e12" : "#ffffff"}
-                    />
-                  )}
-                </Pressable>
-              ))}
-            </View>
-
-            {/* Instructions */}
-            <Text style={s.inputLabel}>Instructions</Text>
-            <TextInput
-              style={s.input}
-              placeholder="e.g. After food, Before breakfast"
-              placeholderTextColor="rgba(255,255,255,0.3)"
-              value={instructions}
-              onChangeText={setInstructions}
-            />
-
-            <Pressable style={s.saveMedBtn} onPress={handleAddMedication}>
-              <Text style={s.saveMedBtnText}>Add to Daily Schedule</Text>
-            </Pressable>
           </View>
         </View>
       </Modal>
@@ -665,5 +852,176 @@ const s = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     color: "#ffffff",
+  },
+
+  // Category Filter
+  medCatScroll: {
+    flexDirection: "row",
+    marginBottom: 6,
+  },
+  medCatChip: {
+    backgroundColor: "#22252e",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginRight: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  medCatChipActive: {
+    backgroundColor: "#8b5cf6",
+    borderColor: "#8b5cf6",
+  },
+  medCatChipText: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.6)",
+    fontWeight: "600",
+  },
+  medCatChipTextActive: {
+    color: "#ffffff",
+    fontWeight: "700",
+  },
+
+  // Search Wrap
+  searchWrap: {
+    position: "relative",
+    justifyContent: "center",
+  },
+  searchInput: {
+    backgroundColor: "#22252e",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    paddingRight: 38,
+    fontSize: 15,
+    color: "#ffffff",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  clearInputBtn: {
+    position: "absolute",
+    right: 12,
+    top: 13,
+  },
+
+  // Auto-suggest dropdown
+  suggestionsBox: {
+    backgroundColor: "#1f222b",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(139,92,246,0.3)",
+    marginTop: 6,
+    marginBottom: 10,
+    overflow: "hidden",
+  },
+  suggestionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.06)",
+  },
+  suggestionTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+  suggestionBadge: {
+    backgroundColor: "rgba(139,92,246,0.2)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  suggestionBadgeText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#c084fc",
+  },
+  suggestionGeneric: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.5)",
+    marginTop: 2,
+  },
+  suggestionDosages: {
+    flexDirection: "row",
+    gap: 4,
+  },
+  miniDosePill: {
+    backgroundColor: "rgba(255,255,255,0.08)",
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  miniDoseText: {
+    fontSize: 10,
+    color: "rgba(255,255,255,0.8)",
+    fontWeight: "600",
+  },
+  suggestionEmpty: {
+    padding: 12,
+    alignItems: "center",
+  },
+  suggestionEmptyText: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.45)",
+    marginBottom: 8,
+  },
+  rxSearchBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(139,92,246,0.15)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  rxSearchBtnText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#c084fc",
+  },
+  rxSection: {
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.1)",
+    paddingTop: 6,
+  },
+  rxSectionTitle: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.4)",
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+
+  // Dosage Chips
+  doseScroll: {
+    flexDirection: "row",
+    marginVertical: 4,
+  },
+  doseChip: {
+    backgroundColor: "#22252e",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  doseChipActive: {
+    backgroundColor: "#8b5cf6",
+    borderColor: "#8b5cf6",
+  },
+  doseChipText: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.7)",
+    fontWeight: "600",
+  },
+  doseChipTextActive: {
+    color: "#ffffff",
+    fontWeight: "700",
   },
 });
