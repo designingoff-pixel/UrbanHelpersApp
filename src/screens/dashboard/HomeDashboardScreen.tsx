@@ -804,7 +804,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             {/* 6. Heart Health — full-width purple card */}
             {isVisible("heart_health") && (
               <View style={s.cardWrapper}>
-                <PressCard index={5} onPress={() => navigation.navigate("VitalsScreen")}>
+                <PressCard index={5} onPress={() => navigation.navigate("HeartHealth")}>
                   <LinearGradient
                     colors={["#9c27b0", "#c22f93", "#d63384"]}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -1168,7 +1168,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </Animated.View>
 
             {/* 1. Heart health — purple gradient */}
-            <PressCard index={0} onPress={() => navigation.navigate("VitalsScreen")}>
+            <PressCard index={0} onPress={() => navigation.navigate("HeartHealth")}>
               <LinearGradient
                 colors={["#8b48ad", "#a259c4", "#b368d4"]}
                 start={{ x: 0, y: 0 }}
@@ -1222,7 +1222,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             {/* 3. Heart rate — coral/crimson gradient */}
-            <PressCard index={2} onPress={() => navigation.navigate("VitalsScreen")}>
+            <PressCard index={2} onPress={() => navigation.navigate("HeartRate")}>
               <LinearGradient
                 colors={["#d13b55", "#e64a66", "#f45b77"]}
                 start={{ x: 0, y: 0 }}
@@ -1246,7 +1246,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             {/* 4. Blood oxygen — royal blue gradient */}
-            <PressCard index={3} onPress={() => navigation.navigate("VitalsScreen")}>
+            <PressCard index={3} onPress={() => navigation.navigate("BloodOxygen")}>
               <LinearGradient
                 colors={["#195fc7", "#236fe0", "#3884f2"]}
                 start={{ x: 0, y: 0 }}
@@ -1291,7 +1291,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             {/* 6. Vascular load — magenta gradient */}
-            <PressCard index={5} onPress={() => navigation.navigate("VitalsScreen")}>
+            <PressCard index={5} onPress={() => navigation.navigate("VascularLoad")}>
               <LinearGradient
                 colors={["#b0356c", "#c4427c", "#d5508c"]}
                 start={{ x: 0, y: 0 }}

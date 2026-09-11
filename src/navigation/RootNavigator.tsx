@@ -37,6 +37,10 @@ import AICoachScreen from "@/screens/dashboard/AICoachScreen";
 import SleepDashboardScreen from "@/screens/dashboard/SleepDashboardScreen";
 import SleepTrendsScreen from "@/screens/dashboard/SleepTrendsScreen";
 import NutritionDashboardScreen from "@/screens/dashboard/NutritionDashboardScreen";
+import HeartHealthScreen from "@/screens/health/HeartHealthScreen";
+import HeartRateScreen from "@/screens/health/HeartRateScreen";
+import BloodOxygenScreen from "@/screens/health/BloodOxygenScreen";
+import VascularLoadScreen from "@/screens/health/VascularLoadScreen";
 
 // Module 3 — Medical Records
 import HealthDataAnalyticsScreen from "@/screens/medical/HealthDataAnalyticsScreen";
@@ -214,6 +218,10 @@ export function RootNavigator() {
       <Stack.Screen name="SleepDashboard" component={SleepDashboardScreen} />
       <Stack.Screen name="SleepTrends" component={SleepTrendsScreen} />
       <Stack.Screen name="NutritionDashboard" component={NutritionDashboardScreen} />
+      <Stack.Screen name="HeartHealth" component={HeartHealthScreen} />
+      <Stack.Screen name="HeartRate" component={HeartRateScreen} />
+      <Stack.Screen name="BloodOxygen" component={BloodOxygenScreen} />
+      <Stack.Screen name="VascularLoad" component={VascularLoadScreen} />
 
       {/* Module 3 */}
       <Stack.Screen name="HealthDataAnalytics" component={HealthDataAnalyticsScreen} />
