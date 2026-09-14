@@ -17,6 +17,7 @@ export type RootStackParamList = {
   FitnessDashboard: undefined;
   FamilyDashboard: undefined;
   Discover: undefined;
+  Shop: undefined;
   HealthDashboard: undefined;
   VitalsScreen: undefined;
   MedicalRecords: undefined;

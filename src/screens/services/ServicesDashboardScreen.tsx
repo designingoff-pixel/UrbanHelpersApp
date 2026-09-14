@@ -14,6 +14,7 @@ import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 import { useServiceCategories } from "@/services/firestoreServices";
 import { getCategoryImage } from "@/assets/serviceImages";
+import SamsungBottomNav from "@/components/SamsungBottomNav";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServicesDashboard">;
 
@@ -314,25 +315,7 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
       </ScrollView>
 
       {/* ── Bottom Nav ──────────────────────────────────────────── */}
-      <View style={s.navBar}>
-        {SERVICE_NAV.map((n, i) => {
-          const isActive = i === 1; // Services tab
-          return (
-            <Pressable
-              key={n.label}
-              onPress={() => navigation.navigate(n.route as any)}
-              style={s.navBtn}
-            >
-              <Ionicons
-                name={n.icon}
-                size={22}
-                color={isActive ? "#00bcd4" : colors.text.secondary}
-              />
-              <Text style={[s.navLabel, isActive && s.navLabelActive]}>{n.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <SamsungBottomNav activeRoute="ServicesDashboard" />
     </View>
   );
 }

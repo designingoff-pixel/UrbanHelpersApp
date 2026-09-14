@@ -3,10 +3,10 @@ import { NavTab } from "@/components/BottomNav";
 /** Shared tab set used by Module 2 dashboards + most Module 3/4 sub-screens. */
 export const mainTabs: NavTab[] = [
   { label: "Home", icon: "home", screen: "HomeDashboard" },
-  { label: "Health", icon: "heart", screen: "HealthDashboard" },
+  { label: "Service", icon: "grid", screen: "ServicesDashboard" },
+  { label: "Together", icon: "people", screen: "FamilyDashboard" },
   { label: "Discover", icon: "compass", screen: "Discover" },
   { label: "Fitness", icon: "barbell", screen: "FitnessDashboard" },
-  { label: "Profile", icon: "person" },
 ];
 
 /** Tab set used across Medical Records sub-screens (Module 3). */

@@ -14,9 +14,10 @@ export default function HealthAppLayout({ children, activeTab }: Props) {
   const handleTabPress = (tab: HealthTab) => {
     if (tab === activeTab) return;
     if (tab === 'Home') navigation.navigate('HomeDashboard');
-    // Map Together to FamilyDashboard as an example for now
+    if (tab === 'Service') navigation.navigate('ServicesDashboard');
     if (tab === 'Together') navigation.navigate('FamilyDashboard'); 
     if (tab === 'Discover') navigation.navigate('Discover');
+    if (tab === 'Fitness') navigation.navigate('FitnessDashboard');
   };
 
   return (

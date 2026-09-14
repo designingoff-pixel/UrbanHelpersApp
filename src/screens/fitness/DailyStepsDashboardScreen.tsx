@@ -13,6 +13,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
+import SamsungBottomNav from "@/components/SamsungBottomNav";
 import { colors } from "@/theme/colors";
 import {
   startStepTracking,
@@ -402,22 +403,7 @@ export default function DailyStepsDashboardScreen({ navigation }: Props) {
       </Modal>
 
       {/* Bottom Nav */}
-      <View style={s.navBar}>
-        {NAV.map((n) => (
-          <Pressable
-            key={n.route}
-            onPress={() => navigation.navigate(n.route as any)}
-            style={s.navBtn}
-          >
-            <Ionicons
-              name={n.icon as any}
-              size={22}
-              color={n.active ? colors.primary : colors.text.secondary}
-            />
-            <Text style={[s.navLabel, n.active && s.navLabelActive]}>{n.label}</Text>
-          </Pressable>
-        ))}
-      </View>
+      <SamsungBottomNav activeRoute="FitnessDashboard" />
     </View>
   );
 }

@@ -4,18 +4,20 @@ import { Ionicons } from "@expo/vector-icons";
 import { RootStackParamList } from "@/navigation/types";
 import { useNavigation } from "@react-navigation/native";
 
-export type HealthTab = "Home" | "Together" | "Discover" | "Fitness";
+export type HealthTab = "Home" | "Service" | "Together" | "Discover" | "Fitness";
 
 export const NAV_TABS: {
   icon: keyof typeof Ionicons.glyphMap;
+  activeIcon: keyof typeof Ionicons.glyphMap;
   route: keyof RootStackParamList;
   label: HealthTab;
   hasDot: boolean;
 }[] = [
-  { icon: "home",            route: "HomeDashboard",    label: "Home",     hasDot: false },
-  { icon: "flag-outline",    route: "FamilyDashboard",  label: "Together", hasDot: true },
-  { icon: "compass-outline", route: "Discover",         label: "Discover", hasDot: true },
-  { icon: "calendar-outline",route: "FitnessDashboard", label: "Fitness",  hasDot: true },
+  { icon: "home-outline",     activeIcon: "home",     route: "HomeDashboard",     label: "Home",     hasDot: false },
+  { icon: "grid-outline",     activeIcon: "grid",     route: "ServicesDashboard", label: "Service",  hasDot: false },
+  { icon: "people-outline",   activeIcon: "people",   route: "FamilyDashboard",   label: "Together", hasDot: true },
+  { icon: "compass-outline",  activeIcon: "compass",  route: "Discover",          label: "Discover", hasDot: true },
+  { icon: "barbell-outline",  activeIcon: "barbell",  route: "FitnessDashboard",  label: "Fitness",  hasDot: true },
 ];
 
 export interface Props {
@@ -26,6 +28,7 @@ export interface Props {
 
 export default function SamsungBottomNav({ activeRoute, activeTab, onTabPress }: Props) {
   const navigation = useNavigation<any>();
+  const isShopActive = activeRoute === "Shop";
 
   return (
     <View style={s.bottomContainer} pointerEvents="box-none">
@@ -47,13 +50,17 @@ export default function SamsungBottomNav({ activeRoute, activeTab, onTabPress }:
             >
               <View style={[s.navIconWrapper, isActive && s.navIconWrapperActive]}>
                 <Ionicons
-                  name={isActive ? (n.icon === "home" ? "home" : n.icon.replace("-outline", "")) as any : (n.icon as any)}
-                  size={20}
-                  color={isActive ? "#FFFFFF" : "rgba(255,255,255,0.7)"}
+                  name={isActive ? n.activeIcon : n.icon}
+                  size={19}
+                  color={isActive ? "#FFFFFF" : "rgba(255,255,255,0.65)"}
                 />
                 {n.hasDot && <View style={s.tabOrangeDot} />}
               </View>
-              <Text style={[s.navLabel, isActive && s.navLabelActive]}>
+              <Text
+                style={[s.navLabel, isActive && s.navLabelActive]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
                 {n.label}
               </Text>
             </Pressable>
@@ -61,13 +68,18 @@ export default function SamsungBottomNav({ activeRoute, activeTab, onTabPress }:
         })}
       </View>
 
-      {/* Floating scanner button on right */}
+      {/* Floating Shop button on right (replaces scan icon) */}
       <Pressable
-        style={s.scannerBtn}
-        onPress={() => navigation.navigate("Discover")}
-        accessibilityLabel="Scan or Add"
+        style={[s.shopBtn, isShopActive && s.shopBtnActive]}
+        onPress={() => navigation.navigate("Shop")}
+        accessibilityLabel="Shop"
       >
-        <Ionicons name="scan-outline" size={22} color="rgba(255,255,255,0.9)" />
+        <Ionicons
+          name={isShopActive ? "bag-handle" : "bag-handle-outline"}
+          size={21}
+          color={isShopActive ? "#ffffff" : "rgba(255,255,255,0.9)"}
+        />
+        <Text style={[s.shopBtnLabel, isShopActive && s.shopBtnLabelActive]}>Shop</Text>
       </Pressable>
     </View>
   );
@@ -76,9 +88,9 @@ export default function SamsungBottomNav({ activeRoute, activeTab, onTabPress }:
 const s = StyleSheet.create({
   bottomContainer: {
     position: "absolute",
-    bottom: 16,
-    left: 14,
-    right: 14,
+    bottom: 14,
+    left: 12,
+    right: 12,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -86,9 +98,9 @@ const s = StyleSheet.create({
   navBar: {
     flex: 1,
     flexDirection: "row",
-    height: 62,
-    backgroundColor: "rgba(28, 33, 40, 0.94)",
-    borderRadius: 36,
+    height: 60,
+    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    borderRadius: 32,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
     elevation: 20,
@@ -97,52 +109,53 @@ const s = StyleSheet.create({
     shadowOpacity: 0.45,
     shadowRadius: 15,
     alignItems: "center",
-    justifyContent: "space-around",
-    paddingHorizontal: 6,
+    justifyContent: "space-between",
+    paddingHorizontal: 4,
   },
   navBtn: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
   navIconWrapper: {
-    width: 44,
-    height: 28,
-    borderRadius: 14,
+    width: 36,
+    height: 26,
+    borderRadius: 13,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "transparent",
   },
   navIconWrapperActive: {
-    backgroundColor: "rgba(255,255,255,0.18)",
+    backgroundColor: "rgba(255,255,255,0.16)",
   },
   tabOrangeDot: {
     position: "absolute",
     top: 2,
-    right: 8,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    right: 4,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
     backgroundColor: "#ff6a00",
   },
   navLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: "rgba(255,255,255,0.6)",
-    marginTop: 2,
+    marginTop: 1,
     fontWeight: "500",
+    letterSpacing: -0.2,
   },
   navLabelActive: {
     color: "#FFFFFF",
     fontWeight: "700",
   },
-  scannerBtn: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: "rgba(35, 42, 53, 0.95)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+  shopBtn: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "rgba(35, 42, 53, 0.96)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.15)",
     elevation: 18,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
@@ -150,6 +163,20 @@ const s = StyleSheet.create({
     shadowRadius: 12,
     justifyContent: "center",
     alignItems: "center",
+    gap: 1,
+  },
+  shopBtnActive: {
+    backgroundColor: "#2563eb",
+    borderColor: "#60a5fa",
+  },
+  shopBtnLabel: {
+    fontSize: 8.5,
+    color: "rgba(255,255,255,0.75)",
+    fontWeight: "700",
+    letterSpacing: 0.2,
+    textTransform: "uppercase",
+  },
+  shopBtnLabelActive: {
+    color: "#ffffff",
   },
 });
-

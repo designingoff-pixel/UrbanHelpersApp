@@ -16,10 +16,10 @@ const { width: W } = Dimensions.get("window");
 
 const TABS = [
   { icon: "home-outline" as const,           route: "HomeDashboard" as const,    label: "Home" },
-  { icon: "heart-outline" as const,          route: "HealthDashboard" as const,  label: "Health" },
+  { icon: "grid-outline" as const,           route: "ServicesDashboard" as const,label: "Service" },
+  { icon: "people-outline" as const,         route: "FamilyDashboard" as const,  label: "Together" },
   { icon: "compass-outline" as const,        route: "Discover" as const,         label: "Discover" },
   { icon: "barbell-outline" as const,        route: "FitnessDashboard" as const, label: "Fitness" },
-  { icon: "person-outline" as const,         route: "Profile" as const,          label: "Profile" },
 ];
 
 interface BottomNavBarProps {
