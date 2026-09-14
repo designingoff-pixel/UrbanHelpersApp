@@ -91,10 +91,10 @@ export type RootStackParamList = {
   ServiceCategory: { categoryId: string };
   ServiceDetail: { categoryId: string; subServiceId: string };
   BookingConfirmed: { bookingId: string; otp: string; categoryId: string; subServiceId: string; dayIndex?: number; slotIndex?: number; scheduledDate?: string };
-  LiveTracking: { categoryId?: string; subServiceId?: string };
-  ServiceInProgress: { categoryId?: string; subServiceId?: string };
-  ServiceCompleted: { categoryId?: string; subServiceId?: string };
-  RatingFeedback: { categoryId?: string; subServiceId?: string };
+  LiveTracking: { categoryId?: string; subServiceId?: string } | undefined;
+  ServiceInProgress: { categoryId?: string; subServiceId?: string } | undefined;
+  ServiceCompleted: { categoryId?: string; subServiceId?: string } | undefined;
+  RatingFeedback: { categoryId?: string; subServiceId?: string } | undefined;
   HomeCleaning: undefined;
   MyBookings: undefined;
   Offers: undefined;

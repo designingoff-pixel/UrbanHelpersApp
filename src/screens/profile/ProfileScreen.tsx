@@ -17,6 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { getDailyActivityTotals } from "@/services/healthLogService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Profile">;
@@ -44,6 +45,7 @@ const AVATAR_PRESETS = [
 
 export default function ProfileScreen({ navigation }: Props) {
   const { user, signOut } = useAuth();
+  const { theme, isDark, setTheme, colors } = useTheme();
 
   const handleSignOut = async () => {
     Alert.alert(
@@ -155,15 +157,15 @@ export default function ProfileScreen({ navigation }: Props) {
   };
 
   return (
-    <View style={s.root}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+    <View style={[s.root, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
 
       {/* ── Top Header ────────────────────────────────────────── */}
       <View style={s.header}>
         <Pressable onPress={() => navigation.goBack()} style={s.backBtn}>
-          <Ionicons name="chevron-back" size={26} color="#ffffff" />
+          <Ionicons name="chevron-back" size={26} color={colors.text} />
         </Pressable>
-        <Text style={s.headerTitle}>My page</Text>
+        <Text style={[s.headerTitle, { color: colors.text }]}>My page</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
@@ -319,6 +321,68 @@ export default function ProfileScreen({ navigation }: Props) {
           </Pressable>
           <View style={s.emptyStateWrap}>
             <Text style={s.emptyStateText}>No badges earned this year</Text>
+          </View>
+        </View>
+
+        {/* ── 7. Appearance & Theme Card ─────────────────────────── */}
+        <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <View style={s.cardHeaderRow}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <Ionicons name={isDark ? "moon" : "sunny"} size={22} color={colors.primary} />
+              <Text style={[s.cardTitle, { color: colors.text }]}>Appearance & Theme</Text>
+            </View>
+            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.textSecondary }}>
+              {isDark ? "Dark Theme" : "Light Theme"}
+            </Text>
+          </View>
+          <Text style={{ fontSize: 13, color: colors.textMuted, marginBottom: 14, lineHeight: 18 }}>
+            Select your preferred visual mode. Colors and contrasts automatically adjust across the entire app.
+          </Text>
+
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            {/* Dark Mode Button */}
+            <Pressable
+              onPress={() => setTheme("dark")}
+              style={{
+                flex: 1,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                paddingVertical: 14,
+                borderRadius: 16,
+                backgroundColor: isDark ? "rgba(0,198,170,0.18)" : colors.cardAlt,
+                borderWidth: 1.5,
+                borderColor: isDark ? colors.primary : colors.cardBorder,
+              }}
+            >
+              <Ionicons name="moon" size={18} color={isDark ? colors.primary : colors.textSecondary} />
+              <Text style={{ fontSize: 14, fontWeight: isDark ? "700" : "500", color: isDark ? colors.primary : colors.textSecondary }}>
+                Dark Theme
+              </Text>
+            </Pressable>
+
+            {/* Light Mode Button */}
+            <Pressable
+              onPress={() => setTheme("light")}
+              style={{
+                flex: 1,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                paddingVertical: 14,
+                borderRadius: 16,
+                backgroundColor: !isDark ? "rgba(5,150,105,0.12)" : colors.cardAlt,
+                borderWidth: 1.5,
+                borderColor: !isDark ? colors.primary : colors.cardBorder,
+              }}
+            >
+              <Ionicons name="sunny" size={18} color={!isDark ? colors.primary : colors.textSecondary} />
+              <Text style={{ fontSize: 14, fontWeight: !isDark ? "700" : "500", color: !isDark ? colors.primary : colors.textSecondary }}>
+                Light Theme
+              </Text>
+            </Pressable>
           </View>
         </View>
 

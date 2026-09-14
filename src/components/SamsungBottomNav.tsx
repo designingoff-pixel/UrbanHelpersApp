@@ -4,6 +4,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { RootStackParamList } from "@/navigation/types";
 import { useNavigation } from "@react-navigation/native";
 
+import { useTheme } from "@/context/ThemeContext";
+
 export type HealthTab = "Home" | "Service" | "Together" | "Discover" | "Fitness";
 
 export const NAV_TABS: {
@@ -28,12 +30,19 @@ export interface Props {
 
 export default function SamsungBottomNav({ activeRoute, activeTab, onTabPress }: Props) {
   const navigation = useNavigation<any>();
+  const { colors, isDark } = useTheme();
   const isShopActive = activeRoute === "Shop";
+
+  const inactiveIconColor = isDark ? "rgba(255,255,255,0.65)" : "#64748b";
+  const activeIconColor = isDark ? "#FFFFFF" : "#0f172a";
+  const activeWrapperBg = isDark ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.08)";
+  const inactiveLabelColor = isDark ? "rgba(255,255,255,0.6)" : "#64748b";
+  const activeLabelColor = isDark ? "#FFFFFF" : "#0f172a";
 
   return (
     <View style={s.bottomContainer} pointerEvents="box-none">
       {/* Main navigation pill */}
-      <View style={s.navBar}>
+      <View style={[s.navBar, { backgroundColor: isDark ? "rgba(24, 28, 36, 0.95)" : "#ffffff", borderColor: colors.cardBorder }]}>
         {NAV_TABS.map((n) => {
           const isActive = activeRoute ? activeRoute === n.route : activeTab === n.label;
           return (
@@ -48,16 +57,16 @@ export default function SamsungBottomNav({ activeRoute, activeTab, onTabPress }:
               }}
               style={s.navBtn}
             >
-              <View style={[s.navIconWrapper, isActive && s.navIconWrapperActive]}>
+              <View style={[s.navIconWrapper, isActive && { backgroundColor: activeWrapperBg }]}>
                 <Ionicons
                   name={isActive ? n.activeIcon : n.icon}
                   size={19}
-                  color={isActive ? "#FFFFFF" : "rgba(255,255,255,0.65)"}
+                  color={isActive ? activeIconColor : inactiveIconColor}
                 />
                 {n.hasDot && <View style={s.tabOrangeDot} />}
               </View>
               <Text
-                style={[s.navLabel, isActive && s.navLabelActive]}
+                style={[s.navLabel, { color: isActive ? activeLabelColor : inactiveLabelColor }, isActive && s.navLabelActive]}
                 numberOfLines={1}
                 ellipsizeMode="tail"
               >
@@ -70,16 +79,23 @@ export default function SamsungBottomNav({ activeRoute, activeTab, onTabPress }:
 
       {/* Floating Shop button on right (replaces scan icon) */}
       <Pressable
-        style={[s.shopBtn, isShopActive && s.shopBtnActive]}
+        style={[
+          s.shopBtn,
+          {
+            backgroundColor: isShopActive ? "#2563eb" : (isDark ? "rgba(35, 42, 53, 0.96)" : "#ffffff"),
+            borderColor: isShopActive ? "#60a5fa" : colors.cardBorder,
+          },
+          isShopActive && s.shopBtnActive
+        ]}
         onPress={() => navigation.navigate("Shop")}
         accessibilityLabel="Shop"
       >
         <Ionicons
           name={isShopActive ? "bag-handle" : "bag-handle-outline"}
           size={21}
-          color={isShopActive ? "#ffffff" : "rgba(255,255,255,0.9)"}
+          color={isShopActive ? "#ffffff" : (isDark ? "rgba(255,255,255,0.9)" : "#2563eb")}
         />
-        <Text style={[s.shopBtnLabel, isShopActive && s.shopBtnLabelActive]}>Shop</Text>
+        <Text style={[s.shopBtnLabel, { color: isShopActive ? "#ffffff" : (isDark ? "rgba(255,255,255,0.75)" : "#2563eb") }, isShopActive && s.shopBtnLabelActive]}>Shop</Text>
       </Pressable>
     </View>
   );

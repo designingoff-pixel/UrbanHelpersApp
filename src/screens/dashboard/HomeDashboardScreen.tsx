@@ -40,6 +40,7 @@ import Animated, {
 import { RootStackParamList } from "@/navigation/types";
 import SamsungBottomNav from "@/components/SamsungBottomNav";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import {
   getDailyNutritionTotals,
   getMedications,
@@ -148,6 +149,7 @@ const sq = StyleSheet.create({
 // ─── Main Screen Component ─────────────────────────────────────────────────────
 export default function HomeDashboardScreen({ navigation }: Props) {
   const { user, signOut } = useAuth();
+  const { theme, isDark, colors } = useTheme();
   const [activePill, setActivePill] = useState(0);
   const [activeTopSubmenu, setActiveTopSubmenu] = useState<"home" | "reminders" | "points" | "updates">("home");
   const [heroIndex, setHeroIndex] = useState(0);
@@ -324,15 +326,17 @@ export default function HomeDashboardScreen({ navigation }: Props) {
   }));
 
   return (
-    <View style={s.root}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+    <View style={[s.root, { backgroundColor: isDark ? "#0c0e12" : "#f4f6f9" }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
 
       {/* ── Subtle warm amber glow at top (matching Urban Health header glow) ── */}
-      <LinearGradient
-        colors={["rgba(120, 80, 10, 0.28)", "rgba(50, 40, 15, 0.12)", "transparent"]}
-        style={s.topAmbientGlow}
-        pointerEvents="none"
-      />
+      {isDark && (
+        <LinearGradient
+          colors={["rgba(120, 80, 10, 0.28)", "rgba(50, 40, 15, 0.12)", "transparent"]}
+          style={s.topAmbientGlow}
+          pointerEvents="none"
+        />
+      )}
 
       {/* ── Top App Bar (Persistent) ─────────────────────────── */}
       <Animated.View style={[s.topBar, headerStyle]}>
@@ -341,7 +345,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             <Text style={s.doneBtnText}>Done</Text>
           </Pressable>
         ) : (
-          <Text style={s.appTitle}>Urban Health</Text>
+          <Text style={[s.appTitle, { color: isDark ? "#ffffff" : "#0f172a" }]}>Urban Health</Text>
         )}
         <View style={s.topBarRight}>
           {/* Avatar */}

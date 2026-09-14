@@ -171,7 +171,7 @@ export default function PointsScreen({ navigation }: Props) {
               <Text style={s.heroValuation}>≈ ₹{points.toLocaleString()} store value</Text>
             </View>
             <View style={s.coinCircle}>
-              <MaterialCommunityIcons name="coin" size={38} color="#fbbf24" />
+              <MaterialCommunityIcons name="currency-usd" size={38} color="#fbbf24" />
             </View>
           </View>
 

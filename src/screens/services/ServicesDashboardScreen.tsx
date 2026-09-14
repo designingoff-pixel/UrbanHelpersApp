@@ -1,526 +1,1715 @@
 import React, { useEffect, useState, useMemo } from "react";
 import {
-  ScrollView, Text, View, Pressable, StyleSheet,
-  TextInput, Dimensions, Image, ActivityIndicator,
+  ScrollView,
+  Text,
+  View,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  Dimensions,
+  StatusBar,
+  Modal,
+  Alert,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Animated, {
-  useSharedValue, useAnimatedStyle, withSpring, withTiming,
-  FadeInDown, SlideInLeft, Easing,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  FadeInDown,
+  Easing,
 } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
-import { colors } from "@/theme/colors";
-import { useServiceCategories } from "@/services/firestoreServices";
-import { getCategoryImage } from "@/assets/serviceImages";
+import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import SamsungBottomNav from "@/components/SamsungBottomNav";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServicesDashboard">;
 
 const { width: W } = Dimensions.get("window");
-// 2 cards per row with gap
 const CARD_W = (W - 32 - 12) / 2;
 
-// Top 4 services shown by default
-const TOP_4_IDS = ["cleaning", "ro", "pest", "pet"];
-
-const QUICK_ACTIONS = [
-  { label: "My Bookings", icon: "calendar-outline" as const, color: "#3b82f6", route: "MyBookings" as const },
-  { label: "Track",       icon: "location-outline" as const, color: "#10b981", route: "LiveTracking" as const },
-  { label: "Offers",      icon: "pricetag-outline" as const, color: "#f59e0b", route: "Offers" as const },
-  { label: "Emergency",   icon: "alert-circle-outline" as const, color: "#ef4444", route: "EmergencyAssistance" as const },
-];
-
-const SERVICE_NAV = [
-  { icon: "home-outline" as const,      route: "HomeDashboard" as const,   label: "Home" },
-  { icon: "construct-outline" as const, route: "ServicesDashboard" as const, label: "Services" },
-  { icon: "calendar-outline" as const,  route: "MyBookings" as const,      label: "Bookings" },
-  { icon: "pricetag-outline" as const,  route: "Offers" as const,          label: "Offers" },
-  { icon: "person-outline" as const,    route: "Profile" as const,         label: "Profile" },
+// Filter chips in Explore view
+const EXPLORE_CHIPS = [
+  { id: "all", label: "All", icon: "apps-outline" as const },
+  { id: "home", label: "Home", icon: "home-outline" as const },
+  { id: "health", label: "Health", icon: "heart-outline" as const },
+  { id: "services", label: "Services", icon: "construct-outline" as const },
+  { id: "more", label: "More", icon: "ellipsis-horizontal" as const },
 ];
 
 export default function ServicesDashboardScreen({ navigation }: Props) {
-  const [showAll, setShowAll] = useState(false);
+  const { user } = useAuth();
+  const { theme, isDark, colors } = useTheme();
+
+  // Active view: "main" (Left screenshot) or "explore" (Right screenshot)
+  const [activeView, setActiveView] = useState<"main" | "explore">("main");
+  const [exploreFilter, setExploreFilter] = useState("all");
   const [searchText, setSearchText] = useState("");
-  const { categories: SERVICE_CATEGORIES, loading: catLoading } = useServiceCategories();
+  const [locationName, setLocationName] = useState("Coimbatore");
+  const [locationModal, setLocationModal] = useState(false);
 
   const headerOp = useSharedValue(0);
-  const headerY  = useSharedValue(-24);
+  const headerY = useSharedValue(-20);
+
   useEffect(() => {
-    headerOp.value = withTiming(1, { duration: 450, easing: Easing.out(Easing.cubic) });
-    headerY.value  = withSpring(0, { damping: 18, stiffness: 200 });
-  }, []);
+    headerOp.value = withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) });
+    headerY.value = withSpring(0, { damping: 18, stiffness: 200 });
+  }, [activeView]);
+
   const headerStyle = useAnimatedStyle(() => ({
     opacity: headerOp.value,
     transform: [{ translateY: headerY.value }],
   }));
 
-  // Search filter across all 10 categories + their sub-services
-  const searchResults = useMemo(() => {
-    if (!searchText.trim()) return [];
-    const q = searchText.toLowerCase();
-    const results: { catId: string; catName: string; subId: string; subName: string; price: string }[] = [];
-    SERVICE_CATEGORIES.forEach((cat) => {
-      if (cat.name.toLowerCase().includes(q)) {
-        // Add the category itself as a result
-        cat.subServices.slice(0, 2).forEach((sub) => {
-          results.push({ catId: cat.id, catName: cat.name, subId: sub.id, subName: sub.name, price: sub.price });
-        });
-      }
-      cat.subServices.forEach((sub) => {
-        if (sub.name.toLowerCase().includes(q)) {
-          results.push({ catId: cat.id, catName: cat.name, subId: sub.id, subName: sub.name, price: sub.price });
-        }
-      });
-    });
-    // Deduplicate by subId
-    return results.filter((r, i, arr) => arr.findIndex(x => x.subId === r.subId) === i).slice(0, 8);
-  }, [searchText]);
-
-  const isSearching = searchText.trim().length > 0;
-
-  // Categories to show: top 4 by default, all if showAll or searching
-  const top4 = SERVICE_CATEGORIES.filter((c) => TOP_4_IDS.includes(c.id));
-  const rest = SERVICE_CATEGORIES.filter((c) => !TOP_4_IDS.includes(c.id));
-  const displayedCategories = isSearching ? SERVICE_CATEGORIES : showAll ? SERVICE_CATEGORIES : top4;
+  const firstName = user?.displayName?.split(" ")[0] ?? "Friend";
 
   return (
-    <View style={s.root}>
-      {/* ── Header ─────────────────────────────────────────── */}
-      <Animated.View style={[s.header, headerStyle]}>
-        <View>
-          <Text style={s.greeting}>Good Morning 👋</Text>
-          <Text style={s.greetingSub}>What do you need today?</Text>
-        </View>
-        <View style={s.headerRight}>
-          <Pressable style={s.iconBtn} onPress={() => navigation.navigate("Notifications")}>
-            <Ionicons name="notifications-outline" size={20} color="white" />
-            <View style={s.notifDot} />
-          </Pressable>
-          <Pressable style={s.avatarCircle} onPress={() => navigation.navigate("Profile")}>
-            <Ionicons name="person" size={16} color="white" />
-          </Pressable>
-        </View>
-      </Animated.View>
+    <View style={[s.root, { backgroundColor: colors.background }]}>
+      <StatusBar
+        barStyle={activeView === "explore" ? "light-content" : (isDark ? "light-content" : "dark-content")}
+        backgroundColor="transparent"
+        translucent
+      />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-
-        {/* ── Search bar ─────────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(80).duration(380).springify()} style={s.searchWrap}>
-          <Ionicons name="search-outline" size={18} color="rgba(255,255,255,0.45)" style={s.searchIcon} />
-          <TextInput
-            style={s.searchInput}
-            placeholder="Search cleaning, RO, pest control…"
-            placeholderTextColor="rgba(255,255,255,0.35)"
-            value={searchText}
-            onChangeText={setSearchText}
-            returnKeyType="search"
-          />
-          {searchText.length > 0 && (
-            <Pressable onPress={() => setSearchText("")}>
-              <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.4)" />
-            </Pressable>
-          )}
-        </Animated.View>
-
-        {/* ── Search Results ──────────────────────────────────── */}
-        {isSearching && (
-          <Animated.View entering={FadeInDown.duration(250)} style={s.searchResultsBox}>
-            {searchResults.length === 0 ? (
-              <View style={s.noResults}>
-                <Ionicons name="search-outline" size={28} color="rgba(255,255,255,0.2)" />
-                <Text style={s.noResultsText}>No services found for "{searchText}"</Text>
+      {/* ═════════════════════════════════════════════════════════════════════════
+          VIEW 1: MAIN HOME SERVICES (Matching Left Screenshot)
+          ═════════════════════════════════════════════════════════════════════════ */}
+      {activeView === "main" ? (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={s.scrollContent}
+        >
+          {/* ── 1. Top Location & Action Bar ──────────────────────────── */}
+          <Animated.View style={[s.topBar, headerStyle]}>
+            <Pressable style={s.locationPicker} onPress={() => setLocationModal(true)}>
+              <View style={s.locationPinCircle}>
+                <Ionicons name="location" size={16} color="#2563eb" />
               </View>
-            ) : (
-              searchResults.map((r, i) => (
-                <Pressable
-                  key={r.subId}
-                  onPress={() => navigation.navigate("ServiceDetail", { categoryId: r.catId, subServiceId: r.subId })}
-                  style={[s.searchResultRow, i < searchResults.length - 1 && s.searchResultBorder]}
-                >
-                  <View style={s.searchResultIcon}>
-                    <Ionicons
-                      name={(SERVICE_CATEGORIES.find(c => c.id === r.catId)?.icon ?? "construct") as any}
-                      size={18}
-                      color="#00bcd4"
-                    />
-                  </View>
-                  <View style={s.searchResultInfo}>
-                    <Text style={s.searchResultName}>{r.subName}</Text>
-                    <Text style={s.searchResultCat}>{r.catName}</Text>
-                  </View>
-                  <Text style={s.searchResultPrice}>{r.price}</Text>
-                  <Ionicons name="arrow-forward" size={14} color="rgba(255,255,255,0.3)" />
-                </Pressable>
-              ))
-            )}
-          </Animated.View>
-        )}
-
-        {/* ── Hero Banner ─────────────────────────────────────── */}
-        {!isSearching && (
-          <Animated.View entering={FadeInDown.delay(130).duration(420).springify()}>
-            <LinearGradient
-              colors={["#2563eb", "#60a5fa"]}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={s.hero}
-            >
-              <View style={s.heroBlob1} />
-              <View style={s.heroBlob2} />
-              <View style={s.heroBadge}><Text style={s.heroBadgeText}>PREMIUM CARE</Text></View>
-              <Text style={s.heroTitle}>Everything Your Home Needs</Text>
-              <Text style={s.heroSub}>Expert professionals at your doorstep in 60 minutes.</Text>
-              <View style={s.heroButtons}>
-                <Pressable
-                  style={s.heroBookBtn}
-                  onPress={() => setShowAll(true)}
-                >
-                  <Text style={s.heroBookText}>Book Service</Text>
-                </Pressable>
-                <Pressable
-                  style={s.heroExploreBtn}
-                  onPress={() => navigation.navigate("Offers")}
-                >
-                  <Text style={s.heroExploreText}>View Offers</Text>
-                </Pressable>
-              </View>
-            </LinearGradient>
-          </Animated.View>
-        )}
-
-        {/* ── Quick Actions ───────────────────────────────────── */}
-        {!isSearching && (
-          <Animated.View entering={SlideInLeft.delay(180).duration(380).springify()} style={s.quickRow}>
-            {QUICK_ACTIONS.map((q) => (
-              <Pressable
-                key={q.label}
-                style={s.quickCard}
-                onPress={() => navigation.navigate(q.route as any)}
-              >
-                <View style={[s.quickIcon, { backgroundColor: q.color + "22" }]}>
-                  <Ionicons name={q.icon} size={22} color={q.color} />
+              <View>
+                <View style={s.locationTitleRow}>
+                  <Text style={[s.locationCity, { color: colors.text }]}>{locationName}</Text>
+                  <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
                 </View>
-                <Text style={s.quickLabel}>{q.label}</Text>
-              </Pressable>
-            ))}
-          </Animated.View>
-        )}
-
-        {/* ── Services Grid (2 per row) ─────────────────────── */}
-        <View style={s.sectionHeaderRow}>
-          <Text style={s.sectionTitle}>
-            {isSearching ? "Search Results" : showAll ? "All Services" : "Popular Services"}
-          </Text>
-          {!isSearching && !showAll && (
-            <Pressable onPress={() => setShowAll(true)} style={s.seeMoreBtn}>
-              <Text style={s.seeMoreText}>See All</Text>
-              <Ionicons name="arrow-forward" size={14} color="#00bcd4" />
+                <Text style={[s.locationSub, { color: colors.textMuted }]}>
+                  Home Services • Health • More
+                </Text>
+              </View>
             </Pressable>
-          )}
-          {!isSearching && showAll && (
-            <Pressable onPress={() => setShowAll(false)} style={s.seeMoreBtn}>
-              <Text style={s.seeMoreText}>Show Less</Text>
-              <Ionicons name="chevron-up" size={14} color="#00bcd4" />
-            </Pressable>
-          )}
-        </View>
 
-        {/* Loading state */}
-        {catLoading && (
-          <View style={s.loadingRow}>
-            <ActivityIndicator size="small" color="#00bcd4" />
-            <Text style={s.loadingText}>Loading services…</Text>
-          </View>
-        )}
-
-        {/* 2-column grid */}
-        <View style={s.categoryGrid}>
-          {displayedCategories.map((cat, i) => (
-            <Animated.View
-              key={cat.id}
-              entering={FadeInDown.delay(240 + i * 50).duration(350).springify()}
-              style={s.categoryOuter}
-            >
+            <View style={s.topBarIcons}>
+              {/* Notification bell */}
               <Pressable
-                onPress={() => navigation.navigate("ServiceCategory", { categoryId: cat.id })}
-                style={({ pressed }) => [s.categoryCard, { opacity: pressed ? 0.88 : 1 }]}
+                style={[s.iconBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#f1f5f9" }]}
+                onPress={() => navigation.navigate("Notifications")}
               >
-                <LinearGradient
-                  colors={cat.gradient}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                  style={s.categoryGradient}
-                >
-                  {/* Background image — prefer Firestore imageUrl, fallback to static map */}
-                  <Image
-                    source={{ uri: cat.imageUrl ?? getCategoryImage(cat.id) }}
-                    style={s.catBgImage}
-                    resizeMode="cover"
-                  />
-                  {/* Gradient overlay so text is readable */}
-                  <LinearGradient
-                    colors={[cat.gradient[0] + "ee", cat.gradient[1] + "aa"]}
-                    style={s.catOverlay}
-                  />
+                <Ionicons name="notifications-outline" size={20} color={colors.text} />
+                <View style={s.notifDot} />
+              </Pressable>
 
-                  {/* Icon */}
-                  <View style={s.catIconWrap}>
-                    <Ionicons name={cat.icon as any} size={28} color="white" />
-                  </View>
-
-                  {/* Name + tagline */}
-                  <Text style={s.catName}>{cat.name}</Text>
-                  <Text style={s.catTagline} numberOfLines={1}>{cat.tagline}</Text>
-
-                  {/* Service count pill */}
-                  <View style={s.catCountPill}>
-                    <Text style={s.catCountText}>{cat.subServices.length} services</Text>
-                  </View>
+              {/* Avatar circle */}
+              <Pressable
+                style={[s.avatarCircle, { borderColor: colors.primary }]}
+                onPress={() => navigation.navigate("Profile")}
+              >
+                <LinearGradient colors={["#00c6aa", "#0f9b8e"]} style={s.avatarInner}>
+                  <Text style={s.avatarInitial}>{firstName.charAt(0).toUpperCase()}</Text>
                 </LinearGradient>
               </Pressable>
-            </Animated.View>
-          ))}
-        </View>
+            </View>
+          </Animated.View>
 
-        {/* Show More hint row (when collapsed) */}
-        {!isSearching && !showAll && (
-          <Animated.View entering={FadeInDown.delay(500).duration(300)}>
-            <Pressable onPress={() => setShowAll(true)} style={s.showMoreRow}>
-              <Text style={s.showMoreText}>+{rest.length} more services</Text>
-              <Ionicons name="chevron-down" size={16} color="#00bcd4" />
+          {/* ── 2. Greeting Header ───────────────────────────────────── */}
+          <View style={s.greetingSection}>
+            <Text style={[s.greetingText, { color: colors.text }]}>Good Morning 👋</Text>
+            <Text style={[s.greetingSubText, { color: colors.textSecondary }]}>
+              Make your home, life and health easier today.
+            </Text>
+          </View>
+
+          {/* ── 3. Search Bar with Mic ───────────────────────────────── */}
+          <View
+            style={[
+              s.searchContainer,
+              {
+                backgroundColor: isDark ? "#161f2e" : "#ffffff",
+                borderColor: colors.cardBorder,
+              },
+            ]}
+          >
+            <Ionicons name="search-outline" size={20} color={colors.textMuted} style={s.searchIcon} />
+            <TextInput
+              style={[s.searchInput, { color: colors.text }]}
+              placeholder="Search services, e.g. cleaning, RO, doctor..."
+              placeholderTextColor={colors.textMuted}
+              value={searchText}
+              onChangeText={setSearchText}
+              returnKeyType="search"
+            />
+            <Pressable
+              onPress={() => Alert.alert("Voice Search", "Listening for your voice request...")}
+              style={s.micBtn}
+            >
+              <Ionicons name="mic-outline" size={20} color={colors.textSecondary} />
             </Pressable>
-          </Animated.View>
-        )}
+          </View>
 
-        {/* ── Trust strip ─────────────────────────────────────── */}
-        {!isSearching && (
-          <Animated.View entering={FadeInDown.delay(600).duration(380).springify()} style={s.trustStrip}>
-            {[
-              { icon: "shield-checkmark-outline" as const, label: "Verified Pros" },
-              { icon: "flash-outline" as const,            label: "Same-Day Fix" },
-              { icon: "thumbs-up-outline" as const,        label: "100% Guarantee" },
-              { icon: "ribbon-outline" as const,           label: "30-Day Warranty" },
-            ].map((t) => (
-              <View key={t.label} style={s.trustItem}>
-                <View style={s.trustIconWrap}>
-                  <Ionicons name={t.icon} size={18} color="#00bcd4" />
+          {/* ── 4. Hero Banner ("A Cleaner Home, A Healthier You") ───── */}
+          <View style={s.heroCardWrapper}>
+            <LinearGradient
+              colors={isDark ? ["#064e3b", "#065f46", "#047857"] : ["#ebfbee", "#d3f9d8", "#c3fae8"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={s.heroCard}
+            >
+              {/* Left Content */}
+              <View style={s.heroLeftCol}>
+                <View style={s.heroPill}>
+                  <Ionicons name="sparkles" size={12} color="#f59e0b" />
+                  <Text style={s.heroPillText}>Premium Care</Text>
                 </View>
-                <Text style={s.trustLabel}>{t.label}</Text>
+
+                <Text style={[s.heroHeading, { color: isDark ? "#ffffff" : "#134e4a" }]}>
+                  A Cleaner Home,{"\n"}A Healthier You
+                </Text>
+
+                <Text style={[s.heroTagline, { color: isDark ? "rgba(255,255,255,0.85)" : "#2d3748" }]}>
+                  Trusted professionals.{"\n"}Quality service. Guaranteed.
+                </Text>
+
+                <Pressable
+                  style={s.heroBookBtn}
+                  onPress={() => setActiveView("explore")}
+                >
+                  <Text style={s.heroBookText}>Book Now</Text>
+                  <Ionicons name="arrow-forward" size={14} color="#ffffff" />
+                </Pressable>
               </View>
+
+              {/* Right Illustration: Cozy Sofa & Houseplant 3D graphic */}
+              <View style={s.heroIllustrationWrap}>
+                <View style={s.plantLeaf1} />
+                <View style={s.plantLeaf2} />
+                <View style={s.sofaBack}>
+                  <View style={s.sofaCushionLeft} />
+                  <View style={s.sofaCushionRight} />
+                  <View style={s.sofaPillow} />
+                </View>
+                <View style={s.sofaBase} />
+              </View>
+            </LinearGradient>
+          </View>
+
+          {/* ── 5. Quick Actions Row (4 Circular Icon Cards) ─────────── */}
+          <View style={s.quickActionsRow}>
+            {/* My Bookings */}
+            <Pressable
+              style={s.quickActionCard}
+              onPress={() => navigation.navigate("MyBookings")}
+            >
+              <View style={[s.quickActionCircle, { backgroundColor: "#e8f5e9" }]}>
+                <Ionicons name="calendar" size={22} color="#10b981" />
+              </View>
+              <Text style={[s.quickActionTitle, { color: colors.text }]}>My Bookings</Text>
+              <Text style={[s.quickActionSub, { color: colors.textMuted }]}>View & manage</Text>
+            </Pressable>
+
+            {/* Track */}
+            <Pressable
+              style={s.quickActionCard}
+              onPress={() => navigation.navigate("LiveTracking")}
+            >
+              <View style={[s.quickActionCircle, { backgroundColor: "#f3e8ff" }]}>
+                <Ionicons name="location" size={22} color="#8b5cf6" />
+              </View>
+              <Text style={[s.quickActionTitle, { color: colors.text }]}>Track</Text>
+              <Text style={[s.quickActionSub, { color: colors.textMuted }]}>Live tracking</Text>
+            </Pressable>
+
+            {/* Offers */}
+            <Pressable
+              style={s.quickActionCard}
+              onPress={() => navigation.navigate("Offers")}
+            >
+              <View style={[s.quickActionCircle, { backgroundColor: "#fef3c7" }]}>
+                <Ionicons name="gift" size={22} color="#f59e0b" />
+              </View>
+              <Text style={[s.quickActionTitle, { color: colors.text }]}>Offers</Text>
+              <Text style={[s.quickActionSub, { color: colors.textMuted }]}>Save more</Text>
+            </Pressable>
+
+            {/* Emergency */}
+            <Pressable
+              style={s.quickActionCard}
+              onPress={() => navigation.navigate("EmergencyAssistance")}
+            >
+              <View style={[s.quickActionCircle, { backgroundColor: "#fee2e2" }]}>
+                <Text style={s.emergencyText}>SOS</Text>
+              </View>
+              <Text style={[s.quickActionTitle, { color: colors.text }]}>Emergency</Text>
+              <Text style={[s.quickActionSub, { color: colors.textMuted }]}>Get help</Text>
+            </Pressable>
+          </View>
+
+          {/* ── 6. Popular Services Section Header ───────────────────── */}
+          <View style={s.sectionHeader}>
+            <Text style={[s.sectionTitle, { color: colors.text }]}>Popular Services</Text>
+            <Pressable
+              style={s.seeAllBtn}
+              onPress={() => setActiveView("explore")}
+            >
+              <Text style={s.seeAllText}>See All</Text>
+              <Ionicons name="arrow-forward" size={14} color="#059669" />
+            </Pressable>
+          </View>
+
+          {/* ── 7. 2×2 Grid of Curved Illustrated Cards ──────────────── */}
+          <View style={s.servicesGrid}>
+            {/* 1. Home Cleaning */}
+            <Pressable
+              style={[s.serviceCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "cleaning" })}
+            >
+              <LinearGradient
+                colors={["#059669", "#10b981"]}
+                style={s.cardWaveHeader}
+              >
+                {/* 3D Cleaning graphics mockup */}
+                <View style={s.cleaningDecoCircle} />
+                <View style={s.cardSprayBottle}>
+                  <View style={s.sprayNozzle} />
+                  <View style={s.sprayHandle} />
+                </View>
+              </LinearGradient>
+
+              <View style={s.cardBadgeIcon}>
+                <Ionicons name="sparkles" size={17} color="#059669" />
+              </View>
+
+              <View style={s.cardBody}>
+                <Text style={[s.cardServiceName, { color: colors.text }]}>Home Cleaning</Text>
+                <Text style={[s.cardServiceTagline, { color: colors.textMuted }]}>
+                  Spotless home,{"\n"}happy life
+                </Text>
+                <View style={[s.cardPillBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#f0fdf4" }]}>
+                  <Text style={[s.cardPillBtnText, { color: "#059669" }]}>6 services</Text>
+                  <Ionicons name="arrow-forward" size={12} color="#059669" />
+                </View>
+              </View>
+            </Pressable>
+
+            {/* 2. RO Service */}
+            <Pressable
+              style={[s.serviceCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "ro" })}
+            >
+              <LinearGradient
+                colors={["#0284c7", "#38bdf8"]}
+                style={s.cardWaveHeader}
+              >
+                {/* Water splash glass graphic */}
+                <View style={s.waterDecoCircle} />
+                <View style={s.waterGlass} />
+              </LinearGradient>
+
+              <View style={s.cardBadgeIcon}>
+                <Ionicons name="water" size={17} color="#0284c7" />
+              </View>
+
+              <View style={s.cardBody}>
+                <Text style={[s.cardServiceName, { color: colors.text }]}>RO Service</Text>
+                <Text style={[s.cardServiceTagline, { color: colors.textMuted }]}>
+                  Pure water,{"\n"}every drop
+                </Text>
+                <View style={[s.cardPillBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#f0f9ff" }]}>
+                  <Text style={[s.cardPillBtnText, { color: "#0284c7" }]}>5 services</Text>
+                  <Ionicons name="arrow-forward" size={12} color="#0284c7" />
+                </View>
+              </View>
+            </Pressable>
+
+            {/* 3. Pest Control */}
+            <Pressable
+              style={[s.serviceCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "pest" })}
+            >
+              <LinearGradient
+                colors={["#d97706", "#f59e0b"]}
+                style={s.cardWaveHeader}
+              >
+                {/* Pest technician sprayer graphic */}
+                <View style={s.pestDecoCircle} />
+                <View style={s.pestBackpack} />
+              </LinearGradient>
+
+              <View style={s.cardBadgeIcon}>
+                <Ionicons name="shield-checkmark" size={17} color="#d97706" />
+              </View>
+
+              <View style={s.cardBody}>
+                <Text style={[s.cardServiceName, { color: colors.text }]}>Pest Control</Text>
+                <Text style={[s.cardServiceTagline, { color: colors.textMuted }]}>
+                  Your home,{"\n"}pest-free
+                </Text>
+                <View style={[s.cardPillBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#fffbeb" }]}>
+                  <Text style={[s.cardPillBtnText, { color: "#d97706" }]}>5 services</Text>
+                  <Ionicons name="arrow-forward" size={12} color="#d97706" />
+                </View>
+              </View>
+            </Pressable>
+
+            {/* 4. Pet Care */}
+            <Pressable
+              style={[s.serviceCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "pet" })}
+            >
+              <LinearGradient
+                colors={["#e11d48", "#fb7185"]}
+                style={s.cardWaveHeader}
+              >
+                {/* Dog pet graphic */}
+                <View style={s.petDecoCircle} />
+                <View style={s.petEars} />
+              </LinearGradient>
+
+              <View style={s.cardBadgeIcon}>
+                <Ionicons name="paw" size={17} color="#e11d48" />
+              </View>
+
+              <View style={s.cardBody}>
+                <Text style={[s.cardServiceName, { color: colors.text }]}>Pet Care</Text>
+                <Text style={[s.cardServiceTagline, { color: colors.textMuted }]}>
+                  Love them{"\n"}the right way
+                </Text>
+                <View style={[s.cardPillBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#fff1f2" }]}>
+                  <Text style={[s.cardPillBtnText, { color: "#e11d48" }]}>4 services</Text>
+                  <Ionicons name="arrow-forward" size={12} color="#e11d48" />
+                </View>
+              </View>
+            </Pressable>
+          </View>
+
+          {/* ── 8. Purple "Get Premium Benefits" Banner ─────────────── */}
+          <LinearGradient
+            colors={["#4338ca", "#5850ec", "#7c3aed"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.premiumBanner}
+          >
+            <View style={s.crownIconBadge}>
+              <Ionicons name="ribbon" size={20} color="#fbbf24" />
+            </View>
+            <View style={s.premiumTextWrap}>
+              <Text style={s.premiumTitle}>Get Premium Benefits</Text>
+              <Text style={s.premiumSub}>Exclusive deals • Priority booking • More</Text>
+            </View>
+            <Pressable
+              style={s.viewPlansBtn}
+              onPress={() => Alert.alert("Premium Membership", "Priority technician dispatch & 20% discount on all home care!")}
+            >
+              <Text style={s.viewPlansText}>View Plans</Text>
+              <Ionicons name="arrow-forward" size={12} color="#ffffff" />
+            </Pressable>
+          </LinearGradient>
+
+          {/* ── 9. Trust Badges Row (4 Items) ────────────────────────── */}
+          <View style={[s.trustBadgesRow, { borderColor: colors.cardBorder }]}>
+            <View style={s.trustItem}>
+              <Ionicons name="shield-checkmark-outline" size={20} color="#2563eb" />
+              <Text style={[s.trustTitle, { color: colors.text }]}>Verified Pros</Text>
+              <Text style={[s.trustSub, { color: colors.textMuted }]}>Background checked</Text>
+            </View>
+            <View style={s.trustItem}>
+              <Ionicons name="flash-outline" size={20} color="#0284c7" />
+              <Text style={[s.trustTitle, { color: colors.text }]}>Same-Day Fix</Text>
+              <Text style={[s.trustSub, { color: colors.textMuted }]}>Fast & reliable</Text>
+            </View>
+            <View style={s.trustItem}>
+              <Ionicons name="ribbon-outline" size={20} color="#059669" />
+              <Text style={[s.trustTitle, { color: colors.text }]}>100% Guarantee</Text>
+              <Text style={[s.trustSub, { color: colors.textMuted }]}>Your satisfaction</Text>
+            </View>
+            <View style={s.trustItem}>
+              <Ionicons name="calendar-outline" size={20} color="#7c3aed" />
+              <Text style={[s.trustTitle, { color: colors.text }]}>30-Day Warranty</Text>
+              <Text style={[s.trustSub, { color: colors.textMuted }]}>Service assurance</Text>
+            </View>
+          </View>
+
+          <View style={{ height: 110 }} />
+        </ScrollView>
+      ) : (
+        /* ═════════════════════════════════════════════════════════════════════════
+           VIEW 2: EXPLORE OUR SERVICES (Matching Right Screenshot)
+           ═════════════════════════════════════════════════════════════════════════ */
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={s.scrollContent}
+        >
+          {/* ── 1. Curved Emerald Wave Header with 3D House ──────────── */}
+          <LinearGradient
+            colors={["#064e3b", "#065f46", "#047857"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.exploreWaveHeader}
+          >
+            {/* Back button */}
+            <Pressable
+              style={s.exploreBackBtn}
+              onPress={() => setActiveView("main")}
+            >
+              <Ionicons name="arrow-back" size={22} color="#ffffff" />
+            </Pressable>
+
+            <View style={s.exploreHeaderContent}>
+              <View style={s.exploreHeaderText}>
+                <Text style={s.exploreTitle}>Explore Our{"\n"}Services</Text>
+                <Text style={s.exploreSubtitle}>
+                  Find the right service for your home, health and lifestyle.
+                </Text>
+              </View>
+
+              {/* 3D House Graphic Illustration */}
+              <View style={s.houseIllustration}>
+                <View style={s.houseRoof} />
+                <View style={s.houseWalls}>
+                  <View style={s.houseDoor} />
+                  <View style={s.houseWindow} />
+                </View>
+                <View style={s.houseChimney} />
+                <View style={s.houseLawn} />
+              </View>
+            </View>
+          </LinearGradient>
+
+          {/* ── 2. Search & Filter Bar ───────────────────────────────── */}
+          <View style={s.exploreSearchRow}>
+            <View
+              style={[
+                s.exploreSearchBox,
+                {
+                  backgroundColor: isDark ? "#161f2e" : "#ffffff",
+                  borderColor: colors.cardBorder,
+                },
+              ]}
+            >
+              <Ionicons name="search-outline" size={19} color={colors.textMuted} />
+              <TextInput
+                style={[s.exploreSearchInput, { color: colors.text }]}
+                placeholder="Search for services..."
+                placeholderTextColor={colors.textMuted}
+                value={searchText}
+                onChangeText={setSearchText}
+              />
+            </View>
+            <Pressable
+              style={[
+                s.exploreFilterBtn,
+                {
+                  backgroundColor: isDark ? "#161f2e" : "#ffffff",
+                  borderColor: colors.cardBorder,
+                },
+              ]}
+              onPress={() => Alert.alert("Filter Services", "Sort by: Price, Popularity, Ratings")}
+            >
+              <Ionicons name="options-outline" size={20} color={colors.text} />
+            </Pressable>
+          </View>
+
+          {/* ── 3. Category Filter Chips ─────────────────────────────── */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.exploreChipsRow}
+          >
+            {EXPLORE_CHIPS.map((ch) => {
+              const isActive = exploreFilter === ch.id;
+              return (
+                <Pressable
+                  key={ch.id}
+                  onPress={() => setExploreFilter(ch.id)}
+                  style={[
+                    s.exploreChip,
+                    isActive
+                      ? s.exploreChipActive
+                      : {
+                          backgroundColor: isDark ? "#161f2e" : "#ffffff",
+                          borderColor: colors.cardBorder,
+                        },
+                  ]}
+                >
+                  <Ionicons
+                    name={ch.icon}
+                    size={15}
+                    color={isActive ? "#ffffff" : colors.textSecondary}
+                  />
+                  <Text
+                    style={[
+                      s.exploreChipText,
+                      { color: isActive ? "#ffffff" : colors.textSecondary },
+                    ]}
+                  >
+                    {ch.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
+          {/* ── 4. Service Categories 6-Card Grid ────────────────────── */}
+          <View style={s.sectionHeader}>
+            <Text style={[s.sectionTitle, { color: colors.text }]}>Service Categories</Text>
+            <Pressable
+              style={s.seeAllBtn}
+              onPress={() => Alert.alert("All Categories", "Browse all 10 curated home care categories.")}
+            >
+              <Text style={s.seeAllText}>See All</Text>
+              <Ionicons name="arrow-forward" size={14} color="#059669" />
+            </Pressable>
+          </View>
+
+          <View style={s.exploreCatGrid}>
+            {/* 1. Home Cleaning */}
+            <Pressable
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ebfbee" }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "cleaning" })}
+            >
+              <View style={[s.exploreCatIconCircle, { backgroundColor: "#d3f9d8" }]}>
+                <Ionicons name="sparkles" size={24} color="#059669" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]}>Home Cleaning</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>6 services</Text>
+            </Pressable>
+
+            {/* 2. RO Service */}
+            <Pressable
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#e0f2fe" }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "ro" })}
+            >
+              <View style={[s.exploreCatIconCircle, { backgroundColor: "#bae6fd" }]}>
+                <Ionicons name="water" size={24} color="#0284c7" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]}>RO Service</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>5 services</Text>
+            </Pressable>
+
+            {/* 3. Pest Control */}
+            <Pressable
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#fef3c7" }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "pest" })}
+            >
+              <View style={[s.exploreCatIconCircle, { backgroundColor: "#fde68a" }]}>
+                <Ionicons name="shield-checkmark" size={24} color="#d97706" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]}>Pest Control</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>5 services</Text>
+            </Pressable>
+
+            {/* 4. Pet Care */}
+            <Pressable
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffe4e6" }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "pet" })}
+            >
+              <View style={[s.exploreCatIconCircle, { backgroundColor: "#fecdd3" }]}>
+                <Ionicons name="paw" size={24} color="#e11d48" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]}>Pet Care</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>4 services</Text>
+            </Pressable>
+
+            {/* 5. Health & Wellness */}
+            <Pressable
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#f3e8ff" }]}
+              onPress={() => navigation.navigate("HealthDashboard")}
+            >
+              <View style={[s.exploreCatIconCircle, { backgroundColor: "#e9d5ff" }]}>
+                <Ionicons name="heart-circle" size={24} color="#7c3aed" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]}>Health & Wellness</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>8 services</Text>
+            </Pressable>
+
+            {/* 6. Home Services */}
+            <Pressable
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#e0f2fe" }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "home" })}
+            >
+              <View style={[s.exploreCatIconCircle, { backgroundColor: "#bae6fd" }]}>
+                <Ionicons name="construct" size={24} color="#0284c7" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]}>Home Services</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>10 services</Text>
+            </Pressable>
+          </View>
+
+          {/* ── 5. More Services (Vertical List) ─────────────────────── */}
+          <View style={s.sectionHeader}>
+            <Text style={[s.sectionTitle, { color: colors.text }]}>More Services</Text>
+          </View>
+
+          <View style={[s.moreServicesList, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+            {/* Electrical */}
+            <Pressable
+              style={[s.moreServiceRow, { borderBottomColor: colors.divider }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "electrical" })}
+            >
+              <View style={[s.moreServiceIcon, { backgroundColor: "#fef3c7" }]}>
+                <Ionicons name="flash" size={18} color="#f59e0b" />
+              </View>
+              <View style={s.moreServiceTextWrap}>
+                <Text style={[s.moreServiceName, { color: colors.text }]}>Electrical</Text>
+                <Text style={[s.moreServiceDesc, { color: colors.textMuted }]}>Repairs, fittings, installations</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </Pressable>
+
+            {/* Plumbing */}
+            <Pressable
+              style={[s.moreServiceRow, { borderBottomColor: colors.divider }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "plumbing" })}
+            >
+              <View style={[s.moreServiceIcon, { backgroundColor: "#e0f2fe" }]}>
+                <Ionicons name="water" size={18} color="#0284c7" />
+              </View>
+              <View style={s.moreServiceTextWrap}>
+                <Text style={[s.moreServiceName, { color: colors.text }]}>Plumbing</Text>
+                <Text style={[s.moreServiceDesc, { color: colors.textMuted }]}>Leak repair, fittings, maintenance</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </Pressable>
+
+            {/* Appliance Repair */}
+            <Pressable
+              style={[s.moreServiceRow, { borderBottomColor: colors.divider }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "appliances" })}
+            >
+              <View style={[s.moreServiceIcon, { backgroundColor: "#f3e8ff" }]}>
+                <Ionicons name="tv" size={18} color="#7c3aed" />
+              </View>
+              <View style={s.moreServiceTextWrap}>
+                <Text style={[s.moreServiceName, { color: colors.text }]}>Appliance Repair</Text>
+                <Text style={[s.moreServiceDesc, { color: colors.textMuted }]}>AC, fridge, washing machine & more</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </Pressable>
+
+            {/* Carpentry */}
+            <Pressable
+              style={[s.moreServiceRow, { borderBottomColor: colors.divider }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "carpentry" })}
+            >
+              <View style={[s.moreServiceIcon, { backgroundColor: "#dcfce7" }]}>
+                <Ionicons name="hammer" size={18} color="#16a34a" />
+              </View>
+              <View style={s.moreServiceTextWrap}>
+                <Text style={[s.moreServiceName, { color: colors.text }]}>Carpentry</Text>
+                <Text style={[s.moreServiceDesc, { color: colors.textMuted }]}>Furniture, woodwork, repairs</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </Pressable>
+
+            {/* Home Care */}
+            <Pressable
+              style={[s.moreServiceRow, { borderBottomColor: colors.divider }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "home" })}
+            >
+              <View style={[s.moreServiceIcon, { backgroundColor: "#fee2e2" }]}>
+                <Ionicons name="heart" size={18} color="#ef4444" />
+              </View>
+              <View style={s.moreServiceTextWrap}>
+                <Text style={[s.moreServiceName, { color: colors.text }]}>Home Care</Text>
+                <Text style={[s.moreServiceDesc, { color: colors.textMuted }]}>Elder care, patient care, assistance</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </Pressable>
+
+            {/* Other Services */}
+            <Pressable
+              style={s.moreServiceRow}
+              onPress={() => Alert.alert("Other Services", "Gardening, painting, sanitation, and deep sanitation.")}
+            >
+              <View style={[s.moreServiceIcon, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#f1f5f9" }]}>
+                <Ionicons name="ellipsis-horizontal" size={18} color={colors.textSecondary} />
+              </View>
+              <View style={s.moreServiceTextWrap}>
+                <Text style={[s.moreServiceName, { color: colors.text }]}>Other Services</Text>
+                <Text style={[s.moreServiceDesc, { color: colors.textMuted }]}>And many more...</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </Pressable>
+          </View>
+
+          {/* ── 6. Bottom Blue Exclusive Offers Promo Card ───────────── */}
+          <LinearGradient
+            colors={["#1e3a8a", "#1d4ed8", "#2563eb"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.offersPromoCard}
+          >
+            <View style={s.offersPromoLeft}>
+              <Text style={s.offersPromoTitle}>Save More with{"\n"}Exclusive Offers</Text>
+              <Text style={s.offersPromoSub}>Get the best deals on your favourite services.</Text>
+              <Pressable
+                style={s.offersPromoBtn}
+                onPress={() => navigation.navigate("Offers")}
+              >
+                <Text style={s.offersPromoBtnText}>View Offers</Text>
+                <Ionicons name="arrow-forward" size={13} color="#1e3a8a" />
+              </Pressable>
+            </View>
+
+            {/* 3D Gift Box illustration */}
+            <View style={s.giftBoxWrap}>
+              <View style={s.giftBoxRibbonH} />
+              <View style={s.giftBoxRibbonV} />
+              <View style={s.giftBoxBow} />
+              <Ionicons name="sparkles" size={14} color="#fde047" style={s.giftSparkle1} />
+              <Ionicons name="sparkles" size={10} color="#67e8f9" style={s.giftSparkle2} />
+            </View>
+          </LinearGradient>
+
+          <View style={{ height: 110 }} />
+        </ScrollView>
+      )}
+
+      {/* ── Location Modal ───────────────────────────────────────── */}
+      <Modal transparent visible={locationModal} animationType="fade" onRequestClose={() => setLocationModal(false)}>
+        <Pressable style={s.modalBackdrop} onPress={() => setLocationModal(false)}>
+          <View style={[s.modalCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+            <Text style={[s.modalTitle, { color: colors.text }]}>Select Location</Text>
+            {["Coimbatore", "Bangalore", "Chennai", "Hyderabad", "Mumbai"].map((city) => (
+              <Pressable
+                key={city}
+                style={[s.cityOption, city === locationName && s.cityOptionActive]}
+                onPress={() => {
+                  setLocationName(city);
+                  setLocationModal(false);
+                }}
+              >
+                <Ionicons
+                  name="location"
+                  size={18}
+                  color={city === locationName ? "#2563eb" : colors.textMuted}
+                />
+                <Text
+                  style={[
+                    s.cityOptionText,
+                    { color: city === locationName ? "#2563eb" : colors.text },
+                    city === locationName && { fontWeight: "700" },
+                  ]}
+                >
+                  {city}
+                </Text>
+                {city === locationName && (
+                  <Ionicons name="checkmark-circle" size={18} color="#2563eb" style={{ marginLeft: "auto" }} />
+                )}
+              </Pressable>
             ))}
-          </Animated.View>
-        )}
+          </View>
+        </Pressable>
+      </Modal>
 
-        <View style={{ height: 100 }} />
-      </ScrollView>
-
-      {/* ── Bottom Nav ──────────────────────────────────────────── */}
+      {/* ── Samsung Bottom Nav (Persistent) ──────────────────────── */}
       <SamsungBottomNav activeRoute="ServicesDashboard" />
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#081826" },
-
-  header: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start",
-    paddingHorizontal: 16, paddingTop: 52, paddingBottom: 12,
+  root: {
+    flex: 1,
   },
-  greeting: { fontSize: 22, fontWeight: "700", color: "white" },
-  greetingSub: { fontSize: 13, color: "rgba(255,255,255,0.55)", marginTop: 3 },
-  headerRight: { flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 4 },
+  scrollContent: {
+    paddingBottom: 20,
+  },
+
+  // ── Top Bar (Main View) ──────────────────────────────────────────
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 50,
+    paddingBottom: 8,
+  },
+  locationPicker: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  locationPinCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(37, 99, 235, 0.12)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  locationTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  locationCity: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  locationSub: {
+    fontSize: 11.5,
+    marginTop: 1,
+  },
+  topBarIcons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   iconBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
-    justifyContent: "center", alignItems: "center",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: "center",
+    alignItems: "center",
   },
   notifDot: {
-    position: "absolute", top: 9, right: 9,
-    width: 8, height: 8, borderRadius: 4,
+    position: "absolute",
+    top: 6,
+    right: 7,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
     backgroundColor: "#ef4444",
-    borderWidth: 1.5, borderColor: "#081826",
   },
   avatarCircle: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: "rgba(37,99,235,0.4)",
-    borderWidth: 2, borderColor: "#60a5fa",
-    justifyContent: "center", alignItems: "center",
-  },
-
-  scroll: { paddingHorizontal: 16 },
-
-  // Search
-  searchWrap: {
-    flexDirection: "row", alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
-    paddingHorizontal: 14, marginBottom: 14, height: 50,
-  },
-  searchIcon: { marginRight: 8 },
-  searchInput: { flex: 1, color: "white", fontSize: 14 },
-
-  // Search results dropdown
-  searchResultsBox: {
-    backgroundColor: "rgba(17,33,50,0.98)",
-    borderRadius: 18, marginBottom: 14,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1.5,
     overflow: "hidden",
   },
-  searchResultRow: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    paddingHorizontal: 16, paddingVertical: 13,
+  avatarInner: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  searchResultBorder: { borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)" },
-  searchResultIcon: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: "rgba(0,188,212,0.12)",
-    justifyContent: "center", alignItems: "center",
+  avatarInitial: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#ffffff",
   },
-  searchResultInfo: { flex: 1 },
-  searchResultName: { fontSize: 14, fontWeight: "600", color: "white" },
-  searchResultCat: { fontSize: 11, color: colors.text.secondary, marginTop: 2 },
-  searchResultPrice: { fontSize: 13, fontWeight: "700", color: "#00bcd4" },
-  noResults: { alignItems: "center", paddingVertical: 32, gap: 8 },
-  noResultsText: { fontSize: 14, color: "rgba(255,255,255,0.3)" },
 
-  // Hero
-  hero: {
-    borderRadius: 28, padding: 24, marginBottom: 18,
-    minHeight: 190, overflow: "hidden",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.15)",
+  // ── Greeting ───────────────────────────────────────────────────
+  greetingSection: {
+    paddingHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 12,
   },
-  heroBlob1: {
-    position: "absolute", top: -40, left: -40,
-    width: 180, height: 180, borderRadius: 90,
-    backgroundColor: "rgba(255,255,255,0.07)",
+  greetingText: {
+    fontSize: 27,
+    fontWeight: "800",
+    letterSpacing: -0.3,
   },
-  heroBlob2: {
-    position: "absolute", bottom: -50, right: -30,
-    width: 220, height: 220, borderRadius: 110,
-    backgroundColor: "rgba(255,255,255,0.05)",
+  greetingSubText: {
+    fontSize: 14,
+    marginTop: 3,
+    lineHeight: 20,
   },
-  heroBadge: {
-    backgroundColor: "rgba(255,255,255,0.18)", borderRadius: 20,
-    paddingHorizontal: 12, paddingVertical: 4, alignSelf: "flex-start",
-    marginBottom: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.25)",
-  },
-  heroBadgeText: { fontSize: 10, fontWeight: "800", color: "white", letterSpacing: 1.2 },
-  heroTitle: { fontSize: 22, fontWeight: "700", color: "white", lineHeight: 30, marginBottom: 6 },
-  heroSub: { fontSize: 13, color: "rgba(255,255,255,0.8)", lineHeight: 19, marginBottom: 18 },
-  heroButtons: { flexDirection: "row", gap: 12 },
-  heroBookBtn: {
-    backgroundColor: "white", borderRadius: 20,
-    paddingHorizontal: 20, paddingVertical: 10,
-  },
-  heroBookText: { fontSize: 13, fontWeight: "700", color: "#2563eb" },
-  heroExploreBtn: {
-    backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 20,
-    paddingHorizontal: 20, paddingVertical: 10,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.25)",
-  },
-  heroExploreText: { fontSize: 13, fontWeight: "600", color: "white" },
 
-  // Quick actions
-  quickRow: { flexDirection: "row", gap: 10, marginBottom: 22 },
-  quickCard: {
-    flex: 1, alignItems: "center", justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 18,
-    paddingVertical: 14, gap: 7,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+  // ── Search Bar ─────────────────────────────────────────────────
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  quickIcon: {
-    width: 42, height: 42, borderRadius: 21,
-    justifyContent: "center", alignItems: "center",
+  searchIcon: {
+    marginRight: 8,
   },
-  quickLabel: { fontSize: 10, fontWeight: "600", color: "rgba(255,255,255,0.75)", textAlign: "center" },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    padding: 0,
+  },
+  micBtn: {
+    padding: 4,
+  },
 
-  sectionHeaderRow: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+  // ── Hero Banner ────────────────────────────────────────────────
+  heroCardWrapper: {
+    marginHorizontal: 16,
+    marginBottom: 18,
+  },
+  heroCard: {
+    borderRadius: 24,
+    padding: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    overflow: "hidden",
+    minHeight: 160,
+  },
+  heroLeftCol: {
+    flex: 1,
+    zIndex: 2,
+  },
+  heroPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+    backgroundColor: "#134e4a",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  heroPillText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+  heroHeading: {
+    fontSize: 18,
+    fontWeight: "800",
+    lineHeight: 23,
+    marginBottom: 6,
+  },
+  heroTagline: {
+    fontSize: 12,
+    lineHeight: 16,
     marginBottom: 14,
   },
-  sectionTitle: { fontSize: 20, fontWeight: "700", color: "white" },
-  seeMoreBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
-  seeMoreText: { fontSize: 13, fontWeight: "700", color: "#00bcd4" },
-
-  // Loading state
-  loadingRow: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, paddingVertical: 20,
+  heroBookBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    backgroundColor: "#134e4a",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
-  loadingText: { fontSize: 13, color: "rgba(255,255,255,0.5)" },
-
-  // 2-column category grid
-  categoryGrid: {
-    flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 14,
+  heroBookText: {
+    fontSize: 12.5,
+    fontWeight: "700",
+    color: "#ffffff",
   },
-  categoryOuter: { width: CARD_W },
-  categoryCard: { width: CARD_W, height: 160, borderRadius: 20, overflow: "hidden" },
-  categoryGradient: {
-    flex: 1, padding: 14,
-    justifyContent: "flex-start",
+
+  // Hero 3D Sofa Mockup
+  heroIllustrationWrap: {
+    width: 100,
+    height: 100,
+    justifyContent: "flex-end",
+    alignItems: "center",
+  },
+  sofaBack: {
+    width: 80,
+    height: 48,
+    backgroundColor: "#f8fafc",
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: "#e2e8f0",
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 4,
+  },
+  sofaCushionLeft: {
+    width: 28,
+    height: 32,
+    backgroundColor: "#0d9488",
+    borderRadius: 8,
+  },
+  sofaCushionRight: {
+    width: 28,
+    height: 32,
+    backgroundColor: "#14b8a6",
+    borderRadius: 8,
+  },
+  sofaPillow: {
+    position: "absolute",
+    bottom: 2,
+    right: 14,
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    backgroundColor: "#fbbf24",
+    transform: [{ rotate: "15deg" }],
+  },
+  sofaBase: {
+    width: 84,
+    height: 12,
+    backgroundColor: "#cbd5e1",
+    borderRadius: 4,
+    marginTop: -2,
+  },
+  plantLeaf1: {
+    position: "absolute",
+    top: 8,
+    right: 4,
+    width: 24,
+    height: 38,
+    borderRadius: 16,
+    backgroundColor: "#10b981",
+    transform: [{ rotate: "30deg" }],
+  },
+  plantLeaf2: {
+    position: "absolute",
+    top: 4,
+    right: 22,
+    width: 18,
+    height: 32,
+    borderRadius: 14,
+    backgroundColor: "#059669",
+    transform: [{ rotate: "-20deg" }],
+  },
+
+  // ── Quick Actions ──────────────────────────────────────────────
+  quickActionsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    marginBottom: 20,
+  },
+  quickActionCard: {
+    flex: 1,
+    alignItems: "center",
+  },
+  quickActionCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  quickActionTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  quickActionSub: {
+    fontSize: 10,
+    marginTop: 1,
+    textAlign: "center",
+  },
+  emergencyText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#ef4444",
+  },
+
+  // ── Section Header ─────────────────────────────────────────────
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  seeAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  seeAllText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#059669",
+  },
+
+  // ── 2x2 Services Grid ──────────────────────────────────────────
+  servicesGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    gap: 12,
+    marginBottom: 20,
+  },
+  serviceCard: {
+    width: CARD_W,
+    borderRadius: 22,
+    borderWidth: 1,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  cardWaveHeader: {
+    height: 70,
     position: "relative",
+    overflow: "hidden",
   },
-  catBgImage: {
-    position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
-    width: "100%", height: "100%",
-    opacity: 0.35,
+  cleaningDecoCircle: {
+    position: "absolute",
+    top: -10,
+    right: -10,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "rgba(255,255,255,0.18)",
   },
-  catOverlay: {
-    position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+  cardSprayBottle: {
+    position: "absolute",
+    bottom: 6,
+    right: 14,
+    width: 24,
+    height: 38,
+    borderRadius: 6,
+    backgroundColor: "#fef08a",
   },
-  catIconWrap: {
-    width: 48, height: 48, borderRadius: 24,
+  sprayNozzle: {
+    position: "absolute",
+    top: -6,
+    left: -4,
+    width: 14,
+    height: 8,
+    backgroundColor: "#3b82f6",
+    borderRadius: 2,
+  },
+  sprayHandle: {
+    position: "absolute",
+    top: 4,
+    right: -5,
+    width: 8,
+    height: 14,
+    borderWidth: 2,
+    borderColor: "#3b82f6",
+    borderRadius: 3,
+  },
+  waterDecoCircle: {
+    position: "absolute",
+    top: -10,
+    right: -10,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center", alignItems: "center",
+  },
+  waterGlass: {
+    position: "absolute",
+    bottom: 8,
+    right: 16,
+    width: 22,
+    height: 32,
+    backgroundColor: "#e0f2fe",
+    borderWidth: 2,
+    borderColor: "#ffffff",
+    borderRadius: 4,
+  },
+  pestDecoCircle: {
+    position: "absolute",
+    top: -10,
+    right: -10,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  pestBackpack: {
+    position: "absolute",
+    bottom: 6,
+    right: 14,
+    width: 24,
+    height: 34,
+    borderRadius: 6,
+    backgroundColor: "#fed7aa",
+  },
+  petDecoCircle: {
+    position: "absolute",
+    top: -10,
+    right: -10,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  petEars: {
+    position: "absolute",
+    bottom: 6,
+    right: 14,
+    width: 26,
+    height: 28,
+    borderRadius: 12,
+    backgroundColor: "#fde047",
+  },
+  cardBadgeIcon: {
+    position: "absolute",
+    top: 52,
+    left: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#ffffff",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  cardBody: {
+    paddingHorizontal: 14,
+    paddingTop: 24,
+    paddingBottom: 14,
+  },
+  cardServiceName: {
+    fontSize: 15,
+    fontWeight: "800",
+    marginBottom: 4,
+  },
+  cardServiceTagline: {
+    fontSize: 12,
+    lineHeight: 16,
+    marginBottom: 12,
+  },
+  cardPillBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  cardPillBtnText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+  },
+
+  // ── Purple Premium Banner ──────────────────────────────────────
+  premiumBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 20,
+    gap: 12,
+  },
+  crownIconBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  premiumTextWrap: {
+    flex: 1,
+  },
+  premiumTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#ffffff",
+  },
+  premiumSub: {
+    fontSize: 11.5,
+    color: "rgba(255,255,255,0.8)",
+    marginTop: 2,
+  },
+  viewPlansBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(0,0,0,0.25)",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 14,
+  },
+  viewPlansText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+
+  // ── Trust Badges Row ───────────────────────────────────────────
+  trustBadgesRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginHorizontal: 16,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    marginBottom: 10,
+  },
+  trustItem: {
+    flex: 1,
+    alignItems: "center",
+    paddingHorizontal: 2,
+  },
+  trustTitle: {
+    fontSize: 11,
+    fontWeight: "700",
+    marginTop: 4,
+    textAlign: "center",
+  },
+  trustSub: {
+    fontSize: 9.5,
+    marginTop: 1,
+    textAlign: "center",
+  },
+
+  // ═════════════════════════════════════════════════════════════════
+  // EXPLORE VIEW STYLES
+  // ═════════════════════════════════════════════════════════════════
+  exploreWaveHeader: {
+    paddingTop: 50,
+    paddingHorizontal: 16,
+    paddingBottom: 28,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    marginBottom: 16,
+  },
+  exploreBackBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  exploreHeaderContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  exploreHeaderText: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  exploreTitle: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#ffffff",
+    lineHeight: 30,
+    marginBottom: 6,
+  },
+  exploreSubtitle: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.85)",
+    lineHeight: 18,
+  },
+
+  // 3D House Graphic
+  houseIllustration: {
+    width: 80,
+    height: 80,
+    justifyContent: "flex-end",
+    alignItems: "center",
+  },
+  houseRoof: {
+    width: 0,
+    height: 0,
+    backgroundColor: "transparent",
+    borderStyle: "solid",
+    borderLeftWidth: 32,
+    borderRightWidth: 32,
+    borderBottomWidth: 26,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderBottomColor: "#1e3a8a",
+  },
+  houseWalls: {
+    width: 52,
+    height: 38,
+    backgroundColor: "#ffffff",
+    borderWidth: 2,
+    borderColor: "#cbd5e1",
+    borderRadius: 4,
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "flex-end",
+    paddingBottom: 2,
+  },
+  houseDoor: {
+    width: 12,
+    height: 20,
+    backgroundColor: "#3b82f6",
+    borderRadius: 2,
+  },
+  houseWindow: {
+    width: 12,
+    height: 12,
+    backgroundColor: "#67e8f9",
+    borderRadius: 2,
     marginBottom: 8,
-    zIndex: 1,
   },
-  catName: { fontSize: 14, fontWeight: "700", color: "white", zIndex: 1 },
-  catTagline: { fontSize: 11, color: "rgba(255,255,255,0.7)", marginTop: 3, zIndex: 1 },
-  catCountPill: {
-    position: "absolute", bottom: 12, right: 12,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.2)",
+  houseChimney: {
+    position: "absolute",
+    top: 14,
+    right: 18,
+    width: 8,
+    height: 14,
+    backgroundColor: "#dc2626",
+    borderRadius: 2,
   },
-  catCountText: { fontSize: 10, color: "rgba(255,255,255,0.85)", fontWeight: "600" },
+  houseLawn: {
+    width: 74,
+    height: 8,
+    backgroundColor: "#4ade80",
+    borderRadius: 4,
+    marginTop: -2,
+  },
 
-  // Show more row
-  showMoreRow: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 6, paddingVertical: 12, marginBottom: 14,
-    backgroundColor: "rgba(0,188,212,0.08)",
-    borderRadius: 14, borderWidth: 1, borderColor: "rgba(0,188,212,0.2)",
+  // Explore Search Row
+  exploreSearchRow: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    gap: 10,
+    marginBottom: 14,
   },
-  showMoreText: { fontSize: 13, fontWeight: "700", color: "#00bcd4" },
+  exploreSearchBox: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  exploreSearchInput: {
+    flex: 1,
+    fontSize: 14,
+    padding: 0,
+  },
+  exploreFilterBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
 
-  // Trust strip
-  trustStrip: {
-    flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 8,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 20, padding: 14,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
+  // Category Filter Chips
+  exploreChipsRow: {
+    paddingHorizontal: 16,
+    gap: 8,
+    marginBottom: 20,
   },
-  trustItem: { width: "45%", flexDirection: "row", alignItems: "center", gap: 10 },
-  trustIconWrap: {
-    width: 34, height: 34, borderRadius: 17,
-    backgroundColor: "rgba(0,188,212,0.12)",
-    justifyContent: "center", alignItems: "center",
+  exploreChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
   },
-  trustLabel: { fontSize: 11, fontWeight: "600", color: "rgba(255,255,255,0.7)" },
+  exploreChipActive: {
+    backgroundColor: "#064e3b",
+    borderColor: "#064e3b",
+  },
+  exploreChipText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
 
-  // Bottom nav
-  navBar: {
-    position: "absolute", bottom: 0, left: 0, right: 0,
-    flexDirection: "row", height: 72,
-    marginHorizontal: 12, marginBottom: 12,
-    backgroundColor: "rgba(8,24,38,0.97)",
-    borderRadius: 28, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
-    elevation: 16, alignItems: "center",
+  // 6-Card Category Grid
+  exploreCatGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    gap: 12,
+    marginBottom: 24,
   },
-  navBtn: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 8 },
-  navLabel: { fontSize: 10, color: colors.text.secondary, marginTop: 3, fontWeight: "500" },
-  navLabelActive: { color: "#00bcd4", fontWeight: "700" },
+  exploreCatCard: {
+    width: (W - 32 - 12) / 2,
+    borderRadius: 20,
+    padding: 16,
+    alignItems: "center",
+  },
+  exploreCatIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  exploreCatTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 2,
+  },
+  exploreCatSub: {
+    fontSize: 11.5,
+    textAlign: "center",
+  },
+
+  // More Services List
+  moreServicesList: {
+    marginHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: "hidden",
+    marginBottom: 22,
+  },
+  moreServiceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    gap: 12,
+  },
+  moreServiceIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  moreServiceTextWrap: {
+    flex: 1,
+  },
+  moreServiceName: {
+    fontSize: 14.5,
+    fontWeight: "700",
+  },
+  moreServiceDesc: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+
+  // Offers Promo Card
+  offersPromoCard: {
+    marginHorizontal: 16,
+    borderRadius: 24,
+    padding: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  offersPromoLeft: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  offersPromoTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#ffffff",
+    lineHeight: 22,
+    marginBottom: 4,
+  },
+  offersPromoSub: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.85)",
+    marginBottom: 12,
+  },
+  offersPromoBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 14,
+  },
+  offersPromoBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#1e3a8a",
+  },
+
+  // 3D Gift Box
+  giftBoxWrap: {
+    width: 60,
+    height: 60,
+    backgroundColor: "#9333ea",
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#c084fc",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  giftBoxRibbonH: {
+    position: "absolute",
+    width: "100%",
+    height: 10,
+    backgroundColor: "#fbbf24",
+  },
+  giftBoxRibbonV: {
+    position: "absolute",
+    height: "100%",
+    width: 10,
+    backgroundColor: "#fbbf24",
+  },
+  giftBoxBow: {
+    width: 18,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#fde047",
+    marginTop: -8,
+  },
+  giftSparkle1: {
+    position: "absolute",
+    top: -6,
+    right: -4,
+  },
+  giftSparkle2: {
+    position: "absolute",
+    bottom: -4,
+    left: -4,
+  },
+
+  // Location Modal
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 340,
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 16,
+  },
+  cityOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+  },
+  cityOptionActive: {
+    backgroundColor: "rgba(37, 99, 235, 0.1)",
+  },
+  cityOptionText: {
+    fontSize: 15,
+  },
 });

@@ -13,6 +13,31 @@ import {
 } from "@/services/notificationService";
 import { RootStackParamList } from "@/navigation/types";
 import { AuthProvider } from "@/context/AuthContext";
+import { ThemeProvider, useTheme } from "@/context/ThemeContext";
+
+function MainApp({ navigationRef }: { navigationRef: React.RefObject<NavigationContainerRef<RootStackParamList>> }) {
+  const { colors, isDark } = useTheme();
+
+  return (
+    <NavigationContainer
+      ref={navigationRef}
+      theme={{
+        dark: isDark,
+        colors: {
+          primary: colors.primary,
+          background: colors.background,
+          card: colors.card,
+          text: colors.text,
+          border: colors.cardBorder,
+          notification: colors.accent,
+        },
+      }}
+    >
+      <StatusBar style={colors.statusBar} />
+      <RootNavigator />
+    </NavigationContainer>
+  );
+}
 
 export default function App() {
   // Ref to access navigation from outside React tree (notification taps)
@@ -66,12 +91,11 @@ export default function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <AuthProvider>
-          <NavigationContainer ref={navigationRef}>
-            <StatusBar style="light" />
-            <RootNavigator />
-          </NavigationContainer>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <MainApp navigationRef={navigationRef} />
+          </AuthProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
