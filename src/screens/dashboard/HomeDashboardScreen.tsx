@@ -12,6 +12,9 @@ import {
   Modal,
   TouchableOpacity,
   TouchableWithoutFeedback,
+  Share,
+  Alert,
+  TextInput,
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -144,8 +147,9 @@ const sq = StyleSheet.create({
 
 // ─── Main Screen Component ─────────────────────────────────────────────────────
 export default function HomeDashboardScreen({ navigation }: Props) {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [activePill, setActivePill] = useState(0);
+  const [activeTopSubmenu, setActiveTopSubmenu] = useState<"home" | "reminders" | "points" | "updates">("home");
   const [heroIndex, setHeroIndex] = useState(0);
   const [syncDismissed, setSyncDismissed] = useState(false);
   const heroRef = useRef<FlatList>(null);
@@ -161,6 +165,13 @@ export default function HomeDashboardScreen({ navigation }: Props) {
   const [hiddenCards, setHiddenCards] = useState<string[]>([]);
   const [editMode, setEditMode] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
+
+  // Modals for 3-dot options
+  const [rateModalVisible, setRateModalVisible] = useState(false);
+  const [selectedRating, setSelectedRating] = useState(5);
+  const [ratingFeedback, setRatingFeedback] = useState("");
+  const [aboutModalVisible, setAboutModalVisible] = useState(false);
+  const [policiesModalVisible, setPoliciesModalVisible] = useState(false);
 
   // Real step count & weekly history from native step counter
   const [liveSteps, setLiveSteps] = useState(0);
@@ -235,6 +246,47 @@ export default function HomeDashboardScreen({ navigation }: Props) {
     await clearHiddenCards();
     setMenuVisible(false);
   }, []);
+
+  const handleShare = async () => {
+    setMenuVisible(false);
+    try {
+      await Share.share({
+        message:
+          "Transform your health and daily care with Urban Helpers App! Track steps, vitals, nutrition, and earn rewards: https://urbanhelpers.app",
+        title: "Urban Health & Helpers",
+      });
+    } catch (error) {
+      console.log("Error sharing:", error);
+    }
+  };
+
+  const handleSignOut = () => {
+    setMenuVisible(false);
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out from your Urban Helpers account?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await signOut();
+            } catch (err) {
+              console.log("Signout error:", err);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSubmitRating = () => {
+    setRateModalVisible(false);
+    setRatingFeedback("");
+    Alert.alert("Thank You!", `We appreciate your ${selectedRating}-star rating! Your feedback helps us build the best health companion.`);
+  };
 
   const isVisible = (cardId: string) => !hiddenCards.includes(cardId);
 
@@ -319,26 +371,285 @@ export default function HomeDashboardScreen({ navigation }: Props) {
           <View style={s.menuOverlay}>
             <TouchableWithoutFeedback onPress={() => {}}>
               <View style={s.menuDropdown}>
+                {/* 1. Profile */}
+                <TouchableOpacity
+                  style={s.menuItem}
+                  onPress={() => { setMenuVisible(false); navigation.navigate("Profile"); }}
+                >
+                  <Ionicons name="person-outline" size={19} color="#38bdf8" />
+                  <Text style={s.menuItemText}>Profile</Text>
+                </TouchableOpacity>
+
+                {/* 2. Rate us */}
+                <TouchableOpacity
+                  style={s.menuItem}
+                  onPress={() => { setMenuVisible(false); setRateModalVisible(true); }}
+                >
+                  <Ionicons name="star-outline" size={19} color="#fbbf24" />
+                  <Text style={s.menuItemText}>Rate us</Text>
+                </TouchableOpacity>
+
+                {/* 3. Social media share */}
+                <TouchableOpacity
+                  style={s.menuItem}
+                  onPress={handleShare}
+                >
+                  <Ionicons name="share-social-outline" size={19} color="#a78bfa" />
+                  <Text style={s.menuItemText}>Social media share</Text>
+                </TouchableOpacity>
+
+                {/* 4. About us */}
+                <TouchableOpacity
+                  style={s.menuItem}
+                  onPress={() => { setMenuVisible(false); setAboutModalVisible(true); }}
+                >
+                  <Ionicons name="information-circle-outline" size={19} color="#34d399" />
+                  <Text style={s.menuItemText}>About us</Text>
+                </TouchableOpacity>
+
+                {/* 5. Policies */}
+                <TouchableOpacity
+                  style={s.menuItem}
+                  onPress={() => { setMenuVisible(false); setPoliciesModalVisible(true); }}
+                >
+                  <Ionicons name="shield-checkmark-outline" size={19} color="#60a5fa" />
+                  <Text style={s.menuItemText}>Policies</Text>
+                </TouchableOpacity>
+
+                <View style={s.menuDivider} />
+
+                {/* Notifications & Reset */}
                 <TouchableOpacity
                   style={s.menuItem}
                   onPress={() => { setMenuVisible(false); navigation.navigate("Notifications"); }}
                 >
-                  <Ionicons name="notifications-outline" size={20} color="#e2e8f0" />
+                  <Ionicons name="notifications-outline" size={19} color="#94a3b8" />
                   <Text style={s.menuItemText}>Notifications</Text>
                 </TouchableOpacity>
-                <View style={s.menuDivider} />
+
                 <TouchableOpacity
                   style={s.menuItem}
                   onPress={resetHome}
                 >
-                  <Ionicons name="refresh-outline" size={20} color="#e2e8f0" />
+                  <Ionicons name="refresh-outline" size={19} color="#94a3b8" />
                   <Text style={s.menuItemText}>Reset home</Text>
+                </TouchableOpacity>
+
+                <View style={s.menuDivider} />
+
+                {/* 6. Sign out */}
+                <TouchableOpacity
+                  style={s.menuItem}
+                  onPress={handleSignOut}
+                >
+                  <Ionicons name="log-out-outline" size={19} color="#f87171" />
+                  <Text style={[s.menuItemText, { color: "#f87171" }]}>Sign out</Text>
                 </TouchableOpacity>
               </View>
             </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      {/* ── Rate Us Modal ────────────────────────────────────── */}
+      <Modal transparent visible={rateModalVisible} animationType="fade" onRequestClose={() => setRateModalVisible(false)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalCard}>
+            <View style={s.modalHeader}>
+              <Text style={s.modalTitle}>Rate Urban Helpers</Text>
+              <Pressable onPress={() => setRateModalVisible(false)}>
+                <Ionicons name="close" size={22} color="rgba(255,255,255,0.6)" />
+              </Pressable>
+            </View>
+
+            <Text style={s.modalSub}>
+              How has your experience been with our health tracking, smart reminders, and home services?
+            </Text>
+
+            {/* Interactive Stars */}
+            <View style={s.starsRow}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Pressable key={star} onPress={() => setSelectedRating(star)}>
+                  <Ionicons
+                    name={star <= selectedRating ? "star" : "star-outline"}
+                    size={36}
+                    color="#fbbf24"
+                  />
+                </Pressable>
+              ))}
+            </View>
+
+            <TextInput
+              style={s.feedbackInput}
+              placeholder="Tell us what you love or how we can improve..."
+              placeholderTextColor="rgba(255,255,255,0.4)"
+              multiline
+              numberOfLines={3}
+              value={ratingFeedback}
+              onChangeText={setRatingFeedback}
+            />
+
+            <View style={s.modalBtnRow}>
+              <Pressable style={s.modalCancelBtn} onPress={() => setRateModalVisible(false)}>
+                <Text style={s.modalCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable style={s.modalSubmitBtn} onPress={handleSubmitRating}>
+                <Text style={s.modalSubmitText}>Submit</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── About Us Modal ────────────────────────────────────── */}
+      <Modal transparent visible={aboutModalVisible} animationType="fade" onRequestClose={() => setAboutModalVisible(false)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalCard}>
+            <View style={s.modalHeader}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Ionicons name="heart-circle" size={26} color="#00c6aa" />
+                <Text style={s.modalTitle}>About Urban Helpers</Text>
+              </View>
+              <Pressable onPress={() => setAboutModalVisible(false)}>
+                <Ionicons name="close" size={22} color="rgba(255,255,255,0.6)" />
+              </Pressable>
+            </View>
+
+            <Text style={s.aboutVersion}>Version 2.4.0 (Build 2026.09.14)</Text>
+            <Text style={s.aboutDesc}>
+              Urban Helpers is your integrated ecosystem bringing preventive health care, daily habit tracking, and trusted on-demand home services together into one seamless experience.
+            </Text>
+
+            <View style={s.aboutHighlights}>
+              <View style={s.aboutItem}>
+                <Ionicons name="footsteps" size={16} color="#1aab3e" />
+                <Text style={s.aboutItemText}>Hardware Step Counter & Real Vitals</Text>
+              </View>
+              <View style={s.aboutItem}>
+                <Ionicons name="alarm" size={16} color="#38bdf8" />
+                <Text style={s.aboutItemText}>Smart Reminders with Habit Rewards</Text>
+              </View>
+              <View style={s.aboutItem}>
+                <Ionicons name="home" size={16} color="#fbbf24" />
+                <Text style={s.aboutItemText}>Certified & Background-Verified Home Pros</Text>
+              </View>
+              <View style={s.aboutItem}>
+                <Ionicons name="lock-closed" size={16} color="#00c6aa" />
+                <Text style={s.aboutItemText}>End-to-End Encrypted Health Records</Text>
+              </View>
+            </View>
+
+            <Pressable style={s.modalFullBtn} onPress={() => setAboutModalVisible(false)}>
+              <Text style={s.modalSubmitText}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Policies Modal ─────────────────────────────────────── */}
+      <Modal transparent visible={policiesModalVisible} animationType="fade" onRequestClose={() => setPoliciesModalVisible(false)}>
+        <View style={s.modalOverlay}>
+          <View style={[s.modalCard, { maxHeight: "80%" }]}>
+            <View style={s.modalHeader}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Ionicons name="shield-checkmark" size={24} color="#60a5fa" />
+                <Text style={s.modalTitle}>Policies & Legal</Text>
+              </View>
+              <Pressable onPress={() => setPoliciesModalVisible(false)}>
+                <Ionicons name="close" size={22} color="rgba(255,255,255,0.6)" />
+              </Pressable>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ marginVertical: 10 }}>
+              <View style={s.policySection}>
+                <Text style={s.policyHeading}>1. Privacy & Health Data Policy</Text>
+                <Text style={s.policyBody}>
+                  Your vitals, sleep metrics, and medication records are stored locally and encrypted securely. We never sell your personal health information to third parties or advertisers.
+                </Text>
+              </View>
+
+              <View style={s.policySection}>
+                <Text style={s.policyHeading}>2. Terms of Service</Text>
+                <Text style={s.policyBody}>
+                  By using Urban Helpers, you agree to maintain accurate account details and respect service professionals visiting your premises.
+                </Text>
+              </View>
+
+              <View style={s.policySection}>
+                <Text style={s.policyHeading}>3. Medical & Diagnostic Disclaimer</Text>
+                <Text style={s.policyBody}>
+                  Urban Helpers is an informational and lifestyle health companion. Sensor measurements and AI recommendations do not constitute clinical diagnoses. Always consult licensed medical professionals for emergencies.
+                </Text>
+              </View>
+
+              <View style={s.policySection}>
+                <Text style={s.policyHeading}>4. Rewards & Redemptions</Text>
+                <Text style={s.policyBody}>
+                  Coins earned through daily tracking and referrals can be redeemed in the integrated store or towards eligible home services.
+                </Text>
+              </View>
+            </ScrollView>
+
+            <Pressable style={s.modalFullBtn} onPress={() => setPoliciesModalVisible(false)}>
+              <Text style={s.modalSubmitText}>I Understand</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Top Submenu (Tier 1) [Home] [Remainders] [Points] [Nearby updates] ── */}
+      <View style={s.topSubmenuOuter}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.topSubmenuContainer}
+        >
+          <Pressable
+            style={[s.topSubmenuChip, activeTopSubmenu === "home" && s.topSubmenuChipActive]}
+            onPress={() => setActiveTopSubmenu("home")}
+          >
+            <Ionicons
+              name="home"
+              size={15}
+              color={activeTopSubmenu === "home" ? "#00c6aa" : "rgba(255,255,255,0.6)"}
+            />
+            <Text style={[s.topSubmenuText, activeTopSubmenu === "home" && s.topSubmenuTextActive]}>
+              Home
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={s.topSubmenuChip}
+            onPress={() => navigation.navigate("SmartReminders")}
+          >
+            <Ionicons name="alarm" size={15} color="#38bdf8" />
+            <Text style={s.topSubmenuText}>Reminders</Text>
+            <View style={s.subBadge}>
+              <Text style={s.subBadgeText}>9</Text>
+            </View>
+          </Pressable>
+
+          <Pressable
+            style={s.topSubmenuChip}
+            onPress={() => navigation.navigate("Points")}
+          >
+            <Ionicons name="gift" size={15} color="#fbbf24" />
+            <Text style={s.topSubmenuText}>Points</Text>
+            <View style={[s.subBadge, { backgroundColor: "#d97706" }]}>
+              <Text style={s.subBadgeText}>🪙 1.2k</Text>
+            </View>
+          </Pressable>
+
+          <Pressable
+            style={s.topSubmenuChip}
+            onPress={() => navigation.navigate("NearbyUpdates")}
+          >
+            <Ionicons name="radio" size={15} color="#f43f5e" />
+            <Text style={s.topSubmenuText}>Nearby updates</Text>
+            <View style={s.liveDotIndicator} />
+          </Pressable>
+        </ScrollView>
+      </View>
 
       {/* ── Quick-action Pills Bar (Persistent within Home) ──── */}
       <Animated.View entering={FadeIn.delay(120).duration(400)} style={s.pillsOuter}>
@@ -734,6 +1045,57 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 </PressCard>
                 {editMode && (
                   <Pressable style={s.removeBtn} onPress={() => hideCard("energy")}>
+                    <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                  </Pressable>
+                )}
+              </View>
+            )}
+
+            {/* 3b. Today's Earnings & Rewards (Coins / Tasks) */}
+            {isVisible("today_earnings") && (
+              <View style={[s.cardWrapper, { marginTop: 10 }]}>
+                <PressCard index={1} onPress={() => navigation.navigate("Points")}>
+                  <LinearGradient
+                    colors={["#2b1a04", "#452405", "#5c3307"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={s.earningsCard}
+                  >
+                    <View style={s.earningsTopRow}>
+                      <View>
+                        <View style={s.earningsTag}>
+                          <Ionicons name="sparkles" size={12} color="#fbbf24" />
+                          <Text style={s.earningsTagText}>TODAY'S EARNINGS</Text>
+                        </View>
+                        <Text style={s.earningsCoins}>+85 <Text style={s.earningsCoinsSub}>Coins</Text></Text>
+                      </View>
+                      <View style={s.earningsCoinBadge}>
+                        <Ionicons name="gift" size={26} color="#fbbf24" />
+                      </View>
+                    </View>
+
+                    {/* Progress of today tasks completed */}
+                    <View style={s.earningsProgressWrap}>
+                      <View style={s.earningsProgressHeader}>
+                        <Text style={s.earningsProgressLabel}>Daily Tasks Completed</Text>
+                        <Text style={s.earningsProgressVal}>65%</Text>
+                      </View>
+                      <View style={s.earningsProgressBarBg}>
+                        <View style={[s.earningsProgressBarFill, { width: "65%" }]} />
+                      </View>
+                    </View>
+
+                    <View style={s.earningsFooter}>
+                      <Text style={s.earningsFooterHint}>Complete Reminders & Vitals for +35 more</Text>
+                      <View style={s.earningsShopLink}>
+                        <Text style={s.earningsShopLinkText}>Redeem</Text>
+                        <Ionicons name="chevron-forward" size={13} color="#fbbf24" />
+                      </View>
+                    </View>
+                  </LinearGradient>
+                </PressCard>
+                {editMode && (
+                  <Pressable style={s.removeBtn} onPress={() => hideCard("today_earnings")}>
                     <Ionicons name="close-circle" size={26} color="#ff3b30" />
                   </Pressable>
                 )}
@@ -3176,5 +3538,297 @@ const s = StyleSheet.create({
     height: 1,
     backgroundColor: "rgba(255,255,255,0.08)",
     marginHorizontal: 12,
+  },
+
+  // Top Submenu (Tier 1)
+  topSubmenuOuter: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+  topSubmenuContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 2,
+  },
+  topSubmenuChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 13,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  topSubmenuChipActive: {
+    backgroundColor: "rgba(0,198,170,0.16)",
+    borderColor: "#00c6aa",
+  },
+  topSubmenuText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.7)",
+  },
+  topSubmenuTextActive: {
+    color: "#00c6aa",
+    fontWeight: "700",
+  },
+  subBadge: {
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  subBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  liveDotIndicator: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#f43f5e",
+  },
+
+  // Modals (Rate Us, About, Policies)
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 400,
+    backgroundColor: "#161e2e",
+    borderRadius: 24,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 25,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 19,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+  modalSub: {
+    fontSize: 13.5,
+    color: "rgba(255,255,255,0.7)",
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  starsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 12,
+    marginVertical: 16,
+  },
+  feedbackInput: {
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    padding: 12,
+    color: "#fff",
+    minHeight: 80,
+    textAlignVertical: "top",
+    marginBottom: 16,
+    fontSize: 14,
+  },
+  modalBtnRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+  },
+  modalCancelText: {
+    color: "rgba(255,255,255,0.7)",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  modalSubmitBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: "#00c6aa",
+    alignItems: "center",
+  },
+  modalSubmitText: {
+    color: "#0c0e12",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  modalFullBtn: {
+    width: "100%",
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: "#00c6aa",
+    alignItems: "center",
+    marginTop: 14,
+  },
+  aboutVersion: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#00c6aa",
+    marginBottom: 8,
+  },
+  aboutDesc: {
+    fontSize: 13.5,
+    color: "rgba(255,255,255,0.75)",
+    lineHeight: 20,
+    marginBottom: 14,
+  },
+  aboutHighlights: {
+    gap: 8,
+    marginBottom: 6,
+  },
+  aboutItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    padding: 10,
+    borderRadius: 12,
+  },
+  aboutItemText: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.9)",
+    fontWeight: "500",
+  },
+  policySection: {
+    marginBottom: 14,
+  },
+  policyHeading: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#60a5fa",
+    marginBottom: 4,
+  },
+  policyBody: {
+    fontSize: 12.5,
+    color: "rgba(255,255,255,0.7)",
+    lineHeight: 18,
+  },
+
+  // Earnings & Rewards Card Styles
+  earningsCard: {
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "rgba(251,191,36,0.3)",
+  },
+  earningsTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  earningsTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginBottom: 4,
+  },
+  earningsTagText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#fbbf24",
+    letterSpacing: 0.5,
+  },
+  earningsCoins: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#ffffff",
+  },
+  earningsCoinsSub: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#fbbf24",
+  },
+  earningsCoinBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(251,191,36,0.18)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "rgba(251,191,36,0.4)",
+  },
+  earningsProgressWrap: {
+    backgroundColor: "rgba(0,0,0,0.25)",
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 12,
+  },
+  earningsProgressHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  earningsProgressLabel: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.7)",
+    fontWeight: "500",
+  },
+  earningsProgressVal: {
+    fontSize: 12,
+    color: "#fbbf24",
+    fontWeight: "700",
+  },
+  earningsProgressBarBg: {
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    overflow: "hidden",
+  },
+  earningsProgressBarFill: {
+    height: "100%",
+    borderRadius: 3.5,
+    backgroundColor: "#fbbf24",
+  },
+  earningsFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  earningsFooterHint: {
+    fontSize: 11.5,
+    color: "rgba(255,255,255,0.6)",
+    flex: 1,
+  },
+  earningsShopLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: "rgba(251,191,36,0.15)",
+  },
+  earningsShopLinkText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#fbbf24",
   },
 });
