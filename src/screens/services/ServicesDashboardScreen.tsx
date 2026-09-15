@@ -287,11 +287,10 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                 />
               </View>
 
-              <View style={s.cardBadgeIcon}>
-                <Ionicons name="sparkles" size={17} color="#059669" />
-              </View>
-
               <View style={s.cardBody}>
+                <View style={s.cardBadgeIcon}>
+                  <Ionicons name="sparkles" size={17} color="#059669" />
+                </View>
                 <Text style={[s.cardServiceName, { color: colors.text }]}>Home Cleaning</Text>
                 <Text style={[s.cardServiceTagline, { color: colors.textMuted }]}>
                   Spotless home,{"\n"}happy life
@@ -320,11 +319,10 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                 />
               </View>
 
-              <View style={s.cardBadgeIcon}>
-                <Ionicons name="water" size={17} color="#0284c7" />
-              </View>
-
               <View style={s.cardBody}>
+                <View style={s.cardBadgeIcon}>
+                  <Ionicons name="water" size={17} color="#0284c7" />
+                </View>
                 <Text style={[s.cardServiceName, { color: colors.text }]}>RO Service</Text>
                 <Text style={[s.cardServiceTagline, { color: colors.textMuted }]}>
                   Pure water,{"\n"}every drop
@@ -353,11 +351,10 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                 />
               </View>
 
-              <View style={s.cardBadgeIcon}>
-                <Ionicons name="shield-checkmark" size={17} color="#d97706" />
-              </View>
-
               <View style={s.cardBody}>
+                <View style={s.cardBadgeIcon}>
+                  <Ionicons name="shield-checkmark" size={17} color="#d97706" />
+                </View>
                 <Text style={[s.cardServiceName, { color: colors.text }]}>Pest Control</Text>
                 <Text style={[s.cardServiceTagline, { color: colors.textMuted }]}>
                   Your home,{"\n"}pest-free
@@ -386,11 +383,10 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                 />
               </View>
 
-              <View style={s.cardBadgeIcon}>
-                <Ionicons name="paw" size={17} color="#e11d48" />
-              </View>
-
               <View style={s.cardBody}>
+                <View style={s.cardBadgeIcon}>
+                  <Ionicons name="paw" size={17} color="#e11d48" />
+                </View>
                 <Text style={[s.cardServiceName, { color: colors.text }]}>Pet Care</Text>
                 <Text style={[s.cardServiceTagline, { color: colors.textMuted }]}>
                   Love them{"\n"}the right way
@@ -1397,24 +1393,20 @@ const s = StyleSheet.create({
     backgroundColor: "#fde047",
   },
   cardBadgeIcon: {
-    position: "absolute",
-    top: 52,
-    left: 14,
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#ffffff",
+    backgroundColor: "rgba(255,255,255,0.15)",
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    marginBottom: 8,
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
   },
   cardBody: {
     paddingHorizontal: 14,
-    paddingTop: 24,
+    paddingTop: 10,
     paddingBottom: 14,
   },
   cardServiceName: {

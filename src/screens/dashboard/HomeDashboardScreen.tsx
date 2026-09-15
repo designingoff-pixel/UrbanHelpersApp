@@ -625,8 +625,8 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             <Ionicons name="alarm" size={18} color="#ffffff" />
           </LinearGradient>
           <View style={s.shortcutTextCol}>
-            <Text style={s.shortcutLabel}>Reminders</Text>
-            <Text style={s.shortcutMeta}>9 pending</Text>
+            <Text style={s.shortcutLabel} numberOfLines={1}>Reminders</Text>
+            <Text style={s.shortcutMeta} numberOfLines={1}>9 pending</Text>
           </View>
           <View style={[s.shortcutBadge, { backgroundColor: "#0ea5e9" }]}>
             <Text style={s.shortcutBadgeText}>9</Text>
@@ -645,8 +645,8 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             <Ionicons name="trophy" size={18} color="#ffffff" />
           </LinearGradient>
           <View style={s.shortcutTextCol}>
-            <Text style={s.shortcutLabel}>My Points</Text>
-            <Text style={s.shortcutMeta}>🪙 1,200 coins</Text>
+            <Text style={s.shortcutLabel} numberOfLines={1}>My Points</Text>
+            <Text style={s.shortcutMeta} numberOfLines={1}>🪙 1,200 coins</Text>
           </View>
         </Pressable>
 
@@ -662,8 +662,8 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             <Ionicons name="radio" size={18} color="#ffffff" />
           </LinearGradient>
           <View style={s.shortcutTextCol}>
-            <Text style={s.shortcutLabel}>Nearby</Text>
-            <Text style={s.shortcutMeta}>Live updates</Text>
+            <Text style={s.shortcutLabel} numberOfLines={1}>Nearby</Text>
+            <Text style={s.shortcutMeta} numberOfLines={1}>Live updates</Text>
           </View>
           <View style={s.liveDotIndicatorLg} />
         </Pressable>
@@ -2081,9 +2081,9 @@ export default function HomeDashboardScreen({ navigation }: Props) {
         visible={watchPromptVisible}
         onClose={() => setWatchPromptVisible(false)}
         featureName={watchFeatureName}
-        onConnectSuccess={() => navigation.navigate(watchTargetRoute)}
-        onBuyWatch={() => navigation.navigate("Shop")}
-        onContinueDemo={() => navigation.navigate(watchTargetRoute)}
+        onConnectSuccess={() => navigation.navigate(watchTargetRoute as any)}
+        onBuyWatch={() => navigation.navigate("Shop" as any)}
+        onContinueDemo={() => navigation.navigate(watchTargetRoute as any)}
       />
     </View>
   );
@@ -2134,6 +2134,8 @@ const s = StyleSheet.create({
     backgroundColor: "#ff6a00",
     borderWidth: 1, borderColor: "#0d0d14",
   },
+
+
 
   // Pills Bar
   pillsOuter: {
@@ -3580,16 +3582,17 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    paddingVertical: 9,
+    paddingVertical: 12,
     paddingHorizontal: 10,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
+    minHeight: 68,
     overflow: "hidden",
   },
   shortcutIconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
     flexShrink: 0,
@@ -3599,26 +3602,26 @@ const s = StyleSheet.create({
     minWidth: 0,
   },
   shortcutLabel: {
-    fontSize: 11.5,
+    fontSize: 12,
     fontWeight: "700",
     color: "#ffffff",
   },
   shortcutMeta: {
-    fontSize: 9.5,
-    color: "rgba(255,255,255,0.55)",
-    marginTop: 1,
+    fontSize: 10,
+    color: "rgba(255,255,255,0.6)",
+    marginTop: 2,
   },
   shortcutBadge: {
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 4,
     flexShrink: 0,
   },
   shortcutBadgeText: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: "800",
     color: "#ffffff",
   },

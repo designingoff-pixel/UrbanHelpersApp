@@ -7,6 +7,9 @@
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import { Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const NOTIF_SETUP_KEY = "@urban_notif_setup_date";
 
 // ── How notifications appear when app is OPEN ────────────────────────────────
 Notifications.setNotificationHandler({
@@ -457,15 +460,35 @@ export async function sendHealthScoreNotification(score: number): Promise<void> 
 
 export async function setupDefaultNotifications(): Promise<void> {
   try {
-    // NOTE: Do NOT call cancelAllScheduledNotificationsAsync() here.
-    // That would wipe all medication reminders that were individually scheduled.
-    // Instead, each category manages its own notifications.
+    // ── Guard: only schedule once per calendar day ──────────────
+    // Prevents duplicate notifications from stacking on every app launch.
+    const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const lastSetup = await AsyncStorage.getItem(NOTIF_SETUP_KEY);
+    if (lastSetup === today) {
+      console.log("[Notifications] Already set up today — skipping.");
+      return;
+    }
+
+    // Cancel only the wellness defaults (NOT medicine reminders)
+    // by cancelling all then immediately re-scheduling medicines is
+    // handled per-medicine elsewhere; here we safely cancel repeating
+    // wellness triggers before adding fresh ones.
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    for (const n of scheduled) {
+      const data = n.content.data as any;
+      if (data?.channel === "wellness_default") {
+        await Notifications.cancelScheduledNotificationAsync(n.identifier);
+      }
+    }
+
     await scheduleMorningHealthReminder();   // 7:00 AM
     await scheduleHydrationReminders();      // every 2 hrs 9am–9pm
     await scheduleCalorieReminder();         // 6:00 PM
     await scheduleSleepReminder(22, 30);     // 10:30 PM
     await scheduleWeeklySummary();           // Sunday 8 AM
-    console.log("[Notifications] Default notifications set up.");
+
+    await AsyncStorage.setItem(NOTIF_SETUP_KEY, today);
+    console.log("[Notifications] Default notifications set up for", today);
   } catch (e) {
     console.log("[Notifications] Setup error:", e);
   }

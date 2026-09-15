@@ -10,6 +10,13 @@ import {
   Alert,
   Modal,
 } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  FadeInDown,
+  FadeIn,
+} from "react-native-reanimated";
 import Svg, {
   Circle,
   Path,
@@ -26,6 +33,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import SmartwatchPromptModal from "@/components/SmartwatchPromptModal";
 import WatchStatusBanner from "@/components/WatchStatusBanner";
+
 
 type Props = NativeStackScreenProps<RootStackParamList, "HeartRate">;
 
