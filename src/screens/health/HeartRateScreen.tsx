@@ -23,8 +23,9 @@ import Svg, {
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
+import SmartwatchPromptModal from "@/components/SmartwatchPromptModal";
+import WatchStatusBanner from "@/components/WatchStatusBanner";
 
 type Props = NativeStackScreenProps<RootStackParamList, "HeartRate">;
 
@@ -33,6 +34,7 @@ const { width: SW } = Dimensions.get("window");
 export default function HeartRateScreen({ navigation }: Props) {
   const [activeTab, setActiveTab] = useState<"Hours" | "Days" | "Weeks" | "Months">("Hours");
   const [showTrackModal, setShowTrackModal] = useState(false);
+  const [watchPromptVisible, setWatchPromptVisible] = useState(false);
   const [selectedPeriodOffset, setSelectedPeriodOffset] = useState(0);
 
   // Anatomical Heart SVG Graphic
@@ -259,6 +261,11 @@ export default function HeartRateScreen({ navigation }: Props) {
         contentContainerStyle={s.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Watch Status Banner */}
+        <WatchStatusBanner
+          onPressPrompt={() => setWatchPromptVisible(true)}
+          style={{ marginHorizontal: 0, marginBottom: 14 }}
+        />
         {/* Segmented Period Tabs: [Hours] [Days] [Weeks] [Months] */}
         <View style={s.periodTabsWrap}>
           {(["Hours", "Days", "Weeks", "Months"] as const).map((tab) => (
@@ -505,6 +512,14 @@ export default function HeartRateScreen({ navigation }: Props) {
           </View>
         </View>
       </Modal>
+
+      {/* Smartwatch Prompt Modal */}
+      <SmartwatchPromptModal
+        visible={watchPromptVisible}
+        onClose={() => setWatchPromptVisible(false)}
+        featureName="Continuous Optical Heart Rate"
+        onBuyWatch={() => navigation.navigate("Shop")}
+      />
     </View>
   );
 }
