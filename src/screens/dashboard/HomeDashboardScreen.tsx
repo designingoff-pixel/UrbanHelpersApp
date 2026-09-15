@@ -151,7 +151,6 @@ export default function HomeDashboardScreen({ navigation }: Props) {
   const { user, signOut } = useAuth();
   const { theme, isDark, colors } = useTheme();
   const [activePill, setActivePill] = useState(0);
-  const [activeTopSubmenu, setActiveTopSubmenu] = useState<"home" | "reminders" | "points" | "updates">("home");
   const [heroIndex, setHeroIndex] = useState(0);
   const [syncDismissed, setSyncDismissed] = useState(false);
   const heroRef = useRef<FlatList>(null);
@@ -601,58 +600,62 @@ export default function HomeDashboardScreen({ navigation }: Props) {
         </View>
       </Modal>
 
-      {/* ── Top Submenu (Tier 1) [Home] [Remainders] [Points] [Nearby updates] ── */}
-      <View style={s.topSubmenuOuter}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.topSubmenuContainer}
+      {/* ── Quick Shortcut Cards [Reminders] [Points] [Nearby] ── */}
+      <View style={s.shortcutRow}>
+        {/* Reminders */}
+        <Pressable
+          style={[s.shortcutCard, { backgroundColor: "rgba(56,189,248,0.10)", borderColor: "rgba(56,189,248,0.22)" }]}
+          onPress={() => navigation.navigate("SmartReminders")}
         >
-          <Pressable
-            style={[s.topSubmenuChip, activeTopSubmenu === "home" && s.topSubmenuChipActive]}
-            onPress={() => setActiveTopSubmenu("home")}
+          <LinearGradient
+            colors={["#0ea5e9", "#38bdf8"]}
+            style={s.shortcutIconCircle}
           >
-            <Ionicons
-              name="home"
-              size={15}
-              color={activeTopSubmenu === "home" ? "#00c6aa" : "rgba(255,255,255,0.6)"}
-            />
-            <Text style={[s.topSubmenuText, activeTopSubmenu === "home" && s.topSubmenuTextActive]}>
-              Home
-            </Text>
-          </Pressable>
+            <Ionicons name="alarm" size={18} color="#ffffff" />
+          </LinearGradient>
+          <View style={s.shortcutTextCol}>
+            <Text style={s.shortcutLabel}>Reminders</Text>
+            <Text style={s.shortcutMeta}>9 pending</Text>
+          </View>
+          <View style={[s.shortcutBadge, { backgroundColor: "#0ea5e9" }]}>
+            <Text style={s.shortcutBadgeText}>9</Text>
+          </View>
+        </Pressable>
 
-          <Pressable
-            style={s.topSubmenuChip}
-            onPress={() => navigation.navigate("SmartReminders")}
+        {/* Points */}
+        <Pressable
+          style={[s.shortcutCard, { backgroundColor: "rgba(251,191,36,0.10)", borderColor: "rgba(251,191,36,0.22)" }]}
+          onPress={() => navigation.navigate("Points")}
+        >
+          <LinearGradient
+            colors={["#f59e0b", "#fbbf24"]}
+            style={s.shortcutIconCircle}
           >
-            <Ionicons name="alarm" size={15} color="#38bdf8" />
-            <Text style={s.topSubmenuText}>Reminders</Text>
-            <View style={s.subBadge}>
-              <Text style={s.subBadgeText}>9</Text>
-            </View>
-          </Pressable>
+            <Ionicons name="trophy" size={18} color="#ffffff" />
+          </LinearGradient>
+          <View style={s.shortcutTextCol}>
+            <Text style={s.shortcutLabel}>My Points</Text>
+            <Text style={s.shortcutMeta}>🪙 1,200 coins</Text>
+          </View>
+        </Pressable>
 
-          <Pressable
-            style={s.topSubmenuChip}
-            onPress={() => navigation.navigate("Points")}
+        {/* Nearby */}
+        <Pressable
+          style={[s.shortcutCard, { backgroundColor: "rgba(244,63,94,0.10)", borderColor: "rgba(244,63,94,0.22)" }]}
+          onPress={() => navigation.navigate("NearbyUpdates")}
+        >
+          <LinearGradient
+            colors={["#e11d48", "#f43f5e"]}
+            style={s.shortcutIconCircle}
           >
-            <Ionicons name="gift" size={15} color="#fbbf24" />
-            <Text style={s.topSubmenuText}>Points</Text>
-            <View style={[s.subBadge, { backgroundColor: "#d97706" }]}>
-              <Text style={s.subBadgeText}>🪙 1.2k</Text>
-            </View>
-          </Pressable>
-
-          <Pressable
-            style={s.topSubmenuChip}
-            onPress={() => navigation.navigate("NearbyUpdates")}
-          >
-            <Ionicons name="radio" size={15} color="#f43f5e" />
-            <Text style={s.topSubmenuText}>Nearby updates</Text>
-            <View style={s.liveDotIndicator} />
-          </Pressable>
-        </ScrollView>
+            <Ionicons name="radio" size={18} color="#ffffff" />
+          </LinearGradient>
+          <View style={s.shortcutTextCol}>
+            <Text style={s.shortcutLabel}>Nearby</Text>
+            <Text style={s.shortcutMeta}>Live updates</Text>
+          </View>
+          <View style={s.liveDotIndicatorLg} />
+        </Pressable>
       </View>
 
       {/* ── Quick-action Pills Bar (Persistent within Home) ──── */}
@@ -3544,7 +3547,74 @@ const s = StyleSheet.create({
     marginHorizontal: 12,
   },
 
-  // Top Submenu (Tier 1)
+  // Quick Shortcut Cards (Reminders / Points / Nearby)
+  shortcutRow: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    gap: 8,
+    marginBottom: 12,
+  },
+  shortcutCard: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 9,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  shortcutIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: "center",
+    alignItems: "center",
+    flexShrink: 0,
+  },
+  shortcutTextCol: {
+    flex: 1,
+    minWidth: 0,
+  },
+  shortcutLabel: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+  shortcutMeta: {
+    fontSize: 9.5,
+    color: "rgba(255,255,255,0.55)",
+    marginTop: 1,
+  },
+  shortcutBadge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 4,
+    flexShrink: 0,
+  },
+  shortcutBadgeText: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#ffffff",
+  },
+  liveDotIndicator: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#f43f5e",
+  },
+  liveDotIndicatorLg: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#f43f5e",
+    flexShrink: 0,
+  },
+  // (Legacy top submenu styles kept for any reuse)
   topSubmenuOuter: {
     marginHorizontal: 16,
     marginBottom: 8,
@@ -3589,12 +3659,6 @@ const s = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
     color: "#fff",
-  },
-  liveDotIndicator: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#f43f5e",
   },
 
   // Modals (Rate Us, About, Policies)

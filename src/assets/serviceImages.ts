@@ -7,6 +7,28 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Official extracted high-resolution assets for all 9 services.
+ */
+export const SERVICE_LOCAL_IMAGES: Record<string, any> = {
+  cleaning: require("@/assets/services/cleaning.png"),
+  ro: require("@/assets/services/ro.png"),
+  pest: require("@/assets/services/pest.png"),
+  pet: require("@/assets/services/pet.png"),
+  hort: require("@/assets/services/horticulture.png"),
+  horticulture: require("@/assets/services/horticulture.png"),
+  appliance: require("@/assets/services/appliances.png"),
+  appliances: require("@/assets/services/appliances.png"),
+  homecare: require("@/assets/services/home_care.png"),
+  home_care: require("@/assets/services/home_care.png"),
+  emergency: require("@/assets/services/emergency.png"),
+  insurance: require("@/assets/services/insurance.png"),
+};
+
+export function getServiceLocalImage(categoryId: string): any {
+  return SERVICE_LOCAL_IMAGES[categoryId] ?? SERVICE_LOCAL_IMAGES["cleaning"];
+}
+
+/**
  * Hero image for each of the 10 service categories.
  * Displayed on the ServicesDashboardScreen category cards.
  */

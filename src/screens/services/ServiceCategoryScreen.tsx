@@ -15,7 +15,7 @@ import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 import { useServiceCategories } from "@/services/firestoreServices";
-import { getCategoryImage, getSubServiceImage } from "@/assets/serviceImages";
+import { getCategoryImage, getSubServiceImage, SERVICE_LOCAL_IMAGES } from "@/assets/serviceImages";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceCategory">;
 
@@ -49,7 +49,7 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
       <LinearGradient colors={category.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.topBar}>
         {/* Background image overlay inside gradient header */}
         <Image
-          source={{ uri: getCategoryImage(category.id) }}
+          source={SERVICE_LOCAL_IMAGES[category.id] ?? { uri: getCategoryImage(category.id) }}
           style={s.headerBgImage}
           resizeMode="cover"
         />
