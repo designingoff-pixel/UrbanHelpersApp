@@ -462,7 +462,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
         </View>
       </Animated.View>
 
-      {/* ── Slide-in Sidebar Drawer Modal ─────────────────────── */}
+      {/* ── Slide-in Sidebar Drawer Modal (Left Anchored & Compact) ── */}
       <Modal
         transparent
         visible={sidebarVisible}
@@ -470,12 +470,10 @@ export default function HomeDashboardScreen({ navigation }: Props) {
         onRequestClose={() => setSidebarVisible(false)}
       >
         <View style={s.sidebarOverlay}>
-          <TouchableWithoutFeedback onPress={() => setSidebarVisible(false)}>
-            <View style={s.sidebarBackdrop} />
-          </TouchableWithoutFeedback>
+          <Pressable style={s.sidebarBackdrop} onPress={() => setSidebarVisible(false)} />
 
           <Animated.View
-            entering={FadeInDown.duration(280)}
+            entering={FadeInDown.duration(240)}
             style={[s.sidebarContainer, { backgroundColor: isDark ? "#12141c" : "#ffffff" }]}
           >
             {/* Sidebar User Header */}
@@ -492,20 +490,20 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                     <Text style={s.sidebarAvatarInitials}>{firstName.charAt(0).toUpperCase()}</Text>
                   </LinearGradient>
                   <View style={s.sidebarAvatarBadge}>
-                    <Ionicons name="shield-checkmark" size={10} color="#ffffff" />
+                    <Ionicons name="shield-checkmark" size={9} color="#ffffff" />
                   </View>
                 </Pressable>
 
                 <View style={s.sidebarUserTextCol}>
                   <Text style={[s.sidebarUserName, { color: isDark ? "#ffffff" : "#0f172a" }]} numberOfLines={1}>
-                    {user?.displayName || "Urban Health Member"}
+                    {user?.displayName || "Urban Health"}
                   </Text>
                   <View style={s.sidebarTierRow}>
                     <LinearGradient colors={["#f59e0b", "#fbbf24"]} style={s.sidebarTierTag}>
-                      <Ionicons name="sparkles" size={10} color="#000000" />
+                      <Ionicons name="sparkles" size={9} color="#000000" />
                       <Text style={s.sidebarTierText}>ELITE</Text>
                     </LinearGradient>
-                    <Text style={s.sidebarCoinsText}>🪙 1,200 Coins</Text>
+                    <Text style={s.sidebarCoinsText}>🪙 1,200</Text>
                   </View>
                 </View>
               </View>
@@ -513,14 +511,14 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               <Pressable
                 onPress={() => setSidebarVisible(false)}
                 style={s.sidebarCloseBtn}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Ionicons name="close" size={22} color={isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.6)"} />
+                <Ionicons name="close" size={18} color={isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.6)"} />
               </Pressable>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.sidebarScrollContent}>
-              {/* Section 1: Core Navigation & Requested Features */}
+              {/* Section 1: Health & Rewards */}
               <Text style={s.sidebarSectionTitle}>HEALTH & REWARDS</Text>
 
               {/* 1. Reminders */}
@@ -532,14 +530,14 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 }}
               >
                 <LinearGradient colors={["#0284c7", "#38bdf8"]} style={s.sidebarItemIconWrap}>
-                  <Ionicons name="alarm" size={18} color="#ffffff" />
+                  <Ionicons name="alarm" size={16} color="#ffffff" />
                 </LinearGradient>
                 <View style={s.sidebarItemTextCol}>
                   <Text style={[s.sidebarItemTitle, { color: isDark ? "#ffffff" : "#0f172a" }]}>Reminders</Text>
-                  <Text style={s.sidebarItemSub}>Medicine & Daily Health Tasks</Text>
+                  <Text style={s.sidebarItemSub}>Medicine & Tasks</Text>
                 </View>
                 <View style={s.sidebarItemBadgeBlue}>
-                  <Text style={s.sidebarItemBadgeText}>9 Pending</Text>
+                  <Text style={s.sidebarItemBadgeText}>9</Text>
                 </View>
               </TouchableOpacity>
 
@@ -552,11 +550,11 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 }}
               >
                 <LinearGradient colors={["#e11d48", "#f43f5e"]} style={s.sidebarItemIconWrap}>
-                  <Ionicons name="radio" size={18} color="#ffffff" />
+                  <Ionicons name="radio" size={16} color="#ffffff" />
                 </LinearGradient>
                 <View style={s.sidebarItemTextCol}>
                   <Text style={[s.sidebarItemTitle, { color: isDark ? "#ffffff" : "#0f172a" }]}>Nearby Updates</Text>
-                  <Text style={s.sidebarItemSub}>Local Clinics & Emergency Feed</Text>
+                  <Text style={s.sidebarItemSub}>Clinics & Support</Text>
                 </View>
                 <View style={s.sidebarLivePulseWrap}>
                   <View style={s.sidebarLiveDot} />
@@ -573,14 +571,14 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 }}
               >
                 <LinearGradient colors={["#d97706", "#fbbf24"]} style={s.sidebarItemIconWrap}>
-                  <Ionicons name="trophy" size={18} color="#ffffff" />
+                  <Ionicons name="trophy" size={16} color="#ffffff" />
                 </LinearGradient>
                 <View style={s.sidebarItemTextCol}>
                   <Text style={[s.sidebarItemTitle, { color: isDark ? "#ffffff" : "#0f172a" }]}>Points & Rewards</Text>
-                  <Text style={s.sidebarItemSub}>Redeem store coins & vouchers</Text>
+                  <Text style={s.sidebarItemSub}>Redeem store coins</Text>
                 </View>
                 <View style={s.sidebarItemBadgeGold}>
-                  <Text style={s.sidebarItemBadgeGoldText}>+85 Today</Text>
+                  <Text style={s.sidebarItemBadgeGoldText}>+85</Text>
                 </View>
               </TouchableOpacity>
 
@@ -593,18 +591,18 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 }}
               >
                 <LinearGradient colors={["#475569", "#64748b"]} style={s.sidebarItemIconWrap}>
-                  <Ionicons name="settings" size={18} color="#ffffff" />
+                  <Ionicons name="settings" size={16} color="#ffffff" />
                 </LinearGradient>
                 <View style={s.sidebarItemTextCol}>
                   <Text style={[s.sidebarItemTitle, { color: isDark ? "#ffffff" : "#0f172a" }]}>Settings</Text>
-                  <Text style={s.sidebarItemSub}>Profile, sync, dark mode & sound</Text>
+                  <Text style={s.sidebarItemSub}>Profile & Themes</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.4)" />
+                <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.4)" />
               </TouchableOpacity>
 
               <View style={s.sidebarDivider} />
 
-              {/* Section 2: App & Community (Moved from 3-dot menu) */}
+              {/* Section 2: App & Community */}
               <Text style={s.sidebarSectionTitle}>COMMUNITY & APP</Text>
 
               {/* Rate Us */}
@@ -615,7 +613,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                   setRateModalVisible(true);
                 }}
               >
-                <Ionicons name="star" size={19} color="#fbbf24" style={s.sidebarSubIcon} />
+                <Ionicons name="star" size={17} color="#fbbf24" style={s.sidebarSubIcon} />
                 <Text style={[s.sidebarSubItemText, { color: isDark ? "#e2e8f0" : "#334155" }]}>Rate us</Text>
               </TouchableOpacity>
 
@@ -627,7 +625,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                   handleShare();
                 }}
               >
-                <Ionicons name="share-social" size={19} color="#a78bfa" style={s.sidebarSubIcon} />
+                <Ionicons name="share-social" size={17} color="#a78bfa" style={s.sidebarSubIcon} />
                 <Text style={[s.sidebarSubItemText, { color: isDark ? "#e2e8f0" : "#334155" }]}>Social media share</Text>
               </TouchableOpacity>
 
@@ -639,7 +637,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                   setAboutModalVisible(true);
                 }}
               >
-                <Ionicons name="information-circle" size={19} color="#34d399" style={s.sidebarSubIcon} />
+                <Ionicons name="information-circle" size={17} color="#34d399" style={s.sidebarSubIcon} />
                 <Text style={[s.sidebarSubItemText, { color: isDark ? "#e2e8f0" : "#334155" }]}>About us</Text>
               </TouchableOpacity>
 
@@ -651,7 +649,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                   setPoliciesModalVisible(true);
                 }}
               >
-                <Ionicons name="shield-checkmark" size={19} color="#60a5fa" style={s.sidebarSubIcon} />
+                <Ionicons name="shield-checkmark" size={17} color="#60a5fa" style={s.sidebarSubIcon} />
                 <Text style={[s.sidebarSubItemText, { color: isDark ? "#e2e8f0" : "#334155" }]}>Policies & Legal</Text>
               </TouchableOpacity>
 
@@ -663,7 +661,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                   navigation.navigate("Notifications");
                 }}
               >
-                <Ionicons name="notifications" size={19} color="#94a3b8" style={s.sidebarSubIcon} />
+                <Ionicons name="notifications" size={17} color="#94a3b8" style={s.sidebarSubIcon} />
                 <Text style={[s.sidebarSubItemText, { color: isDark ? "#e2e8f0" : "#334155" }]}>Notifications</Text>
               </TouchableOpacity>
 
@@ -675,7 +673,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                   resetHome();
                 }}
               >
-                <Ionicons name="refresh" size={19} color="#94a3b8" style={s.sidebarSubIcon} />
+                <Ionicons name="refresh" size={17} color="#94a3b8" style={s.sidebarSubIcon} />
                 <Text style={[s.sidebarSubItemText, { color: isDark ? "#e2e8f0" : "#334155" }]}>Reset home layout</Text>
               </TouchableOpacity>
 
@@ -689,7 +687,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                   handleSignOut();
                 }}
               >
-                <Ionicons name="log-out" size={19} color="#f87171" style={s.sidebarSubIcon} />
+                <Ionicons name="log-out" size={17} color="#f87171" style={s.sidebarSubIcon} />
                 <Text style={[s.sidebarSubItemText, { color: "#f87171", fontWeight: "600" }]}>Sign out</Text>
               </TouchableOpacity>
             </ScrollView>
@@ -697,8 +695,8 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             {/* Sidebar Footer */}
             <View style={s.sidebarFooter}>
               <View style={s.sidebarFooterRow}>
-                <Ionicons name="shield-checkmark" size={14} color="#00c6aa" />
-                <Text style={s.sidebarFooterText}>Urban Health v2.4.0 · Encrypted Cloud Sync</Text>
+                <Ionicons name="shield-checkmark" size={13} color="#00c6aa" />
+                <Text style={s.sidebarFooterText}>Urban Health v2.4.0 · Cloud Sync</Text>
               </View>
             </View>
           </Animated.View>
@@ -850,64 +848,6 @@ export default function HomeDashboardScreen({ navigation }: Props) {
           </View>
         </View>
       </Modal>
-
-      {/* ── Quick Shortcut Cards [Reminders] [Points] [Nearby] ── */}
-      <View style={s.shortcutRow}>
-        {/* Reminders */}
-        <Pressable
-          style={[s.shortcutCard, { backgroundColor: "rgba(56,189,248,0.10)", borderColor: "rgba(56,189,248,0.22)" }]}
-          onPress={() => navigation.navigate("SmartReminders")}
-        >
-          <LinearGradient
-            colors={["#0ea5e9", "#38bdf8"]}
-            style={s.shortcutIconCircle}
-          >
-            <Ionicons name="alarm" size={18} color="#ffffff" />
-          </LinearGradient>
-          <View style={s.shortcutTextCol}>
-            <Text style={s.shortcutLabel} numberOfLines={1}>Reminders</Text>
-            <Text style={s.shortcutMeta} numberOfLines={1}>9 pending</Text>
-          </View>
-          <View style={[s.shortcutBadge, { backgroundColor: "#0ea5e9" }]}>
-            <Text style={s.shortcutBadgeText}>9</Text>
-          </View>
-        </Pressable>
-
-        {/* Points */}
-        <Pressable
-          style={[s.shortcutCard, { backgroundColor: "rgba(251,191,36,0.10)", borderColor: "rgba(251,191,36,0.22)" }]}
-          onPress={() => navigation.navigate("Points")}
-        >
-          <LinearGradient
-            colors={["#f59e0b", "#fbbf24"]}
-            style={s.shortcutIconCircle}
-          >
-            <Ionicons name="trophy" size={18} color="#ffffff" />
-          </LinearGradient>
-          <View style={s.shortcutTextCol}>
-            <Text style={s.shortcutLabel} numberOfLines={1}>My Points</Text>
-            <Text style={s.shortcutMeta} numberOfLines={1}>🪙 1,200 coins</Text>
-          </View>
-        </Pressable>
-
-        {/* Nearby */}
-        <Pressable
-          style={[s.shortcutCard, { backgroundColor: "rgba(244,63,94,0.10)", borderColor: "rgba(244,63,94,0.22)" }]}
-          onPress={() => navigation.navigate("NearbyUpdates")}
-        >
-          <LinearGradient
-            colors={["#e11d48", "#f43f5e"]}
-            style={s.shortcutIconCircle}
-          >
-            <Ionicons name="radio" size={18} color="#ffffff" />
-          </LinearGradient>
-          <View style={s.shortcutTextCol}>
-            <Text style={s.shortcutLabel} numberOfLines={1}>Nearby</Text>
-            <Text style={s.shortcutMeta} numberOfLines={1}>Live updates</Text>
-          </View>
-          <View style={s.liveDotIndicatorLg} />
-        </Pressable>
-      </View>
 
       {/* ── Quick-action Pills Bar (Persistent within Home) ──── */}
       <Animated.View entering={FadeIn.delay(120).duration(400)} style={s.pillsOuter}>
@@ -1328,110 +1268,58 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               </View>
             )}
 
-            {/* 3b. Today's Earnings & Rewards (Unique Premium Sculpted Card) */}
+            {/* 3b. Today's Rewards (Compact Sleek Card) */}
             {isVisible("today_earnings") && (
-              <View style={[s.cardWrapper, { marginTop: 12 }]}>
+              <View style={[s.cardWrapper, { marginTop: 10 }]}>
                 <PressCard index={1} onPress={() => navigation.navigate("Points")}>
                   <LinearGradient
-                    colors={["#1c1202", "#351d04", "#542a06", "#231202"]}
+                    colors={["#1e1404", "#382005", "#4a2807"]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={s.earningsCard}
                   >
-                    {/* Ambient Gold Glow Orbs */}
-                    <View style={s.earningsGlowOrbTop} />
-                    <View style={s.earningsGlowOrbBottom} />
-
                     <View style={s.earningsTopRow}>
                       <View style={{ flex: 1 }}>
                         <View style={s.earningsTagRow}>
-                          <LinearGradient
-                            colors={["#f59e0b", "#fbbf24"]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={s.earningsTag}
-                          >
-                            <Ionicons name="sparkles" size={11} color="#000000" />
+                          <View style={s.earningsTag}>
+                            <Ionicons name="sparkles" size={10} color="#fbbf24" />
                             <Text style={s.earningsTagText}>TODAY'S REWARDS</Text>
-                          </LinearGradient>
-                          <View style={s.earningsStreakBadge}>
-                            <Text style={s.earningsStreakText}>🔥 5-Day Streak</Text>
                           </View>
+                          <Text style={s.earningsStreakText}>🔥 5-Day Streak</Text>
                         </View>
 
                         <View style={s.earningsValueRow}>
                           <Text style={s.earningsCoins}>+{pointsEarned}</Text>
-                          <View style={s.earningsCoinsSubWrap}>
-                            <Text style={s.earningsCoinsSub}>Coins Earned</Text>
-                            <Text style={s.earningsCoinsSubMeta}>Total: 1,200</Text>
-                          </View>
+                          <Text style={s.earningsCoinsSub}>Coins</Text>
                         </View>
                       </View>
 
-                      {/* 3D Glowing Coin Badge with Particle Rings */}
+                      {/* Mini 3D Trophy Badge */}
                       <View style={s.earningsCoin3DWrap}>
-                        <View style={s.earningsCoinOuterRing}>
-                          <LinearGradient
-                            colors={["#fbbf24", "#d97706", "#92400e"]}
-                            style={s.earningsCoin3DInner}
-                          >
-                            <Ionicons name="trophy" size={26} color="#ffffff" />
-                          </LinearGradient>
-                        </View>
-                        <View style={s.earningsCoinSparkle1}>
-                          <Ionicons name="star" size={10} color="#fde68a" />
-                        </View>
-                        <View style={s.earningsCoinSparkle2}>
-                          <Ionicons name="sparkles" size={12} color="#fde68a" />
-                        </View>
-                      </View>
-                    </View>
-
-                    {/* Dynamic Points / Task Progress Bar */}
-                    <View style={s.earningsProgressWrap}>
-                      <View style={s.earningsProgressHeader}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                          <Ionicons name="checkbox" size={15} color="#fbbf24" />
-                          <Text style={s.earningsProgressLabel}>Daily Health Missions</Text>
-                        </View>
-                        <Text style={s.earningsProgressVal}>4 of 6 Done (65%)</Text>
-                      </View>
-                      <View style={s.earningsProgressBarBg}>
                         <LinearGradient
-                          colors={["#f59e0b", "#fbbf24", "#34d399"]}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={[s.earningsProgressBarFill, { width: "65%" }]}
-                        />
+                          colors={["#fbbf24", "#d97706"]}
+                          style={s.earningsCoin3DInner}
+                        >
+                          <Ionicons name="trophy" size={20} color="#ffffff" />
+                        </LinearGradient>
                       </View>
-                      <Text style={s.earningsProgressHint}>
-                        ⚡ Complete 2 more tasks to unlock +35 bonus coins!
-                      </Text>
                     </View>
 
-                    {/* Bottom Action Footer */}
-                    <View style={s.earningsFooter}>
-                      <Pressable
-                        style={s.earningsBonusBtn}
-                        onPress={() => {
-                          if (!pointsClaimed) {
-                            setPointsEarned((prev) => prev + 35);
-                            setPointsClaimed(true);
-                            Alert.alert("Bonus Claimed! 🎉", "You received +35 Streak Bonus coins today!");
-                          } else {
-                            Alert.alert("Already Claimed", "You have claimed today's bonus! Come back tomorrow for more.");
-                          }
-                        }}
-                      >
-                        <Ionicons name={pointsClaimed ? "checkmark-circle" : "gift-outline"} size={14} color="#ffffff" />
-                        <Text style={s.earningsBonusBtnText}>
-                          {pointsClaimed ? "Claimed (+35)" : "Claim Bonus (+35)"}
-                        </Text>
-                      </Pressable>
+                    {/* Progress Bar & Redeem CTA in one compact bottom row */}
+                    <View style={s.earningsBottomRow}>
+                      <View style={s.earningsProgressWrap}>
+                        <View style={s.earningsProgressHeader}>
+                          <Text style={s.earningsProgressLabel}>Daily Missions</Text>
+                          <Text style={s.earningsProgressVal}>4/6 (65%)</Text>
+                        </View>
+                        <View style={s.earningsProgressBarBg}>
+                          <View style={[s.earningsProgressBarFill, { width: "65%" }]} />
+                        </View>
+                      </View>
 
                       <View style={s.earningsShopLink}>
-                        <Text style={s.earningsShopLinkText}>Redeem Rewards</Text>
-                        <Ionicons name="arrow-forward" size={13} color="#fbbf24" />
+                        <Text style={s.earningsShopLinkText}>Redeem</Text>
+                        <Ionicons name="arrow-forward" size={11} color="#fbbf24" />
                       </View>
                     </View>
                   </LinearGradient>
@@ -4346,24 +4234,25 @@ const s = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // ─── Sidebar Drawer Modal Styles ──────────────────────────────────────────
+  // ─── Sidebar Drawer Modal Styles (Left-Anchored & Compact) ───────────────
   sidebarOverlay: {
     flex: 1,
     flexDirection: "row",
+    justifyContent: "flex-start",
   },
   sidebarBackdrop: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.68)",
   },
   sidebarContainer: {
-    width: "82%",
-    maxWidth: 330,
+    width: 275,
+    maxWidth: "78%",
     height: "100%",
     borderRightWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
-    paddingTop: 52,
-    paddingHorizontal: 18,
-    paddingBottom: 24,
+    paddingTop: 50,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
     shadowColor: "#000",
     shadowOffset: { width: 4, height: 0 },
     shadowOpacity: 0.5,
@@ -4374,33 +4263,33 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingBottom: 16,
+    paddingBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255,255,255,0.08)",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   sidebarUserRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
     flex: 1,
   },
   sidebarAvatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    borderWidth: 2,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1.5,
     borderColor: "#00c6aa",
     position: "relative",
   },
   sidebarAvatarInner: {
     flex: 1,
-    borderRadius: 23,
+    borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
   },
   sidebarAvatarInitials: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "800",
     color: "#ffffff",
   },
@@ -4408,391 +4297,301 @@ const s = StyleSheet.create({
     position: "absolute",
     bottom: -2,
     right: -2,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: "#00c6aa",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: "#12141c",
   },
   sidebarUserTextCol: {
     flex: 1,
   },
   sidebarUserName: {
-    fontSize: 15.5,
+    fontSize: 14,
     fontWeight: "700",
-    marginBottom: 3,
+    marginBottom: 2,
   },
   sidebarTierRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 5,
   },
   sidebarTierTag: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
-    paddingVertical: 2,
-    paddingHorizontal: 6,
-    borderRadius: 6,
+    gap: 2,
+    paddingVertical: 1.5,
+    paddingHorizontal: 5,
+    borderRadius: 5,
   },
   sidebarTierText: {
-    fontSize: 9,
+    fontSize: 8.5,
     fontWeight: "800",
     color: "#000000",
     letterSpacing: 0.5,
   },
   sidebarCoinsText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: "600",
     color: "#fbbf24",
   },
   sidebarCloseBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: "rgba(255,255,255,0.08)",
     justifyContent: "center",
     alignItems: "center",
   },
   sidebarScrollContent: {
-    paddingBottom: 20,
+    paddingBottom: 16,
   },
   sidebarSectionTitle: {
-    fontSize: 10.5,
+    fontSize: 10,
     fontWeight: "700",
-    color: "rgba(255,255,255,0.42)",
+    color: "rgba(255,255,255,0.4)",
     letterSpacing: 0.8,
-    marginTop: 14,
-    marginBottom: 8,
+    marginTop: 10,
+    marginBottom: 6,
   },
   sidebarItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.035)",
-    marginBottom: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.03)",
+    marginBottom: 6,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.05)",
   },
   sidebarItemIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: 10,
   },
   sidebarItemTextCol: {
     flex: 1,
   },
   sidebarItemTitle: {
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: "700",
-    marginBottom: 2,
+    marginBottom: 1,
   },
   sidebarItemSub: {
-    fontSize: 11,
+    fontSize: 10.5,
     color: "rgba(255,255,255,0.5)",
   },
   sidebarItemBadgeBlue: {
     backgroundColor: "rgba(56,189,248,0.18)",
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 10,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: "rgba(56,189,248,0.35)",
   },
   sidebarItemBadgeText: {
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: "700",
     color: "#38bdf8",
   },
   sidebarItemBadgeGold: {
     backgroundColor: "rgba(251,191,36,0.18)",
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 10,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: "rgba(251,191,36,0.35)",
   },
   sidebarItemBadgeGoldText: {
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: "700",
     color: "#fbbf24",
   },
   sidebarLivePulseWrap: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 3,
     backgroundColor: "rgba(244,63,94,0.18)",
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 10,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: "rgba(244,63,94,0.35)",
   },
   sidebarLiveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
     backgroundColor: "#f43f5e",
   },
   sidebarLiveText: {
-    fontSize: 9.5,
+    fontSize: 9,
     fontWeight: "800",
     color: "#f43f5e",
   },
   sidebarDivider: {
     height: 1,
     backgroundColor: "rgba(255,255,255,0.08)",
-    marginVertical: 10,
+    marginVertical: 8,
   },
   sidebarSubItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    marginBottom: 3,
+    paddingVertical: 7,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    marginBottom: 2,
   },
   sidebarSubIcon: {
-    marginRight: 14,
+    marginRight: 10,
   },
   sidebarSubItemText: {
-    fontSize: 13.5,
+    fontSize: 12.5,
     fontWeight: "500",
   },
   sidebarFooter: {
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.08)",
-    paddingTop: 12,
+    paddingTop: 10,
   },
   sidebarFooterRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 5,
   },
   sidebarFooterText: {
-    fontSize: 11,
+    fontSize: 10.5,
     color: "rgba(255,255,255,0.48)",
     fontWeight: "500",
   },
 
-  // ─── Earnings & Rewards Card Styles (Sculpted Unique Geometry) ─────────────
+  // ─── Earnings & Rewards Card Styles (Compact & Balanced) ──────────────────
   earningsCard: {
-    borderTopLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    borderTopRightRadius: 16,
-    borderBottomLeftRadius: 16,
-    padding: 20,
-    borderWidth: 1.5,
-    borderColor: "rgba(251,191,36,0.45)",
-    overflow: "hidden",
-    position: "relative",
-    shadowColor: "#fbbf24",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 14,
-    elevation: 8,
-  },
-  earningsGlowOrbTop: {
-    position: "absolute",
-    top: -30,
-    right: -30,
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: "rgba(251,191,36,0.08)",
-  },
-  earningsGlowOrbBottom: {
-    position: "absolute",
-    bottom: -40,
-    left: -40,
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: "rgba(245,158,11,0.06)",
+    borderRadius: 22,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(251,191,36,0.3)",
+    minHeight: 128,
+    justifyContent: "space-between",
   },
   earningsTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 10,
   },
   earningsTagRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 8,
+    gap: 6,
+    marginBottom: 4,
   },
   earningsTag: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 8,
+    gap: 3,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+    backgroundColor: "rgba(251,191,36,0.15)",
   },
   earningsTagText: {
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: "800",
-    color: "#000000",
-    letterSpacing: 0.5,
-  },
-  earningsStreakBadge: {
-    backgroundColor: "rgba(255,255,255,0.1)",
-    paddingVertical: 2,
-    paddingHorizontal: 7,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    color: "#fbbf24",
+    letterSpacing: 0.4,
   },
   earningsStreakText: {
     fontSize: 10.5,
-    fontWeight: "700",
-    color: "#fde68a",
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.65)",
   },
   earningsValueRow: {
     flexDirection: "row",
     alignItems: "baseline",
-    gap: 8,
+    gap: 6,
   },
   earningsCoins: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: "800",
     color: "#ffffff",
-    letterSpacing: -0.5,
-  },
-  earningsCoinsSubWrap: {
-    flexDirection: "column",
   },
   earningsCoinsSub: {
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "600",
     color: "#fbbf24",
   },
-  earningsCoinsSubMeta: {
-    fontSize: 11,
-    fontWeight: "500",
-    color: "rgba(255,255,255,0.5)",
-  },
   earningsCoin3DWrap: {
-    position: "relative",
-    width: 62,
-    height: 62,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  earningsCoinOuterRing: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "rgba(251,191,36,0.15)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "rgba(251,191,36,0.4)",
-    shadowColor: "#fbbf24",
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  earningsCoin3DInner: {
     width: 44,
     height: 44,
-    borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
   },
-  earningsCoinSparkle1: {
-    position: "absolute",
-    top: 0,
-    right: 2,
+  earningsCoin3DInner: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#fbbf24",
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  earningsCoinSparkle2: {
-    position: "absolute",
-    bottom: 2,
-    left: 2,
+  earningsBottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
   },
   earningsProgressWrap: {
-    backgroundColor: "rgba(0,0,0,0.32)",
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: "rgba(251,191,36,0.15)",
+    flex: 1,
   },
   earningsProgressHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 4,
   },
   earningsProgressLabel: {
-    fontSize: 12.5,
-    color: "#ffffff",
-    fontWeight: "600",
+    fontSize: 11,
+    color: "rgba(255,255,255,0.65)",
+    fontWeight: "500",
   },
   earningsProgressVal: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#fbbf24",
     fontWeight: "700",
   },
   earningsProgressBarBg: {
-    height: 8,
-    borderRadius: 4,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: "rgba(255,255,255,0.1)",
     overflow: "hidden",
-    marginBottom: 8,
   },
   earningsProgressBarFill: {
     height: "100%",
-    borderRadius: 4,
-  },
-  earningsProgressHint: {
-    fontSize: 11.5,
-    color: "rgba(255,255,255,0.7)",
-    fontWeight: "500",
-  },
-  earningsFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 10,
-  },
-  earningsBonusBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "rgba(245,158,11,0.25)",
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(251,191,36,0.4)",
-  },
-  earningsBonusBtnText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#fbbf24",
+    borderRadius: 3,
+    backgroundColor: "#fbbf24",
   },
   earningsShopLink: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: "rgba(251,191,36,0.15)",
   },
   earningsShopLinkText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: "700",
     color: "#fbbf24",
   },

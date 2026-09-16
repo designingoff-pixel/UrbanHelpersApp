@@ -132,7 +132,7 @@ export default function SleepInfoScreen({ navigation }: Props) {
         </Pressable>
         <Pressable
           style={s.targetBtn}
-          onPress={() => navigation.navigate("SleepTarget")}
+          onPress={() => navigation.navigate("SleepTarget" as any)}
         >
           <Text style={s.targetText}>Set target</Text>
         </Pressable>
