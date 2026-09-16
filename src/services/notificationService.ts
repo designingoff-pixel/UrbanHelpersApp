@@ -248,7 +248,138 @@ export async function scheduleWorkoutReminder(
   });
 }
 
-export async function sendVendorArrivedOTPNotification(otp: string): Promise<string> {
+// ── Deduplication Tracker ───────────────────────────────────────────────────
+const recentNotificationKeys = new Map<string, number>();
+
+export function shouldDeliverNotification(key: string, cooldownMs = 25000): boolean {
+  const now = Date.now();
+  const lastTime = recentNotificationKeys.get(key);
+  if (lastTime && now - lastTime < cooldownMs) {
+    console.log(`[Notification Deduplication] Dropped duplicate notification: ${key}`);
+    return false;
+  }
+  recentNotificationKeys.set(key, now);
+  return true;
+}
+
+export interface InAppNotice {
+  id: string;
+  tag: string;
+  title: string;
+  date: string;
+  body: string;
+  isRead?: boolean;
+}
+
+const IN_APP_NOTICES_KEY = "@urban_in_app_notices_v2";
+
+export const DEFAULT_NOTICES: InAppNotice[] = [
+  {
+    id: "notif-1",
+    tag: "[Important Notice]",
+    title: "Notice for the Consumer Electronics Health Suite & Galaxy Watch Sync",
+    date: "14 Jul",
+    body: "Enhanced Samsung Health and BLE Smartwatch telemetry is now enabled for all Urban Helpers members.",
+  },
+  {
+    id: "notif-2",
+    tag: "[Reminder]",
+    title: "Samsung Health Meditation & Mindfulness Session Reminder",
+    date: "6 Jul",
+    body: "Take a 5-minute breathing break to lower cardiovascular stress index.",
+  },
+  {
+    id: "notif-3",
+    tag: "[Notice]",
+    title: "Samsung Health Discover Services & AI Coach Vitals Integration",
+    date: "6 Jul",
+    body: "AI Coach can now analyze your sleep cycles, vascular load, and antioxidant scores automatically.",
+  },
+  {
+    id: "notif-4",
+    tag: "[Notice]",
+    title: "App Update for an Improved Health & Urban Shop Experience",
+    date: "2 Jul",
+    body: "Version 2.4.0 brings real-time Firestore sync and point redemption in the store.",
+  },
+  {
+    id: "notif-5",
+    tag: "[Important Notice]",
+    title: "Changes to Samsung Health Terms & Daily Care Reminder Policies",
+    date: "15 Jun",
+    body: "Updated medication reminders and emergency assistance response protocols.",
+  },
+  {
+    id: "notif-6",
+    tag: "[Notice]",
+    title: "Changes to country determination for Galaxy Watch & Sensor Bridge",
+    date: "18 May",
+    body: "Galaxy Watch sensors and blood oxygen readings are calibrated for regional accuracy.",
+  },
+  {
+    id: "notif-7",
+    tag: "[Notice]",
+    title: "Changes to Samsung Health Sleep Coaching & Recovery Features",
+    date: "10 Apr",
+    body: "Sleep coaching scores are now factored into your daily reward coin targets.",
+  },
+  {
+    id: "notif-8",
+    tag: "[Notice]",
+    title: "Changes to Samsung Health Vitals & Heart Rate Suite Calibration",
+    date: "10 Feb",
+    body: "Heart rate and ECG algorithms updated for higher clinical fidelity.",
+  },
+  {
+    id: "notif-9",
+    tag: "Notice:",
+    title: "Together feature not provided for guest users without account",
+    date: "6 Feb",
+    body: "Please create an account to invite family members to your Together health ring.",
+  },
+];
+
+export async function getInAppNotices(): Promise<InAppNotice[]> {
+  try {
+    const data = await AsyncStorage.getItem(IN_APP_NOTICES_KEY);
+    if (data) {
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.warn("Error reading in-app notices", e);
+  }
+  return DEFAULT_NOTICES;
+}
+
+export async function addInAppNotice(notice: Omit<InAppNotice, "id">): Promise<void> {
+  try {
+    const list = await getInAppNotices();
+    const newNotice: InAppNotice = {
+      ...notice,
+      id: `notice-${Date.now()}`,
+    };
+    const updated = [newNotice, ...list];
+    await AsyncStorage.setItem(IN_APP_NOTICES_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.warn("Error saving notice", e);
+  }
+}
+
+export async function sendVendorArrivedOTPNotification(otp: string, bookingId = "default"): Promise<string | null> {
+  const dedupKey = `vendor-arrived-${bookingId}-${otp}`;
+  if (!shouldDeliverNotification(dedupKey)) {
+    return null;
+  }
+
+  // Add to in-app notices
+  await addInAppNotice({
+    tag: "[Important Notice]",
+    title: `Your Helper Has Arrived! OTP: ${otp}`,
+    date: "Just now",
+    body: `Please share this secure 4-digit OTP with your service technician: ${otp}`,
+  });
+
   return Notifications.scheduleNotificationAsync({
     content: {
       title: "📍 Your Vendor Has Arrived!",
@@ -317,9 +448,20 @@ export async function sendBookingConfirmation(
   subServiceName: string,
   dateLabel: string,
   timeLabel?: string,
-  otp: string = ""
+  otp: string = "",
+  bookingId: string = "default"
 ): Promise<void> {
+  const dedupKey = `booking-confirm-${bookingId}-${serviceName}-${otp}`;
+  if (!shouldDeliverNotification(dedupKey)) return;
+
   const timing = timeLabel ? ` at ${timeLabel}` : "";
+  await addInAppNotice({
+    tag: "[Notice]",
+    title: `Booking Confirmed: ${subServiceName}`,
+    date: "Just now",
+    body: `${subServiceName} (${serviceName}) on ${dateLabel}${timing}. OTP: ${otp}`,
+  });
+
   await Notifications.scheduleNotificationAsync({
     content: {
       title: "✅ Booking Confirmed!",
@@ -327,7 +469,7 @@ export async function sendBookingConfirmation(
       sound: true,
       data: { screen: "MyBookings" },
     },
-    trigger: { ...intervalTrigger(3), channelId: "services" }, // fires 3s after confirm
+    trigger: { ...intervalTrigger(1), channelId: "services" },
   });
 }
 
@@ -350,8 +492,12 @@ export async function scheduleBookingReminder(
 
 export async function sendVendorOnTheWayNotification(
   vendorName: string,
-  serviceName: string
+  serviceName: string,
+  bookingId: string = "default"
 ): Promise<void> {
+  const dedupKey = `vendor-otw-${bookingId}-${vendorName}`;
+  if (!shouldDeliverNotification(dedupKey)) return;
+
   await Notifications.scheduleNotificationAsync({
     content: {
       title: "🔧 Helper On the Way",
@@ -359,11 +505,14 @@ export async function sendVendorOnTheWayNotification(
       sound: true,
       data: { screen: "LiveTracking" },
     },
-    trigger: { ...intervalTrigger(2), channelId: "services" },
+    trigger: { ...intervalTrigger(1), channelId: "services" },
   });
 }
 
-export async function sendVendorArrivedNotification(vendorName: string): Promise<void> {
+export async function sendVendorArrivedNotification(vendorName: string, bookingId: string = "default"): Promise<void> {
+  const dedupKey = `vendor-arrived-alert-${bookingId}-${vendorName}`;
+  if (!shouldDeliverNotification(dedupKey)) return;
+
   await Notifications.scheduleNotificationAsync({
     content: {
       title: "📍 Helper Has Arrived",
@@ -371,11 +520,21 @@ export async function sendVendorArrivedNotification(vendorName: string): Promise
       sound: true,
       data: { screen: "ServicesDashboard" },
     },
-    trigger: { ...intervalTrigger(2), channelId: "services" },
+    trigger: { ...intervalTrigger(1), channelId: "services" },
   });
 }
 
-export async function sendServiceCompletedNotification(serviceName: string): Promise<void> {
+export async function sendServiceCompletedNotification(serviceName: string, bookingId: string = "default"): Promise<void> {
+  const dedupKey = `service-completed-${bookingId}-${serviceName}`;
+  if (!shouldDeliverNotification(dedupKey)) return;
+
+  await addInAppNotice({
+    tag: "[Notice]",
+    title: `Service Completed: ${serviceName}`,
+    date: "Just now",
+    body: `Your service session for ${serviceName} is completed. Please rate your professional!`,
+  });
+
   await Notifications.scheduleNotificationAsync({
     content: {
       title: "⭐ Rate Your Service",
@@ -383,7 +542,7 @@ export async function sendServiceCompletedNotification(serviceName: string): Pro
       sound: true,
       data: { screen: "RatingFeedback" },
     },
-    trigger: { ...intervalTrigger(2), channelId: "services" },
+    trigger: { ...intervalTrigger(1), channelId: "services" },
   });
 }
 
