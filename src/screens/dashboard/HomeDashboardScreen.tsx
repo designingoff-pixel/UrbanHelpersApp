@@ -653,18 +653,6 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 <Text style={[s.sidebarSubItemText, { color: isDark ? "#e2e8f0" : "#334155" }]}>Policies & Legal</Text>
               </TouchableOpacity>
 
-              {/* Notifications shortcut */}
-              <TouchableOpacity
-                style={s.sidebarSubItem}
-                onPress={() => {
-                  setSidebarVisible(false);
-                  navigation.navigate("Notifications");
-                }}
-              >
-                <Ionicons name="notifications" size={17} color="#94a3b8" style={s.sidebarSubIcon} />
-                <Text style={[s.sidebarSubItemText, { color: isDark ? "#e2e8f0" : "#334155" }]}>Notifications</Text>
-              </TouchableOpacity>
-
               {/* Reset Home Layout */}
               <TouchableOpacity
                 style={s.sidebarSubItem}
