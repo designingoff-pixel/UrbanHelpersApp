@@ -18,7 +18,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 import { SERVICE_CATEGORIES } from "./servicesData";
-import { getSubServiceImage } from "@/assets/serviceImages";
+import { getSubServiceImage, getSubServiceImageSource } from "@/assets/serviceImages";
 import { useAuth } from "@/context/AuthContext";
 import { createBooking } from "@/services/bookingService";
 
@@ -369,7 +369,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         {/* ── Hero Service Image ─────────────────────────────── */}
         <Animated.View entering={FadeInDown.duration(300)} style={s.heroImageWrap}>
           <Image
-            source={{ uri: getSubServiceImage(sub.id, category.id) }}
+            source={getSubServiceImageSource(sub.id, category.id, sub?.imageUrl)}
             style={s.heroImage}
             resizeMode="cover"
           />

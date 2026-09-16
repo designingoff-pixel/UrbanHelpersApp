@@ -24,8 +24,47 @@ export const SERVICE_LOCAL_IMAGES: Record<string, any> = {
   insurance: require("@/assets/services/insurance.png"),
 };
 
+/**
+ * Real-life extracted images for Home Cleaning sub-services
+ */
+export const CLEANING_SUB_SERVICE_IMAGES: Record<string, any> = {
+  "cl-full": require("@/assets/cleaning/full_home_cleaning.jpg"),
+  "cl-kitchen": require("@/assets/cleaning/kitchen_cleaning.jpg"),
+  "cl-restroom": require("@/assets/cleaning/restroom_cleaning.jpg"),
+  "cl-tank": require("@/assets/cleaning/water_tank_cleaning.jpg"),
+  "cl-window": require("@/assets/cleaning/window_cleaning.jpg"),
+  "cl-floor": require("@/assets/cleaning/full_home_cleaning.jpg"),
+  "cl-disinfect": require("@/assets/cleaning/disinfectant_cleaning.jpg"),
+  "cl-sanitary": require("@/assets/cleaning/disinfectant_cleaning.jpg"),
+  "cl-appliance": require("@/assets/services/appliances.png"),
+  "cl-sofa": require("@/assets/cleaning/full_home_cleaning.jpg"),
+  "cl-fan": require("@/assets/cleaning/full_home_cleaning.jpg"),
+};
+
 export function getServiceLocalImage(categoryId: string): any {
   return SERVICE_LOCAL_IMAGES[categoryId] ?? SERVICE_LOCAL_IMAGES["cleaning"];
+}
+
+/**
+ * Returns the exact ImageSourcePropType (local require or remote URI)
+ * prioritizing the extracted high-resolution sub-service photos.
+ */
+export function getSubServiceImageSource(
+  subServiceId: string,
+  categoryId: string,
+  customUrl?: string | null
+): any {
+  if (customUrl && typeof customUrl === "string" && customUrl.startsWith("http")) {
+    return { uri: customUrl };
+  }
+  if (CLEANING_SUB_SERVICE_IMAGES[subServiceId]) {
+    return CLEANING_SUB_SERVICE_IMAGES[subServiceId];
+  }
+  const remoteUrl =
+    SERVICE_DETAIL_IMAGES[subServiceId] ??
+    SERVICE_CATEGORY_IMAGES[categoryId] ??
+    SERVICE_CATEGORY_IMAGES["cleaning"];
+  return { uri: remoteUrl };
 }
 
 /**

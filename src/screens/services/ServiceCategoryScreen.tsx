@@ -15,7 +15,7 @@ import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 import { useServiceCategories } from "@/services/firestoreServices";
-import { getCategoryImage, getSubServiceImage, SERVICE_LOCAL_IMAGES } from "@/assets/serviceImages";
+import { getCategoryImage, getSubServiceImage, getSubServiceImageSource, SERVICE_LOCAL_IMAGES } from "@/assets/serviceImages";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceCategory">;
 
@@ -113,7 +113,7 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
             >
               {/* Sub-service image thumbnail */}
               <Image
-                source={{ uri: sub.imageUrl ?? getSubServiceImage(sub.id, category.id) }}
+                source={getSubServiceImageSource(sub.id, category.id, sub.imageUrl)}
                 style={s.subCardImage}
                 resizeMode="cover"
               />
