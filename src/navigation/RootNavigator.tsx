@@ -86,8 +86,9 @@ import PersonalHygieneScreen from "@/screens/dailycare/PersonalHygieneScreen";
 import HealthPrecautionsScreen from "@/screens/dailycare/HealthPrecautionsScreen";
 import HealthCompanionScreen from "@/screens/dailycare/HealthCompanionScreen";
 
-// Profile
+// Profile & Settings
 import ProfileScreen from "@/screens/profile/ProfileScreen";
+import SettingsScreen from "@/screens/profile/SettingsScreen";
 
 // Notifications
 import NotificationsScreen from "@/screens/notifications/NotificationsScreen";
@@ -280,8 +281,9 @@ export function RootNavigator() {
       <Stack.Screen name="HealthPrecautions" component={HealthPrecautionsScreen} />
       <Stack.Screen name="HealthCompanion" component={HealthCompanionScreen} />
 
-      {/* Profile */}
+      {/* Profile & Settings */}
       <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
 
       {/* Notifications */}
       <Stack.Screen name="Notifications" component={NotificationsScreen} />

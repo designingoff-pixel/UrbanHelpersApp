@@ -1,199 +1,151 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ScrollView,
   Text,
   View,
-  Pressable,
+  TouchableOpacity,
   StyleSheet,
   TextInput,
   Dimensions,
   Alert,
   StatusBar,
+  Image,
+  Modal,
+  ActivityIndicator,
 } from "react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import SamsungBottomNav from "@/components/SamsungBottomNav";
+import { useTheme } from "@/context/ThemeContext";
+import {
+  ShopCategory,
+  ShopProduct,
+  CartItem,
+  subscribeToShopProducts,
+  DEFAULT_SHOP_PRODUCTS,
+  addProductToFirestore,
+  getSavedCart,
+  saveUserCart,
+} from "@/services/shopService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Shop">;
 
 const { width: SW } = Dimensions.get("window");
 const CARD_W = (SW - 32 - 12) / 2;
 
-type ShopCategory =
-  | "All"
-  | "Wearables"
-  | "Health Devices"
-  | "Nutrition & Detox"
-  | "Fitness Gear"
-  | "Hygiene";
-
-const CATEGORIES: ShopCategory[] = [
-  "All",
-  "Wearables",
-  "Health Devices",
-  "Nutrition & Detox",
-  "Fitness Gear",
-  "Hygiene",
-];
-
-interface Product {
-  id: string;
-  name: string;
-  category: ShopCategory;
-  price: number;
-  pointsPrice: number;
-  rating: number;
-  reviewsCount: number;
-  badge?: string;
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
-  iconColor: string;
-  gradient: [string, string];
-  features: string;
-}
-
-const PRODUCTS: Product[] = [
-  {
-    id: "prod-1",
-    name: "Galaxy Watch Ultra 2",
-    category: "Wearables",
-    price: 39999,
-    pointsPrice: 38000,
-    rating: 4.9,
-    reviewsCount: 342,
-    badge: "15% OFF",
-    icon: "watch",
-    iconColor: "#60a5fa",
-    gradient: ["#1e293b", "#0f172a"],
-    features: "Energy Score, ECG, Dual-GPS & Cardio Load",
-  },
-  {
-    id: "prod-2",
-    name: "Galaxy Watch9 Pro",
-    category: "Wearables",
-    price: 26999,
-    pointsPrice: 25000,
-    rating: 4.8,
-    reviewsCount: 219,
-    badge: "BESTSELLER",
-    icon: "watch-vibrate",
-    iconColor: "#a855f7",
-    gradient: ["#2e1065", "#1e1b4b"],
-    features: "BIA Body Composition & Advanced Sleep Coaching",
-  },
-  {
-    id: "prod-3",
-    name: "Smart Body Composition Scale",
-    category: "Health Devices",
-    price: 2999,
-    pointsPrice: 2800,
-    rating: 4.7,
-    reviewsCount: 184,
-    badge: "SYNC COMPATIBLE",
-    icon: "scale-bathroom",
-    iconColor: "#34d399",
-    gradient: ["#064e3b", "#022c22"],
-    features: "Auto-syncs Weight, BMI, Body Fat & Skeletal Muscle",
-  },
-  {
-    id: "prod-4",
-    name: "Wireless Bluetooth BP Monitor",
-    category: "Health Devices",
-    price: 3499,
-    pointsPrice: 3200,
-    rating: 4.9,
-    reviewsCount: 147,
-    badge: "CLINICAL GRADE",
-    icon: "heart-pulse",
-    iconColor: "#f43f5e",
-    gradient: ["#4c0519", "#290310"],
-    features: "One-tap sync to Vitals Dashboard & Health log",
-  },
-  {
-    id: "prod-5",
-    name: "Herbal Detox & Cleanse Pack",
-    category: "Nutrition & Detox",
-    price: 1299,
-    pointsPrice: 1200,
-    rating: 4.6,
-    reviewsCount: 95,
-    icon: "leaf",
-    iconColor: "#10b981",
-    gradient: ["#064e3b", "#14532d"],
-    features: "14-Day digestive cleanse & antioxidant immunity blend",
-  },
-  {
-    id: "prod-6",
-    name: "Sonic Smart Electric Toothbrush",
-    category: "Hygiene",
-    price: 1899,
-    pointsPrice: 1750,
-    rating: 4.8,
-    reviewsCount: 310,
-    badge: "POPULAR",
-    icon: "toothbrush-paste",
-    iconColor: "#38bdf8",
-    gradient: ["#0c4a6e", "#082f49"],
-    features: "40,000 VPM acoustic cleaning & 2-min reminder timer",
-  },
-  {
-    id: "prod-7",
-    name: "Orthopedic Yoga & Pilates Mat",
-    category: "Fitness Gear",
-    price: 1499,
-    pointsPrice: 1400,
-    rating: 4.9,
-    reviewsCount: 420,
-    icon: "yoga",
-    iconColor: "#fbbf24",
-    gradient: ["#451a03", "#291002"],
-    features: "High-density 8mm cushioning with alignment guide",
-  },
-  {
-    id: "prod-8",
-    name: "Adjustable Quick-Select Dumbbells",
-    category: "Fitness Gear",
-    price: 7999,
-    pointsPrice: 7500,
-    rating: 4.9,
-    reviewsCount: 168,
-    badge: "PRO FITNESS",
-    icon: "dumbbell",
-    iconColor: "#f97316",
-    gradient: ["#431407", "#270b04"],
-    features: "2.5kg to 24kg dial mechanism for home workouts",
-  },
+const CATEGORIES: { label: ShopCategory; icon: string }[] = [
+  { label: "All", icon: "leaf" },
+  { label: "Health", icon: "heart" },
+  { label: "Fitness", icon: "barbell" },
+  { label: "Wellness", icon: "flower" },
+  { label: "Tools", icon: "construct" },
+  { label: "More", icon: "grid" },
 ];
 
 export default function ShopScreen({ navigation }: Props) {
+  const { isDark } = useTheme();
+
+  const [products, setProducts] = useState<ShopProduct[]>(DEFAULT_SHOP_PRODUCTS);
   const [selectedCategory, setSelectedCategory] = useState<ShopCategory>("All");
   const [searchQuery, setSearchQuery] = useState("");
-  const [userPoints, setUserPoints] = useState(1250); // Rewarded points from health activity
+  const [userPoints, setUserPoints] = useState(1250);
+  const [cart, setCart] = useState<CartItem[]>([
+    { product: DEFAULT_SHOP_PRODUCTS[0], quantity: 1 },
+    { product: DEFAULT_SHOP_PRODUCTS[1], quantity: 1 },
+    { product: DEFAULT_SHOP_PRODUCTS[2], quantity: 1 },
+  ]);
 
-  const filteredProducts = PRODUCTS.filter((p) => {
-    const matchesCategory = selectedCategory === "All" || p.category === selectedCategory;
-    const matchesSearch =
-      !searchQuery.trim() ||
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.features.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  const [cartModalVisible, setCartModalVisible] = useState(false);
+  const [adminModalVisible, setAdminModalVisible] = useState(false);
 
-  const handleBuyWithCash = (product: Product) => {
+  // Admin New Product State
+  const [newProdName, setNewProdName] = useState("");
+  const [newProdCategory, setNewProdCategory] = useState<ShopCategory>("Health");
+  const [newProdPrice, setNewProdPrice] = useState("");
+  const [newProdPoints, setNewProdPoints] = useState("");
+  const [newProdSubtitle, setNewProdSubtitle] = useState("");
+  const [newProdBadge, setNewProdBadge] = useState("NEW ARRIVAL");
+  const [newProdImageUrl, setNewProdImageUrl] = useState("");
+  const [addingProduct, setAddingProduct] = useState(false);
+
+  // Subscribe to real-time shop products from Firestore
+  useEffect(() => {
+    const unsubscribe = subscribeToShopProducts((updatedList) => {
+      if (updatedList && updatedList.length > 0) {
+        setProducts(updatedList);
+      }
+    });
+
+    getSavedCart().then((saved) => {
+      if (saved && saved.length > 0) {
+        setCart(saved);
+      }
+    });
+
+    return () => {
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
+  }, []);
+
+  const totalCartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+
+  const handleAddToCart = (product: ShopProduct) => {
+    const existingIndex = cart.findIndex((item) => item.product.id === product.id);
+    let updated: CartItem[];
+    if (existingIndex > -1) {
+      updated = [...cart];
+      updated[existingIndex].quantity += 1;
+    } else {
+      updated = [...cart, { product, quantity: 1 }];
+    }
+    setCart(updated);
+    saveUserCart(updated);
+    Alert.alert("Added to Cart", `${product.name} has been added to your cart!`);
+  };
+
+  const handleUpdateQuantity = (productId: string, delta: number) => {
+    let updated = cart
+      .map((item) => {
+        if (item.product.id === productId) {
+          return { ...item, quantity: item.quantity + delta };
+        }
+        return item;
+      })
+      .filter((item) => item.quantity > 0);
+
+    setCart(updated);
+    saveUserCart(updated);
+  };
+
+  const cartTotalCash = cart.reduce(
+    (acc, item) => acc + item.product.price * item.quantity,
+    0
+  );
+  const cartTotalPoints = cart.reduce(
+    (acc, item) => acc + item.product.pointsPrice * item.quantity,
+    0
+  );
+
+  const handleCheckoutCash = () => {
+    if (cart.length === 0) return;
     Alert.alert(
-      "Order Confirmation",
-      `Proceed to checkout for ${product.name} (₹${product.price.toLocaleString()})?`,
+      "Confirm Order",
+      `Proceed to checkout with ₹${cartTotalCash.toLocaleString()} for ${totalCartCount} item(s)?\n\nDelivery address: Home\nPayment: Cash / UPI on delivery.`,
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Confirm",
+          text: "Place Order",
           onPress: () => {
-            const earnedPoints = Math.round(product.price * 0.05);
-            setUserPoints((prev) => prev + earnedPoints);
+            const earned = Math.round(cartTotalCash * 0.05);
+            setUserPoints((prev) => prev + earned);
+            setCart([]);
+            saveUserCart([]);
+            setCartModalVisible(false);
             Alert.alert(
-              "Order Placed!",
-              `Thank you for your purchase. You also earned ${earnedPoints} reward points!`
+              "Order Placed Successfully! 🎉",
+              `Your items will be delivered in 2 business days.\nYou earned +${earned} Urban Points for this order!`
             );
           },
         },
@@ -201,487 +153,1162 @@ export default function ShopScreen({ navigation }: Props) {
     );
   };
 
-  const handleRedeemWithPoints = (product: Product) => {
-    if (userPoints < product.pointsPrice) {
+  const handleCheckoutPoints = () => {
+    if (cart.length === 0) return;
+    if (userPoints < cartTotalPoints) {
       Alert.alert(
         "Insufficient Points",
-        `You have ${userPoints} points. You need ${product.pointsPrice} points to redeem this item.\n\nEarn more points through daily steps, workouts, and logging meals!`
+        `You have ${userPoints.toLocaleString()} pts. This cart requires ${cartTotalPoints.toLocaleString()} pts.\n\nEarn more points by logging steps, workouts, and vitals!`
       );
       return;
     }
 
     Alert.alert(
       "Redeem with Points",
-      `Redeem ${product.name} using ${product.pointsPrice} reward points? (Zero cash required)`,
+      `Redeem ${totalCartCount} item(s) using ${cartTotalPoints.toLocaleString()} points? (₹0 Cash required)`,
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Redeem Now",
           onPress: () => {
-            setUserPoints((prev) => prev - product.pointsPrice);
-            Alert.alert("Redeemed!", `Your item has been ordered using reward points.`);
+            setUserPoints((prev) => prev - cartTotalPoints);
+            setCart([]);
+            saveUserCart([]);
+            setCartModalVisible(false);
+            Alert.alert("Items Redeemed! 🎁", "Your products have been ordered with reward points.");
           },
         },
       ]
     );
   };
 
-  return (
-    <View style={s.root}>
-      <StatusBar barStyle="light-content" backgroundColor="#0c0e12" />
+  const handleCreateProductAdmin = async () => {
+    if (!newProdName.trim() || !newProdPrice.trim()) {
+      Alert.alert("Required Fields", "Please enter product name and price.");
+      return;
+    }
 
-      {/* Top App Bar */}
-      <View style={s.header}>
-        <View>
-          <Text style={s.headerSubtitle}>HEALTH & WELLNESS STORE</Text>
-          <Text style={s.headerTitle}>Urban Shop</Text>
+    setAddingProduct(true);
+    try {
+      const priceNum = parseFloat(newProdPrice) || 999;
+      const ptsNum = parseFloat(newProdPoints) || Math.round(priceNum * 0.9);
+
+      await addProductToFirestore({
+        name: newProdName.trim(),
+        subtitle: newProdSubtitle.trim() || "Premium health & wellness product",
+        category: newProdCategory,
+        price: priceNum,
+        pointsPrice: ptsNum,
+        rating: 4.9,
+        reviewsCount: 1,
+        badge: newProdBadge.trim() || undefined,
+        badgeColor: "#0f5132",
+        btnColor: "#0f5132",
+        imageUrl: newProdImageUrl.trim() || "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=600&q=80",
+        bgGradient: ["#ebf7ee", "#d8f3e0"],
+        inStock: true,
+      });
+
+      setNewProdName("");
+      setNewProdSubtitle("");
+      setNewProdPrice("");
+      setNewProdPoints("");
+      setNewProdImageUrl("");
+      setAdminModalVisible(false);
+      Alert.alert("Success", "New product added to Firestore! It will sync across all web and app users.");
+    } catch (e: any) {
+      Alert.alert("Error", e.message || "Failed to add product");
+    } finally {
+      setAddingProduct(false);
+    }
+  };
+
+  const filteredProducts = products.filter((p) => {
+    const matchesCategory =
+      selectedCategory === "All" ||
+      p.category.toLowerCase() === selectedCategory.toLowerCase();
+    const matchesSearch =
+      !searchQuery.trim() ||
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.subtitle.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  return (
+    <View style={[styles.root, { backgroundColor: isDark ? "#0c111d" : "#f4f8f5" }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+
+      {/* ── Top Header matching Reference ── */}
+      <View style={[styles.topHeader, { backgroundColor: isDark ? "#0c111d" : "#f4f8f5" }]}>
+        <View style={styles.headerLeftRow}>
+          <LinearGradient
+            colors={["#10b981", "#059669"]}
+            style={styles.logoBadge}
+          >
+            <Ionicons name="leaf" size={20} color="#ffffff" />
+          </LinearGradient>
+
+          <View style={styles.headerTitleCol}>
+            <Text style={styles.headerBrandText}>Urban Helpers</Text>
+            <Text style={[styles.headerMainTitle, { color: isDark ? "#ffffff" : "#0f172a" }]}>
+              Urban Shop
+            </Text>
+            <Text style={styles.headerTagline}>
+              Better Health • Smarter Living • More Value
+            </Text>
+          </View>
         </View>
 
-        {/* User Points Badge */}
-        <View style={s.pointsPill}>
-          <Ionicons name="sparkles" size={14} color="#f59e0b" />
-          <Text style={s.pointsText}>{userPoints.toLocaleString()} pts</Text>
+        <View style={styles.headerRightRow}>
+          {/* Points Pill */}
+          <TouchableOpacity
+            style={[
+              styles.pointsPill,
+              {
+                backgroundColor: isDark ? "#1e293b" : "#ffffff",
+                borderColor: isDark ? "#334155" : "#e2e8f0",
+              },
+            ]}
+            onPress={() => navigation.navigate("Points")}
+            activeOpacity={0.8}
+          >
+            <View style={styles.goldCoinIcon}>
+              <Ionicons name="star" size={11} color="#ffffff" />
+            </View>
+            <Text style={[styles.pointsPillText, { color: isDark ? "#f8fafc" : "#0f172a" }]}>
+              {userPoints.toLocaleString()} pts
+            </Text>
+            <Ionicons name="chevron-forward" size={12} color="#94a3b8" />
+          </TouchableOpacity>
+
+          {/* Cart Icon Button */}
+          <TouchableOpacity
+            style={styles.cartBtn}
+            onPress={() => setCartModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="cart-outline" size={20} color="#0f5132" />
+            {totalCartCount > 0 && (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{totalCartCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={s.scrollContent}
-      >
-        {/* Search Bar */}
-        <View style={s.searchBarWrap}>
-          <Ionicons name="search" size={18} color="rgba(255,255,255,0.4)" style={s.searchIcon} />
+      {/* ── Search Bar ── */}
+      <View style={styles.searchBarWrap}>
+        <View
+          style={[
+            styles.searchContainer,
+            {
+              backgroundColor: isDark ? "#1e293b" : "#ffffff",
+              borderColor: isDark ? "#334155" : "#e2e8f0",
+            },
+          ]}
+        >
+          <Ionicons name="search" size={18} color="#64748b" style={styles.searchIcon} />
           <TextInput
-            style={s.searchInput}
-            placeholder="Search Galaxy Watch, BP monitors, supplements..."
-            placeholderTextColor="rgba(255,255,255,0.3)"
+            style={[styles.searchInput, { color: isDark ? "#ffffff" : "#0f172a" }]}
+            placeholder="Search products, offers, and more..."
+            placeholderTextColor="#94a3b8"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
-            <Pressable onPress={() => setSearchQuery("")} style={s.clearBtn}>
-              <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.4)" />
-            </Pressable>
+            <TouchableOpacity onPress={() => setSearchQuery("")}>
+              <Ionicons name="close-circle" size={16} color="#94a3b8" />
+            </TouchableOpacity>
           )}
         </View>
+      </View>
 
-        {/* Hero Promo Banner */}
-        <LinearGradient
-          colors={["#1e3a8a", "#2563eb", "#0d9488"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={s.heroBanner}
-        >
-          <View style={s.heroContent}>
-            <View style={s.heroBadge}>
-              <Text style={s.heroBadgeText}>SAMSUNG GALAXY HEALTH</Text>
-            </View>
-            <Text style={s.heroTitle}>Track Energy Score & Cardio Load</Text>
-            <Text style={s.heroSub}>
-              Get 15% off Galaxy Watch Ultra 2 & Watch 9. Full sync with your daily health log.
-            </Text>
-          </View>
-          <View style={s.heroIconWrap}>
-            <MaterialCommunityIcons name="watch-vibrate" size={54} color="#ffffff" />
-          </View>
-        </LinearGradient>
-
-        {/* Points Rewards Info Card */}
-        <View style={s.pointsBanner}>
-          <View style={s.pointsBannerIcon}>
-            <Ionicons name="gift" size={22} color="#f59e0b" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={s.pointsBannerTitle}>Buy with Reward Points</Text>
-            <Text style={s.pointsBannerSub}>
-              Earn points with 10k daily steps, sleep goals, and profile milestones. Redeem for products anytime!
-            </Text>
-          </View>
-        </View>
-
-        {/* Category Horizontal Scroll */}
+      {/* ── Category Chips ── */}
+      <View style={styles.categoriesContainer}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.catScroll}
+          contentContainerStyle={styles.categoriesScroll}
         >
           {CATEGORIES.map((cat) => {
-            const isSelected = selectedCategory === cat;
+            const isSelected = selectedCategory === cat.label;
             return (
-              <Pressable
-                key={cat}
-                onPress={() => setSelectedCategory(cat)}
-                style={[s.catChip, isSelected && s.catChipActive]}
+              <TouchableOpacity
+                key={cat.label}
+                onPress={() => setSelectedCategory(cat.label)}
+                style={[
+                  styles.categoryChip,
+                  isSelected
+                    ? styles.categoryChipActive
+                    : [
+                        styles.categoryChipInactive,
+                        {
+                          backgroundColor: isDark ? "#1e293b" : "#ffffff",
+                          borderColor: isDark ? "#334155" : "#e2e8f0",
+                        },
+                      ],
+                ]}
+                activeOpacity={0.8}
               >
-                <Text style={[s.catChipText, isSelected && s.catChipTextActive]}>
-                  {cat}
+                <Ionicons
+                  name={cat.icon as any}
+                  size={14}
+                  color={isSelected ? "#ffffff" : (isDark ? "#94a3b8" : "#0f5132")}
+                  style={{ marginRight: 5 }}
+                />
+                <Text
+                  style={[
+                    styles.categoryChipText,
+                    isSelected
+                      ? styles.categoryChipTextActive
+                      : [
+                          styles.categoryChipTextInactive,
+                          { color: isDark ? "#cbd5e1" : "#334155" },
+                        ],
+                  ]}
+                >
+                  {cat.label}
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
             );
           })}
         </ScrollView>
+      </View>
 
-        {/* Products Grid */}
-        <View style={s.grid}>
-          {filteredProducts.map((p) => (
-            <View key={p.id} style={s.card}>
-              <LinearGradient
-                colors={p.gradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={s.cardThumb}
+      {/* ── Products Grid ── */}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollGridContent}
+      >
+        {/* Admin Quick Action Banner */}
+        <View style={styles.adminBarRow}>
+          <Text style={[styles.productsCountText, { color: isDark ? "#94a3b8" : "#64748b" }]}>
+            Showing {filteredProducts.length} health products
+          </Text>
+          <TouchableOpacity
+            style={styles.adminAddBtn}
+            onPress={() => setAdminModalVisible(true)}
+          >
+            <Ionicons name="add-circle" size={15} color="#059669" />
+            <Text style={styles.adminAddBtnText}>+ Add Item (Admin)</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.gridContainer}>
+          {filteredProducts.map((item) => {
+            const btnColor = item.btnColor || "#0f5132";
+            const badgeBg = item.badgeColor || "#0f5132";
+
+            return (
+              <View
+                key={item.id}
+                style={[
+                  styles.productCard,
+                  {
+                    backgroundColor: isDark ? "#1e293b" : "#ffffff",
+                    borderColor: isDark ? "#334155" : "#eef2f6",
+                  },
+                ]}
               >
-                {p.badge && (
-                  <View style={s.badgeWrap}>
-                    <Text style={s.badgeText}>{p.badge}</Text>
-                  </View>
-                )}
-                <MaterialCommunityIcons name={p.icon} size={48} color={p.iconColor} />
-              </LinearGradient>
+                {/* Image & Badges Container */}
+                <View
+                  style={[
+                    styles.cardImageContainer,
+                    { backgroundColor: item.bgGradient ? item.bgGradient[0] : "#f1f5f9" },
+                  ]}
+                >
+                  {item.badge && (
+                    <View style={[styles.badgeTag, { backgroundColor: badgeBg }]}>
+                      <Text style={styles.badgeTagText}>{item.badge}</Text>
+                    </View>
+                  )}
 
-              <View style={s.cardBody}>
-                <View style={s.ratingRow}>
-                  <Ionicons name="star" size={12} color="#f59e0b" />
-                  <Text style={s.ratingText}>
-                    {p.rating} <Text style={s.reviewsText}>({p.reviewsCount})</Text>
+                  {item.hasBluetooth && (
+                    <View style={styles.bluetoothBadge}>
+                      <Ionicons name="bluetooth" size={13} color="#ffffff" />
+                    </View>
+                  )}
+
+                  <Image
+                    source={{ uri: item.imageUrl }}
+                    style={styles.productImg}
+                    resizeMode="cover"
+                  />
+                </View>
+
+                {/* Card Info */}
+                <View style={styles.cardInfo}>
+                  <Text
+                    style={[styles.productTitle, { color: isDark ? "#f8fafc" : "#0f172a" }]}
+                    numberOfLines={2}
+                  >
+                    {item.name}
                   </Text>
-                </View>
 
-                <Text style={s.productName} numberOfLines={2}>
-                  {p.name}
-                </Text>
-                <Text style={s.productFeatures} numberOfLines={2}>
-                  {p.features}
-                </Text>
+                  <Text style={styles.productSubtitle} numberOfLines={2}>
+                    {item.subtitle}
+                  </Text>
 
-                <View style={s.priceRow}>
-                  <Text style={s.priceText}>₹{p.price.toLocaleString()}</Text>
-                  <Text style={s.orText}>or</Text>
-                  <View style={s.pointsTag}>
-                    <Ionicons name="sparkles" size={10} color="#f59e0b" />
-                    <Text style={s.pointsPriceText}>{p.pointsPrice.toLocaleString()} pts</Text>
+                  {/* Rating */}
+                  <View style={styles.ratingRow}>
+                    <Ionicons name="star" size={12} color="#f59e0b" />
+                    <Text style={styles.ratingScore}>{item.rating.toFixed(1)}</Text>
+                    <Text style={styles.ratingReviews}>({item.reviewsCount})</Text>
                   </View>
-                </View>
 
-                {/* Actions */}
-                <View style={s.actionRow}>
-                  <Pressable
-                    style={s.buyCashBtn}
-                    onPress={() => handleBuyWithCash(p)}
+                  {/* Price Row */}
+                  <View style={styles.priceRow}>
+                    <Text style={[styles.cashPrice, { color: isDark ? "#ffffff" : "#0f172a" }]}>
+                      ₹{item.price.toLocaleString()}
+                    </Text>
+
+                    <View style={styles.pointsPriceTag}>
+                      <Ionicons name="star" size={10} color="#d97706" />
+                      <Text style={styles.pointsPriceText}>
+                        {item.pointsPrice.toLocaleString()} pts
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Add to Cart Button */}
+                  <TouchableOpacity
+                    style={[styles.addToCartBtn, { backgroundColor: btnColor }]}
+                    onPress={() => handleAddToCart(item)}
+                    activeOpacity={0.85}
                   >
-                    <Text style={s.buyCashBtnText}>Buy Now</Text>
-                  </Pressable>
-                  <Pressable
-                    style={s.redeemPointsBtn}
-                    onPress={() => handleRedeemWithPoints(p)}
-                  >
-                    <Ionicons name="sparkles" size={12} color="#f59e0b" />
-                  </Pressable>
+                    <Ionicons name="cart" size={14} color="#ffffff" />
+                    <Text style={styles.addToCartBtnText}>Add to Cart</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
+
+        {filteredProducts.length === 0 && (
+          <View style={styles.emptyState}>
+            <Ionicons name="search-outline" size={48} color="#94a3b8" />
+            <Text style={[styles.emptyStateTitle, { color: isDark ? "#ffffff" : "#0f172a" }]}>
+              No products found
+            </Text>
+            <Text style={styles.emptyStateSub}>
+              Try searching with a different term or change category filter.
+            </Text>
+          </View>
+        )}
 
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Persistent Bottom Navigation with Shop active */}
+      {/* ── Cart Sheet Modal ── */}
+      <Modal
+        visible={cartModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setCartModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            onPress={() => setCartModalVisible(false)}
+          />
+
+          <View
+            style={[
+              styles.cartSheetContainer,
+              { backgroundColor: isDark ? "#1e293b" : "#ffffff" },
+            ]}
+          >
+            <View style={styles.modalHandle} />
+
+            <View style={styles.cartSheetHeader}>
+              <Text style={[styles.cartSheetTitle, { color: isDark ? "#ffffff" : "#0f172a" }]}>
+                Shopping Cart ({totalCartCount})
+              </Text>
+              <TouchableOpacity onPress={() => setCartModalVisible(false)}>
+                <Ionicons name="close-circle" size={24} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.cartItemsList} showsVerticalScrollIndicator={false}>
+              {cart.map((item) => (
+                <View
+                  key={item.product.id}
+                  style={[
+                    styles.cartItemRow,
+                    { borderBottomColor: isDark ? "#334155" : "#e2e8f0" },
+                  ]}
+                >
+                  <Image source={{ uri: item.product.imageUrl }} style={styles.cartThumb} />
+
+                  <View style={styles.cartItemInfo}>
+                    <Text
+                      style={[styles.cartItemName, { color: isDark ? "#ffffff" : "#0f172a" }]}
+                      numberOfLines={1}
+                    >
+                      {item.product.name}
+                    </Text>
+                    <Text style={styles.cartItemPrice}>
+                      ₹{item.product.price.toLocaleString()} • {item.product.pointsPrice} pts
+                    </Text>
+                  </View>
+
+                  <View style={styles.quantityControls}>
+                    <TouchableOpacity
+                      onPress={() => handleUpdateQuantity(item.product.id, -1)}
+                      style={[styles.qtyBtn, { backgroundColor: isDark ? "#334155" : "#e2e8f0" }]}
+                    >
+                      <Ionicons name="remove" size={14} color={isDark ? "#ffffff" : "#0f172a"} />
+                    </TouchableOpacity>
+
+                    <Text style={[styles.qtyText, { color: isDark ? "#ffffff" : "#0f172a" }]}>
+                      {item.quantity}
+                    </Text>
+
+                    <TouchableOpacity
+                      onPress={() => handleUpdateQuantity(item.product.id, 1)}
+                      style={[styles.qtyBtn, { backgroundColor: isDark ? "#334155" : "#e2e8f0" }]}
+                    >
+                      <Ionicons name="add" size={14} color={isDark ? "#ffffff" : "#0f172a"} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+
+              {cart.length === 0 && (
+                <View style={styles.emptyCartBox}>
+                  <Ionicons name="cart-outline" size={40} color="#94a3b8" />
+                  <Text style={[styles.emptyCartText, { color: isDark ? "#94a3b8" : "#64748b" }]}>
+                    Your shopping cart is empty
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+
+            {cart.length > 0 && (
+              <View style={styles.cartCheckoutBox}>
+                <View style={styles.cartSummaryRow}>
+                  <Text style={[styles.summaryLabel, { color: isDark ? "#94a3b8" : "#64748b" }]}>
+                    Total Value:
+                  </Text>
+                  <Text style={[styles.summaryValue, { color: isDark ? "#ffffff" : "#0f172a" }]}>
+                    ₹{cartTotalCash.toLocaleString()} or {cartTotalPoints.toLocaleString()} pts
+                  </Text>
+                </View>
+
+                <View style={styles.checkoutBtnsRow}>
+                  <TouchableOpacity
+                    style={styles.pointsCheckoutBtn}
+                    onPress={handleCheckoutPoints}
+                  >
+                    <Ionicons name="sparkles" size={16} color="#d97706" />
+                    <Text style={styles.pointsCheckoutBtnText}>Pay with Points</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.cashCheckoutBtn}
+                    onPress={handleCheckoutCash}
+                  >
+                    <Ionicons name="checkmark-circle" size={16} color="#ffffff" />
+                    <Text style={styles.cashCheckoutBtnText}>Buy (₹{cartTotalCash})</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Admin Add Product Modal ── */}
+      <Modal
+        visible={adminModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setAdminModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            onPress={() => setAdminModalVisible(false)}
+          />
+
+          <View
+            style={[
+              styles.adminSheetContainer,
+              { backgroundColor: isDark ? "#1e293b" : "#ffffff" },
+            ]}
+          >
+            <View style={styles.modalHandle} />
+            <Text style={[styles.adminModalTitle, { color: isDark ? "#ffffff" : "#0f172a" }]}>
+              Add Product to Shop (Admin)
+            </Text>
+            <Text style={styles.adminModalSubtitle}>
+              Items added here are saved to Firebase Firestore and sync instantly to Web & Mobile!
+            </Text>
+
+            <ScrollView style={styles.adminFormScroll} showsVerticalScrollIndicator={false}>
+              <Text style={styles.formLabel}>Product Name *</Text>
+              <TextInput
+                style={[
+                  styles.formInput,
+                  {
+                    backgroundColor: isDark ? "#0f172a" : "#f8fafc",
+                    borderColor: isDark ? "#334155" : "#cbd5e1",
+                    color: isDark ? "#ffffff" : "#0f172a",
+                  },
+                ]}
+                placeholder="e.g. Smart ECG Heart Rate Band"
+                placeholderTextColor="#94a3b8"
+                value={newProdName}
+                onChangeText={setNewProdName}
+              />
+
+              <Text style={styles.formLabel}>Subtitle / Highlights</Text>
+              <TextInput
+                style={[
+                  styles.formInput,
+                  {
+                    backgroundColor: isDark ? "#0f172a" : "#f8fafc",
+                    borderColor: isDark ? "#334155" : "#cbd5e1",
+                    color: isDark ? "#ffffff" : "#0f172a",
+                  },
+                ]}
+                placeholder="e.g. 24/7 Optical sensor with AI cardio analysis"
+                placeholderTextColor="#94a3b8"
+                value={newProdSubtitle}
+                onChangeText={setNewProdSubtitle}
+              />
+
+              <View style={styles.formRow2}>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={styles.formLabel}>Price (₹) *</Text>
+                  <TextInput
+                    style={[
+                      styles.formInput,
+                      {
+                        backgroundColor: isDark ? "#0f172a" : "#f8fafc",
+                        borderColor: isDark ? "#334155" : "#cbd5e1",
+                        color: isDark ? "#ffffff" : "#0f172a",
+                      },
+                    ]}
+                    placeholder="2499"
+                    placeholderTextColor="#94a3b8"
+                    keyboardType="numeric"
+                    value={newProdPrice}
+                    onChangeText={setNewProdPrice}
+                  />
+                </View>
+
+                <View style={{ flex: 1, marginLeft: 8 }}>
+                  <Text style={styles.formLabel}>Points Price (pts)</Text>
+                  <TextInput
+                    style={[
+                      styles.formInput,
+                      {
+                        backgroundColor: isDark ? "#0f172a" : "#f8fafc",
+                        borderColor: isDark ? "#334155" : "#cbd5e1",
+                        color: isDark ? "#ffffff" : "#0f172a",
+                      },
+                    ]}
+                    placeholder="2200"
+                    placeholderTextColor="#94a3b8"
+                    keyboardType="numeric"
+                    value={newProdPoints}
+                    onChangeText={setNewProdPoints}
+                  />
+                </View>
+              </View>
+
+              <Text style={styles.formLabel}>Badge Tag</Text>
+              <TextInput
+                style={[
+                  styles.formInput,
+                  {
+                    backgroundColor: isDark ? "#0f172a" : "#f8fafc",
+                    borderColor: isDark ? "#334155" : "#cbd5e1",
+                    color: isDark ? "#ffffff" : "#0f172a",
+                  },
+                ]}
+                placeholder="e.g. CLINICAL GRADE, SYNC COMPATIBLE, POPULAR"
+                placeholderTextColor="#94a3b8"
+                value={newProdBadge}
+                onChangeText={setNewProdBadge}
+              />
+
+              <Text style={styles.formLabel}>Image Web URL (HTTPS)</Text>
+              <TextInput
+                style={[
+                  styles.formInput,
+                  {
+                    backgroundColor: isDark ? "#0f172a" : "#f8fafc",
+                    borderColor: isDark ? "#334155" : "#cbd5e1",
+                    color: isDark ? "#ffffff" : "#0f172a",
+                  },
+                ]}
+                placeholder="https://images.unsplash.com/photo-..."
+                placeholderTextColor="#94a3b8"
+                value={newProdImageUrl}
+                onChangeText={setNewProdImageUrl}
+              />
+
+              <TouchableOpacity
+                style={styles.adminSubmitBtn}
+                onPress={handleCreateProductAdmin}
+                disabled={addingProduct}
+              >
+                {addingProduct ? (
+                  <ActivityIndicator color="#ffffff" />
+                ) : (
+                  <>
+                    <Ionicons name="cloud-upload" size={18} color="#ffffff" />
+                    <Text style={styles.adminSubmitBtnText}>Publish to Cloud Store</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Persistent Bottom Nav ── */}
       <SamsungBottomNav activeRoute="Shop" />
     </View>
   );
 }
 
-const s = StyleSheet.create({
+const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#0c0e12",
   },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  topHeader: {
+    paddingTop: 48,
     paddingHorizontal: 16,
-    paddingTop: 52,
-    paddingBottom: 12,
+    paddingBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  headerSubtitle: {
-    fontSize: 10,
+  headerLeftRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  logoBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+    shadowColor: "#059669",
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  headerTitleCol: {
+    justifyContent: "center",
+  },
+  headerBrandText: {
+    fontSize: 12,
     fontWeight: "700",
-    color: "rgba(255,255,255,0.5)",
-    letterSpacing: 0.8,
+    color: "#059669",
+    letterSpacing: 0.3,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#ffffff",
+  headerMainTitle: {
+    fontSize: 22,
+    fontWeight: "900",
+    letterSpacing: -0.5,
+    marginTop: -2,
+  },
+  headerTagline: {
+    fontSize: 10,
+    fontWeight: "500",
+    color: "#64748b",
+    marginTop: 1,
+  },
+  headerRightRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   pointsPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    backgroundColor: "rgba(245, 158, 11, 0.15)",
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(245, 158, 11, 0.3)",
+    gap: 5,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  pointsText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#fbbf24",
+  goldCoinIcon: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#f59e0b",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
+  pointsPillText: {
+    fontSize: 12,
+    fontWeight: "800",
   },
-
-  // Search Bar
+  cartBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#ffffff",
+    borderWidth: 1.5,
+    borderColor: "#d1fae5",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cartBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    backgroundColor: "#e11d48",
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: "#ffffff",
+  },
+  cartBadgeText: {
+    color: "#ffffff",
+    fontSize: 10,
+    fontWeight: "800",
+  },
   searchBarWrap: {
+    paddingHorizontal: 16,
+    marginTop: 6,
+    marginBottom: 10,
+  },
+  searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1c2128",
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    marginBottom: 16,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    paddingHorizontal: 14,
+    shadowColor: "#000",
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
   },
   searchIcon: {
     marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: "#ffffff",
-  },
-  clearBtn: {
-    padding: 4,
-  },
-
-  // Hero Banner
-  heroBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 14,
-  },
-  heroContent: {
-    flex: 1,
-  },
-  heroBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  heroBadgeText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#ffffff",
-    letterSpacing: 0.5,
-  },
-  heroTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#ffffff",
-    marginBottom: 6,
-    lineHeight: 22,
-  },
-  heroSub: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.85)",
-    lineHeight: 16,
-  },
-  heroIconWrap: {
-    marginLeft: 12,
-  },
-
-  // Points Banner
-  pointsBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(245, 158, 11, 0.1)",
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "rgba(245, 158, 11, 0.2)",
-    gap: 12,
-  },
-  pointsBannerIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(245, 158, 11, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  pointsBannerTitle: {
     fontSize: 13,
-    fontWeight: "700",
-    color: "#fbbf24",
-    marginBottom: 2,
+    fontWeight: "500",
   },
-  pointsBannerSub: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.7)",
-    lineHeight: 15,
+  categoriesContainer: {
+    marginBottom: 12,
   },
-
-  // Categories
-  catScroll: {
-    flexDirection: "row",
+  categoriesScroll: {
+    paddingHorizontal: 16,
     gap: 8,
-    marginBottom: 18,
   },
-  catChip: {
-    backgroundColor: "#1c2128",
+  categoryChip: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+  categoryChipActive: {
+    backgroundColor: "#0f5132",
+    shadowColor: "#0f5132",
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  categoryChipInactive: {
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
   },
-  catChipActive: {
-    backgroundColor: "#2563eb",
-    borderColor: "#60a5fa",
+  categoryChipText: {
+    fontSize: 12,
+    fontWeight: "700",
   },
-  catChipText: {
+  categoryChipTextActive: {
+    color: "#ffffff",
+  },
+  categoryChipTextInactive: {},
+  scrollGridContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+  },
+  adminBarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  productsCountText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "rgba(255,255,255,0.6)",
   },
-  catChipTextActive: {
-    color: "#ffffff",
+  adminAddBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(16, 185, 129, 0.12)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  adminAddBtnText: {
+    fontSize: 11,
     fontWeight: "700",
+    color: "#059669",
   },
-
-  // Grid
-  grid: {
+  gridContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
+    justifyContent: "space-between",
   },
-  card: {
+  productCard: {
     width: CARD_W,
-    backgroundColor: "#161922",
-    borderRadius: 20,
-    overflow: "hidden",
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
+    marginBottom: 14,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  cardThumb: {
-    height: 120,
-    justifyContent: "center",
-    alignItems: "center",
+  cardImageContainer: {
+    height: 126,
+    width: "100%",
     position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
   },
-  badgeWrap: {
+  productImg: {
+    width: "100%",
+    height: "100%",
+  },
+  badgeTag: {
     position: "absolute",
     top: 8,
     left: 8,
-    backgroundColor: "rgba(244, 63, 94, 0.9)",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
     borderRadius: 6,
+    zIndex: 2,
   },
-  badgeText: {
-    fontSize: 9,
-    fontWeight: "800",
+  badgeTagText: {
     color: "#ffffff",
+    fontSize: 8.5,
+    fontWeight: "900",
     letterSpacing: 0.4,
   },
-  cardBody: {
-    padding: 12,
+  bluetoothBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#0284c7",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2,
+  },
+  cardInfo: {
+    padding: 10,
+  },
+  productTitle: {
+    fontSize: 13.5,
+    fontWeight: "800",
+    lineHeight: 17,
+    minHeight: 34,
+  },
+  productSubtitle: {
+    fontSize: 10.5,
+    color: "#64748b",
+    lineHeight: 14,
+    marginTop: 3,
+    minHeight: 28,
   },
   ratingRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    marginBottom: 4,
+    gap: 3,
+    marginTop: 6,
   },
-  ratingText: {
+  ratingScore: {
     fontSize: 11,
-    fontWeight: "700",
-    color: "#ffffff",
+    fontWeight: "800",
+    color: "#0f172a",
   },
-  reviewsText: {
-    color: "rgba(255,255,255,0.4)",
-    fontWeight: "400",
-  },
-  productName: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#ffffff",
-    marginBottom: 4,
-    height: 36,
-  },
-  productFeatures: {
+  ratingReviews: {
     fontSize: 10,
-    color: "rgba(255,255,255,0.5)",
-    marginBottom: 8,
-    height: 28,
+    color: "#94a3b8",
   },
   priceRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    flexWrap: "wrap",
-    marginBottom: 10,
+    justifyContent: "space-between",
+    marginTop: 8,
+    marginBottom: 8,
   },
-  priceText: {
-    fontSize: 14,
+  cashPrice: {
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  pointsPriceTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fef3c7",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    gap: 3,
+  },
+  pointsPriceText: {
+    fontSize: 9.5,
+    fontWeight: "800",
+    color: "#b45309",
+  },
+  addToCartBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  addToCartBtnText: {
+    color: "#ffffff",
+    fontSize: 11.5,
+    fontWeight: "800",
+  },
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 40,
+  },
+  emptyStateTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 12,
+  },
+  emptyStateSub: {
+    fontSize: 13,
+    color: "#94a3b8",
+    textAlign: "center",
+    marginTop: 4,
+    paddingHorizontal: 30,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalBackdrop: {
+    flex: 1,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#cbd5e1",
+    alignSelf: "center",
+    marginBottom: 14,
+  },
+  cartSheetContainer: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 18,
+    maxHeight: "80%",
+  },
+  cartSheetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  cartSheetTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  cartItemsList: {
+    maxHeight: 280,
+  },
+  cartItemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  cartThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: "#f1f5f9",
+  },
+  cartItemInfo: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  cartItemName: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  cartItemPrice: {
+    fontSize: 11,
+    color: "#059669",
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  quantityControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  qtyBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  qtyText: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  emptyCartBox: {
+    alignItems: "center",
+    paddingVertical: 30,
+  },
+  emptyCartText: {
+    fontSize: 13,
+    marginTop: 8,
+  },
+  cartCheckoutBox: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(100, 116, 139, 0.15)",
+  },
+  cartSummaryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  summaryLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  summaryValue: {
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  checkoutBtnsRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  pointsCheckoutBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fef3c7",
+    borderWidth: 1,
+    borderColor: "#fde68a",
+    paddingVertical: 12,
+    borderRadius: 14,
+    gap: 6,
+  },
+  pointsCheckoutBtnText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#b45309",
+  },
+  cashCheckoutBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#0f5132",
+    paddingVertical: 12,
+    borderRadius: 14,
+    gap: 6,
+  },
+  cashCheckoutBtnText: {
+    fontSize: 13,
     fontWeight: "800",
     color: "#ffffff",
   },
-  orText: {
-    fontSize: 10,
-    color: "rgba(255,255,255,0.4)",
+  adminSheetContainer: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 18,
+    maxHeight: "85%",
   },
-  pointsTag: {
+  adminModalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 2,
+  },
+  adminModalSubtitle: {
+    fontSize: 12,
+    color: "#64748b",
+    marginBottom: 14,
+  },
+  adminFormScroll: {
+    marginBottom: 10,
+  },
+  formLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#64748b",
+    marginBottom: 4,
+    marginTop: 8,
+  },
+  formInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  formRow2: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
-    backgroundColor: "rgba(245, 158, 11, 0.12)",
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 6,
   },
-  pointsPriceText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#fbbf24",
-  },
-  actionRow: {
+  adminSubmitBtn: {
     flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#059669",
+    paddingVertical: 13,
+    borderRadius: 14,
+    marginTop: 18,
+    marginBottom: 20,
     gap: 6,
   },
-  buyCashBtn: {
-    flex: 1,
-    backgroundColor: "#2563eb",
-    paddingVertical: 8,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  buyCashBtnText: {
-    fontSize: 11,
-    fontWeight: "700",
+  adminSubmitBtnText: {
     color: "#ffffff",
-  },
-  redeemPointsBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: "rgba(245, 158, 11, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(245, 158, 11, 0.4)",
+    fontSize: 14,
+    fontWeight: "800",
   },
 });

@@ -82,8 +82,8 @@ export default function SamsungBottomNav({ activeRoute, activeTab, onTabPress }:
         style={[
           s.shopBtn,
           {
-            backgroundColor: isShopActive ? "#2563eb" : (isDark ? "rgba(35, 42, 53, 0.96)" : "#ffffff"),
-            borderColor: isShopActive ? "#60a5fa" : colors.cardBorder,
+            backgroundColor: isShopActive ? "#124330" : (isDark ? "rgba(35, 42, 53, 0.96)" : "#ffffff"),
+            borderColor: isShopActive ? "#2d6a4f" : colors.cardBorder,
           },
           isShopActive && s.shopBtnActive
         ]}
@@ -93,9 +93,9 @@ export default function SamsungBottomNav({ activeRoute, activeTab, onTabPress }:
         <Ionicons
           name={isShopActive ? "bag-handle" : "bag-handle-outline"}
           size={21}
-          color={isShopActive ? "#ffffff" : (isDark ? "rgba(255,255,255,0.9)" : "#2563eb")}
+          color={isShopActive ? "#ffffff" : (isDark ? "rgba(255,255,255,0.9)" : "#124330")}
         />
-        <Text style={[s.shopBtnLabel, { color: isShopActive ? "#ffffff" : (isDark ? "rgba(255,255,255,0.75)" : "#2563eb") }, isShopActive && s.shopBtnLabelActive]}>Shop</Text>
+        <Text style={[s.shopBtnLabel, { color: isShopActive ? "#ffffff" : (isDark ? "rgba(255,255,255,0.75)" : "#124330") }, isShopActive && s.shopBtnLabelActive]}>Shop</Text>
       </Pressable>
     </View>
   );

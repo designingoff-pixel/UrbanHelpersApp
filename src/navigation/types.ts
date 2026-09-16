@@ -81,8 +81,9 @@ export type RootStackParamList = {
   HealthPrecautions: undefined;
   HealthCompanion: undefined;
 
-  // Profile
+  // Profile & Settings
   Profile: undefined;
+  Settings: undefined;
 
   // Notifications
   Notifications: undefined;

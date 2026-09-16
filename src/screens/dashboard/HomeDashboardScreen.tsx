@@ -582,12 +582,12 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 </View>
               </TouchableOpacity>
 
-              {/* 4. Settings & Profile */}
+              {/* 4. Settings */}
               <TouchableOpacity
                 style={s.sidebarItem}
                 onPress={() => {
                   setSidebarVisible(false);
-                  navigation.navigate("Profile");
+                  navigation.navigate("Settings");
                 }}
               >
                 <LinearGradient colors={["#475569", "#64748b"]} style={s.sidebarItemIconWrap}>
@@ -595,7 +595,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 </LinearGradient>
                 <View style={s.sidebarItemTextCol}>
                   <Text style={[s.sidebarItemTitle, { color: isDark ? "#ffffff" : "#0f172a" }]}>Settings</Text>
-                  <Text style={s.sidebarItemSub}>Profile & Themes</Text>
+                  <Text style={s.sidebarItemSub}>Preferences & System</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.4)" />
               </TouchableOpacity>
