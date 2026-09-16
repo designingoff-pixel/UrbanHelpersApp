@@ -39,6 +39,7 @@ import EmergencyAssistanceScreen from "@/screens/dashboard/EmergencyAssistanceSc
 import AICoachScreen from "@/screens/dashboard/AICoachScreen";
 import SleepDashboardScreen from "@/screens/dashboard/SleepDashboardScreen";
 import SleepTrendsScreen from "@/screens/dashboard/SleepTrendsScreen";
+import SleepInfoScreen from "@/screens/dashboard/sleep/SleepInfoScreen";
 import NutritionDashboardScreen from "@/screens/dashboard/NutritionDashboardScreen";
 import HeartHealthScreen from "@/screens/health/HeartHealthScreen";
 import HeartRateScreen from "@/screens/health/HeartRateScreen";
@@ -232,6 +233,7 @@ export function RootNavigator() {
       <Stack.Screen name="AICoach" component={AICoachScreen} />
       <Stack.Screen name="SleepDashboard" component={SleepDashboardScreen} />
       <Stack.Screen name="SleepTrends" component={SleepTrendsScreen} />
+      <Stack.Screen name="SleepInfo" component={SleepInfoScreen} />
       <Stack.Screen name="NutritionDashboard" component={NutritionDashboardScreen} />
       <Stack.Screen name="HeartHealth" component={HeartHealthScreen} />
       <Stack.Screen name="HeartRate" component={HeartRateScreen} />

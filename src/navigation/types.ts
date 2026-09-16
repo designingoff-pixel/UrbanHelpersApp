@@ -28,6 +28,7 @@ export type RootStackParamList = {
   AICoach: undefined;
   SleepDashboard: undefined;
   SleepTrends: undefined;
+  SleepInfo: undefined;
   NutritionDashboard: undefined;
 
   // Samsung Health Food & Nutrition Suite

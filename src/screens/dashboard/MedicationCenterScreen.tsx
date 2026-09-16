@@ -22,8 +22,12 @@ import {
   getMedications,
   toggleMedicationTaken,
   deleteMedication,
+  parseScheduleTime,
+  updateMedicationNotificationId,
   getTodayKey,
 } from "@/services/healthLogService";
+import * as Notifications from "expo-notifications";
+import { scheduleMedicineReminder } from "@/services/notificationService";
 import {
   MedicineDefinition,
   MedicineCategory,
@@ -98,12 +102,17 @@ export default function MedicationCenterScreen({ navigation }: Props) {
       return;
     }
 
-    await addMedication({
-      name: medName.trim(),
-      dose: dose.trim() || "1 dose",
+    const finalTime = scheduleTime.trim() || "08:00 AM";
+    const finalName = medName.trim();
+    const finalDose = dose.trim() || "1 dose";
+
+    // Save medication first so the record always exists even if notification fails
+    const newItem = await addMedication({
+      name: finalName,
+      dose: finalDose,
       form: selectedForm,
       color: selectedColor,
-      scheduleTime: scheduleTime.trim() || "08:00 AM",
+      scheduleTime: finalTime,
       instructions: instructions.trim() || "After food",
     });
 
@@ -113,6 +122,41 @@ export default function MedicationCenterScreen({ navigation }: Props) {
     setShowSuggestions(false);
     setModalVisible(false);
     await loadData();
+
+    // ── Schedule daily notification ───────────────────────────────────────────
+    const parsed = parseScheduleTime(finalTime);
+    if (!parsed) {
+      console.warn("[MedReminder] Could not parse scheduleTime:", finalTime);
+      return;
+    }
+
+    // Check / request notification permission
+    let { status } = await Notifications.getPermissionsAsync();
+    if (status !== "granted") {
+      const { status: asked } = await Notifications.requestPermissionsAsync();
+      status = asked;
+    }
+    if (status !== "granted") {
+      Alert.alert(
+        "Notifications Disabled",
+        `${finalName} was saved but we couldn't set a reminder.\n\nEnable notifications in your device settings to receive medication reminders.`
+      );
+      return;
+    }
+
+    try {
+      const notifId = await scheduleMedicineReminder(
+        finalName,
+        finalDose,
+        parsed.hour,
+        parsed.minute
+      );
+      // Persist the notification ID so we can cancel it on delete
+      await updateMedicationNotificationId(newItem.id, notifId);
+      await loadData(); // refresh so bell icon appears immediately
+    } catch (e) {
+      console.warn("[MedReminder] Scheduling failed:", e);
+    }
   };
 
   const handleToggleTaken = async (id: string, name: string) => {
@@ -130,6 +174,7 @@ export default function MedicationCenterScreen({ navigation }: Props) {
         text: "Remove",
         style: "destructive",
         onPress: async () => {
+          // deleteMedication automatically cancels the scheduled notification
           await deleteMedication(id);
           await loadData();
         },
@@ -237,6 +282,15 @@ export default function MedicationCenterScreen({ navigation }: Props) {
                       <View style={s.timeRow}>
                         <Ionicons name="time-outline" size={13} color="rgba(255,255,255,0.5)" />
                         <Text style={s.timeText}>{m.scheduleTime}</Text>
+                        {/* Small bell confirms a daily reminder is active */}
+                        {m.notificationId ? (
+                          <Ionicons
+                            name="notifications"
+                            size={11}
+                            color="rgba(139,92,246,0.7)"
+                            style={{ marginLeft: 4 }}
+                          />
+                        ) : null}
                       </View>
                     </View>
                   </View>
