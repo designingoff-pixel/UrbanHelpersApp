@@ -29,6 +29,8 @@ import FitnessDashboardScreen from "@/screens/dashboard/FitnessDashboardScreen";
 import FamilyDashboardScreen from "@/screens/dashboard/FamilyDashboardScreen";
 import DiscoverScreen from "@/screens/dashboard/DiscoverScreen";
 import ShopScreen from "@/screens/dashboard/ShopScreen";
+import ShopProductDetailScreen from "@/screens/dashboard/ShopProductDetailScreen";
+import OrderHistoryScreen from "@/screens/dashboard/OrderHistoryScreen";
 import PointsScreen from "@/screens/dashboard/PointsScreen";
 import NearbyUpdatesScreen from "@/screens/dashboard/NearbyUpdatesScreen";
 import HealthDashboardScreen from "@/screens/dashboard/HealthDashboardScreen";
@@ -224,6 +226,8 @@ export function RootNavigator() {
       <Stack.Screen name="FamilyDashboard" component={FamilyDashboardScreen} />
       <Stack.Screen name="Discover" component={DiscoverScreen} />
       <Stack.Screen name="Shop" component={ShopScreen} />
+      <Stack.Screen name="ShopProductDetail" component={ShopProductDetailScreen} />
+      <Stack.Screen name="OrderHistory" component={OrderHistoryScreen} />
       <Stack.Screen name="Points" component={PointsScreen} />
       <Stack.Screen name="NearbyUpdates" component={NearbyUpdatesScreen} />
       <Stack.Screen name="HealthDashboard" component={HealthDashboardScreen} />

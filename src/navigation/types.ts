@@ -18,6 +18,8 @@ export type RootStackParamList = {
   FamilyDashboard: undefined;
   Discover: undefined;
   Shop: undefined;
+  ShopProductDetail: { productId: string };
+  OrderHistory: undefined;
   Points: undefined;
   NearbyUpdates: undefined;
   HealthDashboard: undefined;
