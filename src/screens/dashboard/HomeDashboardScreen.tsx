@@ -2586,17 +2586,6 @@ const s = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.15)",
   },
   editHomeText: { fontSize: 13, fontWeight: "600", color: "rgba(255,255,255,0.85)" },
-  doneBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: "#00c6aa",
-  },
-  doneBtnText: {
-    fontSize: 13.5,
-    fontWeight: "700",
-    color: "#051f1a",
-  },
   restoreCardsWrap: {
     marginTop: 20,
     marginBottom: 10,
@@ -3709,6 +3698,20 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(10,10,20,0.7)",
     borderRadius: 14,
     padding: 1,
+  },
+  doneBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    backgroundColor: "rgba(0,198,170,0.18)",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(0,198,170,0.5)",
+  },
+  doneBtnText: {
+    color: "#00c6aa",
+    fontSize: 14,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
 
   // 3-dot dropdown
