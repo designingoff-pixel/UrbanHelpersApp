@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useContext } from "react";
 import {
   ScrollView,
   Text,
@@ -99,14 +99,37 @@ const HERO_SLIDES = [
   },
 ];
 
+const CARD_LABELS: Record<string, string> = {
+  energy: "Energy Score",
+  today_earnings: "Today's Earnings",
+  daily_activity: "Daily Activity",
+  sleep: "Sleep",
+  food: "Food & Water",
+  heart_health: "Heart Health",
+  cycle: "Cycle Tracking",
+  medications: "Medications",
+  health_records: "Health Records",
+  hearing: "Hearing",
+  steps: "Daily Steps",
+  vitals: "Vitals Scan",
+  cardio_load: "Cardio Load",
+  mindfulness: "Mindfulness",
+  stress: "Stress Level",
+  services: "Services Shortcut",
+};
+
+const CardEditContext = React.createContext<{ onLongPressCard?: () => void }>({});
+
 // ─── Animated press-scale card ─────────────────────────────────────────────────
 interface PressCardProps {
   onPress: () => void;
+  onLongPress?: () => void;
   style?: any;
   children: React.ReactNode;
   index?: number;
 }
-function PressCard({ onPress, style, children, index = 0 }: PressCardProps) {
+function PressCard({ onPress, onLongPress, style, children, index = 0 }: PressCardProps) {
+  const { onLongPressCard } = useContext(CardEditContext);
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
@@ -116,6 +139,8 @@ function PressCard({ onPress, style, children, index = 0 }: PressCardProps) {
     >
       <Pressable
         onPress={onPress}
+        onLongPress={onLongPress ?? onLongPressCard}
+        delayLongPress={350}
         onPressIn={() => { scale.value = withSpring(0.96, { damping: 15, stiffness: 350 }); }}
         onPressOut={() => { scale.value = withSpring(1, { damping: 12, stiffness: 280 }); }}
         android_ripple={null}
@@ -252,6 +277,18 @@ export default function HomeDashboardScreen({ navigation }: Props) {
     await saveHiddenCards(updated);
   }, [hiddenCards]);
 
+  // Long press on any card enters edit mode immediately
+  const handleCardLongPress = useCallback(() => {
+    setEditMode(true);
+  }, []);
+
+  // Unhide / add back a previously removed card
+  const unhideCard = useCallback(async (cardId: string) => {
+    const updated = hiddenCards.filter((c) => c !== cardId);
+    setHiddenCards(updated);
+    await saveHiddenCards(updated);
+  }, [hiddenCards]);
+
   // Reset all hidden cards
   const resetHome = useCallback(async () => {
     setHiddenCards([]);
@@ -336,7 +373,8 @@ export default function HomeDashboardScreen({ navigation }: Props) {
   }));
 
   return (
-    <View style={[s.root, { backgroundColor: isDark ? "#0c0e12" : "#f4f6f9" }]}>
+    <CardEditContext.Provider value={{ onLongPressCard: handleCardLongPress }}>
+      <View style={[s.root, { backgroundColor: isDark ? "#0c0e12" : "#f4f6f9" }]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
 
       {/* ── Subtle warm amber glow at top (matching Urban Health header glow) ── */}
@@ -351,9 +389,15 @@ export default function HomeDashboardScreen({ navigation }: Props) {
       {/* ── Top App Bar (Persistent) ─────────────────────────── */}
       <Animated.View style={[s.topBar, headerStyle]}>
         {editMode ? (
-          <Pressable onPress={() => setEditMode(false)} style={s.doneBtn}>
-            <Text style={s.doneBtnText}>Done</Text>
-          </Pressable>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", flex: 1, marginRight: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Ionicons name="create-outline" size={20} color="#00c6aa" style={{ marginRight: 8 }} />
+              <Text style={{ color: "#ffffff", fontSize: 18, fontWeight: "700" }}>Edit Home Cards</Text>
+            </View>
+            <Pressable onPress={() => setEditMode(false)} style={s.doneBtn}>
+              <Text style={s.doneBtnText}>Done</Text>
+            </Pressable>
+          </View>
         ) : (
           <Text style={[s.appTitle, { color: isDark ? "#ffffff" : "#0f172a" }]}>Urban Health</Text>
         )}
@@ -968,7 +1012,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
 
             {/* Edit home */}
             <View style={s.editHomeWrap}>
-              <Pressable style={s.editHomeBtn} onPress={() => {}}>
+              <Pressable style={s.editHomeBtn} onPress={() => setEditMode(true)}>
                 <Text style={s.editHomeText}>Edit home</Text>
               </Pressable>
             </View>
@@ -1515,6 +1559,45 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               </View>
             )}
 
+            {/* When in edit mode, show hidden cards to re-add them, or reset button */}
+            {editMode && (
+              <View style={s.restoreCardsWrap}>
+                <View style={s.restoreCardsHeader}>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Ionicons name="layers-outline" size={18} color="#00c6aa" style={{ marginRight: 6 }} />
+                    <Text style={s.restoreCardsTitle}>Customize Cards</Text>
+                  </View>
+                  <Pressable style={s.resetAllBtn} onPress={resetHome}>
+                    <Ionicons name="refresh-outline" size={14} color="#38bdf8" />
+                    <Text style={s.resetAllBtnText}>Reset All</Text>
+                  </Pressable>
+                </View>
+
+                {hiddenCards.length > 0 ? (
+                  <View style={{ marginTop: 12 }}>
+                    <Text style={s.restoreCardsSubtitle}>Tap a removed card to add it back:</Text>
+                    <View style={s.restoreChipsRow}>
+                      {hiddenCards.map((cid) => (
+                        <Pressable key={cid} style={s.restoreChip} onPress={() => unhideCard(cid)}>
+                          <Ionicons name="add-circle" size={16} color="#00c6aa" style={{ marginRight: 5 }} />
+                          <Text style={s.restoreChipText}>{CARD_LABELS[cid] || cid}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                ) : (
+                  <Text style={s.restoreCardsNotice}>
+                    Tap the red minus icon on any card above to remove it. You can also long-press any card anytime to customize.
+                  </Text>
+                )}
+
+                <Pressable style={s.doneEditingBtn} onPress={() => setEditMode(false)}>
+                  <Ionicons name="checkmark-circle-outline" size={18} color="#051f1a" style={{ marginRight: 6 }} />
+                  <Text style={s.doneEditingBtnText}>Done Editing</Text>
+                </Pressable>
+              </View>
+            )}
+
             {/* Edit home button */}
             {!editMode && (
               <View style={s.editHomeWrap}>
@@ -1623,6 +1706,16 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 </View>
               </LinearGradient>
             </PressCard>
+
+            {/* Edit home button */}
+            {!editMode && (
+              <View style={s.editHomeWrap}>
+                <Pressable style={s.editHomeBtn} onPress={() => setEditMode(true)}>
+                  <Ionicons name="pencil-outline" size={16} color="rgba(255,255,255,0.6)" style={{ marginRight: 6 }} />
+                  <Text style={s.editHomeText}>Edit home</Text>
+                </Pressable>
+              </View>
+            )}
           </View>
         )}
 
@@ -1792,7 +1885,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             <View style={s.editHomeWrap}>
-              <Pressable style={s.editHomeBtn} onPress={() => {}}>
+              <Pressable style={s.editHomeBtn} onPress={() => setEditMode(true)}>
                 <Text style={s.editHomeText}>Edit home</Text>
               </Pressable>
             </View>
@@ -1877,7 +1970,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             <View style={s.editHomeWrap}>
-              <Pressable style={s.editHomeBtn} onPress={() => {}}>
+              <Pressable style={s.editHomeBtn} onPress={() => setEditMode(true)}>
                 <Text style={s.editHomeText}>Edit home</Text>
               </Pressable>
             </View>
@@ -2061,11 +2154,14 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               </LinearGradient>
             </PressCard>
 
-            <View style={s.editHomeWrap}>
-              <Pressable style={s.editHomeBtn} onPress={() => {}}>
-                <Text style={s.editHomeText}>Edit home</Text>
-              </Pressable>
-            </View>
+            {!editMode && (
+              <View style={s.editHomeWrap}>
+                <Pressable style={s.editHomeBtn} onPress={() => setEditMode(true)}>
+                  <Ionicons name="pencil-outline" size={16} color="rgba(255,255,255,0.6)" style={{ marginRight: 6 }} />
+                  <Text style={s.editHomeText}>Edit home</Text>
+                </Pressable>
+              </View>
+            )}
           </View>
         )}
 
@@ -2085,7 +2181,8 @@ export default function HomeDashboardScreen({ navigation }: Props) {
         onBuyWatch={() => navigation.navigate("Shop" as any)}
         onContinueDemo={() => navigation.navigate(watchTargetRoute as any)}
       />
-    </View>
+      </View>
+    </CardEditContext.Provider>
   );
 }
 
@@ -2476,13 +2573,111 @@ const s = StyleSheet.create({
   servicesBtnTitle: { fontSize: 16, fontWeight: "700", color: "white", marginBottom: 2 },
   servicesBtnSub: { fontSize: 11.5, color: "rgba(255,255,255,0.7)" },
 
-  // Edit Home Button
+  // Edit Home Button & Restore Cards
   editHomeWrap: { alignItems: "center", justifyContent: "center", marginTop: 20, marginBottom: 10 },
   editHomeBtn: {
-    paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.06)", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
   },
-  editHomeText: { fontSize: 13, fontWeight: "600", color: "rgba(255,255,255,0.75)" },
+  editHomeText: { fontSize: 13, fontWeight: "600", color: "rgba(255,255,255,0.85)" },
+  doneBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: "#00c6aa",
+  },
+  doneBtnText: {
+    fontSize: 13.5,
+    fontWeight: "700",
+    color: "#051f1a",
+  },
+  restoreCardsWrap: {
+    marginTop: 20,
+    marginBottom: 10,
+    padding: 16,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  restoreCardsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  restoreCardsTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+  resetAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: "rgba(56, 189, 248, 0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(56, 189, 248, 0.25)",
+    gap: 4,
+  },
+  resetAllBtnText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#38bdf8",
+  },
+  restoreCardsSubtitle: {
+    fontSize: 12.5,
+    color: "rgba(255,255,255,0.6)",
+    marginBottom: 10,
+  },
+  restoreChipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 14,
+  },
+  restoreChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
+    backgroundColor: "rgba(0, 198, 170, 0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(0, 198, 170, 0.35)",
+  },
+  restoreChipText: {
+    fontSize: 12.5,
+    fontWeight: "600",
+    color: "#00c6aa",
+  },
+  restoreCardsNotice: {
+    fontSize: 12.5,
+    color: "rgba(255,255,255,0.5)",
+    lineHeight: 18,
+    marginVertical: 10,
+  },
+  doneEditingBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+    paddingVertical: 10,
+    borderRadius: 16,
+    backgroundColor: "#00c6aa",
+  },
+  doneEditingBtnText: {
+    fontSize: 13.5,
+    fontWeight: "700",
+    color: "#051f1a",
+  },
 
   // ═════════════════════════════════════════════════════════════
   // SLEEP SUB-CATEGORY STYLES
@@ -3514,20 +3709,6 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(10,10,20,0.7)",
     borderRadius: 14,
     padding: 1,
-  },
-  doneBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-    backgroundColor: "rgba(0,198,170,0.18)",
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(0,198,170,0.5)",
-  },
-  doneBtnText: {
-    color: "#00c6aa",
-    fontSize: 14,
-    fontWeight: "700",
-    letterSpacing: 0.3,
   },
 
   // 3-dot dropdown
