@@ -82,7 +82,7 @@ const PILLS: PillItem[] = [
 const HERO_SLIDES = [
   {
     id: "1",
-    title: "Introducing Fitness Index\n& Daily Cardio Load",
+    title: "Introducing Fitness Index\n& Activity Tracking",
     sub: "Get 15% off on Galaxy Watch9 & Watch Ultra2.",
     gradient: ["#1a1a2a", "#232336", "#2a2a40"] as string[],
   },
@@ -113,7 +113,6 @@ const CARD_LABELS: Record<string, string> = {
   hearing: "Hearing",
   steps: "Daily Steps",
   vitals: "Vitals Scan",
-  cardio_load: "Cardio Load",
   mindfulness: "Mindfulness",
   stress: "Stress Level",
   services: "Services Shortcut",
@@ -979,30 +978,6 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               </LinearGradient>
             </PressCard>
 
-            {/* 3. Daily cardio load (Blue Gradient Card) */}
-            <PressCard index={2} onPress={() => navigation.navigate("CaloriesDashboard")}>
-              <LinearGradient
-                colors={["#1655b3", "#1b65d4", "#2076f0"]}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={s.actBlueCard}
-              >
-                <View style={s.actWideTextWrap}>
-                  <Text style={s.actCardLabel}>Daily cardio load</Text>
-                  <Text style={s.actCardDesc}>
-                    Track your daily activity to see when you've reached the sweet spot for training.
-                  </Text>
-                </View>
-                {/* 3D Speedometer/Gauge Graphic */}
-                <View style={s.speedoGaugeWrap}>
-                  <View style={s.speedoGaugeOuter}>
-                    <View style={s.speedoGaugeInner}>
-                      <Ionicons name="speedometer" size={38} color="#90caf9" />
-                    </View>
-                  </View>
-                </View>
-              </LinearGradient>
-            </PressCard>
-
             {/* 4. Fitness index (Jade Green Gradient Card) */}
             <PressCard index={3} onPress={() => navigation.navigate("GymDashboard")}>
               <LinearGradient
@@ -1222,7 +1197,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             {/* 3. Energy Score — full-width blue card */}
             {isVisible("energy") && (
               <View style={s.cardWrapper}>
-                <PressCard index={1} onPress={() => navigation.navigate("WellnessDashboard")}>
+                <PressCard index={1} onPress={() => openWatchFeature("Energy Score & Body Telemetry", "WellnessDashboard")}>
                   <LinearGradient
                     colors={["#2a3fc7", "#3f51e8", "#4d6af5"]}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -1348,7 +1323,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 )}
                 {isVisible("sleep") && (
                   <View style={[s.halfOuter, { position: "relative" }]}>
-                    <PressCard index={3} onPress={() => openWatchFeature("Sleep Stages & Sleep Score", "SleepDashboard")} style={{ flex: 1 }}>
+                    <PressCard index={3} onPress={() => navigation.navigate("SleepDashboard")} style={{ flex: 1 }}>
                       <LinearGradient
                         colors={["#1e1060", "#2d1b7e", "#3a2a9e"]}
                         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -1416,7 +1391,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             {/* 6. Heart Health — full-width purple card */}
             {isVisible("heart_health") && (
               <View style={s.cardWrapper}>
-                <PressCard index={5} onPress={() => navigation.navigate("HeartHealth")}>
+                <PressCard index={5} onPress={() => openWatchFeature("Heart Health & ECG Score", "HeartHealth")}>
                   <LinearGradient
                     colors={["#9c27b0", "#c22f93", "#d63384"]}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -1530,7 +1505,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               <View style={[s.row2, { marginTop: 10 }]}>
                 {isVisible("hearing") && (
                   <View style={[s.halfOuter, { position: "relative" }]}>
-                    <PressCard index={9} onPress={() => navigation.navigate("HealthPrecautions")} style={{ flex: 1 }}>
+                    <PressCard index={9} onPress={() => openWatchFeature("Ambient Noise & Sound Exposure", "HealthPrecautions")} style={{ flex: 1 }}>
                       <LinearGradient
                         colors={["#795548", "#8d6e63", "#a1887f"]}
                         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -1584,52 +1559,31 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               </View>
             )}
 
-            {/* 10. Vitals + Daily Cardio Load */}
-            {(isVisible("vitals") || isVisible("cardio_load")) && (
-              <View style={[s.row2, { marginTop: 10 }]}>
-                {isVisible("vitals") && (
-                  <View style={[s.halfOuter, { position: "relative" }]}>
-                    <PressCard index={11} onPress={() => openWatchFeature("Real-Time Vitals Sensor Scan", "VitalsScreen")} style={{ flex: 1 }}>
-                      <LinearGradient
-                        colors={["#006064", "#00838f", "#00acc1"]}
-                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                        style={s.halfCard}
-                      >
-                        <View style={s.radarWrap}>
-                          <Ionicons name="radio-outline" size={50} color="rgba(255,255,255,0.12)" />
-                        </View>
-                        <Text style={s.halfTitle}>Vitals</Text>
-                        <Text style={s.halfSub}>Learn how vitals tracking works.</Text>
-                      </LinearGradient>
-                    </PressCard>
-                    {editMode && (
-                      <Pressable style={s.removeBtn} onPress={() => hideCard("vitals")}>
-                        <Ionicons name="close-circle" size={26} color="#ff3b30" />
-                      </Pressable>
-                    )}
-                  </View>
-                )}
-                {isVisible("cardio_load") && (
-                  <View style={[s.halfOuter, { position: "relative" }]}>
-                    <PressCard index={12} onPress={() => openWatchFeature("Daily Cardio Load", "CaloriesDashboard")} style={{ flex: 1 }}>
-                      <LinearGradient
-                        colors={["#0d47a1", "#1565c0", "#1976d2"]}
-                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                        style={s.halfCard}
-                      >
-                        <View style={s.speedoWrap}>
-                          <Ionicons name="speedometer-outline" size={50} color="rgba(255,255,255,0.15)" />
-                        </View>
-                        <Text style={s.halfTitle}>Daily cardio load</Text>
-                        <Text style={s.halfSub}>Find your daily training sweet spot.</Text>
-                      </LinearGradient>
-                    </PressCard>
-                    {editMode && (
-                      <Pressable style={s.removeBtn} onPress={() => hideCard("cardio_load")}>
-                        <Ionicons name="close-circle" size={26} color="#ff3b30" />
-                      </Pressable>
-                    )}
-                  </View>
+            {/* 10. Vitals — full-width cyan/teal card */}
+            {isVisible("vitals") && (
+              <View style={s.cardWrapper}>
+                <PressCard index={11} onPress={() => openWatchFeature("Real-Time Vitals Sensor Scan", "VitalsScreen")}>
+                  <LinearGradient
+                    colors={["#006064", "#00838f", "#00acc1"]}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    style={s.wideCard}
+                  >
+                    <View style={s.wideBlob} />
+                    <View style={s.wideTextWrap}>
+                      <Text style={s.wideLabel}>Vitals</Text>
+                      <Text style={s.wideDesc}>
+                        Learn how tracking vitals can help you spot meaningful changes in your body.
+                      </Text>
+                    </View>
+                    <View style={s.heartIconWrap}>
+                      <Ionicons name="radio-outline" size={42} color="rgba(255,255,255,0.4)" />
+                    </View>
+                  </LinearGradient>
+                </PressCard>
+                {editMode && (
+                  <Pressable style={s.removeBtn} onPress={() => hideCard("vitals")}>
+                    <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                  </Pressable>
                 )}
               </View>
             )}
@@ -1661,7 +1615,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 )}
                 {isVisible("stress") && (
                   <View style={[s.halfOuter, { position: "relative" }]}>
-                    <PressCard index={14} onPress={() => navigation.navigate("Stress")} style={{ flex: 1 }}>
+                    <PressCard index={14} onPress={() => openWatchFeature("Continuous Stress & HRV Tracker", "Stress")} style={{ flex: 1 }}>
                       <LinearGradient
                         colors={["#9e6400", "#b87600", "#cb8600"]}
                         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -1777,7 +1731,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </Animated.View>
 
             {/* 1. "Sleep" Card - Track your sleep */}
-            <PressCard index={0} onPress={() => openWatchFeature("Sleep Stages & Deep Sleep", "SleepDashboard")}>
+            <PressCard index={0} onPress={() => navigation.navigate("SleepDashboard")}>
               <LinearGradient
                 colors={["#161c47", "#1c245c", "#242e74"]}
                 start={{ x: 0, y: 0 }}
@@ -1820,7 +1774,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             {/* 2. "Sleep coaching" Card */}
-            <PressCard index={1} onPress={() => openWatchFeature("Sleep Coaching & Sleep Animal", "SleepDashboard")}>
+            <PressCard index={1} onPress={() => navigation.navigate("SleepDashboard")}>
               <LinearGradient
                 colors={["#161c47", "#1c245c", "#242e74"]}
                 start={{ x: 0, y: 0 }}
@@ -2102,7 +2056,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             {/* Stress card — ochre/yellow-amber */}
-            <PressCard index={1} onPress={() => navigation.navigate("Stress")}>
+            <PressCard index={1} onPress={() => openWatchFeature("Continuous Stress & HRV Tracker", "Stress")}>
               <LinearGradient
                 colors={["#9e6400", "#b87600", "#cb8600"]}
                 start={{ x: 0, y: 0 }}

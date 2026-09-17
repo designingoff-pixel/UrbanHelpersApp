@@ -309,7 +309,7 @@ export default function DiscoverScreen({ navigation }: Props) {
                   <Text style={s.promoBrandText}>Urban Health</Text>
                 </View>
                 <Text style={s.promoCardHeading}>
-                  Introducing Fitness Index and Daily Cardio Load
+                  Introducing Fitness Index and Activity Insights
                 </Text>
                 <View style={s.watchGraphicsRow}>
                   {/* Smart Watch Mock graphic 1 */}

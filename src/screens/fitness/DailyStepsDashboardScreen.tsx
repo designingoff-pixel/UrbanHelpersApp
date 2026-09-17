@@ -119,15 +119,22 @@ export default function DailyStepsDashboardScreen({ navigation }: Props) {
     };
   }, [refreshAnalytics]);
 
+  const openGoalModal = () => {
+    setCustomGoalInput(goal > 0 ? goal.toString() : "");
+    setGoalModalVisible(true);
+  };
+
   const handleSelectGoal = async (val: number) => {
     await setStepGoal(val);
     setGoal(val);
+    setCustomGoalInput("");
     setGoalModalVisible(false);
     await refreshAnalytics();
   };
 
   const handleSaveCustomGoal = async () => {
-    const parsed = parseInt(customGoalInput, 10);
+    const cleanStr = customGoalInput.replace(/[^0-9]/g, "");
+    const parsed = parseInt(cleanStr, 10);
     if (isNaN(parsed) || parsed < 500 || parsed > 100000) {
       Alert.alert("Invalid Goal", "Please enter a realistic step goal between 500 and 100,000.");
       return;
@@ -161,7 +168,7 @@ export default function DailyStepsDashboardScreen({ navigation }: Props) {
           <Ionicons name="arrow-back" size={22} color={colors.text.secondary} />
         </Pressable>
         <Text style={s.headerTitle}>Daily Steps</Text>
-        <Pressable onPress={() => setGoalModalVisible(true)} style={s.iconBtn}>
+        <Pressable onPress={openGoalModal} style={s.iconBtn}>
           <Ionicons name="flag-outline" size={20} color="#60a5fa" />
         </Pressable>
       </View>
@@ -196,7 +203,7 @@ export default function DailyStepsDashboardScreen({ navigation }: Props) {
                 <Text style={s.stepsLabel}>steps</Text>
                 <Pressable
                   style={s.goalPill}
-                  onPress={() => setGoalModalVisible(true)}
+                  onPress={openGoalModal}
                 >
                   <Text style={s.stepsGoal}>Goal: {goal.toLocaleString()} ✎</Text>
                 </Pressable>
@@ -325,30 +332,11 @@ export default function DailyStepsDashboardScreen({ navigation }: Props) {
             </Text>
           </View>
           <Pressable
-            onPress={() => setGoalModalVisible(true)}
+            onPress={openGoalModal}
             style={s.achieveBtn}
           >
             <Text style={s.achieveBtnText}>Set Goal</Text>
           </Pressable>
-        </View>
-
-        {/* Leaderboard / Friend comparison */}
-        <Text style={s.sectionTitle}>Daily Community Rank</Text>
-        <View style={s.leaderCard}>
-          {[
-            { rank: 1, name: "Alex M.", steps: "10,450", you: false },
-            { rank: 2, name: "You (Real Time)", steps: todaySteps.toLocaleString(), you: true },
-            { rank: 3, name: "Jamie R.", steps: "6,980", you: false },
-          ].map((l) => (
-            <View key={l.rank} style={[s.leaderRow, l.you && s.leaderRowActive]}>
-              <Text style={[s.leaderRank, l.rank === 1 && { color: "#f59e0b" }]}>#{l.rank}</Text>
-              <View style={[s.leaderAvatar, l.you && s.leaderAvatarActive]}>
-                <Text style={s.leaderAvatarText}>{l.name[0]}</Text>
-              </View>
-              <Text style={[s.leaderName, l.you && s.leaderNameActive]}>{l.name}</Text>
-              <Text style={s.leaderSteps}>{l.steps}</Text>
-            </View>
-          ))}
         </View>
 
         <View style={{ height: 100 }} />
@@ -643,41 +631,6 @@ const s = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.3)",
   },
   achieveBtnText: { fontSize: 12, fontWeight: "700", color: "white" },
-
-  // Leaderboard
-  leaderCard: {
-    backgroundColor: colors.surface.containerHigh,
-    borderRadius: 24,
-    padding: 16,
-    gap: 4,
-    marginBottom: 10,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: colors.glass.border,
-  },
-  leaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 9,
-    borderRadius: 14,
-    paddingHorizontal: 4,
-  },
-  leaderRowActive: { backgroundColor: "rgba(96, 165, 250, 0.12)" },
-  leaderRank: { fontSize: 13, fontWeight: "700", color: colors.text.secondary, width: 28 },
-  leaderAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.surface.containerHighest,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  leaderAvatarActive: { backgroundColor: "#2563eb" },
-  leaderAvatarText: { fontSize: 13, fontWeight: "700", color: "white" },
-  leaderName: { flex: 1, fontSize: 13, color: colors.text.secondary },
-  leaderNameActive: { color: "#60a5fa", fontWeight: "700" },
-  leaderSteps: { fontSize: 13, fontWeight: "700", color: colors.text.primary },
 
   // Modal
   modalOverlay: {

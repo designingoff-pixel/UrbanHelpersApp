@@ -151,90 +151,78 @@
       color: #10b981;
     }
 
-    /* Highlighted Shop Tab */
-    .nav-item.shop-tab {
-      background: rgba(16, 185, 129, 0.18);
-      border: 1px solid rgba(16, 185, 129, 0.4);
-      color: #34d399;
-    }
-    .nav-item.shop-tab i {
-      color: #34d399;
-    }
-    .nav-item.shop-tab:hover {
-      background: rgba(16, 185, 129, 0.3);
-      color: #ffffff;
-    }
-
     .nav-item-badge {
-      background: #10b981;
-      color: #12211c;
-      font-size: 10px;
+      font-size: 9.5px;
       font-weight: 800;
+      background: #0f8a5f;
+      color: #ffffff;
       padding: 2px 7px;
-      border-radius: 10px;
+      border-radius: 8px;
+      letter-spacing: 0.3px;
     }
 
-    /* Bottom User Profile */
     .sidebar-footer {
-      padding: 16px 14px 20px;
+      padding: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
     }
 
     .user-card {
-      background: rgba(0, 0, 0, 0.25);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 14px;
-      padding: 12px 14px;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 12px;
+      border-radius: 12px;
       display: flex;
       flex-direction: column;
+      gap: 2px;
     }
 
     .user-label {
       font-size: 10px;
-      color: #94a3b8;
+      color: #64748b;
+      font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      font-weight: 600;
     }
 
     .user-name {
-      font-size: 13.5px;
+      font-size: 13px;
       font-weight: 700;
-      color: #ffffff;
-      margin-top: 2px;
+      color: #f1f5f9;
     }
 
-    /* ── Main Content Area ── */
+    /* ── Main Layout ── */
     .main-wrapper {
       flex: 1;
       display: flex;
       flex-direction: column;
+      height: 100vh;
       overflow-y: auto;
-      max-height: 100vh;
     }
 
-    /* Top Navigation Header */
+    /* Top Header */
     .top-header {
       background: #ffffff;
-      padding: 18px 32px;
       border-bottom: 1px solid var(--card-border);
+      padding: 18px 32px;
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
       position: sticky;
       top: 0;
-      z-index: 50;
+      z-index: 100;
     }
 
     .greeting-title {
-      font-size: 19px;
+      font-size: 20px;
       font-weight: 800;
       color: var(--text-dark);
+      letter-spacing: -0.3px;
     }
 
     .greeting-sub {
       font-size: 12.5px;
       color: var(--text-muted);
       margin-top: 2px;
+      font-weight: 500;
     }
 
     .header-actions {
@@ -247,10 +235,10 @@
       display: flex;
       align-items: center;
       background: #f1f5f9;
-      border-radius: 20px;
-      padding: 8px 16px;
+      padding: 8px 14px;
+      border-radius: 10px;
       width: 280px;
-      gap: 10px;
+      gap: 8px;
     }
 
     .search-input-box i {
@@ -271,95 +259,97 @@
       width: 38px;
       height: 38px;
       border-radius: 50%;
-      background: #f8fafc;
-      border: 1px solid var(--card-border);
+      background: #f1f5f9;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #64748b;
+      color: #475569;
       cursor: pointer;
       position: relative;
     }
 
     .notif-dot {
-      width: 8px;
-      height: 8px;
-      background: var(--rose);
+      width: 7px;
+      height: 7px;
+      background: #e11d48;
       border-radius: 50%;
       position: absolute;
-      top: 8px;
+      top: 9px;
       right: 9px;
       border: 1.5px solid #ffffff;
     }
 
     .profile-pill-badge {
-      width: 38px;
-      height: 38px;
-      background: #e2e8f0;
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
+      background: #10b981;
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 13px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 13px;
-      font-weight: 800;
-      color: #334155;
-      cursor: pointer;
     }
 
-    /* Content Body */
+    /* Content Area */
     .content-body {
-      padding: 28px 32px 60px;
+      padding: 28px 32px 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
     }
 
-    /* Sub-header Command Center */
     .command-row {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-bottom: 22px;
+      justify-content: space-between;
     }
 
     .command-title {
       font-size: 14px;
-      font-weight: 700;
-      color: var(--text-muted);
+      font-weight: 800;
+      color: var(--text-dark);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
     .command-date {
-      font-weight: 800;
-      color: var(--text-dark);
+      color: var(--text-muted);
+      font-weight: 600;
     }
 
     .time-filter-pill {
       background: #e2e8f0;
-      padding: 4px;
-      border-radius: 20px;
+      padding: 3px;
+      border-radius: 10px;
       display: flex;
       gap: 2px;
     }
 
     .time-btn {
-      padding: 5px 14px;
-      border-radius: 16px;
       border: none;
       background: transparent;
+      padding: 5px 12px;
+      border-radius: 8px;
       font-size: 12px;
       font-weight: 700;
       color: #64748b;
       cursor: pointer;
+      transition: all 0.15s;
     }
 
     .time-btn.active {
-      background: #0f8a5f;
-      color: white;
+      background: #ffffff;
+      color: var(--text-dark);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
 
     /* ── Metrics Grid (Matching Screenshot) ── */
     .metrics-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 18px;
-      margin-bottom: 24px;
+      gap: 16px;
     }
 
     .metric-card {
@@ -369,7 +359,12 @@
       padding: 18px;
       display: flex;
       flex-direction: column;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .metric-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.04);
     }
 
     .metric-card-top {
@@ -380,20 +375,20 @@
     }
 
     .metric-icon-box {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      background: #f0fdf4;
-      color: #10b981;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: #f1f5f9;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 16px;
+      color: #334155;
+      font-size: 14px;
     }
 
     .metric-growth-badge {
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 800;
       color: #10b981;
       display: flex;
       align-items: center;
@@ -401,96 +396,99 @@
     }
 
     .metric-val {
-      font-size: 26px;
+      font-size: 24px;
       font-weight: 900;
       color: var(--text-dark);
       letter-spacing: -0.5px;
+      margin-bottom: 4px;
     }
 
     .metric-label {
-      font-size: 12px;
-      color: var(--text-dark);
-      font-weight: 600;
-      margin-top: 2px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #334155;
     }
 
     .metric-sub {
-      font-size: 10.5px;
-      color: var(--text-muted);
+      font-size: 11px;
+      color: #94a3b8;
       margin-top: 2px;
+      font-weight: 500;
     }
 
-    /* ── Urban Shop Section ── */
-    .shop-section-card {
+    /* Section Cards */
+    .shop-section-card, .admin-section-card {
       background: #ffffff;
       border: 1px solid var(--card-border);
-      border-radius: 20px;
+      border-radius: 18px;
       padding: 24px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.03);
-      margin-bottom: 30px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.02);
     }
 
     .section-head-bar {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
       margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
     }
 
     .section-main-title {
-      font-size: 18px;
+      font-size: 17px;
       font-weight: 800;
+      color: var(--text-dark);
       display: flex;
       align-items: center;
       gap: 10px;
     }
 
-    .btn-add-item {
+    .btn-add-item, .btn-primary-action {
       background: #0f8a5f;
       color: white;
       border: none;
-      padding: 10px 20px;
-      border-radius: 12px;
+      padding: 8px 16px;
+      border-radius: 10px;
       font-size: 13px;
       font-weight: 700;
       cursor: pointer;
-      display: inline-flex;
+      display: flex;
       align-items: center;
       gap: 8px;
-      box-shadow: 0 4px 12px rgba(15, 138, 95, 0.25);
-      transition: opacity 0.2s;
+      transition: background 0.15s;
     }
 
-    .btn-add-item:hover {
-      opacity: 0.9;
+    .btn-add-item:hover, .btn-primary-action:hover {
+      background: #0d7551;
     }
 
     /* Store Product Cards in Admin */
     .admin-products-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
     }
 
     .admin-prod-card {
-      border: 1px solid #e2e8f0;
+      background: #ffffff;
+      border: 1px solid var(--card-border);
       border-radius: 16px;
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      background: #ffffff;
-      transition: transform 0.2s, box-shadow 0.2s;
+      transition: all 0.2s;
     }
 
     .admin-prod-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+      border-color: #cbd5e1;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.05);
     }
 
     .admin-prod-img-wrap {
-      height: 160px;
+      height: 140px;
+      background: #f8fafc;
       position: relative;
-      background: #f1f5f9;
+      overflow: hidden;
     }
 
     .admin-prod-img-wrap img {
@@ -587,6 +585,58 @@
       cursor: pointer;
     }
 
+    /* Data Tables */
+    .admin-table-wrap {
+      overflow-x: auto;
+    }
+
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 13px;
+    }
+
+    .admin-table th {
+      background: #f8fafc;
+      padding: 12px 16px;
+      font-weight: 800;
+      color: #475569;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .admin-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid #f1f5f9;
+      color: #1e293b;
+      vertical-align: middle;
+    }
+
+    .admin-table tr:hover td {
+      background: #f8fafc;
+    }
+
+    /* Badges */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .badge-green { background: #dcfce7; color: #15803d; }
+    .badge-blue { background: #e0f2fe; color: #0369a1; }
+    .badge-yellow { background: #fef3c7; color: #b45309; }
+    .badge-red { background: #ffe4e6; color: #be123c; }
+    .badge-purple { background: #f3e8ff; color: #7e22ce; }
+
     /* Modal Form */
     .modal-overlay {
       display: none;
@@ -672,6 +722,49 @@
       cursor: pointer;
       margin-top: 8px;
     }
+
+    .btn-sm-action {
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      color: #334155;
+      transition: all 0.15s;
+    }
+
+    .btn-sm-action:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .activity-feed-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .activity-feed-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px;
+      background: #f8fafc;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .activity-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -733,7 +826,7 @@
           <i class="fa-solid fa-wrench"></i>
           <span>Services</span>
         </div>
-        <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i>
+        <i class="fa-solid fa-chevron-right" style="font-size: 10px;"></i>
       </li>
 
       <li class="nav-item" onclick="showSection('safety', this)">
@@ -741,7 +834,7 @@
           <i class="fa-solid fa-shield-heart"></i>
           <span>Safety Center</span>
         </div>
-        <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i>
+        <i class="fa-solid fa-chevron-right" style="font-size: 10px;"></i>
       </li>
 
       <li class="nav-item" onclick="showSection('health', this)">
@@ -749,7 +842,7 @@
           <i class="fa-solid fa-heart-pulse"></i>
           <span>Health</span>
         </div>
-        <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i>
+        <i class="fa-solid fa-chevron-right" style="font-size: 10px;"></i>
       </li>
 
       <li class="nav-item" onclick="showSection('ai', this)">
@@ -764,7 +857,7 @@
           <i class="fa-solid fa-indian-rupee-sign"></i>
           <span>Revenue</span>
         </div>
-        <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i>
+        <i class="fa-solid fa-chevron-right" style="font-size: 10px;"></i>
       </li>
 
       <li class="nav-item" onclick="showSection('resolution', this)">
@@ -803,17 +896,17 @@
     <!-- Top Header -->
     <header class="top-header">
       <div>
-        <h1 class="greeting-title">Good morning, Naomi</h1>
-        <p class="greeting-sub">Here's what's happening across Urban Helpers today.</p>
+        <h1 class="greeting-title" id="topGreetingTitle">Good morning, Naomi</h1>
+        <p class="greeting-sub" id="topGreetingSub">Here's what's happening across Urban Helpers today.</p>
       </div>
 
       <div class="header-actions">
         <div class="search-input-box">
           <i class="fa-solid fa-magnifying-glass"></i>
-          <input type="text" placeholder="Search users, vendors, booking..." />
+          <input type="text" id="globalSearchInput" placeholder="Search users, vendors, bookings..." />
         </div>
 
-        <div class="icon-circle-btn">
+        <div class="icon-circle-btn" onclick="alert('3 new notifications: BLE firmware sync completed, 1 new emergency SOS test log, and 2 new orders.')">
           <i class="fa-regular fa-bell"></i>
           <div class="notif-dot"></div>
         </div>
@@ -826,137 +919,628 @@
 
     <!-- Main Content -->
     <main class="content-body">
-      <!-- Command Sub-header -->
-      <div class="command-row">
-        <div class="command-title">
-          Command Center • <span class="command-date" id="currentDateText">Tuesday, 19 August 2026</span>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           1. OVERVIEW SECTION
+           ══════════════════════════════════════════════════════════════ -->
+      <div id="sec-overview" class="admin-section">
+        <!-- Command Sub-header -->
+        <div class="command-row">
+          <div class="command-title">
+            Command Center • <span class="command-date" id="currentDateText">Thursday, 17 September 2026</span>
+          </div>
+
+          <div class="time-filter-pill">
+            <button class="time-btn active" onclick="setTimeFilter('today', this)">Today</button>
+            <button class="time-btn" onclick="setTimeFilter('7d', this)">7 Days</button>
+            <button class="time-btn" onclick="setTimeFilter('30d', this)">30 Days</button>
+          </div>
         </div>
 
-        <div class="time-filter-pill">
-          <button class="time-btn active">Today</button>
-          <button class="time-btn">7 Days</button>
-          <button class="time-btn">30 Days</button>
+        <!-- ── Metrics Grid (Matching Screenshot) ── -->
+        <div class="metrics-grid" style="margin-top: 18px;">
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-icon-box"><i class="fa-solid fa-user-group"></i></div>
+              <div class="metric-growth-badge"><i class="fa-solid fa-arrow-trend-up"></i> 3.2%</div>
+            </div>
+            <div class="metric-val" id="metricUsers">25,840</div>
+            <div class="metric-label">Total users</div>
+            <div class="metric-sub">vs. yesterday</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-icon-box"><i class="fa-solid fa-heart-pulse"></i></div>
+              <div class="metric-growth-badge"><i class="fa-solid fa-arrow-trend-up"></i> 1.8%</div>
+            </div>
+            <div class="metric-val">8,420</div>
+            <div class="metric-label">Active today</div>
+            <div class="metric-sub">vs. yesterday</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-icon-box"><i class="fa-solid fa-crown"></i></div>
+              <div class="metric-growth-badge"><i class="fa-solid fa-arrow-trend-up"></i> 0.6%</div>
+            </div>
+            <div class="metric-val">4,280</div>
+            <div class="metric-label">Premium users</div>
+            <div class="metric-sub">vs. last week</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-icon-box"><i class="fa-solid fa-people-roof"></i></div>
+              <div class="metric-growth-badge"><i class="fa-solid fa-arrow-trend-up"></i> 2.1%</div>
+            </div>
+            <div class="metric-val">1,120</div>
+            <div class="metric-label">Family plans</div>
+            <div class="metric-sub">vs. last week</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-icon-box"><i class="fa-solid fa-id-card-clip"></i></div>
+              <div class="metric-growth-badge"><i class="fa-solid fa-arrow-trend-up"></i> 0.4%</div>
+            </div>
+            <div class="metric-val">840</div>
+            <div class="metric-label">Active vendors</div>
+            <div class="metric-sub">vs. yesterday</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-icon-box"><i class="fa-solid fa-calendar-check"></i></div>
+              <div class="metric-growth-badge"><i class="fa-solid fa-arrow-trend-up"></i> 12.5%</div>
+            </div>
+            <div class="metric-val">142</div>
+            <div class="metric-label">Today's bookings</div>
+            <div class="metric-sub">vs. yesterday</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-icon-box"><i class="fa-solid fa-tower-broadcast"></i></div>
+              <div class="metric-growth-badge" style="color: #10b981;">● 18 live</div>
+            </div>
+            <div class="metric-val">18</div>
+            <div class="metric-label">Services running now</div>
+            <div class="metric-sub">right now</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-icon-box"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+              <div class="metric-growth-badge"><i class="fa-solid fa-arrow-trend-up"></i> 6.4%</div>
+            </div>
+            <div class="metric-val">₹1,84,500</div>
+            <div class="metric-label">Revenue today</div>
+            <div class="metric-sub">vs. yesterday</div>
+          </div>
+        </div>
+
+        <!-- Live Platform Activity & Health Sync Status -->
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 18px; margin-top: 22px;">
+          <div class="admin-section-card">
+            <div class="section-head-bar">
+              <div class="section-main-title">
+                <i class="fa-solid fa-bolt" style="color: #f59e0b;"></i> Real-Time Activity Feed
+              </div>
+              <button class="btn-sm-action" onclick="alert('Refreshed activity feed!')"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+            </div>
+            <div class="activity-feed-list">
+              <div class="activity-feed-item">
+                <div class="activity-icon" style="background:#dcfce7; color:#15803d;"><i class="fa-solid fa-cart-shopping"></i></div>
+                <div style="flex:1;">
+                  <div style="font-size:13px; font-weight:700;">New Shop Order #ORD-003 Placed</div>
+                  <div style="font-size:11.5px; color:#64748b;">Neha Kumar purchased Yoga Mat + Electric Toothbrush • 2 mins ago</div>
+                </div>
+                <span class="status-badge badge-green">₹3,398</span>
+              </div>
+              <div class="activity-feed-item">
+                <div class="activity-icon" style="background:#e0f2fe; color:#0369a1;"><i class="fa-solid fa-bluetooth-b"></i></div>
+                <div style="flex:1;">
+                  <div style="font-size:13px; font-weight:700;">Smartwatch Vitals Telemetry Synced</div>
+                  <div style="font-size:11.5px; color:#64748b;">Arjun Mehta connected Galaxy Watch9 (SpO2: 98%, HR: 72 bpm) • 8 mins ago</div>
+                </div>
+                <span class="status-badge badge-blue">BLE SYNC</span>
+              </div>
+              <div class="activity-feed-item">
+                <div class="activity-icon" style="background:#f3e8ff; color:#7e22ce;"><i class="fa-solid fa-broom"></i></div>
+                <div style="flex:1;">
+                  <div style="font-size:13px; font-weight:700;">Service Booking Completed</div>
+                  <div style="font-size:11.5px; color:#64748b;">Vendor Rajesh K. completed Deep Cleaning (Rating: ⭐ 5.0) • 15 mins ago</div>
+                </div>
+                <span class="status-badge badge-purple">COMPLETED</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-section-card">
+            <div class="section-head-bar">
+              <div class="section-main-title">
+                <i class="fa-solid fa-server" style="color: #10b981;"></i> System Telemetry
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div>
+                <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; margin-bottom:4px;">
+                  <span>Firebase Cloud Store</span>
+                  <span style="color:#10b981;">● Online (99.99%)</span>
+                </div>
+                <div style="height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden;"><div style="width:100%; height:100%; background:#10b981;"></div></div>
+              </div>
+              <div>
+                <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; margin-bottom:4px;">
+                  <span>Smartwatch Sensor Engine</span>
+                  <span style="color:#10b981;">● Active (8,420 devices)</span>
+                </div>
+                <div style="height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden;"><div style="width:94%; height:100%; background:#0284c7;"></div></div>
+              </div>
+              <div>
+                <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; margin-bottom:4px;">
+                  <span>Emergency Dispatch SOS</span>
+                  <span style="color:#10b981;">● Standby Ready</span>
+                </div>
+                <div style="height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden;"><div style="width:100%; height:100%; background:#f59e0b;"></div></div>
+              </div>
+              <div style="background:#f1f5f9; padding:10px; border-radius:10px; font-size:11.5px; color:#475569; margin-top:4px;">
+                <i class="fa-solid fa-circle-check" style="color:#10b981;"></i> All microservices operating within optimal latency (< 45ms).
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- ── Metrics Grid (Matching Screenshot) ── -->
-      <div class="metrics-grid">
-        <div class="metric-card">
-          <div class="metric-card-top">
-            <div class="metric-icon-box"><i class="fa-solid fa-user-group"></i></div>
-            <div class="metric-growth-badge"><i class="fa-solid fa-arrow-trend-up"></i> 3.2%</div>
-          </div>
-          <div class="metric-val">25,840</div>
-          <div class="metric-label">Total users</div>
-          <div class="metric-sub">vs. yesterday</div>
-        </div>
+      <!-- ══════════════════════════════════════════════════════════════
+           2. URBAN SHOP SECTION
+           ══════════════════════════════════════════════════════════════ -->
+      <div id="sec-shop" class="admin-section" style="display:none;">
+        <section class="shop-section-card">
+          <div class="section-head-bar">
+            <div class="section-main-title">
+              <i class="fa-solid fa-bag-shopping" style="color: #0f8a5f;"></i>
+              Urban Shop Products Manager (Live Sync to App)
+            </div>
 
-        <div class="metric-card">
-          <div class="metric-card-top">
-            <div class="metric-icon-box"><i class="fa-solid fa-heart-pulse"></i></div>
-            <div class="metric-growth-badge"><i class="fa-solid fa-arrow-trend-up"></i> 1.8%</div>
+            <button class="btn-add-item" onclick="openAddModal()">
+              <i class="fa-solid fa-plus"></i> Add Product
+            </button>
           </div>
-          <div class="metric-val">8,420</div>
-          <div class="metric-label">Active today</div>
-          <div class="metric-sub">vs. yesterday</div>
-        </div>
 
-        <div class="metric-card">
-          <div class="metric-card-top">
-            <div class="metric-icon-box"><i class="fa-solid fa-crown"></i></div>
-            <div class="metric-growth-badge"><i class="fa-solid fa-arrow-trend-up"></i> 0.6%</div>
+          <div class="admin-products-grid" id="adminProductsGrid">
+            <!-- Injected via JS -->
           </div>
-          <div class="metric-val">4,280</div>
-          <div class="metric-label">Premium users</div>
-          <div class="metric-sub">vs. last week</div>
-        </div>
-
-        <div class="metric-card">
-          <div class="metric-card-top">
-            <div class="metric-icon-box"><i class="fa-solid fa-people-roof"></i></div>
-            <div class="metric-growth-badge"><i class="fa-solid fa-arrow-trend-up"></i> 2.1%</div>
-          </div>
-          <div class="metric-val">1,120</div>
-          <div class="metric-label">Family plans</div>
-          <div class="metric-sub">vs. last week</div>
-        </div>
-
-        <div class="metric-card">
-          <div class="metric-card-top">
-            <div class="metric-icon-box"><i class="fa-solid fa-id-card-clip"></i></div>
-            <div class="metric-growth-badge"><i class="fa-solid fa-arrow-trend-up"></i> 0.4%</div>
-          </div>
-          <div class="metric-val">840</div>
-          <div class="metric-label">Active vendors</div>
-          <div class="metric-sub">vs. yesterday</div>
-        </div>
-
-        <div class="metric-card">
-          <div class="metric-card-top">
-            <div class="metric-icon-box"><i class="fa-solid fa-calendar-check"></i></div>
-            <div class="metric-growth-badge"><i class="fa-solid fa-arrow-trend-up"></i> 12.5%</div>
-          </div>
-          <div class="metric-val">0</div>
-          <div class="metric-label">Today's bookings</div>
-          <div class="metric-sub">vs. yesterday</div>
-        </div>
-
-        <div class="metric-card">
-          <div class="metric-card-top">
-            <div class="metric-icon-box"><i class="fa-solid fa-tower-broadcast"></i></div>
-            <div class="metric-growth-badge" style="color: #64748b;">— steady</div>
-          </div>
-          <div class="metric-val">0</div>
-          <div class="metric-label">Services running now</div>
-          <div class="metric-sub">right now</div>
-        </div>
-
-        <div class="metric-card">
-          <div class="metric-card-top">
-            <div class="metric-icon-box"><i class="fa-solid fa-indian-rupee-sign"></i></div>
-            <div class="metric-growth-badge"><i class="fa-solid fa-arrow-trend-up"></i> 6.4%</div>
-          </div>
-          <div class="metric-val">₹1,84,500</div>
-          <div class="metric-label">Revenue today</div>
-          <div class="metric-sub">vs. yesterday</div>
-        </div>
+        </section>
       </div>
 
-      <!-- ── Urban Shop Management Section ── -->
-      <section class="shop-section-card" id="shopSection">
-        <div class="section-head-bar">
-          <div class="section-main-title">
-            <i class="fa-solid fa-bag-shopping" style="color: #0f8a5f;"></i>
-            Urban Shop Products Manager (Live Sync to App)
-          </div>
-
-          <button class="btn-add-item" onclick="openAddModal()">
-            <i class="fa-solid fa-plus"></i> Add Product
-          </button>
-        </div>
-
-        <div class="admin-products-grid" id="adminProductsGrid">
-          <!-- Injected via JS -->
-        </div>
-      </section>
-
-        <!-- Orders Management Section -->
-        <section class="shop-section-card" id="ordersSection" style="display:none;">
+      <!-- ══════════════════════════════════════════════════════════════
+           3. ORDERS SECTION
+           ══════════════════════════════════════════════════════════════ -->
+      <div id="sec-orders" class="admin-section" style="display:none;">
+        <section class="shop-section-card">
           <div class="section-head-bar">
             <div class="section-main-title">
               <i class="fa-solid fa-box" style="color:#6366f1;"></i>
-              Orders Management
+              Orders & Fulfillment Hub
             </div>
-            <select id="orderStatusFilter" onchange="renderOrders()" style="padding:7px 14px;border-radius:10px;border:1px solid #e2e8f0;font-size:12px;font-weight:700;cursor:pointer;color:#0f172a;">
-              <option value="all">All Orders</option>
-              <option value="processing">Processing</option>
-              <option value="shipped">Shipped</option>
-              <option value="delivered">Delivered</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <select id="orderStatusFilter" onchange="renderOrders()" style="padding:8px 14px;border-radius:10px;border:1px solid #e2e8f0;font-size:12px;font-weight:700;cursor:pointer;color:#0f172a;">
+                <option value="all">All Orders</option>
+                <option value="processing">Processing</option>
+                <option value="shipped">Shipped</option>
+                <option value="delivered">Delivered</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
           </div>
-          <div id="ordersGrid" style="display:flex;flex-direction:column;gap:12px;"></div>
+          <div id="ordersGrid" style="display:flex;flex-direction:column;gap:14px;"></div>
         </section>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           4. USERS SECTION
+           ══════════════════════════════════════════════════════════════ -->
+      <div id="sec-users" class="admin-section" style="display:none;">
+        <section class="shop-section-card">
+          <div class="section-head-bar">
+            <div class="section-main-title">
+              <i class="fa-solid fa-users" style="color:#0284c7;"></i>
+              Registered Customers & Members (25,840 Total)
+            </div>
+            <button class="btn-primary-action" onclick="alert('Exporting customer CSV...')"><i class="fa-solid fa-download"></i> Export CSV</button>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Contact</th>
+                  <th>Subscription</th>
+                  <th>Watch / BLE Telemetry</th>
+                  <th>Coins Earned</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           5. VENDORS SECTION
+           ══════════════════════════════════════════════════════════════ -->
+      <div id="sec-vendors" class="admin-section" style="display:none;">
+        <section class="shop-section-card">
+          <div class="section-head-bar">
+            <div class="section-main-title">
+              <i class="fa-solid fa-truck" style="color:#10b981;"></i>
+              Service Partners & Verification Hub (840 Active)
+            </div>
+            <button class="btn-primary-action" onclick="alert('Opening onboarding link generator...')"><i class="fa-solid fa-user-plus"></i> Invite Vendor</button>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Vendor Partner</th>
+                  <th>Primary Category</th>
+                  <th>Rating</th>
+                  <th>Jobs Completed</th>
+                  <th>Background Check</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="vendorsTableBody">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           6. SERVICES SECTION
+           ══════════════════════════════════════════════════════════════ -->
+      <div id="sec-services" class="admin-section" style="display:none;">
+        <section class="shop-section-card">
+          <div class="section-head-bar">
+            <div class="section-main-title">
+              <i class="fa-solid fa-wrench" style="color:#f59e0b;"></i>
+              Home Services Catalog (10 Categories)
+            </div>
+            <button class="btn-primary-action" onclick="alert('Service category modal')"><i class="fa-solid fa-plus"></i> New Sub-Service</button>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Sub-Services Count</th>
+                  <th>Starting Price</th>
+                  <th>Active Providers</th>
+                  <th>Live Booking Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="servicesTableBody">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           7. SAFETY CENTER SECTION
+           ══════════════════════════════════════════════════════════════ -->
+      <div id="sec-safety" class="admin-section" style="display:none;">
+        <section class="shop-section-card">
+          <div class="section-head-bar">
+            <div class="section-main-title">
+              <i class="fa-solid fa-shield-heart" style="color:#e11d48;"></i>
+              Emergency SOS & Safety Incident Monitor
+            </div>
+            <span class="status-badge badge-green">ALL SYSTEMS SECURE</span>
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:16px; margin-bottom:20px;">
+            <div style="background:#fef2f2; border:1px solid #fecdd3; padding:16px; border-radius:14px;">
+              <div style="font-size:12px; font-weight:700; color:#9f1239;">ACTIVE SOS ALERTS</div>
+              <div style="font-size:26px; font-weight:900; color:#e11d48; margin-top:4px;">0</div>
+              <div style="font-size:11px; color:#be123c;">No critical emergency triggers</div>
+            </div>
+            <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:16px; border-radius:14px;">
+              <div style="font-size:12px; font-weight:700; color:#166534;">VERIFIED VENDOR ON-SITE</div>
+              <div style="font-size:26px; font-weight:900; color:#15803d; margin-top:4px;">18</div>
+              <div style="font-size:11px; color:#166534;">Geo-fenced tracking active</div>
+            </div>
+            <div style="background:#f0f9ff; border:1px solid #bae6fd; padding:16px; border-radius:14px;">
+              <div style="font-size:12px; font-weight:700; color:#075985;">SAFE VISITS TODAY</div>
+              <div style="font-size:26px; font-weight:900; color:#0284c7; margin-top:4px;">142</div>
+              <div style="font-size:11px; color:#0369a1;">100% verified visits</div>
+            </div>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Event ID</th>
+                  <th>Trigger Type</th>
+                  <th>Customer / Address</th>
+                  <th>Assigned Responder</th>
+                  <th>Timestamp</th>
+                  <th>Resolution</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>#EMG-902</strong></td>
+                  <td><span class="status-badge badge-blue">Safety Drill Test</span></td>
+                  <td>Priya S. • Whitefield, Bengaluru</td>
+                  <td>System Auto-Check</td>
+                  <td>17 Sep 2026, 11:20 AM</td>
+                  <td><span class="status-badge badge-green">Passed</span></td>
+                </tr>
+                <tr>
+                  <td><strong>#EMG-899</strong></td>
+                  <td><span class="status-badge badge-yellow">Unusual Heart Rate Alert</span></td>
+                  <td>Vikram R. • Indiranagar, Bengaluru</td>
+                  <td>AI Companion Notification</td>
+                  <td>16 Sep 2026, 09:45 PM</td>
+                  <td><span class="status-badge badge-green">Resolved</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           8. HEALTH TELEMETRY SECTION
+           ══════════════════════════════════════════════════════════════ -->
+      <div id="sec-health" class="admin-section" style="display:none;">
+        <section class="shop-section-card">
+          <div class="section-head-bar">
+            <div class="section-main-title">
+              <i class="fa-solid fa-heart-pulse" style="color:#be123c;"></i>
+              Samsung Health & Smartwatch Telemetry Hub
+            </div>
+            <span class="status-badge badge-blue">8,420 SMARTWATCHES CONNECTED</span>
+          </div>
+          <div class="metrics-grid" style="margin-bottom:20px;">
+            <div class="metric-card">
+              <div class="metric-val" style="color:#0f8a5f;">6,840</div>
+              <div class="metric-label">Avg Daily Steps</div>
+              <div class="metric-sub">Across all members</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-val" style="color:#e11d48;">74 bpm</div>
+              <div class="metric-label">Avg Resting HR</div>
+              <div class="metric-sub">Within optimal range</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-val" style="color:#0284c7;">98.4%</div>
+              <div class="metric-label">Avg Blood Oxygen</div>
+              <div class="metric-sub">SpO2 telemetry</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-val" style="color:#7e22ce;">7h 18m</div>
+              <div class="metric-label">Avg Sleep Duration</div>
+              <div class="metric-sub">82% Sleep Score</div>
+            </div>
+          </div>
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:16px;">
+            <div style="font-size:14px; font-weight:800; margin-bottom:8px;">Smartwatch Connectivity Breakdown</div>
+            <div style="display:flex; gap:20px; font-size:12.5px; color:#475569;">
+              <div><i class="fa-brands fa-bluetooth-b" style="color:#0284c7;"></i> BLE Direct Sensor: <strong>62%</strong></div>
+              <div><i class="fa-solid fa-mobile-screen" style="color:#10b981;"></i> Samsung Health API: <strong>28%</strong></div>
+              <div><i class="fa-solid fa-watch" style="color:#7e22ce;"></i> WearOS Companion: <strong>10%</strong></div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           9. AI CENTER SECTION
+           ══════════════════════════════════════════════════════════════ -->
+      <div id="sec-ai" class="admin-section" style="display:none;">
+        <section class="shop-section-card">
+          <div class="section-head-bar">
+            <div class="section-main-title">
+              <i class="fa-solid fa-robot" style="color:#6366f1;"></i>
+              AI Health Companion & Diagnostic Engine
+            </div>
+            <span class="status-badge badge-purple">LLM MODEL ACTIVE</span>
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:16px; margin-bottom:20px;">
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:16px; border-radius:14px;">
+              <div style="font-size:11.5px; font-weight:700; color:#64748b;">DAILY AI SESSIONS</div>
+              <div style="font-size:24px; font-weight:900; color:#0f172a; margin-top:4px;">14,920</div>
+              <div style="font-size:11px; color:#10b981;">+18% engagement</div>
+            </div>
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:16px; border-radius:14px;">
+              <div style="font-size:11.5px; font-weight:700; color:#64748b;">AVG RESPONSE LATENCY</div>
+              <div style="font-size:24px; font-weight:900; color:#0f172a; margin-top:4px;">320 ms</div>
+              <div style="font-size:11px; color:#0284c7;">Optimal inference speed</div>
+            </div>
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:16px; border-radius:14px;">
+              <div style="font-size:11.5px; font-weight:700; color:#64748b;">HEALTH INSIGHT ACCURACY</div>
+              <div style="font-size:24px; font-weight:900; color:#0f172a; margin-top:4px;">99.4%</div>
+              <div style="font-size:11px; color:#10b981;">Clinical guidelines compliant</div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           10. REVENUE SECTION
+           ══════════════════════════════════════════════════════════════ -->
+      <div id="sec-revenue" class="admin-section" style="display:none;">
+        <section class="shop-section-card">
+          <div class="section-head-bar">
+            <div class="section-main-title">
+              <i class="fa-solid fa-indian-rupee-sign" style="color:#0f8a5f;"></i>
+              Revenue & Financial Transactions
+            </div>
+            <button class="btn-primary-action" onclick="alert('Generating financial settlement report...')"><i class="fa-solid fa-file-invoice-dollar"></i> Payout Summary</button>
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:16px; margin-bottom:20px;">
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:18px; border-radius:14px;">
+              <div style="font-size:11.5px; font-weight:700; color:#64748b;">MONTHLY GROSS VOLUME</div>
+              <div style="font-size:26px; font-weight:900; color:#0f172a; margin-top:4px;">₹48,20,000</div>
+              <div style="font-size:11px; color:#10b981;">+14.2% vs last month</div>
+            </div>
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:18px; border-radius:14px;">
+              <div style="font-size:11.5px; font-weight:700; color:#64748b;">VENDOR PAYOUTS PROCESSED</div>
+              <div style="font-size:26px; font-weight:900; color:#0f172a; margin-top:4px;">₹39,80,000</div>
+              <div style="font-size:11px; color:#0284c7;">100% on-time settlement</div>
+            </div>
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:18px; border-radius:14px;">
+              <div style="font-size:11.5px; font-weight:700; color:#64748b;">PLATFORM NET REVENUE</div>
+              <div style="font-size:26px; font-weight:900; color:#0f8a5f; margin-top:4px;">₹8,40,000</div>
+              <div style="font-size:11px; color:#10b981;">18% platform take rate</div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           11. RESOLUTION CENTER SECTION
+           ══════════════════════════════════════════════════════════════ -->
+      <div id="sec-resolution" class="admin-section" style="display:none;">
+        <section class="shop-section-card">
+          <div class="section-head-bar">
+            <div class="section-main-title">
+              <i class="fa-solid fa-comments" style="color:#f59e0b;"></i>
+              Dispute Resolution & Customer Support
+            </div>
+            <span class="status-badge badge-green">0 UNRESOLVED TICKETS</span>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Ticket #</th>
+                  <th>User</th>
+                  <th>Category</th>
+                  <th>Subject</th>
+                  <th>Time Elapsed</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>#TKT-412</strong></td>
+                  <td>Rohan Verma</td>
+                  <td>Shop Delivery</td>
+                  <td>Tracking query on Smart Scale shipment</td>
+                  <td>15 mins ago</td>
+                  <td><span class="status-badge badge-green">Resolved</span></td>
+                  <td><button class="btn-sm-action">View Chat</button></td>
+                </tr>
+                <tr>
+                  <td><strong>#TKT-408</strong></td>
+                  <td>Anita Sen</td>
+                  <td>Service Booking</td>
+                  <td>Reschedule AC deep service slot</td>
+                  <td>1 hour ago</td>
+                  <td><span class="status-badge badge-green">Resolved</span></td>
+                  <td><button class="btn-sm-action">View Chat</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           12. ANALYTICS SECTION
+           ══════════════════════════════════════════════════════════════ -->
+      <div id="sec-analytics" class="admin-section" style="display:none;">
+        <section class="shop-section-card">
+          <div class="section-head-bar">
+            <div class="section-main-title">
+              <i class="fa-solid fa-chart-column" style="color:#0284c7;"></i>
+              Platform Analytics & Health Trends
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:18px; border-radius:14px;">
+              <div style="font-size:14px; font-weight:800; margin-bottom:12px;">Top Performing Service Categories</div>
+              <div style="display:flex; flex-direction:column; gap:10px; font-size:13px;">
+                <div style="display:flex; justify-content:space-between;"><span>1. Home Deep Cleaning</span><strong>34%</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>2. RO & Water Purifier</span><strong>28%</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>3. Pest Control & Sanitization</span><strong>22%</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>4. Health & Elderly Companion</span><strong>16%</strong></div>
+              </div>
+            </div>
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:18px; border-radius:14px;">
+              <div style="font-size:14px; font-weight:800; margin-bottom:12px;">App Health Feature Engagement</div>
+              <div style="display:flex; flex-direction:column; gap:10px; font-size:13px;">
+                <div style="display:flex; justify-content:space-between;"><span>1. Daily Steps & Fitness Goal</span><strong>88% daily active</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>2. Sleep Tracking & Stages</span><strong>76% active</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>3. Heart Rate & Vitals Scan</span><strong>68% active</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>4. Mindful Breathing & Stress</span><strong>54% active</strong></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           13. SETTINGS SECTION
+           ══════════════════════════════════════════════════════════════ -->
+      <div id="sec-settings" class="admin-section" style="display:none;">
+        <section class="shop-section-card">
+          <div class="section-head-bar">
+            <div class="section-main-title">
+              <i class="fa-solid fa-gear" style="color:#64748b;"></i>
+              Platform Configuration & Cloud Broadcast
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:20px; border-radius:14px;">
+              <div style="font-size:15px; font-weight:800; margin-bottom:12px;">Broadcast Push Notification</div>
+              <div class="form-group">
+                <label>Title</label>
+                <input class="form-control" id="pushTitle" placeholder="e.g. 15% Off Smartwatch Sync Accessories" />
+              </div>
+              <div class="form-group">
+                <label>Message Body</label>
+                <textarea class="form-control" id="pushBody" rows="3" placeholder="Enter notification message for all mobile users..."></textarea>
+              </div>
+              <button class="btn-submit" onclick="alert('Push notification queued for 25,840 devices across Android & iOS!')">
+                <i class="fa-solid fa-paper-plane"></i> Send Push Broadcast
+              </button>
+            </div>
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:20px; border-radius:14px;">
+              <div style="font-size:15px; font-weight:800; margin-bottom:12px;">Cloud Environment</div>
+              <div style="display:flex; flex-direction:column; gap:12px; font-size:13px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span>Firebase Project ID</span>
+                  <code>urban-helpers-admin</code>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span>Smartwatch Sensor BLE</span>
+                  <span class="status-badge badge-green">Active</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span>Automated APK Build CI/CD</span>
+                  <span class="status-badge badge-blue">GitHub Actions</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
     </main>
   </div>
 
@@ -1098,17 +1682,45 @@
       }
     ];
 
-    // Flash deal product IDs and their discounts
-    const FLASH_IDS = ["prod-scale-1", "prod-detox-3", "prod-mat-5"];
-    const FLASH_DISCOUNTS = {"prod-scale-1": 18, "prod-detox-3": 25, "prod-mat-5": 20};
-
     // Demo orders
     let orders = [
       { id: "ORD-001", customer: "Priya Sharma",  items: "Smart Body Composition Scale x1",        total: "2,999",   method: "Cash/UPI",  status: "delivered",  date: "Sep 10, 2026", pts: 150 },
       { id: "ORD-002", customer: "Arjun Mehta",   items: "Herbal Detox & Cleanse Pack x2",         total: "2,598",   method: "Points",    status: "shipped",    date: "Sep 14, 2026", pts: 0 },
-      { id: "ORD-003", customer: "Neha Kumar",     items: "Yoga Mat + Electric Toothbrush x1 each", total: "3,398",   method: "Cash/UPI",  status: "processing", date: "Sep 16, 2026", pts: 170 },
+      { id: "ORD-003", customer: "Neha Kumar",     items: "Yoga Mat + Electric Toothbrush x1 each", total: "3,398",   method: "Cash/UPI",  status: "processing", date: "Sep 17, 2026", pts: 170 },
     ];
     const STATUS_COLORS = {delivered:"#10b981", shipped:"#6366f1", processing:"#f59e0b", cancelled:"#e11d48"};
+
+    // Demo users
+    const sampleUsers = [
+      { name: "Priya Sharma", email: "priya.sharma@example.com", plan: "Premium", watch: "Galaxy Watch 9 (BLE)", coins: 1420, status: "Active" },
+      { name: "Arjun Mehta", email: "arjun.m@example.com", plan: "Family Plan", watch: "Watch Ultra 2 (BLE)", coins: 2850, status: "Active" },
+      { name: "Neha Kumar", email: "neha.kumar@example.com", plan: "Standard", watch: "Samsung Health Sync", coins: 640, status: "Active" },
+      { name: "Vikram Reddy", email: "vikram.r@example.com", plan: "Premium", watch: "Galaxy Watch 8", coins: 1980, status: "Active" },
+      { name: "Ananya Iyer", email: "ananya.iyer@example.com", plan: "Standard", watch: "In-App Pedometer", coins: 410, status: "Active" },
+    ];
+
+    // Demo vendors
+    const sampleVendors = [
+      { name: "Rajesh Kumar", category: "Home Cleaning", rating: "4.9 ⭐", jobs: 184, verified: true, status: "Active" },
+      { name: "Suresh Patil", category: "RO Water Purifier", rating: "4.8 ⭐", jobs: 142, verified: true, status: "Active" },
+      { name: "Manoj Singh", category: "AC & Appliance Repair", rating: "4.9 ⭐", jobs: 210, verified: true, status: "Active" },
+      { name: "Kavita Devi", category: "Health & Care Companion", rating: "5.0 ⭐", jobs: 96, verified: true, status: "Active" },
+      { name: "Deepak Verma", category: "Pest Control", rating: "4.7 ⭐", jobs: 118, verified: true, status: "Active" },
+    ];
+
+    // Demo service categories
+    const sampleServices = [
+      { name: "RO & Water Purifier Services", subCount: 4, price: "₹299", providers: 48, status: "Active" },
+      { name: "Deep Cleaning & Sanitization", subCount: 6, price: "₹499", providers: 72, status: "Active" },
+      { name: "AC Repair, Gas & Installation", subCount: 5, price: "₹399", providers: 55, status: "Active" },
+      { name: "Pest Control & Disinfection", subCount: 4, price: "₹599", providers: 38, status: "Active" },
+      { name: "Health & Elderly Care Companion", subCount: 6, price: "₹349", providers: 42, status: "Active" },
+      { name: "Electrical & Inverter Maintenance", subCount: 5, price: "₹199", providers: 64, status: "Active" },
+      { name: "Plumbing & Leakage Resolution", subCount: 4, price: "₹199", providers: 58, status: "Active" },
+      { name: "Painting & Waterproofing", subCount: 3, price: "₹999", providers: 26, status: "Active" },
+      { name: "Carpentry & Furniture Assembly", subCount: 4, price: "₹249", providers: 34, status: "Active" },
+      { name: "Salon, Spa & Personal Grooming", subCount: 8, price: "₹399", providers: 60, status: "Active" },
+    ];
 
     function renderOrders() {
       const filter = document.getElementById("orderStatusFilter").value;
@@ -1129,7 +1741,7 @@
           <div style="font-size:13px;color:#334155;margin-bottom:10px;">📦 ${o.items}</div>
           <div style="display:flex;align-items:center;justify-content:space-between;">
             <div>
-              <span style="font-size:16px;font-weight:900;color:#0f172a;">&#8377;${o.total}</span>
+              <span style="font-size:16px;font-weight:900;color:#0f172a;">₹${o.total}</span>
               <span style="font-size:11px;color:#94a3b8;margin-left:6px;">(${o.method})</span>
               ${o.pts > 0 ? '<span style="font-size:11px;font-weight:700;color:#d97706;margin-left:6px;">+' + o.pts + ' pts earned</span>' : ""}
             </div>
@@ -1151,6 +1763,7 @@
 
     function renderAdminProducts() {
       const grid = document.getElementById("adminProductsGrid");
+      if (!grid) return;
       grid.innerHTML = "";
 
       storeProducts.forEach((p, idx) => {
@@ -1178,6 +1791,53 @@
         `;
         grid.appendChild(card);
       });
+    }
+
+    function renderUsers() {
+      const tb = document.getElementById("usersTableBody");
+      if (!tb) return;
+      tb.innerHTML = sampleUsers.map(u => `
+        <tr>
+          <td><strong>${u.name}</strong></td>
+          <td style="color:#64748b;">${u.email}</td>
+          <td><span class="status-badge ${u.plan.includes('Premium') ? 'badge-purple' : u.plan.includes('Family') ? 'badge-blue' : 'badge-green'}">${u.plan}</span></td>
+          <td><i class="fa-brands fa-bluetooth-b" style="color:#0284c7; margin-right:4px;"></i>${u.watch}</td>
+          <td><strong style="color:#d97706;">⭐ ${u.coins}</strong></td>
+          <td><span class="status-badge badge-green">${u.status}</span></td>
+          <td><button class="btn-sm-action" onclick="alert('Viewing profile for ${u.name}')">View</button></td>
+        </tr>
+      `).join("");
+    }
+
+    function renderVendors() {
+      const tb = document.getElementById("vendorsTableBody");
+      if (!tb) return;
+      tb.innerHTML = sampleVendors.map(v => `
+        <tr>
+          <td><strong>${v.name}</strong></td>
+          <td>${v.category}</td>
+          <td><strong style="color:#f59e0b;">${v.rating}</strong></td>
+          <td><strong>${v.jobs}</strong></td>
+          <td><span class="status-badge badge-green"><i class="fa-solid fa-check"></i> Verified</span></td>
+          <td><span class="status-badge badge-green">${v.status}</span></td>
+          <td><button class="btn-sm-action" onclick="alert('Managing vendor: ${v.name}')">Manage</button></td>
+        </tr>
+      `).join("");
+    }
+
+    function renderServices() {
+      const tb = document.getElementById("servicesTableBody");
+      if (!tb) return;
+      tb.innerHTML = sampleServices.map(s => `
+        <tr>
+          <td><strong>${s.name}</strong></td>
+          <td>${s.subCount} Packages</td>
+          <td><strong style="color:#0f8a5f;">Starts at ${s.price}</strong></td>
+          <td><strong>${s.providers} Active</strong></td>
+          <td><span class="status-badge badge-green">${s.status}</span></td>
+          <td><button class="btn-sm-action" onclick="alert('Configuring ${s.name}')">Edit Pricing</button></td>
+        </tr>
+      `).join("");
     }
 
     function openAddModal() {
@@ -1217,23 +1877,64 @@
       alert("Product published successfully! It will automatically sync to all web and mobile apps.");
     }
 
-    function showSection(sec, el) {
-      document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
-      el.classList.add("active");
-
-      const shopSec = document.getElementById("shopSection");
-      const ordersSec = document.getElementById("ordersSection");
-      if (shopSec) shopSec.style.display = sec === "shop" ? "" : "none";
-      if (ordersSec) ordersSec.style.display = sec === "orders" ? "" : "none";
-
-      if (sec === "shop" && shopSec) shopSec.scrollIntoView({ behavior: "smooth" });
-      if (sec === "orders" && ordersSec) {
-        renderOrders();
-        ordersSec.scrollIntoView({ behavior: "smooth" });
-      }
+    function setTimeFilter(tf, btn) {
+      document.querySelectorAll(".time-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const userCount = tf === 'today' ? '25,840' : tf === '7d' ? '24,910' : '21,300';
+      document.getElementById("metricUsers").textContent = userCount;
     }
 
+    // ── Global Section Navigator ──
+    function showSection(sec, el) {
+      // Update sidebar active class
+      document.querySelectorAll(".nav-menu .nav-item").forEach(n => n.classList.remove("active"));
+      if (el) el.classList.add("active");
+
+      // Hide all sections
+      document.querySelectorAll(".admin-section").forEach(s => s.style.display = "none");
+
+      // Show target section
+      const targetSec = document.getElementById("sec-" + sec);
+      if (targetSec) {
+        targetSec.style.display = "block";
+      }
+
+      // Title & breadcrumb update
+      const titles = {
+        overview: "Overview & Live Telemetry",
+        shop: "Urban Shop Products Manager",
+        orders: "Orders & Fulfillment Hub",
+        users: "User & Customer Management",
+        vendors: "Service Partners & Verification",
+        services: "Services & Catalog Pricing",
+        safety: "Safety Center & Emergency SOS",
+        health: "Health Telemetry & BLE Watch Sync",
+        ai: "AI Health Companion Engine",
+        revenue: "Revenue & Financial Settlements",
+        resolution: "Customer Support & Disputes",
+        analytics: "Platform Analytics & Health Trends",
+        settings: "Platform Settings & Push Broadcast"
+      };
+
+      document.getElementById("topGreetingTitle").textContent = titles[sec] || "Control Center";
+      document.getElementById("topGreetingSub").textContent = `Real-time management for Urban Helpers • Section: ${sec.toUpperCase()}`;
+
+      // Trigger respective render functions
+      if (sec === "shop") renderAdminProducts();
+      if (sec === "orders") renderOrders();
+      if (sec === "users") renderUsers();
+      if (sec === "vendors") renderVendors();
+      if (sec === "services") renderServices();
+
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    // Initial setup
     renderAdminProducts();
+    renderOrders();
+    renderUsers();
+    renderVendors();
+    renderServices();
   </script>
 </body>
 </html>
