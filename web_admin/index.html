@@ -45,7 +45,7 @@
 
     /* ── Dark Left Sidebar matching screenshot ── */
     .sidebar {
-      width: 260px;
+      width: 270px;
       background: var(--sidebar-bg);
       display: flex;
       flex-direction: column;
@@ -59,7 +59,7 @@
     }
 
     .brand-header {
-      padding: 24px 20px 20px;
+      padding: 24px 20px 18px;
       display: flex;
       align-items: center;
       gap: 12px;
@@ -117,6 +117,7 @@
       cursor: pointer;
       transition: all 0.2s ease;
       text-decoration: none;
+      user-select: none;
     }
 
     .nav-item-left {
@@ -159,6 +160,54 @@
       padding: 2px 7px;
       border-radius: 8px;
       letter-spacing: 0.3px;
+    }
+
+    /* Submenu Accordion */
+    .submenu-arrow {
+      font-size: 11px !important;
+      transition: transform 0.25s ease;
+      color: #64748b !important;
+    }
+
+    .has-submenu.open .submenu-arrow {
+      transform: rotate(180deg);
+      color: #10b981 !important;
+    }
+
+    .submenu-list {
+      list-style: none;
+      padding: 4px 0 6px 36px;
+      display: none;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .submenu-list.open {
+      display: flex;
+    }
+
+    .submenu-item {
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      color: #94a3b8;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .submenu-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: #ffffff;
+    }
+
+    .submenu-item.active {
+      color: #10b981;
+      font-weight: 700;
+      background: rgba(16, 185, 129, 0.12);
     }
 
     .sidebar-footer {
@@ -343,6 +392,42 @@
       background: #ffffff;
       color: var(--text-dark);
       box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    /* Sub-category pill filters */
+    .category-pills-row {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      margin-bottom: 18px;
+    }
+
+    .cat-pill-btn {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+      padding: 7px 16px;
+      border-radius: 20px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .cat-pill-btn:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    .cat-pill-btn.active {
+      background: #0f8a5f;
+      color: #ffffff;
+      border-color: #0f8a5f;
     }
 
     /* ── Metrics Grid (Matching Screenshot) ── */
@@ -769,7 +854,7 @@
 </head>
 <body>
 
-  <!-- ── Left Sidebar (Exact Screenshot Match) ── -->
+  <!-- ── Left Sidebar (Exact Screenshot Match with Interactive Accordions) ── -->
   <aside class="sidebar">
     <div class="brand-header">
       <div class="brand-shield-icon">
@@ -807,6 +892,7 @@
         <span class="nav-item-badge" style="background:#6366f1;">3</span>
       </li>
 
+      <!-- 👥 Users -->
       <li class="nav-item" onclick="showSection('users', this)">
         <div class="nav-item-left">
           <i class="fa-solid fa-users"></i>
@@ -814,6 +900,7 @@
         </div>
       </li>
 
+      <!-- 🚚 Vendors -->
       <li class="nav-item" onclick="showSection('vendors', this)">
         <div class="nav-item-left">
           <i class="fa-solid fa-truck"></i>
@@ -821,30 +908,66 @@
         </div>
       </li>
 
-      <li class="nav-item" onclick="showSection('services', this)">
-        <div class="nav-item-left">
-          <i class="fa-solid fa-wrench"></i>
-          <span>Services</span>
+      <!-- 🔧 Services with Accordion Submenu -->
+      <li class="nav-group">
+        <div class="nav-item has-submenu" id="navItemServices" onclick="toggleSubmenu('servicesSubmenu', this, 'services')">
+          <div class="nav-item-left">
+            <i class="fa-solid fa-wrench"></i>
+            <span>Services</span>
+          </div>
+          <i class="fa-solid fa-chevron-down submenu-arrow"></i>
         </div>
-        <i class="fa-solid fa-chevron-right" style="font-size: 10px;"></i>
+        <ul class="submenu-list" id="servicesSubmenu">
+          <li class="submenu-item active" onclick="showSubSection('services', 'all', this)"><i class="fa-solid fa-list"></i> All Categories (10)</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'ro', this)"><i class="fa-solid fa-filter"></i> RO Water Purifier</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'cleaning', this)"><i class="fa-solid fa-broom"></i> Deep Cleaning</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'ac', this)"><i class="fa-solid fa-snowflake"></i> AC & Appliance Repair</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'pest', this)"><i class="fa-solid fa-shield-virus"></i> Pest Control</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'companion', this)"><i class="fa-solid fa-hand-holding-heart"></i> Health Companion</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'electrician', this)"><i class="fa-solid fa-bolt"></i> Electrical & Inverter</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'plumbing', this)"><i class="fa-solid fa-faucet"></i> Plumbing</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'painting', this)"><i class="fa-solid fa-paint-roller"></i> Painting</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'carpentry', this)"><i class="fa-solid fa-hammer"></i> Carpentry</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'salon', this)"><i class="fa-solid fa-spa"></i> Salon & Grooming</li>
+        </ul>
       </li>
 
-      <li class="nav-item" onclick="showSection('safety', this)">
-        <div class="nav-item-left">
-          <i class="fa-solid fa-shield-heart"></i>
-          <span>Safety Center</span>
+      <!-- 🛡️ Safety Center with Accordion Submenu -->
+      <li class="nav-group">
+        <div class="nav-item has-submenu" id="navItemSafety" onclick="toggleSubmenu('safetySubmenu', this, 'safety')">
+          <div class="nav-item-left">
+            <i class="fa-solid fa-shield-heart"></i>
+            <span>Safety Center</span>
+          </div>
+          <i class="fa-solid fa-chevron-down submenu-arrow"></i>
         </div>
-        <i class="fa-solid fa-chevron-right" style="font-size: 10px;"></i>
+        <ul class="submenu-list" id="safetySubmenu">
+          <li class="submenu-item active" onclick="showSubSection('safety', 'all', this)"><i class="fa-solid fa-gauge-high"></i> Safety Overview</li>
+          <li class="submenu-item" onclick="showSubSection('safety', 'sos', this)"><i class="fa-solid fa-triangle-exclamation"></i> Emergency SOS Logs</li>
+          <li class="submenu-item" onclick="showSubSection('safety', 'visits', this)"><i class="fa-solid fa-location-dot"></i> Live Geo-Fence Visits</li>
+          <li class="submenu-item" onclick="showSubSection('safety', 'background', this)"><i class="fa-solid fa-id-card"></i> Vendor Verification</li>
+        </ul>
       </li>
 
-      <li class="nav-item" onclick="showSection('health', this)">
-        <div class="nav-item-left">
-          <i class="fa-solid fa-heart-pulse"></i>
-          <span>Health</span>
+      <!-- 🩺 Health with Accordion Submenu -->
+      <li class="nav-group">
+        <div class="nav-item has-submenu" id="navItemHealth" onclick="toggleSubmenu('healthSubmenu', this, 'health')">
+          <div class="nav-item-left">
+            <i class="fa-solid fa-heart-pulse"></i>
+            <span>Health</span>
+          </div>
+          <i class="fa-solid fa-chevron-down submenu-arrow"></i>
         </div>
-        <i class="fa-solid fa-chevron-right" style="font-size: 10px;"></i>
+        <ul class="submenu-list" id="healthSubmenu">
+          <li class="submenu-item active" onclick="showSubSection('health', 'all', this)"><i class="fa-solid fa-chart-line"></i> Health Overview</li>
+          <li class="submenu-item" onclick="showSubSection('health', 'watch', this)"><i class="fa-brands fa-bluetooth-b"></i> Smartwatch BLE Sync</li>
+          <li class="submenu-item" onclick="showSubSection('health', 'vitals', this)"><i class="fa-solid fa-heart"></i> Heart Rate & SpO2</li>
+          <li class="submenu-item" onclick="showSubSection('health', 'sleep', this)"><i class="fa-solid fa-moon"></i> Sleep Analysis</li>
+          <li class="submenu-item" onclick="showSubSection('health', 'steps', this)"><i class="fa-solid fa-person-walking"></i> Step Goal Leaderboard</li>
+        </ul>
       </li>
 
+      <!-- 🤖 AI Center -->
       <li class="nav-item" onclick="showSection('ai', this)">
         <div class="nav-item-left">
           <i class="fa-solid fa-robot"></i>
@@ -852,14 +975,23 @@
         </div>
       </li>
 
-      <li class="nav-item" onclick="showSection('revenue', this)">
-        <div class="nav-item-left">
-          <i class="fa-solid fa-indian-rupee-sign"></i>
-          <span>Revenue</span>
+      <!-- 💰 Revenue with Accordion Submenu -->
+      <li class="nav-group">
+        <div class="nav-item has-submenu" id="navItemRevenue" onclick="toggleSubmenu('revenueSubmenu', this, 'revenue')">
+          <div class="nav-item-left">
+            <i class="fa-solid fa-indian-rupee-sign"></i>
+            <span>Revenue</span>
+          </div>
+          <i class="fa-solid fa-chevron-down submenu-arrow"></i>
         </div>
-        <i class="fa-solid fa-chevron-right" style="font-size: 10px;"></i>
+        <ul class="submenu-list" id="revenueSubmenu">
+          <li class="submenu-item active" onclick="showSubSection('revenue', 'all', this)"><i class="fa-solid fa-wallet"></i> Gross Revenue</li>
+          <li class="submenu-item" onclick="showSubSection('revenue', 'payouts', this)"><i class="fa-solid fa-money-bill-transfer"></i> Vendor Payouts</li>
+          <li class="submenu-item" onclick="showSubSection('revenue', 'commissions', this)"><i class="fa-solid fa-percent"></i> Platform Commissions</li>
+        </ul>
       </li>
 
+      <!-- 💬 Resolution Center -->
       <li class="nav-item" onclick="showSection('resolution', this)">
         <div class="nav-item-left">
           <i class="fa-solid fa-comments"></i>
@@ -867,6 +999,7 @@
         </div>
       </li>
 
+      <!-- 📊 Analytics -->
       <li class="nav-item" onclick="showSection('analytics', this)">
         <div class="nav-item-left">
           <i class="fa-solid fa-chart-column"></i>
@@ -874,6 +1007,7 @@
         </div>
       </li>
 
+      <!-- ⚙️ Settings -->
       <li class="nav-item" onclick="showSection('settings', this)">
         <div class="nav-item-left">
           <i class="fa-solid fa-gear"></i>
@@ -1086,7 +1220,7 @@
                 <div style="height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden;"><div style="width:100%; height:100%; background:#f59e0b;"></div></div>
               </div>
               <div style="background:#f1f5f9; padding:10px; border-radius:10px; font-size:11.5px; color:#475569; margin-top:4px;">
-                <i class="fa-solid fa-circle-check" style="color:#10b981;"></i> All microservices operating within optimal latency (< 45ms).
+                <i class="fa-solid fa-circle-check" style="color:#10b981;"></i> All microservices operating within optimal latency (&lt; 45ms).
               </div>
             </div>
           </div>
@@ -1206,26 +1340,45 @@
       </div>
 
       <!-- ══════════════════════════════════════════════════════════════
-           6. SERVICES SECTION
+           6. SERVICES SECTION (With Sub-Category Filters)
            ══════════════════════════════════════════════════════════════ -->
       <div id="sec-services" class="admin-section" style="display:none;">
         <section class="shop-section-card">
           <div class="section-head-bar">
-            <div class="section-main-title">
-              <i class="fa-solid fa-wrench" style="color:#f59e0b;"></i>
-              Home Services Catalog (10 Categories)
+            <div>
+              <div class="section-main-title" id="servicesSectionTitle">
+                <i class="fa-solid fa-wrench" style="color:#f59e0b;"></i>
+                Home Services Catalog
+              </div>
+              <p style="font-size:12px; color:#64748b; margin-top:3px;" id="servicesSectionSub">Select any service category to manage dedicated packages, pricing, and active technician coverage.</p>
             </div>
-            <button class="btn-primary-action" onclick="alert('Service category modal')"><i class="fa-solid fa-plus"></i> New Sub-Service</button>
+            <button class="btn-primary-action" onclick="alert('Add new package modal')"><i class="fa-solid fa-plus"></i> New Sub-Service</button>
           </div>
+
+          <!-- Sub-category Filter Tabs -->
+          <div class="category-pills-row" id="servicesPillsRow">
+            <button class="cat-pill-btn active" onclick="showSubSection('services', 'all', this)"><i class="fa-solid fa-list"></i> All (10)</button>
+            <button class="cat-pill-btn" onclick="showSubSection('services', 'ro', this)"><i class="fa-solid fa-filter"></i> RO Water</button>
+            <button class="cat-pill-btn" onclick="showSubSection('services', 'cleaning', this)"><i class="fa-solid fa-broom"></i> Cleaning</button>
+            <button class="cat-pill-btn" onclick="showSubSection('services', 'ac', this)"><i class="fa-solid fa-snowflake"></i> AC Repair</button>
+            <button class="cat-pill-btn" onclick="showSubSection('services', 'pest', this)"><i class="fa-solid fa-shield-virus"></i> Pest Control</button>
+            <button class="cat-pill-btn" onclick="showSubSection('services', 'companion', this)"><i class="fa-solid fa-hand-holding-heart"></i> Companion</button>
+            <button class="cat-pill-btn" onclick="showSubSection('services', 'electrician', this)"><i class="fa-solid fa-bolt"></i> Electrician</button>
+            <button class="cat-pill-btn" onclick="showSubSection('services', 'plumbing', this)"><i class="fa-solid fa-faucet"></i> Plumbing</button>
+            <button class="cat-pill-btn" onclick="showSubSection('services', 'painting', this)"><i class="fa-solid fa-paint-roller"></i> Painting</button>
+            <button class="cat-pill-btn" onclick="showSubSection('services', 'carpentry', this)"><i class="fa-solid fa-hammer"></i> Carpentry</button>
+            <button class="cat-pill-btn" onclick="showSubSection('services', 'salon', this)"><i class="fa-solid fa-spa"></i> Salon</button>
+          </div>
+
           <div class="admin-table-wrap">
             <table class="admin-table">
               <thead>
                 <tr>
-                  <th>Category</th>
-                  <th>Sub-Services Count</th>
+                  <th>Service Category / Package</th>
+                  <th>Coverage & Sub-Packages</th>
                   <th>Starting Price</th>
                   <th>Active Providers</th>
-                  <th>Live Booking Status</th>
+                  <th>Live Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -1238,17 +1391,29 @@
       </div>
 
       <!-- ══════════════════════════════════════════════════════════════
-           7. SAFETY CENTER SECTION
+           7. SAFETY CENTER SECTION (With Sub-Category Filters)
            ══════════════════════════════════════════════════════════════ -->
       <div id="sec-safety" class="admin-section" style="display:none;">
         <section class="shop-section-card">
           <div class="section-head-bar">
-            <div class="section-main-title">
-              <i class="fa-solid fa-shield-heart" style="color:#e11d48;"></i>
-              Emergency SOS & Safety Incident Monitor
+            <div>
+              <div class="section-main-title" id="safetySectionTitle">
+                <i class="fa-solid fa-shield-heart" style="color:#e11d48;"></i>
+                Safety Center & Incident Monitor
+              </div>
+              <p style="font-size:12px; color:#64748b; margin-top:3px;" id="safetySectionSub">Real-time tracking of Emergency SOS calls, on-site verified visits, and partner background credentials.</p>
             </div>
             <span class="status-badge badge-green">ALL SYSTEMS SECURE</span>
           </div>
+
+          <!-- Safety Sub-Category Tabs -->
+          <div class="category-pills-row" id="safetyPillsRow">
+            <button class="cat-pill-btn active" onclick="showSubSection('safety', 'all', this)"><i class="fa-solid fa-gauge-high"></i> Overview</button>
+            <button class="cat-pill-btn" onclick="showSubSection('safety', 'sos', this)"><i class="fa-solid fa-triangle-exclamation"></i> Emergency SOS Logs</button>
+            <button class="cat-pill-btn" onclick="showSubSection('safety', 'visits', this)"><i class="fa-solid fa-location-dot"></i> Live Geo-Fence Visits</button>
+            <button class="cat-pill-btn" onclick="showSubSection('safety', 'background', this)"><i class="fa-solid fa-id-card"></i> Background Checks</button>
+          </div>
+
           <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:16px; margin-bottom:20px;">
             <div style="background:#fef2f2; border:1px solid #fecdd3; padding:16px; border-radius:14px;">
               <div style="font-size:12px; font-weight:700; color:#9f1239;">ACTIVE SOS ALERTS</div>
@@ -1256,7 +1421,7 @@
               <div style="font-size:11px; color:#be123c;">No critical emergency triggers</div>
             </div>
             <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:16px; border-radius:14px;">
-              <div style="font-size:12px; font-weight:700; color:#166534;">VERIFIED VENDOR ON-SITE</div>
+              <div style="font-size:12px; font-weight:700; color:#166534;">VERIFIED VENDORS ON-SITE</div>
               <div style="font-size:26px; font-weight:900; color:#15803d; margin-top:4px;">18</div>
               <div style="font-size:11px; color:#166534;">Geo-fenced tracking active</div>
             </div>
@@ -1266,35 +1431,21 @@
               <div style="font-size:11px; color:#0369a1;">100% verified visits</div>
             </div>
           </div>
+
           <div class="admin-table-wrap">
             <table class="admin-table">
               <thead>
                 <tr>
                   <th>Event ID</th>
-                  <th>Trigger Type</th>
+                  <th>Trigger / Type</th>
                   <th>Customer / Address</th>
-                  <th>Assigned Responder</th>
+                  <th>Assigned Partner</th>
                   <th>Timestamp</th>
-                  <th>Resolution</th>
+                  <th>Resolution Status</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr>
-                  <td><strong>#EMG-902</strong></td>
-                  <td><span class="status-badge badge-blue">Safety Drill Test</span></td>
-                  <td>Priya S. • Whitefield, Bengaluru</td>
-                  <td>System Auto-Check</td>
-                  <td>17 Sep 2026, 11:20 AM</td>
-                  <td><span class="status-badge badge-green">Passed</span></td>
-                </tr>
-                <tr>
-                  <td><strong>#EMG-899</strong></td>
-                  <td><span class="status-badge badge-yellow">Unusual Heart Rate Alert</span></td>
-                  <td>Vikram R. • Indiranagar, Bengaluru</td>
-                  <td>AI Companion Notification</td>
-                  <td>16 Sep 2026, 09:45 PM</td>
-                  <td><span class="status-badge badge-green">Resolved</span></td>
-                </tr>
+              <tbody id="safetyTableBody">
+                <!-- Injected via JS -->
               </tbody>
             </table>
           </div>
@@ -1302,17 +1453,30 @@
       </div>
 
       <!-- ══════════════════════════════════════════════════════════════
-           8. HEALTH TELEMETRY SECTION
+           8. HEALTH TELEMETRY SECTION (With Sub-Category Filters)
            ══════════════════════════════════════════════════════════════ -->
       <div id="sec-health" class="admin-section" style="display:none;">
         <section class="shop-section-card">
           <div class="section-head-bar">
-            <div class="section-main-title">
-              <i class="fa-solid fa-heart-pulse" style="color:#be123c;"></i>
-              Samsung Health & Smartwatch Telemetry Hub
+            <div>
+              <div class="section-main-title" id="healthSectionTitle">
+                <i class="fa-solid fa-heart-pulse" style="color:#be123c;"></i>
+                Samsung Health & Smartwatch Telemetry Hub
+              </div>
+              <p style="font-size:12px; color:#64748b; margin-top:3px;" id="healthSectionSub">Aggregated sensor vitals, sleep quality metrics, and continuous BLE telemetry from active wearables.</p>
             </div>
-            <span class="status-badge badge-blue">8,420 SMARTWATCHES CONNECTED</span>
+            <span class="status-badge badge-blue">8,420 WEARABLES ACTIVE</span>
           </div>
+
+          <!-- Health Sub-Category Tabs -->
+          <div class="category-pills-row" id="healthPillsRow">
+            <button class="cat-pill-btn active" onclick="showSubSection('health', 'all', this)"><i class="fa-solid fa-chart-line"></i> Overview</button>
+            <button class="cat-pill-btn" onclick="showSubSection('health', 'watch', this)"><i class="fa-brands fa-bluetooth-b"></i> Smartwatch BLE Sync</button>
+            <button class="cat-pill-btn" onclick="showSubSection('health', 'vitals', this)"><i class="fa-solid fa-heart"></i> Heart Rate & SpO2</button>
+            <button class="cat-pill-btn" onclick="showSubSection('health', 'sleep', this)"><i class="fa-solid fa-moon"></i> Sleep Analysis</button>
+            <button class="cat-pill-btn" onclick="showSubSection('health', 'steps', this)"><i class="fa-solid fa-person-walking"></i> Step Goal Leaderboards</button>
+          </div>
+
           <div class="metrics-grid" style="margin-bottom:20px;">
             <div class="metric-card">
               <div class="metric-val" style="color:#0f8a5f;">6,840</div>
@@ -1335,13 +1499,23 @@
               <div class="metric-sub">82% Sleep Score</div>
             </div>
           </div>
-          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:16px;">
-            <div style="font-size:14px; font-weight:800; margin-bottom:8px;">Smartwatch Connectivity Breakdown</div>
-            <div style="display:flex; gap:20px; font-size:12.5px; color:#475569;">
-              <div><i class="fa-brands fa-bluetooth-b" style="color:#0284c7;"></i> BLE Direct Sensor: <strong>62%</strong></div>
-              <div><i class="fa-solid fa-mobile-screen" style="color:#10b981;"></i> Samsung Health API: <strong>28%</strong></div>
-              <div><i class="fa-solid fa-watch" style="color:#7e22ce;"></i> WearOS Companion: <strong>10%</strong></div>
-            </div>
+
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Device Model</th>
+                  <th>Telemetry Channel</th>
+                  <th>Last Reading</th>
+                  <th>Health Status</th>
+                  <th>Sync Status</th>
+                </tr>
+              </thead>
+              <tbody id="healthTableBody">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
           </div>
         </section>
       </div>
@@ -1379,17 +1553,28 @@
       </div>
 
       <!-- ══════════════════════════════════════════════════════════════
-           10. REVENUE SECTION
+           10. REVENUE SECTION (With Sub-Category Filters)
            ══════════════════════════════════════════════════════════════ -->
       <div id="sec-revenue" class="admin-section" style="display:none;">
         <section class="shop-section-card">
           <div class="section-head-bar">
-            <div class="section-main-title">
-              <i class="fa-solid fa-indian-rupee-sign" style="color:#0f8a5f;"></i>
-              Revenue & Financial Transactions
+            <div>
+              <div class="section-main-title" id="revenueSectionTitle">
+                <i class="fa-solid fa-indian-rupee-sign" style="color:#0f8a5f;"></i>
+                Revenue & Financial Settlements
+              </div>
+              <p style="font-size:12px; color:#64748b; margin-top:3px;" id="revenueSectionSub">Gross platform volumes, vendor disbursement batches, and commission earnings ledger.</p>
             </div>
             <button class="btn-primary-action" onclick="alert('Generating financial settlement report...')"><i class="fa-solid fa-file-invoice-dollar"></i> Payout Summary</button>
           </div>
+
+          <!-- Revenue Sub-Category Tabs -->
+          <div class="category-pills-row" id="revenuePillsRow">
+            <button class="cat-pill-btn active" onclick="showSubSection('revenue', 'all', this)"><i class="fa-solid fa-wallet"></i> Gross Overview</button>
+            <button class="cat-pill-btn" onclick="showSubSection('revenue', 'payouts', this)"><i class="fa-solid fa-money-bill-transfer"></i> Vendor Payouts</button>
+            <button class="cat-pill-btn" onclick="showSubSection('revenue', 'commissions', this)"><i class="fa-solid fa-percent"></i> Platform Commissions</button>
+          </div>
+
           <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:16px; margin-bottom:20px;">
             <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:18px; border-radius:14px;">
               <div style="font-size:11.5px; font-weight:700; color:#64748b;">MONTHLY GROSS VOLUME</div>
@@ -1406,6 +1591,24 @@
               <div style="font-size:26px; font-weight:900; color:#0f8a5f; margin-top:4px;">₹8,40,000</div>
               <div style="font-size:11px; color:#10b981;">18% platform take rate</div>
             </div>
+          </div>
+
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Transaction ID</th>
+                  <th>Source / Channel</th>
+                  <th>Customer / Partner</th>
+                  <th>Amount (₹)</th>
+                  <th>Platform Cut</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="revenueTableBody">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
           </div>
         </section>
       </div>
@@ -1708,18 +1911,45 @@
       { name: "Deepak Verma", category: "Pest Control", rating: "4.7 ⭐", jobs: 118, verified: true, status: "Active" },
     ];
 
-    // Demo service categories
+    // Demo service categories with keys
     const sampleServices = [
-      { name: "RO & Water Purifier Services", subCount: 4, price: "₹299", providers: 48, status: "Active" },
-      { name: "Deep Cleaning & Sanitization", subCount: 6, price: "₹499", providers: 72, status: "Active" },
-      { name: "AC Repair, Gas & Installation", subCount: 5, price: "₹399", providers: 55, status: "Active" },
-      { name: "Pest Control & Disinfection", subCount: 4, price: "₹599", providers: 38, status: "Active" },
-      { name: "Health & Elderly Care Companion", subCount: 6, price: "₹349", providers: 42, status: "Active" },
-      { name: "Electrical & Inverter Maintenance", subCount: 5, price: "₹199", providers: 64, status: "Active" },
-      { name: "Plumbing & Leakage Resolution", subCount: 4, price: "₹199", providers: 58, status: "Active" },
-      { name: "Painting & Waterproofing", subCount: 3, price: "₹999", providers: 26, status: "Active" },
-      { name: "Carpentry & Furniture Assembly", subCount: 4, price: "₹249", providers: 34, status: "Active" },
-      { name: "Salon, Spa & Personal Grooming", subCount: 8, price: "₹399", providers: 60, status: "Active" },
+      { key: "ro", name: "RO & Water Purifier Services", subCount: 4, price: "₹299", providers: 48, status: "Active", desc: "RO Membrane replacement, TDS adjustment, leak fixes & filter servicing" },
+      { key: "cleaning", name: "Deep Cleaning & Sanitization", subCount: 6, price: "₹499", providers: 72, status: "Active", desc: "Full home deep scrub, kitchen degreasing, bathroom disinfection & sofa shampooing" },
+      { key: "ac", name: "AC Repair, Gas & Installation", subCount: 5, price: "₹399", providers: 55, status: "Active", desc: "Split/Window AC foam jet cleaning, gas charging, PCB repair & compressor checks" },
+      { key: "pest", name: "Pest Control & Disinfection", subCount: 4, price: "₹599", providers: 38, status: "Active", desc: "Herbal gel termite treatment, cockroach eradication & bed bug treatment" },
+      { key: "companion", name: "Health & Elderly Care Companion", subCount: 6, price: "₹349", providers: 42, status: "Active", desc: "Medicine administration, vitals monitoring, mobility assist & doctor visit companion" },
+      { key: "electrician", name: "Electrical & Inverter Maintenance", subCount: 5, price: "₹199", providers: 64, status: "Active", desc: "Short circuit repair, MCB upgrade, fan installation & inverter battery setup" },
+      { key: "plumbing", name: "Plumbing & Leakage Resolution", subCount: 4, price: "₹199", providers: 58, status: "Active", desc: "Pipe blockage clearing, tap replacement, overhead tank cleaning & geyser setup" },
+      { key: "painting", name: "Painting & Waterproofing", subCount: 3, price: "₹999", providers: 26, status: "Active", desc: "Interior emulsion, exterior weather coat & damp roof PU waterproofing" },
+      { key: "carpentry", name: "Carpentry & Furniture Assembly", subCount: 4, price: "₹249", providers: 34, status: "Active", desc: "Door lock fittings, modular kitchen hinge adjustments & custom wardrobe fixes" },
+      { key: "salon", name: "Salon, Spa & Personal Grooming", subCount: 8, price: "₹399", providers: 60, status: "Active", desc: "Hygienic facial, mani-pedi, haircut & aroma wellness massage at home" },
+    ];
+
+    // Demo safety logs
+    const sampleSafetyLogs = [
+      { key: "sos", id: "#EMG-902", type: "Safety Drill Test", user: "Priya S. • Whitefield, Bengaluru", partner: "System Auto-Check", time: "17 Sep 2026, 11:20 AM", status: "Passed", badge: "badge-green" },
+      { key: "sos", id: "#EMG-899", type: "High Heart Rate Alert", user: "Vikram R. • Indiranagar, Bengaluru", partner: "AI Companion Notification", time: "16 Sep 2026, 09:45 PM", status: "Resolved", badge: "badge-green" },
+      { key: "visits", id: "#VISIT-108", type: "Live Geo-Fence Visit", user: "Arjun M. • Koramangala", partner: "Rajesh Kumar (Verified)", time: "17 Sep 2026, 02:15 PM", status: "On-Site (Active)", badge: "badge-blue" },
+      { key: "visits", id: "#VISIT-107", type: "Safe Service Completion", user: "Anita S. • HSR Layout", partner: "Manoj Singh (Verified)", time: "17 Sep 2026, 01:00 PM", status: "Safe & Closed", badge: "badge-green" },
+      { key: "background", id: "#BG-540", type: "Aadhaar & Police Verification", user: "Suresh Patil (RO Tech)", partner: "Third-Party Trust Registry", time: "15 Sep 2026", status: "100% Verified", badge: "badge-purple" },
+      { key: "background", id: "#BG-539", type: "Identity & Skills Accreditation", user: "Kavita Devi (Health Care)", partner: "Urban Helpers Academy", time: "14 Sep 2026", status: "Certified", badge: "badge-purple" },
+    ];
+
+    // Demo health logs
+    const sampleHealthLogs = [
+      { key: "watch", user: "Priya Sharma", device: "Samsung Galaxy Watch9", channel: "BLE Direct Sensor", last: "HR: 72 bpm · SpO2: 99%", status: "Optimal", badge: "badge-green", sync: "Connected" },
+      { key: "watch", user: "Arjun Mehta", device: "Samsung Watch Ultra2", channel: "BLE Direct Sensor", last: "HR: 68 bpm · Steps: 8,420", status: "Active", badge: "badge-blue", sync: "Connected" },
+      { key: "vitals", user: "Vikram Reddy", device: "Galaxy Watch 8", channel: "Continuous Vitals Monitor", last: "BP: 120/80 mmHg · SpO2: 98%", status: "Normal", badge: "badge-green", sync: "Active" },
+      { key: "sleep", user: "Neha Kumar", device: "Samsung Health Sync", channel: "Sleep Stages Telemetry", last: "7h 45m (REM: 22%, Deep: 18%)", status: "Score: 88/100", badge: "badge-purple", sync: "Archived" },
+      { key: "steps", user: "Alex M.", device: "BLE Smartwatch", channel: "Native Step Pedometer", last: "10,450 steps (Goal: 10,000)", status: "Goal Hit 🔥", badge: "badge-yellow", sync: "Daily Winner" },
+    ];
+
+    // Demo revenue logs
+    const sampleRevenueLogs = [
+      { key: "payouts", id: "#TX-9840", channel: "Vendor Direct Payout", user: "Rajesh Kumar (Home Cleaning)", amount: "₹4,250", cut: "18% deducted", status: "Settled", badge: "badge-green" },
+      { key: "payouts", id: "#TX-9839", channel: "Vendor Direct Payout", user: "Manoj Singh (AC Repair)", amount: "₹6,800", cut: "18% deducted", status: "Settled", badge: "badge-green" },
+      { key: "commissions", id: "#TX-9838", channel: "Urban Shop Product Commission", user: "Smart Scale Sale (#ORD-001)", amount: "₹2,999", cut: "₹539 Platform Fee", status: "Credited", badge: "badge-blue" },
+      { key: "commissions", id: "#TX-9837", channel: "Premium Health Subscription", user: "Priya Sharma (Yearly VIP)", amount: "₹1,499", cut: "₹1,499 Net Profit", status: "Direct Revenue", badge: "badge-purple" },
     ];
 
     function renderOrders() {
@@ -1825,17 +2055,69 @@
       `).join("");
     }
 
-    function renderServices() {
+    function renderServices(subKey = "all") {
       const tb = document.getElementById("servicesTableBody");
       if (!tb) return;
-      tb.innerHTML = sampleServices.map(s => `
+      const list = subKey === "all" ? sampleServices : sampleServices.filter(s => s.key === subKey);
+      tb.innerHTML = list.map(s => `
         <tr>
-          <td><strong>${s.name}</strong></td>
-          <td>${s.subCount} Packages</td>
+          <td>
+            <strong>${s.name}</strong>
+            <div style="font-size:11px; color:#64748b; margin-top:2px;">${s.desc}</div>
+          </td>
+          <td><strong>${s.subCount} Sub-Packages</strong></td>
           <td><strong style="color:#0f8a5f;">Starts at ${s.price}</strong></td>
-          <td><strong>${s.providers} Active</strong></td>
+          <td><strong>${s.providers} Active Technicians</strong></td>
           <td><span class="status-badge badge-green">${s.status}</span></td>
           <td><button class="btn-sm-action" onclick="alert('Configuring ${s.name}')">Edit Pricing</button></td>
+        </tr>
+      `).join("");
+    }
+
+    function renderSafety(subKey = "all") {
+      const tb = document.getElementById("safetyTableBody");
+      if (!tb) return;
+      const list = subKey === "all" ? sampleSafetyLogs : sampleSafetyLogs.filter(s => s.key === subKey);
+      tb.innerHTML = list.map(l => `
+        <tr>
+          <td><strong>${l.id}</strong></td>
+          <td><span class="status-badge ${l.badge}">${l.type}</span></td>
+          <td>${l.user}</td>
+          <td>${l.partner}</td>
+          <td style="color:#64748b; font-size:12px;">${l.time}</td>
+          <td><span class="status-badge ${l.badge}">${l.status}</span></td>
+        </tr>
+      `).join("");
+    }
+
+    function renderHealth(subKey = "all") {
+      const tb = document.getElementById("healthTableBody");
+      if (!tb) return;
+      const list = subKey === "all" ? sampleHealthLogs : sampleHealthLogs.filter(h => h.key === subKey);
+      tb.innerHTML = list.map(h => `
+        <tr>
+          <td><strong>${h.user}</strong></td>
+          <td><i class="fa-solid fa-watch" style="color:#64748b; margin-right:4px;"></i>${h.device}</td>
+          <td>${h.channel}</td>
+          <td><strong>${h.last}</strong></td>
+          <td><span class="status-badge ${h.badge}">${h.status}</span></td>
+          <td><span class="status-badge badge-green">${h.sync}</span></td>
+        </tr>
+      `).join("");
+    }
+
+    function renderRevenue(subKey = "all") {
+      const tb = document.getElementById("revenueTableBody");
+      if (!tb) return;
+      const list = subKey === "all" ? sampleRevenueLogs : sampleRevenueLogs.filter(r => r.key === subKey);
+      tb.innerHTML = list.map(r => `
+        <tr>
+          <td><strong>${r.id}</strong></td>
+          <td>${r.channel}</td>
+          <td>${r.user}</td>
+          <td><strong style="font-size:14px; color:#0f172a;">${r.amount}</strong></td>
+          <td><span style="color:#0f8a5f; font-weight:700;">${r.cut}</span></td>
+          <td><span class="status-badge ${r.badge}">${r.status}</span></td>
         </tr>
       `).join("");
     }
@@ -1884,6 +2166,57 @@
       document.getElementById("metricUsers").textContent = userCount;
     }
 
+    // ── Accordion Submenu Toggle ──
+    function toggleSubmenu(submenuId, navItemEl, sec) {
+      const submenu = document.getElementById(submenuId);
+      const isAlreadyOpen = submenu.classList.contains("open");
+
+      // Close all other submenus
+      document.querySelectorAll(".submenu-list").forEach(s => s.classList.remove("open"));
+      document.querySelectorAll(".has-submenu").forEach(h => h.classList.remove("open"));
+
+      if (!isAlreadyOpen) {
+        submenu.classList.add("open");
+        navItemEl.classList.add("open");
+      }
+
+      showSection(sec, navItemEl);
+    }
+
+    // ── Sub-section Filtering Navigator ──
+    function showSubSection(sec, subKey, el) {
+      // Update submenu active state
+      if (el) {
+        const parentUl = el.closest(".submenu-list") || el.closest(".category-pills-row");
+        if (parentUl) {
+          parentUl.querySelectorAll(".submenu-item, .cat-pill-btn").forEach(item => item.classList.remove("active"));
+          el.classList.add("active");
+        }
+      }
+
+      // Synchronize in-page pills if clicked from sidebar
+      const pillsRow = document.getElementById(`${sec}PillsRow`);
+      if (pillsRow) {
+        pillsRow.querySelectorAll(".cat-pill-btn").forEach(btn => {
+          btn.classList.remove("active");
+          if (btn.getAttribute("onclick") && btn.getAttribute("onclick").includes(`'${subKey}'`)) {
+            btn.classList.add("active");
+          }
+        });
+      }
+
+      // Ensure main section is visible
+      document.querySelectorAll(".admin-section").forEach(s => s.style.display = "none");
+      const targetSec = document.getElementById("sec-" + sec);
+      if (targetSec) targetSec.style.display = "block";
+
+      // Render corresponding filtered data
+      if (sec === "services") renderServices(subKey);
+      if (sec === "safety") renderSafety(subKey);
+      if (sec === "health") renderHealth(subKey);
+      if (sec === "revenue") renderRevenue(subKey);
+    }
+
     // ── Global Section Navigator ──
     function showSection(sec, el) {
       // Update sidebar active class
@@ -1924,7 +2257,10 @@
       if (sec === "orders") renderOrders();
       if (sec === "users") renderUsers();
       if (sec === "vendors") renderVendors();
-      if (sec === "services") renderServices();
+      if (sec === "services") renderServices("all");
+      if (sec === "safety") renderSafety("all");
+      if (sec === "health") renderHealth("all");
+      if (sec === "revenue") renderRevenue("all");
 
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -1934,7 +2270,10 @@
     renderOrders();
     renderUsers();
     renderVendors();
-    renderServices();
+    renderServices("all");
+    renderSafety("all");
+    renderHealth("all");
+    renderRevenue("all");
   </script>
 </body>
 </html>
