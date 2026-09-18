@@ -45,7 +45,7 @@
 
     /* ── Dark Left Sidebar matching screenshot ── */
     .sidebar {
-      width: 270px;
+      width: 275px;
       background: var(--sidebar-bg);
       display: flex;
       flex-direction: column;
@@ -176,7 +176,7 @@
 
     .submenu-list {
       list-style: none;
-      padding: 4px 0 6px 36px;
+      padding: 4px 0 6px 32px;
       display: none;
       flex-direction: column;
       gap: 2px;
@@ -189,7 +189,7 @@
     .submenu-item {
       padding: 7px 14px;
       border-radius: 8px;
-      font-size: 12.5px;
+      font-size: 12px;
       color: #94a3b8;
       font-weight: 600;
       cursor: pointer;
@@ -409,7 +409,7 @@
       border: 1px solid #e2e8f0;
       padding: 7px 16px;
       border-radius: 20px;
-      font-size: 12.5px;
+      font-size: 12px;
       font-weight: 700;
       cursor: pointer;
       white-space: nowrap;
@@ -430,7 +430,7 @@
       border-color: #0f8a5f;
     }
 
-    /* ── Metrics Grid (Matching Screenshot) ── */
+    /* ── Metrics Grid ── */
     .metrics-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -545,6 +545,68 @@
 
     .btn-add-item:hover, .btn-primary-action:hover {
       background: #0d7551;
+    }
+
+    /* Sub-Services Grid in Category View */
+    .subservices-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 14px;
+    }
+
+    .subservice-card {
+      background: #f8fafc;
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.2s;
+    }
+
+    .subservice-card:hover {
+      border-color: #cbd5e1;
+      background: #ffffff;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.04);
+    }
+
+    .subservice-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+
+    .subservice-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .subservice-price {
+      font-size: 15px;
+      font-weight: 900;
+      color: #0f8a5f;
+    }
+
+    .subservice-desc {
+      font-size: 12px;
+      color: #64748b;
+      line-height: 1.4;
+      margin-bottom: 12px;
+      flex: 1;
+    }
+
+    .subservice-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 10px;
+      border-top: 1px dashed #e2e8f0;
+      font-size: 11.5px;
+      color: #64748b;
     }
 
     /* Store Product Cards in Admin */
@@ -919,16 +981,17 @@
         </div>
         <ul class="submenu-list" id="servicesSubmenu">
           <li class="submenu-item active" onclick="showSubSection('services', 'all', this)"><i class="fa-solid fa-list"></i> All Categories (10)</li>
-          <li class="submenu-item" onclick="showSubSection('services', 'ro', this)"><i class="fa-solid fa-filter"></i> RO Water Purifier</li>
-          <li class="submenu-item" onclick="showSubSection('services', 'cleaning', this)"><i class="fa-solid fa-broom"></i> Deep Cleaning</li>
-          <li class="submenu-item" onclick="showSubSection('services', 'ac', this)"><i class="fa-solid fa-snowflake"></i> AC & Appliance Repair</li>
-          <li class="submenu-item" onclick="showSubSection('services', 'pest', this)"><i class="fa-solid fa-shield-virus"></i> Pest Control</li>
-          <li class="submenu-item" onclick="showSubSection('services', 'companion', this)"><i class="fa-solid fa-hand-holding-heart"></i> Health Companion</li>
-          <li class="submenu-item" onclick="showSubSection('services', 'electrician', this)"><i class="fa-solid fa-bolt"></i> Electrical & Inverter</li>
-          <li class="submenu-item" onclick="showSubSection('services', 'plumbing', this)"><i class="fa-solid fa-faucet"></i> Plumbing</li>
-          <li class="submenu-item" onclick="showSubSection('services', 'painting', this)"><i class="fa-solid fa-paint-roller"></i> Painting</li>
-          <li class="submenu-item" onclick="showSubSection('services', 'carpentry', this)"><i class="fa-solid fa-hammer"></i> Carpentry</li>
-          <li class="submenu-item" onclick="showSubSection('services', 'salon', this)"><i class="fa-solid fa-spa"></i> Salon & Grooming</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'bookings', this)"><i class="fa-solid fa-calendar-check" style="color:#10b981;"></i> Service Bookings</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'ro', this)"><i class="fa-solid fa-water" style="color:#0284c7;"></i> RO Service (7)</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'pet', this)"><i class="fa-solid fa-paw" style="color:#db2777;"></i> Pet Care (7)</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'pest', this)"><i class="fa-solid fa-bug" style="color:#15803d;"></i> Pest Control (6)</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'hort', this)"><i class="fa-solid fa-leaf" style="color:#065f46;"></i> Horticulture (7)</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'delivery', this)"><i class="fa-solid fa-bicycle" style="color:#7c3aed;"></i> Delivery (6)</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'appliance', this)"><i class="fa-solid fa-bolt" style="color:#b45309;"></i> Appliance Clean (11)</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'homecare', this)"><i class="fa-solid fa-house" style="color:#0e7490;"></i> Home Care (4)</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'insurance', this)"><i class="fa-solid fa-shield-halved" style="color:#1e3a8a;"></i> Insurance (4)</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'emergency', this)"><i class="fa-solid fa-circle-exclamation" style="color:#7f1d1d;"></i> Emergency (5)</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'cleaning', this)"><i class="fa-solid fa-wand-magic-sparkles" style="color:#00bcd4;"></i> Home Cleaning (4)</li>
         </ul>
       </li>
 
@@ -1061,7 +1124,7 @@
         <!-- Command Sub-header -->
         <div class="command-row">
           <div class="command-title">
-            Command Center • <span class="command-date" id="currentDateText">Thursday, 17 September 2026</span>
+            Command Center • <span class="command-date" id="currentDateText">Thursday, 18 September 2026</span>
           </div>
 
           <div class="time-filter-pill">
@@ -1340,7 +1403,7 @@
       </div>
 
       <!-- ══════════════════════════════════════════════════════════════
-           6. SERVICES SECTION (With Sub-Category Filters)
+           6. SERVICES SECTION (All 10 Categories + Bookings)
            ══════════════════════════════════════════════════════════════ -->
       <div id="sec-services" class="admin-section" style="display:none;">
         <section class="shop-section-card">
@@ -1348,50 +1411,38 @@
             <div>
               <div class="section-main-title" id="servicesSectionTitle">
                 <i class="fa-solid fa-wrench" style="color:#f59e0b;"></i>
-                Home Services Catalog
+                Services & Bookings Management
               </div>
-              <p style="font-size:12px; color:#64748b; margin-top:3px;" id="servicesSectionSub">Select any service category to manage dedicated packages, pricing, and active technician coverage.</p>
+              <p style="font-size:12px; color:#64748b; margin-top:3px;" id="servicesSectionSub">Manage customer bookings, technician assignments, service packages, and starting prices.</p>
             </div>
-            <button class="btn-primary-action" onclick="alert('Add new package modal')"><i class="fa-solid fa-plus"></i> New Sub-Service</button>
+            <button class="btn-primary-action" onclick="alert('New service package modal')"><i class="fa-solid fa-plus"></i> Add Sub-Service</button>
           </div>
 
           <!-- Sub-category Filter Tabs -->
           <div class="category-pills-row" id="servicesPillsRow">
-            <button class="cat-pill-btn active" onclick="showSubSection('services', 'all', this)"><i class="fa-solid fa-list"></i> All (10)</button>
-            <button class="cat-pill-btn" onclick="showSubSection('services', 'ro', this)"><i class="fa-solid fa-filter"></i> RO Water</button>
-            <button class="cat-pill-btn" onclick="showSubSection('services', 'cleaning', this)"><i class="fa-solid fa-broom"></i> Cleaning</button>
-            <button class="cat-pill-btn" onclick="showSubSection('services', 'ac', this)"><i class="fa-solid fa-snowflake"></i> AC Repair</button>
-            <button class="cat-pill-btn" onclick="showSubSection('services', 'pest', this)"><i class="fa-solid fa-shield-virus"></i> Pest Control</button>
-            <button class="cat-pill-btn" onclick="showSubSection('services', 'companion', this)"><i class="fa-solid fa-hand-holding-heart"></i> Companion</button>
-            <button class="cat-pill-btn" onclick="showSubSection('services', 'electrician', this)"><i class="fa-solid fa-bolt"></i> Electrician</button>
-            <button class="cat-pill-btn" onclick="showSubSection('services', 'plumbing', this)"><i class="fa-solid fa-faucet"></i> Plumbing</button>
-            <button class="cat-pill-btn" onclick="showSubSection('services', 'painting', this)"><i class="fa-solid fa-paint-roller"></i> Painting</button>
-            <button class="cat-pill-btn" onclick="showSubSection('services', 'carpentry', this)"><i class="fa-solid fa-hammer"></i> Carpentry</button>
-            <button class="cat-pill-btn" onclick="showSubSection('services', 'salon', this)"><i class="fa-solid fa-spa"></i> Salon</button>
+            <button class="cat-pill-btn active" onclick="showSubSection('services', 'all', this)"><i class="fa-solid fa-list"></i> All Categories (10)</button>
+            <button class="cat-pill-btn" onclick="showSubSection('services', 'bookings', this)"><i class="fa-solid fa-calendar-check" style="color:#10b981;"></i> Service Bookings (142)</button>
+            <button class="cat-pill-btn" onclick="showSubSection('services', 'ro', this)"><i class="fa-solid fa-water"></i> RO Service</button>
+            <button class="cat-pill-btn" onclick="showSubSection('services', 'pet', this)"><i class="fa-solid fa-paw"></i> Pet Care</button>
+            <button class="cat-pill-btn" onclick="showSubSection('services', 'pest', this)"><i class="fa-solid fa-bug"></i> Pest Control</button>
+            <button class="cat-pill-btn" onclick="showSubSection('services', 'hort', this)"><i class="fa-solid fa-leaf"></i> Horticulture</button>
+            <button class="cat-pill-btn" onclick="showSubSection('services', 'delivery', this)"><i class="fa-solid fa-bicycle"></i> Delivery</button>
+            <button class="cat-pill-btn" onclick="showSubSection('services', 'appliance', this)"><i class="fa-solid fa-bolt"></i> Appliance Clean</button>
+            <button class="cat-pill-btn" onclick="showSubSection('services', 'homecare', this)"><i class="fa-solid fa-house"></i> Home Care</button>
+            <button class="cat-pill-btn" onclick="showSubSection('services', 'insurance', this)"><i class="fa-solid fa-shield-halved"></i> Insurance</button>
+            <button class="cat-pill-btn" onclick="showSubSection('services', 'emergency', this)"><i class="fa-solid fa-circle-exclamation"></i> Emergency</button>
+            <button class="cat-pill-btn" onclick="showSubSection('services', 'cleaning', this)"><i class="fa-solid fa-wand-magic-sparkles"></i> Home Cleaning</button>
           </div>
 
-          <div class="admin-table-wrap">
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>Service Category / Package</th>
-                  <th>Coverage & Sub-Packages</th>
-                  <th>Starting Price</th>
-                  <th>Active Providers</th>
-                  <th>Live Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="servicesTableBody">
-                <!-- Injected via JS -->
-              </tbody>
-            </table>
+          <!-- Dynamic Container for Category Table or Sub-Service Grid or Bookings Table -->
+          <div id="servicesDynamicContainer">
+            <!-- Injected via JS -->
           </div>
         </section>
       </div>
 
       <!-- ══════════════════════════════════════════════════════════════
-           7. SAFETY CENTER SECTION (With Sub-Category Filters)
+           7. SAFETY CENTER SECTION
            ══════════════════════════════════════════════════════════════ -->
       <div id="sec-safety" class="admin-section" style="display:none;">
         <section class="shop-section-card">
@@ -1453,7 +1504,7 @@
       </div>
 
       <!-- ══════════════════════════════════════════════════════════════
-           8. HEALTH TELEMETRY SECTION (With Sub-Category Filters)
+           8. HEALTH TELEMETRY SECTION
            ══════════════════════════════════════════════════════════════ -->
       <div id="sec-health" class="admin-section" style="display:none;">
         <section class="shop-section-card">
@@ -1553,7 +1604,7 @@
       </div>
 
       <!-- ══════════════════════════════════════════════════════════════
-           10. REVENUE SECTION (With Sub-Category Filters)
+           10. REVENUE SECTION
            ══════════════════════════════════════════════════════════════ -->
       <div id="sec-revenue" class="admin-section" style="display:none;">
         <section class="shop-section-card">
@@ -1889,7 +1940,7 @@
     let orders = [
       { id: "ORD-001", customer: "Priya Sharma",  items: "Smart Body Composition Scale x1",        total: "2,999",   method: "Cash/UPI",  status: "delivered",  date: "Sep 10, 2026", pts: 150 },
       { id: "ORD-002", customer: "Arjun Mehta",   items: "Herbal Detox & Cleanse Pack x2",         total: "2,598",   method: "Points",    status: "shipped",    date: "Sep 14, 2026", pts: 0 },
-      { id: "ORD-003", customer: "Neha Kumar",     items: "Yoga Mat + Electric Toothbrush x1 each", total: "3,398",   method: "Cash/UPI",  status: "processing", date: "Sep 17, 2026", pts: 170 },
+      { id: "ORD-003", customer: "Neha Kumar",     items: "Yoga Mat + Electric Toothbrush x1 each", total: "3,398",   method: "Cash/UPI",  status: "processing", date: "Sep 18, 2026", pts: 170 },
     ];
     const STATUS_COLORS = {delivered:"#10b981", shipped:"#6366f1", processing:"#f59e0b", cancelled:"#e11d48"};
 
@@ -1911,26 +1962,196 @@
       { name: "Deepak Verma", category: "Pest Control", rating: "4.7 ⭐", jobs: 118, verified: true, status: "Active" },
     ];
 
-    // Demo service categories with keys
-    const sampleServices = [
-      { key: "ro", name: "RO & Water Purifier Services", subCount: 4, price: "₹299", providers: 48, status: "Active", desc: "RO Membrane replacement, TDS adjustment, leak fixes & filter servicing" },
-      { key: "cleaning", name: "Deep Cleaning & Sanitization", subCount: 6, price: "₹499", providers: 72, status: "Active", desc: "Full home deep scrub, kitchen degreasing, bathroom disinfection & sofa shampooing" },
-      { key: "ac", name: "AC Repair, Gas & Installation", subCount: 5, price: "₹399", providers: 55, status: "Active", desc: "Split/Window AC foam jet cleaning, gas charging, PCB repair & compressor checks" },
-      { key: "pest", name: "Pest Control & Disinfection", subCount: 4, price: "₹599", providers: 38, status: "Active", desc: "Herbal gel termite treatment, cockroach eradication & bed bug treatment" },
-      { key: "companion", name: "Health & Elderly Care Companion", subCount: 6, price: "₹349", providers: 42, status: "Active", desc: "Medicine administration, vitals monitoring, mobility assist & doctor visit companion" },
-      { key: "electrician", name: "Electrical & Inverter Maintenance", subCount: 5, price: "₹199", providers: 64, status: "Active", desc: "Short circuit repair, MCB upgrade, fan installation & inverter battery setup" },
-      { key: "plumbing", name: "Plumbing & Leakage Resolution", subCount: 4, price: "₹199", providers: 58, status: "Active", desc: "Pipe blockage clearing, tap replacement, overhead tank cleaning & geyser setup" },
-      { key: "painting", name: "Painting & Waterproofing", subCount: 3, price: "₹999", providers: 26, status: "Active", desc: "Interior emulsion, exterior weather coat & damp roof PU waterproofing" },
-      { key: "carpentry", name: "Carpentry & Furniture Assembly", subCount: 4, price: "₹249", providers: 34, status: "Active", desc: "Door lock fittings, modular kitchen hinge adjustments & custom wardrobe fixes" },
-      { key: "salon", name: "Salon, Spa & Personal Grooming", subCount: 8, price: "₹399", providers: 60, status: "Active", desc: "Hygienic facial, mani-pedi, haircut & aroma wellness massage at home" },
+    // 10 Exact Categories & Sub-Services matching servicesData.ts
+    const SERVICE_CATEGORIES = [
+      {
+        id: "ro",
+        name: "RO Service",
+        icon: "fa-water",
+        tagline: "Pure water, every drop",
+        startingPrice: "₹99",
+        providers: 48,
+        status: "Active",
+        subServices: [
+          { name: "Filter Change", price: "₹399", duration: "45 min", desc: "Replace all RO filters for cleaner, safer water.", popular: true },
+          { name: "RO Cleaning", price: "₹299", duration: "60 min", desc: "Deep clean of membrane and housing to remove scale." },
+          { name: "New RO System", price: "₹5,999", duration: "2 hrs", desc: "Supply and install a new branded RO purifier of your choice." },
+          { name: "Monthly Maintenance", price: "₹199", duration: "30 min", desc: "Scheduled monthly check-up and filter inspection." },
+          { name: "RO Shifting", price: "₹349", duration: "90 min", desc: "Safe dismantling, transport and reinstallation at new address." },
+          { name: "Leakage Repair", price: "₹249", duration: "45 min", desc: "Diagnose and fix pipe or fitting leaks in your RO unit." },
+          { name: "TDS Checking", price: "₹99", duration: "20 min", desc: "On-site TDS meter reading with a written report." },
+        ]
+      },
+      {
+        id: "pet",
+        name: "Pet Care",
+        icon: "fa-paw",
+        tagline: "Love them the right way",
+        startingPrice: "₹149",
+        providers: 32,
+        status: "Active",
+        subServices: [
+          { name: "Pet Bathing", price: "₹399", duration: "45 min", desc: "Gentle shampoo bath, blow-dry and ear cleaning for your pet." },
+          { name: "Pet Grooming", price: "₹599", duration: "90 min", desc: "Full groom: cut, trim, nail clipping and de-shedding.", popular: true },
+          { name: "Pet Walking", price: "₹149", duration: "30 min", desc: "Trained walker takes your dog for a safe, GPS-tracked walk." },
+          { name: "Pet Training", price: "₹999", duration: "60 min", desc: "One-on-one obedience and behaviour training session." },
+          { name: "Pet Hostel", price: "₹499/day", duration: "24 hrs", desc: "Safe, caring overnight stay with regular updates." },
+          { name: "Pet Hospital", price: "₹199", duration: "Varies", desc: "Connect with a verified vet for consultation at home or clinic." },
+          { name: "Pet Emergency", price: "₹0 (call)", duration: "ASAP", desc: "24/7 emergency vet helpline and ambulance coordination." },
+        ]
+      },
+      {
+        id: "pest",
+        name: "Pest Control",
+        icon: "fa-bug",
+        tagline: "Your home, pest-free",
+        startingPrice: "₹299",
+        providers: 38,
+        status: "Active",
+        subServices: [
+          { name: "Anti-Cockroach", price: "₹499", duration: "60 min", desc: "Gel bait treatment in kitchen, bathrooms and drains.", popular: true },
+          { name: "Anti-Lizard", price: "₹399", duration: "45 min", desc: "Repellent spray on walls, corners and behind furniture." },
+          { name: "Anti-Termite", price: "₹1,499", duration: "3 hrs", desc: "Soil and wood treatment with 1-year warranty." },
+          { name: "Anti-Rodent", price: "₹699", duration: "90 min", desc: "Trap placement and seal entry points to block rodents." },
+          { name: "Anti-Bed Bug", price: "₹999", duration: "2 hrs", desc: "Heat + chemical treatment for mattresses and furniture." },
+          { name: "Snake Rescue", price: "₹299", duration: "30 min", desc: "Trained rescuers safely capture and relocate snakes." },
+        ]
+      },
+      {
+        id: "hort",
+        name: "Horticulture",
+        icon: "fa-leaf",
+        tagline: "Grow green, live better",
+        startingPrice: "₹199",
+        providers: 24,
+        status: "Active",
+        subServices: [
+          { name: "Terrace Garden Setup", price: "₹2,999", duration: "Half day", desc: "End-to-end terrace garden design and installation.", popular: true },
+          { name: "Plantation", price: "₹999", duration: "2 hrs", desc: "Seasonal plants sourced and planted in your terrace pots." },
+          { name: "Organic Manures", price: "₹499", duration: "1 hr", desc: "Supply and apply organic compost for healthy soil." },
+          { name: "Planting Advice", price: "₹199", duration: "45 min", desc: "Expert consultation on what to grow, how and when." },
+          { name: "Medicinal Plants Setup", price: "₹1,499", duration: "3 hrs", desc: "Curated medicinal plant garden with care guide." },
+          { name: "Plantation Shed Setup", price: "₹3,999", duration: "1 day", desc: "Install a shaded enclosure to protect your plants." },
+          { name: "Vegetable Pot Setup", price: "₹799", duration: "2 hrs", desc: "Start growing your own vegetables in pots today." },
+        ]
+      },
+      {
+        id: "delivery",
+        name: "Delivery",
+        icon: "fa-bicycle",
+        tagline: "Everything at your doorstep",
+        startingPrice: "₹19",
+        providers: 65,
+        status: "Active",
+        subServices: [
+          { name: "Medicine Delivery", price: "₹29", duration: "2 hrs", desc: "Prescription and OTC medicines from nearby pharmacies.", popular: true },
+          { name: "Vegetable Delivery", price: "₹19", duration: "3 hrs", desc: "Fresh farm vegetables delivered same day." },
+          { name: "Food Delivery", price: "₹39", duration: "45 min", desc: "Hot meals from restaurants near you." },
+          { name: "Grocery Delivery", price: "₹29", duration: "2 hrs", desc: "Full grocery run from your preferred supermarket." },
+          { name: "Equipment Delivery", price: "₹99", duration: "Same day", desc: "Medical or household equipment rental and delivery." },
+          { name: "Diet Food Delivery", price: "₹149", duration: "Daily", desc: "Customised diet meal plans delivered fresh daily." },
+        ]
+      },
+      {
+        id: "appliance",
+        name: "Appliance Cleaning",
+        icon: "fa-bolt",
+        tagline: "Clean machines, clean home",
+        startingPrice: "₹149",
+        providers: 55,
+        status: "Active",
+        subServices: [
+          { name: "Bed Cleaning", price: "₹699", duration: "90 min", desc: "Vacuuming, steam and disinfection of mattress and frame." },
+          { name: "Sofa Cleaning", price: "₹799", duration: "2 hrs", desc: "Dry foam cleaning and stain removal for all sofa types.", popular: true },
+          { name: "Curtain Cleaning", price: "₹499", duration: "1 hr", desc: "On-site steam clean or pick-up-and-drop service." },
+          { name: "Wardrobe Cleaning", price: "₹399", duration: "60 min", desc: "Interior wipe-down and organisation of wardrobe shelves." },
+          { name: "Dining Table Cleaning", price: "₹299", duration: "30 min", desc: "Deep clean and polish for all table materials." },
+          { name: "Refrigerator Cleaning", price: "₹499", duration: "60 min", desc: "Full interior and exterior fridge cleaning and deodorising." },
+          { name: "AC Cleaning", price: "₹599", duration: "90 min", desc: "Filter wash, coil clean and gas check for peak efficiency." },
+          { name: "Fan Cleaning", price: "₹149", duration: "20 min", desc: "Blade and motor housing clean for all fan types." },
+          { name: "TV Cleaning", price: "₹199", duration: "20 min", desc: "Screen and cabinet clean using anti-static cloths." },
+          { name: "Gas Stove Cleaning", price: "₹299", duration: "45 min", desc: "Burner decarbonisation and full cooktop deep clean." },
+          { name: "Chimney Cleaning", price: "₹699", duration: "90 min", desc: "Filter and duct clean to restore full suction power." },
+        ]
+      },
+      {
+        id: "homecare",
+        name: "Home Care",
+        icon: "fa-house",
+        tagline: "Caring hands at home",
+        startingPrice: "₹399/day",
+        providers: 42,
+        status: "Active",
+        subServices: [
+          { name: "Day Care", price: "₹599/day", duration: "8 hrs", desc: "Trained caregiver for children or elderly during day hours." },
+          { name: "Maid Service", price: "₹399/day", duration: "4 hrs", desc: "Verified house help for cooking, cleaning and daily chores.", popular: true },
+          { name: "Nurse Care", price: "₹1,199/day", duration: "12 hrs", desc: "Qualified nurse for post-operative or chronic care at home." },
+          { name: "Elderly Care", price: "₹799/day", duration: "8 hrs", desc: "Compassionate full-day care for senior family members." },
+        ]
+      },
+      {
+        id: "insurance",
+        name: "Insurance",
+        icon: "fa-shield-halved",
+        tagline: "Protect what matters most",
+        startingPrice: "Instant Quote",
+        providers: 18,
+        status: "Active",
+        subServices: [
+          { name: "Health Insurance", price: "Get quote", duration: "15 min", desc: "Compare and buy the best health cover for your family.", popular: true },
+          { name: "Life Insurance", price: "Get quote", duration: "15 min", desc: "Secure your family's future with a term or endowment plan." },
+          { name: "Vehicle Insurance", price: "Get quote", duration: "10 min", desc: "Renew or buy car and two-wheeler insurance instantly." },
+          { name: "General Insurance", price: "Get quote", duration: "10 min", desc: "Home, travel and other general insurance plans." },
+        ]
+      },
+      {
+        id: "emergency",
+        name: "Emergency",
+        icon: "fa-circle-exclamation",
+        tagline: "Help in seconds, not minutes",
+        startingPrice: "₹0 (Helpline)",
+        providers: 40,
+        status: "Active",
+        subServices: [
+          { name: "Ambulance Service", price: "₹0 (call)", duration: "ASAP", desc: "24/7 ambulance dispatch with trained paramedics.", popular: true },
+          { name: "Roadside Assistance", price: "₹499", duration: "30 min", desc: "Towing, flat tyre, battery jump and fuel delivery." },
+          { name: "Women Helpline", price: "₹0 (call)", duration: "ASAP", desc: "Immediate safety response and counselling for women." },
+          { name: "Child Protection", price: "₹0 (call)", duration: "ASAP", desc: "24/7 support for child safety and protection issues." },
+          { name: "Precaution Service", price: "₹199", duration: "1 hr", desc: "Home safety audit and precautionary measures installation." },
+        ]
+      },
+      {
+        id: "cleaning",
+        name: "Home Cleaning",
+        icon: "fa-wand-magic-sparkles",
+        tagline: "Spotless and fresh living spaces",
+        startingPrice: "₹499",
+        providers: 72,
+        status: "Active",
+        subServices: [
+          { name: "Full Home Deep Cleaning", price: "₹1,499", duration: "4 hrs", desc: "Intense deep scrubbing of all rooms, kitchen, and washrooms.", popular: true },
+          { name: "Kitchen Deep Clean", price: "₹599", duration: "2 hrs", desc: "Oil, grease, and exhaust grime removal for modular kitchens." },
+          { name: "Bathroom Sanitization", price: "₹499", duration: "90 min", desc: "Tile descaling, toilet disinfection, and mirror polishing." },
+          { name: "Floor Scrub & Buffing", price: "₹699", duration: "2 hrs", desc: "Machine floor scrubbing and marble polishing." },
+        ]
+      }
+    ];
+
+    // Live Bookings Data matching app bookings
+    let sampleBookings = [
+      { id: "BK-8041", customer: "Priya Sharma", category: "RO Service", subService: "Filter Change", date: "Today, 03:30 PM", address: "Flat 402, Green Glen Layout, Bellandur", partner: "Suresh Patil", otp: "4819", price: "₹399", status: "In-Progress", badge: "badge-blue" },
+      { id: "BK-8040", customer: "Arjun Mehta", category: "Home Cleaning", subService: "Full Home Deep Cleaning", date: "Today, 05:00 PM", address: "Villa 12, Palm Meadows, Whitefield", partner: "Rajesh Kumar", otp: "9321", price: "₹1,499", status: "Scheduled", badge: "badge-yellow" },
+      { id: "BK-8039", customer: "Neha Kumar", category: "Appliance Cleaning", subService: "Sofa Cleaning (3-Seater)", date: "Today, 01:00 PM", address: "Apt 201, Sobha Iris, Outer Ring Rd", partner: "Manoj Singh", otp: "6714", price: "₹799", status: "Completed", badge: "badge-green" },
+      { id: "BK-8038", customer: "Vikram Reddy", category: "Pest Control", subService: "Anti-Cockroach Gel Treatment", date: "Yesterday", address: "14/A, 100ft Rd, Indiranagar", partner: "Deepak Verma", otp: "1102", price: "₹499", status: "Completed", badge: "badge-green" },
+      { id: "BK-8037", customer: "Ananya Iyer", category: "Pet Care", subService: "Pet Grooming & Haircut", date: "Yesterday", address: "HSR Layout Sector 2, Bengaluru", partner: "Kavita Devi", otp: "3890", price: "₹599", status: "Completed", badge: "badge-green" },
     ];
 
     // Demo safety logs
     const sampleSafetyLogs = [
-      { key: "sos", id: "#EMG-902", type: "Safety Drill Test", user: "Priya S. • Whitefield, Bengaluru", partner: "System Auto-Check", time: "17 Sep 2026, 11:20 AM", status: "Passed", badge: "badge-green" },
-      { key: "sos", id: "#EMG-899", type: "High Heart Rate Alert", user: "Vikram R. • Indiranagar, Bengaluru", partner: "AI Companion Notification", time: "16 Sep 2026, 09:45 PM", status: "Resolved", badge: "badge-green" },
-      { key: "visits", id: "#VISIT-108", type: "Live Geo-Fence Visit", user: "Arjun M. • Koramangala", partner: "Rajesh Kumar (Verified)", time: "17 Sep 2026, 02:15 PM", status: "On-Site (Active)", badge: "badge-blue" },
-      { key: "visits", id: "#VISIT-107", type: "Safe Service Completion", user: "Anita S. • HSR Layout", partner: "Manoj Singh (Verified)", time: "17 Sep 2026, 01:00 PM", status: "Safe & Closed", badge: "badge-green" },
+      { key: "sos", id: "#EMG-902", type: "Safety Drill Test", user: "Priya S. • Whitefield, Bengaluru", partner: "System Auto-Check", time: "18 Sep 2026, 11:20 AM", status: "Passed", badge: "badge-green" },
+      { key: "sos", id: "#EMG-899", type: "High Heart Rate Alert", user: "Vikram R. • Indiranagar, Bengaluru", partner: "AI Companion Notification", time: "17 Sep 2026, 09:45 PM", status: "Resolved", badge: "badge-green" },
+      { key: "visits", id: "#VISIT-108", type: "Live Geo-Fence Visit", user: "Arjun M. • Koramangala", partner: "Rajesh Kumar (Verified)", time: "18 Sep 2026, 02:15 PM", status: "On-Site (Active)", badge: "badge-blue" },
+      { key: "visits", id: "#VISIT-107", type: "Safe Service Completion", user: "Anita S. • HSR Layout", partner: "Manoj Singh (Verified)", time: "18 Sep 2026, 01:00 PM", status: "Safe & Closed", badge: "badge-green" },
       { key: "background", id: "#BG-540", type: "Aadhaar & Police Verification", user: "Suresh Patil (RO Tech)", partner: "Third-Party Trust Registry", time: "15 Sep 2026", status: "100% Verified", badge: "badge-purple" },
       { key: "background", id: "#BG-539", type: "Identity & Skills Accreditation", user: "Kavita Devi (Health Care)", partner: "Urban Helpers Academy", time: "14 Sep 2026", status: "Certified", badge: "badge-purple" },
     ];
@@ -2055,23 +2276,140 @@
       `).join("");
     }
 
+    // ── Render Services Category & Bookings View ──
     function renderServices(subKey = "all") {
-      const tb = document.getElementById("servicesTableBody");
-      if (!tb) return;
-      const list = subKey === "all" ? sampleServices : sampleServices.filter(s => s.key === subKey);
-      tb.innerHTML = list.map(s => `
-        <tr>
-          <td>
-            <strong>${s.name}</strong>
-            <div style="font-size:11px; color:#64748b; margin-top:2px;">${s.desc}</div>
-          </td>
-          <td><strong>${s.subCount} Sub-Packages</strong></td>
-          <td><strong style="color:#0f8a5f;">Starts at ${s.price}</strong></td>
-          <td><strong>${s.providers} Active Technicians</strong></td>
-          <td><span class="status-badge badge-green">${s.status}</span></td>
-          <td><button class="btn-sm-action" onclick="alert('Configuring ${s.name}')">Edit Pricing</button></td>
-        </tr>
-      `).join("");
+      const container = document.getElementById("servicesDynamicContainer");
+      if (!container) return;
+
+      if (subKey === "bookings") {
+        // Render Active Bookings Table
+        container.innerHTML = `
+          <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:12px 16px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-size:13px; color:#166534; font-weight:700;">
+              <i class="fa-solid fa-bell"></i> Live On-Demand Service Bookings (Real-Time Customer Requests)
+            </div>
+            <span class="status-badge badge-green">142 TOTAL TODAY</span>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Booking #</th>
+                  <th>Customer & Address</th>
+                  <th>Service & Package</th>
+                  <th>Scheduled Slot</th>
+                  <th>Assigned Tech</th>
+                  <th>OTP</th>
+                  <th>Price</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${sampleBookings.map(b => `
+                  <tr>
+                    <td><strong>${b.id}</strong></td>
+                    <td>
+                      <strong>${b.customer}</strong>
+                      <div style="font-size:11px; color:#64748b;">${b.address}</div>
+                    </td>
+                    <td>
+                      <span class="status-badge badge-blue">${b.category}</span>
+                      <div style="font-size:12px; font-weight:700; margin-top:3px;">${b.subService}</div>
+                    </td>
+                    <td style="font-size:12px; font-weight:600; color:#334155;">${b.date}</td>
+                    <td><strong>${b.partner}</strong></td>
+                    <td><code style="background:#f1f5f9; padding:3px 6px; border-radius:6px; font-weight:800; color:#0f8a5f;">${b.otp}</code></td>
+                    <td><strong style="color:#0f172a;">${b.price}</strong></td>
+                    <td><span class="status-badge ${b.badge}">${b.status}</span></td>
+                    <td><button class="btn-sm-action" onclick="alert('Managing Booking ${b.id}')">Manage</button></td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        `;
+        return;
+      }
+
+      if (subKey === "all") {
+        // Render 10 Categories Summary Table
+        container.innerHTML = `
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Tagline & Focus</th>
+                  <th>Sub-Services Count</th>
+                  <th>Starting Price</th>
+                  <th>Active Providers</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${SERVICE_CATEGORIES.map(c => `
+                  <tr>
+                    <td>
+                      <div style="display:flex; align-items:center; gap:10px;">
+                        <div style="width:32px; height:32px; border-radius:8px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:#0f8a5f;">
+                          <i class="fa-solid ${c.icon}"></i>
+                        </div>
+                        <strong>${c.name}</strong>
+                      </div>
+                    </td>
+                    <td style="color:#64748b;">${c.tagline}</td>
+                    <td><strong>${c.subServices.length} Packages</strong></td>
+                    <td><strong style="color:#0f8a5f;">${c.startingPrice}</strong></td>
+                    <td><strong>${c.providers} Active</strong></td>
+                    <td><span class="status-badge badge-green">${c.status}</span></td>
+                    <td>
+                      <button class="btn-sm-action" onclick="showSubSection('services', '${c.id}', null)">View Sub-Services</button>
+                    </td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        `;
+        return;
+      }
+
+      // Specific Category selected: Render dedicated Sub-Services Grid with Pricing & Durations
+      const cat = SERVICE_CATEGORIES.find(c => c.id === subKey);
+      if (!cat) return;
+
+      container.innerHTML = `
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:16px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-size:16px; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:8px;">
+              <i class="fa-solid ${cat.icon}" style="color:#0f8a5f;"></i> ${cat.name} — ${cat.subServices.length} Configured Sub-Services
+            </div>
+            <div style="font-size:12px; color:#64748b; margin-top:2px;">${cat.tagline} • ${cat.providers} Active verified technicians online</div>
+          </div>
+          <button class="btn-sm-action" onclick="alert('Adding new package to ${cat.name}')"><i class="fa-solid fa-plus"></i> Add Sub-Service to ${cat.name}</button>
+        </div>
+
+        <div class="subservices-grid">
+          ${cat.subServices.map(sub => `
+            <div class="subservice-card">
+              <div>
+                <div class="subservice-top">
+                  <div class="subservice-title">${sub.name}</div>
+                  <div class="subservice-price">${sub.price}</div>
+                </div>
+                ${sub.popular ? '<span class="status-badge badge-yellow" style="margin-bottom:8px; font-size:9.5px;">MOST POPULAR</span>' : ''}
+                <div class="subservice-desc">${sub.desc}</div>
+              </div>
+              <div class="subservice-meta">
+                <span><i class="fa-regular fa-clock"></i> ${sub.duration}</span>
+                <button class="btn-sm-action" onclick="alert('Editing pricing for ${sub.name}')">Edit</button>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      `;
     }
 
     function renderSafety(subKey = "all") {
@@ -2239,7 +2577,7 @@
         orders: "Orders & Fulfillment Hub",
         users: "User & Customer Management",
         vendors: "Service Partners & Verification",
-        services: "Services & Catalog Pricing",
+        services: "Services & Bookings Catalog",
         safety: "Safety Center & Emergency SOS",
         health: "Health Telemetry & BLE Watch Sync",
         ai: "AI Health Companion Engine",
