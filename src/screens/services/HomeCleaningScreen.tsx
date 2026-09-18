@@ -72,21 +72,6 @@ export default function HomeCleaningScreen({ navigation }: Props) {
           </LinearGradient>
         </Animated.View>
 
-        {/* ── Service Highlights ───────────────────────────── */}
-        <Text style={s.sectionTitle}>Service Highlights</Text>
-        <View style={s.highlightsGrid}>
-          {HIGHLIGHTS.map((h, i) => (
-            <Animated.View key={h.label} entering={FadeInDown.delay(i * 60).duration(350).springify()}>
-              <LinearGradient colors={h.gradient} style={s.highlightCard}>
-                <View style={s.highlightIconWrap}>
-                  <Ionicons name={h.icon} size={28} color="white" />
-                </View>
-                <Text style={s.highlightLabel}>{h.label}</Text>
-              </LinearGradient>
-            </Animated.View>
-          ))}
-        </View>
-
         {/* ── What We Clean ────────────────────────────────── */}
         <Text style={s.sectionTitle}>What We Clean</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.roomsScroll}>
