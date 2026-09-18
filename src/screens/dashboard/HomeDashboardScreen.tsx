@@ -57,6 +57,7 @@ import {
   getTodayWaterIntake,
   getLatestBodyComp,
 } from "@/services/healthLogService";
+import { getHealthDocuments } from "@/services/healthRecordsService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "HomeDashboard">;
 
@@ -219,17 +220,19 @@ export default function HomeDashboardScreen({ navigation }: Props) {
   const [liveSteps, setLiveSteps] = useState(0);
   const [liveStepGoal, setLiveStepGoal] = useState(6000);
   const [weeklySteps, setWeeklySteps] = useState<WeeklyStepData | null>(null);
+  const [healthDocCount, setHealthDocCount] = useState(0);
 
   const todayKey = getTodayKey();
 
   const loadHealthData = async () => {
     try {
-      const [nutri, meds, acts, water, body] = await Promise.all([
+      const [nutri, meds, acts, water, body, docs] = await Promise.all([
         getDailyNutritionTotals(),
         getMedications(),
         getDailyActivityTotals(),
         getTodayWaterIntake(),
         getLatestBodyComp(),
+        getHealthDocuments(),
       ]);
       setNutritionTotals({
         totalCalories: nutri.totalCalories,
@@ -246,6 +249,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
       if (body) {
         setBodyWeight(body.weight);
       }
+      setHealthDocCount(docs.length);
     } catch (e) {
       console.log("Error loading health logs for home:", e);
     }
@@ -1486,7 +1490,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                         </View>
                         <Text style={[s.halfTitle, { color: "#b0b8d0" }]}>Health records</Text>
                         <Text style={[s.halfSub, { color: "#7a849a" }]}>
-                          Access or upload your health records.
+                          {healthDocCount > 0 ? `${healthDocCount} file${healthDocCount > 1 ? "s" : ""} saved • View` : "Access or upload your health records."}
                         </Text>
                       </View>
                     </PressCard>
