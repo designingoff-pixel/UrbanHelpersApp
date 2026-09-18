@@ -101,8 +101,9 @@ function buildSteps(status: BookingStatus, etaText: string) {
   }));
 }
 
-export default function LiveTrackingScreen({ navigation }: Props) {
+export default function LiveTrackingScreen({ navigation, route }: Props) {
   const { user } = useAuth();
+  const routeBookingId = route.params?.bookingId;
   const mapRef = useRef<MapView>(null);
 
   const pulse = useSharedValue(1);
@@ -121,30 +122,60 @@ export default function LiveTrackingScreen({ navigation }: Props) {
   const [distanceText,   setDistanceText]   = useState("");
   const [loading,        setLoading]        = useState(true);
 
-  // Subscribe to active booking in Firestore
+  // Subscribe to exact booking if bookingId provided, or latest active booking
   useEffect(() => {
     if (!user) return;
+
+    if (routeBookingId) {
+      const unsub = onSnapshot(doc(db, "bookings", routeBookingId), (snap) => {
+        if (!snap.exists()) {
+          setBooking(null);
+          setLoading(false);
+          return;
+        }
+        const data = { id: snap.id, ...snap.data() } as LiveBooking;
+        setBooking(data);
+        setLoading(false);
+        if (data.customerLat && data.customerLng) {
+          setCustomerCoords({ lat: data.customerLat, lng: data.customerLng });
+        }
+      });
+      return () => unsub();
+    }
+
+    // Fallback: Listen to customer's bookings and prioritize ACTIVE ones (newest first)
     const q = query(
       collection(db, "bookings"),
       where("customerId", "==", user.uid),
-      where("status", "in", ["requested", "assigned", "accepted", "en_route", "arrived", "in_progress", "completed"]),
-      limit(1),
+      limit(10)
     );
-    return onSnapshot(q, (snap) => {
+    const unsub = onSnapshot(q, (snap) => {
       if (snap.empty) {
         setBooking(null);
         setLoading(false);
         return;
       }
-      const d = snap.docs[0];
-      const data = { id: d.id, ...d.data() } as LiveBooking;
-      setBooking(data);
+      const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as LiveBooking & { createdAt?: any }));
+      // Sort: Active bookings first (requested, assigned, accepted, en_route, arrived, in_progress), then by timestamp
+      docs.sort((a, b) => {
+        const aActive = a.status !== "completed" && a.status !== "cancelled";
+        const bActive = b.status !== "completed" && b.status !== "cancelled";
+        if (aActive && !bActive) return -1;
+        if (!aActive && bActive) return 1;
+        const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+        const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+        return bTime - aTime;
+      });
+
+      const chosen = docs[0];
+      setBooking(chosen);
       setLoading(false);
-      if (data.customerLat && data.customerLng) {
-        setCustomerCoords({ lat: data.customerLat, lng: data.customerLng });
+      if (chosen.customerLat && chosen.customerLng) {
+        setCustomerCoords({ lat: chosen.customerLat, lng: chosen.customerLng });
       }
     });
-  }, [user]);
+    return () => unsub();
+  }, [user, routeBookingId]);
 
   // Subscribe to Vendor's live location ONLY when vendor is assigned / accepted
   const isVendorAccepted = !!booking?.vendorId && booking.status !== "requested";
@@ -203,10 +234,13 @@ export default function LiveTrackingScreen({ navigation }: Props) {
   }, [vendorCoords, customerCoords, isVendorAccepted]);
 
   // ── Service Completed & Reliable Review Trigger ───────────────────────────
+  const prevStatusRef = useRef<string | null>(null);
   const reviewTriggeredRef = useRef(false);
+
   useEffect(() => {
     if (!booking) return;
 
+    // Trigger review ONLY if status is completed AND not yet rated
     if (booking.status === "completed" && !booking.rated && !reviewTriggeredRef.current) {
       const checkAndTriggerReview = async () => {
         const reviewedKey = `booking_reviewed_${booking.id}`;
@@ -214,32 +248,40 @@ export default function LiveTrackingScreen({ navigation }: Props) {
         if (!alreadyReviewed) {
           reviewTriggeredRef.current = true;
           await AsyncStorage.setItem(reviewedKey, "true");
-          sendServiceCompletedNotification(booking.serviceCategory ?? "Service").catch(console.warn);
+          sendServiceCompletedNotification(booking.serviceCategory ?? "Service", booking.id).catch(console.warn);
           setTimeout(() => {
             navigation.navigate("RatingFeedback", {
               bookingId: booking.id,
               serviceCategory: booking.serviceCategory,
               vendorName: booking.vendorName,
             } as any);
-          }, 1200);
+          }, 1500);
         }
       };
       checkAndTriggerReview();
     }
+    prevStatusRef.current = booking.status;
   }, [booking?.status, booking?.id, booking?.rated]);
 
   const status = booking?.status ?? "requested";
   const steps = buildSteps(status as BookingStatus, etaText);
-  const initials = (booking?.vendorName ?? "VC").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+  const initials = (booking?.vendorName ?? "UH").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
 
-  // Map Region: Focuses purely on customer location before vendor accepts
+  // Map Region: Centers on customer location
   const mapRegion = customerCoords
     ? { latitude: customerCoords.lat, longitude: customerCoords.lng, latitudeDelta: 0.012, longitudeDelta: 0.012 }
-    : { latitude: 13.0827, longitude: 80.2707, latitudeDelta: 0.05, longitudeDelta: 0.05 };
+    : { latitude: 11.0168, longitude: 76.9558, latitudeDelta: 0.05, longitudeDelta: 0.05 };
 
   // ── Call Vendor Action ───────────────────────────────────────────────────
   const handleCall = () => {
-    const phone = booking?.vendorPhone || "+919876543210";
+    if (!isVendorAccepted || !booking?.vendorPhone) {
+      Alert.alert(
+        "Assigning Professional",
+        "A verified professional is currently being assigned to your booking. You will be able to call them as soon as they accept."
+      );
+      return;
+    }
+    const phone = booking.vendorPhone;
     Alert.alert(
       "Call Professional",
       `Call ${booking?.vendorName || "the assigned professional"} at ${phone}?`,
@@ -252,7 +294,14 @@ export default function LiveTrackingScreen({ navigation }: Props) {
 
   // ── Message Vendor Action ────────────────────────────────────────────────
   const handleMessage = () => {
-    const phone = booking?.vendorPhone || "+919876543210";
+    if (!isVendorAccepted || !booking?.vendorPhone) {
+      Alert.alert(
+        "Assigning Professional",
+        "A verified professional is currently being assigned to your booking. You will be able to message them as soon as they accept."
+      );
+      return;
+    }
+    const phone = booking.vendorPhone;
     Alert.alert(
       "Message Professional",
       "How would you like to message the assigned professional?",

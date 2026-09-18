@@ -90,19 +90,17 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   const [showMapModal, setShowMapModal] = useState(false);
   const [isNewAddressMap, setIsNewAddressMap] = useState(false);
   const [mapRegion, setMapRegion] = useState<Region>({
-    latitude: 13.0827,
-    longitude: 80.2707,
+    latitude: 11.0168,
+    longitude: 76.9558,
     latitudeDelta: 0.01,
     longitudeDelta: 0.01,
   });
-  const [pinCoords, setPinCoords] = useState<{ lat: number; lng: number } | null>({
-    lat: 13.0827,
-    lng: 80.2707,
-  });
+  const [pinCoords, setPinCoords] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Load saved addresses on mount
+  // Load saved addresses on mount or auto-detect current GPS location
   useEffect(() => {
-    getSavedAddresses().then((addrs) => {
+    (async () => {
+      const addrs = await getSavedAddresses();
       setSavedAddresses(addrs);
       if (addrs.length > 0) {
         const initial = addrs.find((a) => a.isDefault) || addrs[0];
@@ -110,10 +108,56 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         setAddressText(initial.addressText);
         setFlatNo(initial.flatNo || "");
         setLandmark(initial.landmark || "");
-        setCustomerLat(initial.lat);
-        setCustomerLng(initial.lng);
+        if (initial.lat && initial.lng) {
+          setCustomerLat(initial.lat);
+          setCustomerLng(initial.lng);
+          setMapRegion({
+            latitude: initial.lat,
+            longitude: initial.lng,
+            latitudeDelta: 0.005,
+            longitudeDelta: 0.005,
+          });
+          setPinCoords({ lat: initial.lat, lng: initial.lng });
+          return;
+        }
       }
-    });
+
+      // Auto-detect current device GPS location if no saved address or coords
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === "granted") {
+          const loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          if (loc) {
+            const lat = loc.coords.latitude;
+            const lng = loc.coords.longitude;
+            setCustomerLat(lat);
+            setCustomerLng(lng);
+            setMapRegion({
+              latitude: lat,
+              longitude: lng,
+              latitudeDelta: 0.005,
+              longitudeDelta: 0.005,
+            });
+            setPinCoords({ lat, lng });
+
+            // Reverse geocode to get current address text
+            const geocode = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+            if (geocode && geocode.length > 0) {
+              const place = geocode[0];
+              const parts = [place.name, place.street, place.subregion, place.city, place.region].filter(Boolean);
+              const detectedAddr = parts.join(", ");
+              if (detectedAddr) {
+                setAddressText(detectedAddr);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("GPS Auto-detect error:", e);
+      }
+    })();
   }, []);
 
   // ── Address Autocomplete Debounce ─────────────────────────────────────────

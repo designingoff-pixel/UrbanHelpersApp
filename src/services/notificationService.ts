@@ -118,6 +118,15 @@ export async function cancelNotificationById(id: string): Promise<void> {
   await Notifications.cancelScheduledNotificationAsync(id);
 }
 
+export function getNextTriggerDate(hour: number, minute: number): Date {
+  const target = new Date();
+  target.setHours(hour, minute, 0, 0);
+  if (target.getTime() <= Date.now()) {
+    target.setDate(target.getDate() + 1);
+  }
+  return target;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 💊 MEDICINE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -143,7 +152,10 @@ export async function scheduleMedicineReminder(
       sound: true,
       data: { screen: "MedicationCenter", medicine: medicineName },
     },
-    trigger: { ...dailyTrigger(hour, minute), channelId: "medicine" },
+    trigger: {
+      date: getNextTriggerDate(hour, minute),
+      channelId: "medicine",
+    },
   });
 }
 
@@ -175,6 +187,7 @@ export async function scheduleHydrationReminders(): Promise<void> {
     }
   } catch {}
 
+  const next2Hours = new Date(Date.now() + 2 * 60 * 60 * 1000);
   await Notifications.scheduleNotificationAsync({
     identifier,
     content: {
@@ -184,8 +197,7 @@ export async function scheduleHydrationReminders(): Promise<void> {
       data: { screen: "HydrationDashboard", channel: "wellness_default" },
     },
     trigger: {
-      seconds: 7200, // every 2 hours
-      repeats: true,
+      date: next2Hours,
     } as any,
   });
 }
@@ -258,7 +270,10 @@ export async function scheduleWorkoutReminder(
       sound: true,
       data: { screen: screenMap[workoutType] ?? "FitnessDashboard" },
     },
-    trigger: { ...dailyTrigger(hour, minute), channelId: "fitness" },
+    trigger: {
+      date: getNextTriggerDate(hour, minute),
+      channelId: "fitness",
+    },
   });
 }
 
@@ -417,7 +432,10 @@ export async function scheduleSleepReminder(hour = 22, minute = 30): Promise<voi
       sound: true,
       data: { screen: "SleepDashboard", channel: "wellness_default" },
     },
-    trigger: { ...dailyTrigger(hour, minute), channelId: "fitness" },
+    trigger: {
+      date: getNextTriggerDate(hour, minute),
+      channelId: "fitness",
+    },
   });
 }
 
@@ -434,7 +452,10 @@ export async function scheduleMorningHealthReminder(): Promise<void> {
       sound: true,
       data: { screen: "HealthDashboard", channel: "wellness_default" },
     },
-    trigger: { ...dailyTrigger(7, 0), channelId: "fitness" },
+    trigger: {
+      date: getNextTriggerDate(7, 0),
+      channelId: "fitness",
+    },
   });
 }
 
@@ -451,7 +472,10 @@ export async function scheduleCalorieReminder(): Promise<void> {
       sound: true,
       data: { screen: "CaloriesDashboard", channel: "wellness_default" },
     },
-    trigger: { ...dailyTrigger(18, 0), channelId: "fitness" },
+    trigger: {
+      date: getNextTriggerDate(18, 0),
+      channelId: "fitness",
+    },
   });
 }
 
@@ -635,7 +659,6 @@ export async function sendHealthScoreNotification(score: number): Promise<void> 
 
 export async function setupDefaultNotifications(): Promise<void> {
   try {
-    // ── Date Guard: only run setup once per calendar day ────────────────────
     const today = new Date().toISOString().split("T")[0]; // e.g. "2026-09-18"
     const lastSetupDate = await AsyncStorage.getItem(NOTIF_SETUP_KEY);
     if (lastSetupDate === today) {
@@ -643,35 +666,17 @@ export async function setupDefaultNotifications(): Promise<void> {
       return;
     }
 
-    // ── Guard & Cleanup: cancel ALL existing wellness schedules ────────────
-    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-    for (const n of scheduled) {
-      const title = n.content?.title || "";
-      const id = n.identifier || "";
-      const channel = (n.content?.data as any)?.channel;
-      if (
-        id.startsWith("wellness_") ||
-        channel === "wellness_default" ||
-        title.includes("Hydration") ||
-        title.includes("Good Morning") ||
-        title.includes("Calorie") ||
-        title.includes("Sleep") ||
-        title.includes("Weekly")
-      ) {
-        await Notifications.cancelScheduledNotificationAsync(n.identifier);
-      }
-    }
+    // Cancel all stale alarms to prevent past alarm floods
+    await Notifications.cancelAllScheduledNotificationsAsync();
 
-    // Schedule exact, deduplicated single instances
+    // Schedule exact, deduplicated single instances with strict future triggers
     await scheduleMorningHealthReminder();   // 7:00 AM
-    await scheduleHydrationReminders();      // every 2 hrs 9am–9pm
+    await scheduleHydrationReminders();      // +2 hrs
     await scheduleCalorieReminder();         // 6:00 PM
     await scheduleSleepReminder(22, 30);     // 10:30 PM
-    await scheduleWeeklySummary();           // Sunday 8 AM
 
-    // Save today's date so this won't run again until tomorrow
     await AsyncStorage.setItem(NOTIF_SETUP_KEY, today);
-    console.log("[Notifications] Wellness reminders configured (1 instance each, deduplicated).");
+    console.log("[Notifications] Wellness reminders configured (1 instance each, future dates only).");
   } catch (e) {
     console.log("[Notifications] Setup error:", e);
   }
