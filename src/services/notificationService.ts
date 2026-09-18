@@ -167,23 +167,27 @@ export async function scheduleMissedMedicineAlert(
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function scheduleHydrationReminders(): Promise<void> {
-  const hours = [9, 11, 13, 15, 17, 19, 21];
-  for (const hour of hours) {
-    const identifier = `wellness_hydration_${hour}`;
-    try {
-      await Notifications.cancelScheduledNotificationAsync(identifier);
-    } catch {}
-    await Notifications.scheduleNotificationAsync({
-      identifier,
-      content: {
-        title: "💧 Hydration Reminder",
-        body: "Drink a glass of water to stay healthy and energised!",
-        sound: true,
-        data: { screen: "HydrationDashboard", channel: "wellness_default" },
-      },
-      trigger: { ...dailyTrigger(hour, 0), channelId: "fitness" },
-    });
-  }
+  const identifier = "wellness_hydration_periodic";
+  try {
+    await Notifications.cancelScheduledNotificationAsync(identifier);
+    for (const h of [9, 11, 13, 15, 17, 19, 21]) {
+      await Notifications.cancelScheduledNotificationAsync(`wellness_hydration_${h}`);
+    }
+  } catch {}
+
+  await Notifications.scheduleNotificationAsync({
+    identifier,
+    content: {
+      title: "💧 Hydration Reminder",
+      body: "Drink a glass of water to stay healthy and energised!",
+      sound: true,
+      data: { screen: "HydrationDashboard", channel: "wellness_default" },
+    },
+    trigger: {
+      seconds: 7200, // every 2 hours
+      repeats: true,
+    } as any,
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
