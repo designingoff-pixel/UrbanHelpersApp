@@ -40,7 +40,6 @@ import Animated, {
 
 import { RootStackParamList } from "@/navigation/types";
 import SamsungBottomNav from "@/components/SamsungBottomNav";
-import SmartwatchPromptModal from "@/components/SmartwatchPromptModal";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import {
@@ -190,16 +189,6 @@ export default function HomeDashboardScreen({ navigation }: Props) {
   const [bodyWeight, setBodyWeight] = useState<number | null>(null);
 
   // Edit home & 3-dot menu state
-  // Smartwatch required prompt state for Category 1 features
-  const [watchPromptVisible, setWatchPromptVisible] = useState(false);
-  const [watchFeatureName, setWatchFeatureName] = useState("Smartwatch Sensors");
-  const [watchTargetRoute, setWatchTargetRoute] = useState<keyof RootStackParamList>("VitalsScreen");
-
-  const openWatchFeature = (name: string, route: keyof RootStackParamList) => {
-    setWatchFeatureName(name);
-    setWatchTargetRoute(route);
-    setWatchPromptVisible(true);
-  };
   const [hiddenCards, setHiddenCards] = useState<string[]>([]);
   const [editMode, setEditMode] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
@@ -1195,7 +1184,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             {/* 3. Energy Score — full-width blue card */}
             {isVisible("energy") && (
               <View style={s.cardWrapper}>
-                <PressCard index={1} onPress={() => openWatchFeature("Energy Score & Body Telemetry", "WellnessDashboard")}>
+                <PressCard index={1} onPress={() => navigation.navigate("WellnessDashboard" as any)}>
                   <LinearGradient
                     colors={["#2a3fc7", "#3f51e8", "#4d6af5"]}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -1389,7 +1378,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             {/* 6. Heart Health — full-width purple card */}
             {isVisible("heart_health") && (
               <View style={s.cardWrapper}>
-                <PressCard index={5} onPress={() => openWatchFeature("Heart Health & ECG Score", "HeartHealth")}>
+                <PressCard index={5} onPress={() => navigation.navigate("HeartHealth")}>
                   <LinearGradient
                     colors={["#9c27b0", "#c22f93", "#d63384"]}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -1503,7 +1492,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               <View style={[s.row2, { marginTop: 10 }]}>
                 {isVisible("hearing") && (
                   <View style={[s.halfOuter, { position: "relative" }]}>
-                    <PressCard index={9} onPress={() => openWatchFeature("Ambient Noise & Sound Exposure", "HealthPrecautions")} style={{ flex: 1 }}>
+                    <PressCard index={9} onPress={() => navigation.navigate("HealthPrecautions" as any)} style={{ flex: 1 }}>
                       <LinearGradient
                         colors={["#795548", "#8d6e63", "#a1887f"]}
                         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -1560,7 +1549,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             {/* 10. Vitals — full-width cyan/teal card */}
             {isVisible("vitals") && (
               <View style={s.cardWrapper}>
-                <PressCard index={11} onPress={() => openWatchFeature("Real-Time Vitals Sensor Scan", "VitalsScreen")}>
+                <PressCard index={11} onPress={() => navigation.navigate("VitalsScreen")}>
                   <LinearGradient
                     colors={["#006064", "#00838f", "#00acc1"]}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -1613,7 +1602,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 )}
                 {isVisible("stress") && (
                   <View style={[s.halfOuter, { position: "relative" }]}>
-                    <PressCard index={14} onPress={() => openWatchFeature("Continuous Stress & HRV Tracker", "Stress")} style={{ flex: 1 }}>
+                    <PressCard index={14} onPress={() => navigation.navigate("Stress")} style={{ flex: 1 }}>
                       <LinearGradient
                         colors={["#9e6400", "#b87600", "#cb8600"]}
                         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -1841,7 +1830,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </Animated.View>
 
             {/* 1. Heart health — purple gradient */}
-            <PressCard index={0} onPress={() => openWatchFeature("Heart Health & ECG Score", "HeartHealth")}>
+            <PressCard index={0} onPress={() => navigation.navigate("HeartHealth")}>
               <LinearGradient
                 colors={["#8b48ad", "#a259c4", "#b368d4"]}
                 start={{ x: 0, y: 0 }}
@@ -1867,7 +1856,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             {/* 2. Vitals (Radar Scan) — bright cyan/teal */}
-            <PressCard index={1} onPress={() => openWatchFeature("Real-Time Vitals Sensor Scan", "VitalsScreen")}>
+            <PressCard index={1} onPress={() => navigation.navigate("VitalsScreen")}>
               <LinearGradient
                 colors={["#0086b5", "#009ecd", "#14b0df"]}
                 start={{ x: 0, y: 0 }}
@@ -1895,7 +1884,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             {/* 3. Heart rate — coral/crimson gradient */}
-            <PressCard index={2} onPress={() => openWatchFeature("Continuous Heart Rate Tracking", "HeartRate")}>
+            <PressCard index={2} onPress={() => navigation.navigate("HeartRate")}>
               <LinearGradient
                 colors={["#d13b55", "#e64a66", "#f45b77"]}
                 start={{ x: 0, y: 0 }}
@@ -1919,7 +1908,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             {/* 4. Blood oxygen — royal blue gradient */}
-            <PressCard index={3} onPress={() => openWatchFeature("Blood Oxygen (SpO2) Monitor", "BloodOxygen")}>
+            <PressCard index={3} onPress={() => navigation.navigate("BloodOxygen")}>
               <LinearGradient
                 colors={["#195fc7", "#236fe0", "#3884f2"]}
                 start={{ x: 0, y: 0 }}
@@ -1941,7 +1930,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             {/* 5. Blood pressure — rose/crimson gradient */}
-            <PressCard index={4} onPress={() => openWatchFeature("Blood Pressure & Vascular Vitals", "VitalsScreen")}>
+            <PressCard index={4} onPress={() => navigation.navigate("VitalsScreen")}>
               <LinearGradient
                 colors={["#c44662", "#d85572", "#e86582"]}
                 start={{ x: 0, y: 0 }}
@@ -1964,7 +1953,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             {/* 6. Vascular load — magenta gradient */}
-            <PressCard index={5} onPress={() => openWatchFeature("Vascular Load & Arterial Stiffness", "VascularLoad")}>
+            <PressCard index={5} onPress={() => navigation.navigate("VascularLoad")}>
               <LinearGradient
                 colors={["#b0356c", "#c4427c", "#d5508c"]}
                 start={{ x: 0, y: 0 }}
@@ -2049,7 +2038,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             {/* Stress card — ochre/yellow-amber */}
-            <PressCard index={1} onPress={() => openWatchFeature("Continuous Stress & HRV Tracker", "Stress")}>
+            <PressCard index={1} onPress={() => navigation.navigate("Stress")}>
               <LinearGradient
                 colors={["#9e6400", "#b87600", "#cb8600"]}
                 start={{ x: 0, y: 0 }}
@@ -2194,7 +2183,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             {/* 5. Antioxidant index — purple card */}
-            <PressCard index={4} onPress={() => openWatchFeature("Antioxidant Level Index", "AntioxidantIndex")}>
+            <PressCard index={4} onPress={() => navigation.navigate("AntioxidantIndex")}>
               <LinearGradient
                 colors={["#6f4ec2", "#815fd2", "#906ee0"]}
                 start={{ x: 0, y: 0 }}
@@ -2222,7 +2211,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </PressCard>
 
             {/* 6. AGEs index — golden/mustard card */}
-            <PressCard index={5} onPress={() => openWatchFeature("Advanced Glycation (AGEs) Index", "AgesIndex")}>
+            <PressCard index={5} onPress={() => navigation.navigate("AgesIndex")}>
               <LinearGradient
                 colors={["#ad801c", "#c29124", "#d3a12d"]}
                 start={{ x: 0, y: 0 }}
@@ -2262,15 +2251,6 @@ export default function HomeDashboardScreen({ navigation }: Props) {
       {/* ── Samsung-style Bottom Navigation (Persistent with Home Active) ── */}
       <SamsungBottomNav activeRoute="HomeDashboard" />
 
-      {/* ── Smartwatch Required Prompt Modal for Category 1 features ── */}
-      <SmartwatchPromptModal
-        visible={watchPromptVisible}
-        onClose={() => setWatchPromptVisible(false)}
-        featureName={watchFeatureName}
-        onConnectSuccess={() => navigation.navigate(watchTargetRoute as any)}
-        onBuyWatch={() => navigation.navigate("Shop" as any)}
-        onContinueDemo={() => navigation.navigate(watchTargetRoute as any)}
-      />
       </View>
     </CardEditContext.Provider>
   );

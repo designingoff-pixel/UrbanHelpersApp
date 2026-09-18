@@ -45,6 +45,8 @@ export default function App() {
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
   const notifListener = useRef<Notifications.Subscription>();
   const responseListener = useRef<Notifications.Subscription>();
+  // Track recently seen notification IDs to block duplicates (identifier -> timestamp)
+  const recentNotifIds = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     // ── 1. Register for push notifications + set up defaults ──────────────
@@ -59,6 +61,20 @@ export default function App() {
     // ── 2. Listener: notification arrives while app is OPEN ───────────────
     notifListener.current = Notifications.addNotificationReceivedListener(
       async (notification) => {
+        // ── Strong deduplication: block same identifier within 30 seconds ──
+        const nid = notification.request.identifier;
+        const now = Date.now();
+        const lastSeen = recentNotifIds.current.get(nid);
+        if (lastSeen && now - lastSeen < 30000) {
+          console.log("[App] Duplicate notification blocked:", nid);
+          return;
+        }
+        recentNotifIds.current.set(nid, now);
+        // Clean up old entries > 60s
+        recentNotifIds.current.forEach((ts, key) => {
+          if (now - ts > 60000) recentNotifIds.current.delete(key);
+        });
+
         const title = notification.request.content.title || "Notification";
         const body = notification.request.content.body || "";
 

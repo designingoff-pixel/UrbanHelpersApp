@@ -31,7 +31,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
-import SmartwatchPromptModal from "@/components/SmartwatchPromptModal";
 import WatchStatusBanner from "@/components/WatchStatusBanner";
 
 
@@ -42,7 +41,6 @@ const { width: SW } = Dimensions.get("window");
 export default function HeartRateScreen({ navigation }: Props) {
   const [activeTab, setActiveTab] = useState<"Hours" | "Days" | "Weeks" | "Months">("Hours");
   const [showTrackModal, setShowTrackModal] = useState(false);
-  const [watchPromptVisible, setWatchPromptVisible] = useState(false);
   const [selectedPeriodOffset, setSelectedPeriodOffset] = useState(0);
 
   // Anatomical Heart SVG Graphic
@@ -521,13 +519,6 @@ export default function HeartRateScreen({ navigation }: Props) {
         </View>
       </Modal>
 
-      {/* Smartwatch Prompt Modal */}
-      <SmartwatchPromptModal
-        visible={watchPromptVisible}
-        onClose={() => setWatchPromptVisible(false)}
-        featureName="Continuous Optical Heart Rate"
-        onBuyWatch={() => navigation.navigate("Shop")}
-      />
     </View>
   );
 }

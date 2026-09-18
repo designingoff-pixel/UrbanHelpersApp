@@ -66,14 +66,14 @@ export default function CycleTrackingScreen({ navigation }: Props) {
     lastPeriodStart: new Date(Date.now() - 13 * 86400000).toISOString().split("T")[0],
   });
 
+  const today = new Date();
   const [allLogs, setAllLogs] = useState<Record<string, CycleDayLog>>({});
-  const [selectedDayNumber, setSelectedDayNumber] = useState(18); // default to Sep 18 (Today)
-  const [selectedMonth, setSelectedMonth] = useState({ month: 8, year: 2026 }); // September 2026
+  const [selectedDayNumber, setSelectedDayNumber] = useState(today.getDate());
+  const [selectedMonth, setSelectedMonth] = useState({ month: today.getMonth(), year: today.getFullYear() });
 
   // Active Logging Dialog
   const [activeLogModal, setActiveLogModal] = useState<string | null>(null);
 
-  // Today's log items for currently selected calendar day
   const [currentLog, setCurrentLog] = useState<{
     flow: string;
     symptoms: string[];
@@ -85,12 +85,12 @@ export default function CycleTrackingScreen({ navigation }: Props) {
     notes: string;
   }>({
     flow: "none",
-    symptoms: ["Bloating"],
-    mood: "energetic",
-    energy: "High",
-    mucus: "Watery",
-    temperature: "98.4 °F",
-    medication: "None",
+    symptoms: [],
+    mood: "",
+    energy: "",
+    mucus: "",
+    temperature: "",
+    medication: "",
     notes: "",
   });
 
@@ -99,27 +99,32 @@ export default function CycleTrackingScreen({ navigation }: Props) {
   const [tempCycleLength, setTempCycleLength] = useState("28");
   const [tempPeriodLength, setTempPeriodLength] = useState("5");
 
-  // Load persistent configuration and logs
   const loadData = useCallback(async () => {
     const [cfg, logs] = await Promise.all([getCycleConfig(), getCycleLogs()]);
-    setConfig(cfg);
-    setTempCycleLength(String(cfg.cycleLength));
-    setTempPeriodLength(String(cfg.periodLength));
+    if (cfg) {
+      setConfig(cfg);
+      setTempCycleLength(String(cfg.cycleLength));
+      setTempPeriodLength(String(cfg.periodLength));
+    }
     setAllLogs(logs);
 
-    const dateKey = `2026-09-${String(selectedDayNumber).padStart(2, "0")}`;
+    const t = new Date();
+    const dateKey = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
     if (logs[dateKey]) {
       const entry = logs[dateKey];
       setCurrentLog({
         flow: entry.flow || "none",
         symptoms: entry.symptoms || [],
-        mood: entry.mood || "energetic",
-        energy: "Normal",
-        mucus: "Clear",
-        temperature: "98.4 °F",
-        medication: "None",
+        mood: entry.mood || "",
+        energy: "",
+        mucus: "",
+        temperature: "",
+        medication: "",
         notes: entry.notes || "",
       });
+    } else {
+      // No data yet — start fresh
+      setCurrentLog({ flow: "none", symptoms: [], mood: "", energy: "", mucus: "", temperature: "", medication: "", notes: "" });
     }
   }, [selectedDayNumber]);
 
@@ -129,19 +134,21 @@ export default function CycleTrackingScreen({ navigation }: Props) {
 
   const handleSelectCalendarDay = (day: number) => {
     setSelectedDayNumber(day);
-    const dateKey = `2026-09-${String(day).padStart(2, "0")}`;
+    const dateKey = `${selectedMonth.year}-${String(selectedMonth.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     if (allLogs[dateKey]) {
       const entry = allLogs[dateKey];
       setCurrentLog({
         flow: entry.flow || "none",
         symptoms: entry.symptoms || [],
-        mood: entry.mood || "calm",
-        energy: "Normal",
-        mucus: "Clear",
-        temperature: "98.4 °F",
-        medication: "None",
+        mood: entry.mood || "",
+        energy: "",
+        mucus: "",
+        temperature: "",
+        medication: "",
         notes: entry.notes || "",
       });
+    } else {
+      setCurrentLog({ flow: "none", symptoms: [], mood: "", energy: "", mucus: "", temperature: "", medication: "", notes: "" });
     }
   };
 
@@ -149,7 +156,7 @@ export default function CycleTrackingScreen({ navigation }: Props) {
     const nextLog = { ...currentLog, ...updatedFields };
     setCurrentLog(nextLog);
 
-    const dateKey = `2026-09-${String(selectedDayNumber).padStart(2, "0")}`;
+    const dateKey = `${selectedMonth.year}-${String(selectedMonth.month + 1).padStart(2, "0")}-${String(selectedDayNumber).padStart(2, "0")}`;
     const logItem: CycleDayLog = {
       date: dateKey,
       cycleDay: ((selectedDayNumber - 4 + 28) % 28) + 1,
@@ -183,26 +190,27 @@ export default function CycleTrackingScreen({ navigation }: Props) {
     Alert.alert("Settings Updated", "Your cycle length and period parameters have been updated.");
   };
 
-  // Calendar Day classification
-  // Month: September 2026 starts on Tuesday (day index 1 for Mon=0)
-  // Days 1..5: Logged Period
-  // Days 8, 9: Predicted Period
-  // Days 14, 15, 16, 21..26: Fertile Window
-  // Day 18: Today
-  const isPeriodLogged = (d: number) => [1, 2, 3, 4, 5].includes(d);
-  const isPeriodPredicted = (d: number) => [8, 9].includes(d);
-  const isFertile = (d: number) => [14, 15, 16, 21, 22, 23, 24, 25, 26].includes(d);
-  const isToday = (d: number) => d === 18;
+  // Calendar Day classification based on stored period dates
+  const isToday = (d: number) => d === today.getDate() && selectedMonth.month === today.getMonth() && selectedMonth.year === today.getFullYear();
+  const isPeriodLogged = (d: number) => {
+    const dateKey = `${selectedMonth.year}-${String(selectedMonth.month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    return !!(allLogs[dateKey] && allLogs[dateKey].flow && allLogs[dateKey].flow !== "none");
+  };
+  const isPeriodPredicted = (_d: number) => false; // computed from config when set
+  const isFertile = (_d: number) => false; // computed from config when set
 
-  // Render 35 cells for September 2026 (Aug 31 is offset 0)
+  // Generate calendar days dynamically for the selected month
+  const daysInMonth = new Date(selectedMonth.year, selectedMonth.month + 1, 0).getDate();
+  const firstWeekday = new Date(selectedMonth.year, selectedMonth.month, 1).getDay(); // 0=Sun
+  const prevMonthDays = new Date(selectedMonth.year, selectedMonth.month, 0).getDate();
+  const leadingBlanks = (firstWeekday + 6) % 7; // convert Sun-start to Mon-start
   const calendarDays: Array<{ dayNum: number | string; inMonth: boolean }> = [
-    { dayNum: 31, inMonth: false },
-    ...Array.from({ length: 30 }, (_, i) => ({ dayNum: i + 1, inMonth: true })),
-    { dayNum: 1, inMonth: false },
-    { dayNum: 2, inMonth: false },
-    { dayNum: 3, inMonth: false },
-    { dayNum: 4, inMonth: false },
+    ...Array.from({ length: leadingBlanks }, (_, i) => ({ dayNum: prevMonthDays - leadingBlanks + 1 + i, inMonth: false })),
+    ...Array.from({ length: daysInMonth }, (_, i) => ({ dayNum: i + 1, inMonth: true })),
   ];
+  // pad to full rows of 7
+  const trailingCount = (7 - (calendarDays.length % 7)) % 7;
+  for (let i = 1; i <= trailingCount; i++) calendarDays.push({ dayNum: i, inMonth: false });
 
   return (
     <View style={s.root}>
@@ -266,8 +274,12 @@ export default function CycleTrackingScreen({ navigation }: Props) {
 
               <View style={s.dialTextCenter}>
                 <Text style={s.dialSmallLabel}>Cycle Day</Text>
-                <Text style={s.dialDayNumber}>14</Text>
-                <Text style={s.dialOfTotal}>of 28</Text>
+                <Text style={s.dialDayNumber}>
+                  {config.lastPeriodStart
+                    ? Math.max(1, Math.ceil((today.getTime() - new Date(config.lastPeriodStart).getTime()) / 86400000) + 1)
+                    : "--"}
+                </Text>
+                <Text style={s.dialOfTotal}>of {config.cycleLength}</Text>
               </View>
             </View>
 
@@ -278,7 +290,9 @@ export default function CycleTrackingScreen({ navigation }: Props) {
                 <Ionicons name="calendar-outline" size={17} color="#a855f7" style={{ marginRight: 8 }} />
                 <View>
                   <Text style={s.heroInfoLabel}>Today</Text>
-                  <Text style={s.heroInfoVal}>Fri, Sep 18</Text>
+                  <Text style={s.heroInfoVal}>
+                    {today.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                  </Text>
                 </View>
               </View>
 
@@ -289,7 +303,18 @@ export default function CycleTrackingScreen({ navigation }: Props) {
                 <Ionicons name="water" size={17} color="#f43f5e" style={{ marginRight: 8 }} />
                 <View>
                   <Text style={s.heroInfoLabel}>Next Period</Text>
-                  <Text style={s.heroInfoVal}>Oct 2  •  in 14 days</Text>
+                  <Text style={s.heroInfoVal}>
+                    {config.lastPeriodStart
+                      ? (() => {
+                          const start = new Date(config.lastPeriodStart);
+                          const cycleDay = Math.ceil((today.getTime() - start.getTime()) / 86400000) + 1;
+                          const daysLeft = config.cycleLength - cycleDay + 1;
+                          const next = new Date(today);
+                          next.setDate(today.getDate() + daysLeft);
+                          return next.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "  •  in " + daysLeft + " days";
+                        })()
+                      : "Set up cycle first"}
+                  </Text>
                 </View>
               </View>
 
@@ -298,7 +323,19 @@ export default function CycleTrackingScreen({ navigation }: Props) {
                 <MaterialCommunityIcons name="sprout" size={17} color="#2dd4bf" style={{ marginRight: 8 }} />
                 <View>
                   <Text style={s.heroInfoLabel}>Fertile Window</Text>
-                  <Text style={s.heroInfoVal}>Sep 21 – Sep 26</Text>
+                  <Text style={s.heroInfoVal}>
+                    {config.lastPeriodStart
+                      ? (() => {
+                          const start = new Date(config.lastPeriodStart);
+                          const ovDay = config.cycleLength - config.lutealLength;
+                          const fertStart = new Date(start);
+                          fertStart.setDate(start.getDate() + ovDay - 5);
+                          const fertEnd = new Date(start);
+                          fertEnd.setDate(start.getDate() + ovDay + 1);
+                          return fertStart.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " – " + fertEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                        })()
+                      : "Set up cycle first"}
+                  </Text>
                 </View>
               </View>
 
@@ -317,12 +354,20 @@ export default function CycleTrackingScreen({ navigation }: Props) {
         {/* ── 2. Full Month Calendar Card ─────────────────────── */}
         <View style={s.calendarCard}>
           <View style={s.calHeaderRow}>
-            <Text style={s.calMonthTitle}>September 2026</Text>
+            <Text style={s.calMonthTitle}>
+            {new Date(selectedMonth.year, selectedMonth.month).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+          </Text>
             <View style={s.calNavArrows}>
-              <Pressable style={s.calArrowBtn} onPress={() => Alert.alert("Calendar", "Showing September 2026")}>
+              <Pressable style={s.calArrowBtn} onPress={() => {
+                const d = new Date(selectedMonth.year, selectedMonth.month - 1, 1);
+                setSelectedMonth({ month: d.getMonth(), year: d.getFullYear() });
+              }}>
                 <Ionicons name="chevron-back" size={18} color="rgba(255,255,255,0.7)" />
               </Pressable>
-              <Pressable style={s.calArrowBtn} onPress={() => Alert.alert("Calendar", "Showing September 2026")}>
+              <Pressable style={s.calArrowBtn} onPress={() => {
+                const d = new Date(selectedMonth.year, selectedMonth.month + 1, 1);
+                setSelectedMonth({ month: d.getMonth(), year: d.getFullYear() });
+              }}>
                 <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
               </Pressable>
             </View>

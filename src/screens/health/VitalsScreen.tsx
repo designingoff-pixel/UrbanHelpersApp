@@ -15,7 +15,6 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
 import SamsungBottomNav from "@/components/SamsungBottomNav";
-import SmartwatchPromptModal from "@/components/SmartwatchPromptModal";
 import WatchStatusBanner from "@/components/WatchStatusBanner";
 
 type Props = NativeStackScreenProps<RootStackParamList, "VitalsScreen">;
@@ -37,7 +36,6 @@ interface VitalGauge {
 
 export default function VitalsScreen({ navigation }: Props) {
   const [selectedDayOffset, setSelectedDayOffset] = useState(0);
-  const [watchPromptVisible, setWatchPromptVisible] = useState(false);
 
   const dayLabel =
     selectedDayOffset === 0
@@ -303,13 +301,6 @@ export default function VitalsScreen({ navigation }: Props) {
       {/* Samsung Bottom Bar */}
       <SamsungBottomNav activeTab="Home" />
 
-      {/* Smartwatch Prompt Modal */}
-      <SmartwatchPromptModal
-        visible={watchPromptVisible}
-        onClose={() => setWatchPromptVisible(false)}
-        featureName="Real-Time Vitals & Bio-Sensors"
-        onBuyWatch={() => navigation.navigate("Shop")}
-      />
     </View>
   );
 }

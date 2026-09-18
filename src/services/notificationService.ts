@@ -631,7 +631,15 @@ export async function sendHealthScoreNotification(score: number): Promise<void> 
 
 export async function setupDefaultNotifications(): Promise<void> {
   try {
-    // ── Guard & Cleanup: cancel ALL legacy duplicate schedules first ────────
+    // ── Date Guard: only run setup once per calendar day ────────────────────
+    const today = new Date().toISOString().split("T")[0]; // e.g. "2026-09-18"
+    const lastSetupDate = await AsyncStorage.getItem(NOTIF_SETUP_KEY);
+    if (lastSetupDate === today) {
+      console.log("[Notifications] Setup already run today — skipping.");
+      return;
+    }
+
+    // ── Guard & Cleanup: cancel ALL existing wellness schedules ────────────
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
     for (const n of scheduled) {
       const title = n.content?.title || "";
@@ -657,6 +665,8 @@ export async function setupDefaultNotifications(): Promise<void> {
     await scheduleSleepReminder(22, 30);     // 10:30 PM
     await scheduleWeeklySummary();           // Sunday 8 AM
 
+    // Save today's date so this won't run again until tomorrow
+    await AsyncStorage.setItem(NOTIF_SETUP_KEY, today);
     console.log("[Notifications] Wellness reminders configured (1 instance each, deduplicated).");
   } catch (e) {
     console.log("[Notifications] Setup error:", e);
