@@ -131,7 +131,12 @@ export async function scheduleMedicineReminder(
 ): Promise<string> {
   const bodyLine = `Time to take ${medicineName} ${dosage}`;
   const fullBody = instructions ? `${bodyLine}\n${instructions}` : bodyLine;
+  const identifier = `medicine_${medicineName.toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+  try {
+    await Notifications.cancelScheduledNotificationAsync(identifier);
+  } catch {}
   return Notifications.scheduleNotificationAsync({
+    identifier,
     content: {
       title: "🔔 Medication Reminder",
       body: fullBody,
@@ -164,12 +169,17 @@ export async function scheduleMissedMedicineAlert(
 export async function scheduleHydrationReminders(): Promise<void> {
   const hours = [9, 11, 13, 15, 17, 19, 21];
   for (const hour of hours) {
+    const identifier = `wellness_hydration_${hour}`;
+    try {
+      await Notifications.cancelScheduledNotificationAsync(identifier);
+    } catch {}
     await Notifications.scheduleNotificationAsync({
+      identifier,
       content: {
         title: "💧 Hydration Reminder",
         body: "Drink a glass of water to stay healthy and energised!",
         sound: true,
-        data: { screen: "HydrationDashboard" },
+        data: { screen: "HydrationDashboard", channel: "wellness_default" },
       },
       trigger: { ...dailyTrigger(hour, 0), channelId: "fitness" },
     });
@@ -271,98 +281,80 @@ export interface InAppNotice {
   isRead?: boolean;
 }
 
-const IN_APP_NOTICES_KEY = "@urban_in_app_notices_v2";
-
-export const DEFAULT_NOTICES: InAppNotice[] = [
-  {
-    id: "notif-1",
-    tag: "[Important Notice]",
-    title: "Notice for the Consumer Electronics Health Suite & Galaxy Watch Sync",
-    date: "14 Jul",
-    body: "Enhanced Samsung Health and BLE Smartwatch telemetry is now enabled for all Urban Helpers members.",
-  },
-  {
-    id: "notif-2",
-    tag: "[Reminder]",
-    title: "Samsung Health Meditation & Mindfulness Session Reminder",
-    date: "6 Jul",
-    body: "Take a 5-minute breathing break to lower cardiovascular stress index.",
-  },
-  {
-    id: "notif-3",
-    tag: "[Notice]",
-    title: "Samsung Health Discover Services & AI Coach Vitals Integration",
-    date: "6 Jul",
-    body: "AI Coach can now analyze your sleep cycles, vascular load, and antioxidant scores automatically.",
-  },
-  {
-    id: "notif-4",
-    tag: "[Notice]",
-    title: "App Update for an Improved Health & Urban Shop Experience",
-    date: "2 Jul",
-    body: "Version 2.4.0 brings real-time Firestore sync and point redemption in the store.",
-  },
-  {
-    id: "notif-5",
-    tag: "[Important Notice]",
-    title: "Changes to Samsung Health Terms & Daily Care Reminder Policies",
-    date: "15 Jun",
-    body: "Updated medication reminders and emergency assistance response protocols.",
-  },
-  {
-    id: "notif-6",
-    tag: "[Notice]",
-    title: "Changes to country determination for Galaxy Watch & Sensor Bridge",
-    date: "18 May",
-    body: "Galaxy Watch sensors and blood oxygen readings are calibrated for regional accuracy.",
-  },
-  {
-    id: "notif-7",
-    tag: "[Notice]",
-    title: "Changes to Samsung Health Sleep Coaching & Recovery Features",
-    date: "10 Apr",
-    body: "Sleep coaching scores are now factored into your daily reward coin targets.",
-  },
-  {
-    id: "notif-8",
-    tag: "[Notice]",
-    title: "Changes to Samsung Health Vitals & Heart Rate Suite Calibration",
-    date: "10 Feb",
-    body: "Heart rate and ECG algorithms updated for higher clinical fidelity.",
-  },
-  {
-    id: "notif-9",
-    tag: "Notice:",
-    title: "Together feature not provided for guest users without account",
-    date: "6 Feb",
-    body: "Please create an account to invite family members to your Together health ring.",
-  },
-];
+const IN_APP_NOTICES_KEY = "@urban_in_app_notices_v3";
 
 export async function getInAppNotices(): Promise<InAppNotice[]> {
   try {
     const data = await AsyncStorage.getItem(IN_APP_NOTICES_KEY);
     if (data) {
       const parsed = JSON.parse(data);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) {
+        // Strip out any legacy mock items
+        const real = parsed.filter(
+          (n: InAppNotice) =>
+            !n.id?.startsWith("notif-") &&
+            !n.title?.includes("Samsung Health") &&
+            !n.title?.includes("Galaxy Watch") &&
+            !n.title?.includes("Together feature")
+        );
+        if (real.length !== parsed.length) {
+          await AsyncStorage.setItem(IN_APP_NOTICES_KEY, JSON.stringify(real));
+        }
+        return real;
+      }
     }
   } catch (e) {
     console.warn("Error reading in-app notices", e);
   }
-  return DEFAULT_NOTICES;
+  return [];
 }
 
 export async function addInAppNotice(notice: Omit<InAppNotice, "id">): Promise<void> {
   try {
     const list = await getInAppNotices();
+    // Drop rapid duplicates within same 10 seconds
+    if (list.length > 0 && list[0].title === notice.title && list[0].body === notice.body) {
+      return;
+    }
     const newNotice: InAppNotice = {
       ...notice,
-      id: `notice-${Date.now()}`,
+      id: `notice-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      isRead: notice.isRead ?? false,
     };
-    const updated = [newNotice, ...list];
+    const updated = [newNotice, ...list].slice(0, 60);
     await AsyncStorage.setItem(IN_APP_NOTICES_KEY, JSON.stringify(updated));
   } catch (e) {
     console.warn("Error saving notice", e);
+  }
+}
+
+export async function markNoticeAsRead(id: string): Promise<void> {
+  try {
+    const list = await getInAppNotices();
+    const updated = list.map((item) =>
+      item.id === id ? { ...item, isRead: true } : item
+    );
+    await AsyncStorage.setItem(IN_APP_NOTICES_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.warn("Error marking notice as read", e);
+  }
+}
+
+export async function markAllNoticesAsRead(): Promise<void> {
+  try {
+    const list = await getInAppNotices();
+    const updated = list.map((item) => ({ ...item, isRead: true }));
+    await AsyncStorage.setItem(IN_APP_NOTICES_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.warn("Error marking all notices as read", e);
+  }
+}
+
+export async function clearAllNotices(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(IN_APP_NOTICES_KEY);
+  } catch (e) {
+    console.warn("Error clearing notices", e);
   }
 }
 
@@ -392,48 +384,68 @@ export async function sendVendorArrivedOTPNotification(otp: string, bookingId = 
 }
 
 export async function scheduleWeeklySummary(): Promise<void> {
+  const identifier = "wellness_weekly_summary";
+  try {
+    await Notifications.cancelScheduledNotificationAsync(identifier);
+  } catch {}
   await Notifications.scheduleNotificationAsync({
+    identifier,
     content: {
       title: "📊 Weekly Fitness Summary",
       body: "Check your weekly health & fitness highlights inside the app.",
       sound: true,
-      data: { screen: "FitnessDashboard" },
+      data: { screen: "FitnessDashboard", channel: "wellness_default" },
     },
     trigger: { ...weeklyTrigger(1, 8, 0), channelId: "fitness" }, // Sunday 8 AM
   });
 }
 
 export async function scheduleSleepReminder(hour = 22, minute = 30): Promise<void> {
+  const identifier = "wellness_sleep_reminder";
+  try {
+    await Notifications.cancelScheduledNotificationAsync(identifier);
+  } catch {}
   await Notifications.scheduleNotificationAsync({
+    identifier,
     content: {
       title: "😴 Sleep Reminder",
       body: "Bedtime in 30 minutes. Wind down for a great night's sleep.",
       sound: true,
-      data: { screen: "SleepDashboard" },
+      data: { screen: "SleepDashboard", channel: "wellness_default" },
     },
     trigger: { ...dailyTrigger(hour, minute), channelId: "fitness" },
   });
 }
 
 export async function scheduleMorningHealthReminder(): Promise<void> {
+  const identifier = "wellness_morning_health";
+  try {
+    await Notifications.cancelScheduledNotificationAsync(identifier);
+  } catch {}
   await Notifications.scheduleNotificationAsync({
+    identifier,
     content: {
       title: "🌅 Good Morning!",
       body: "Log your weight and check today's health score.",
       sound: true,
-      data: { screen: "HealthDashboard" },
+      data: { screen: "HealthDashboard", channel: "wellness_default" },
     },
     trigger: { ...dailyTrigger(7, 0), channelId: "fitness" },
   });
 }
 
 export async function scheduleCalorieReminder(): Promise<void> {
+  const identifier = "wellness_calorie_check";
+  try {
+    await Notifications.cancelScheduledNotificationAsync(identifier);
+  } catch {}
   await Notifications.scheduleNotificationAsync({
+    identifier,
     content: {
       title: "🔥 Daily Calorie Check",
       body: "How are your calories looking today? Tap to check your progress.",
       sound: true,
-      data: { screen: "CaloriesDashboard" },
+      data: { screen: "CaloriesDashboard", channel: "wellness_default" },
     },
     trigger: { ...dailyTrigger(18, 0), channelId: "fitness" },
   });
@@ -619,35 +631,33 @@ export async function sendHealthScoreNotification(score: number): Promise<void> 
 
 export async function setupDefaultNotifications(): Promise<void> {
   try {
-    // ── Guard: only schedule once per calendar day ──────────────
-    // Prevents duplicate notifications from stacking on every app launch.
-    const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
-    const lastSetup = await AsyncStorage.getItem(NOTIF_SETUP_KEY);
-    if (lastSetup === today) {
-      console.log("[Notifications] Already set up today — skipping.");
-      return;
-    }
-
-    // Cancel only the wellness defaults (NOT medicine reminders)
-    // by cancelling all then immediately re-scheduling medicines is
-    // handled per-medicine elsewhere; here we safely cancel repeating
-    // wellness triggers before adding fresh ones.
+    // ── Guard & Cleanup: cancel ALL legacy duplicate schedules first ────────
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
     for (const n of scheduled) {
-      const data = n.content.data as any;
-      if (data?.channel === "wellness_default") {
+      const title = n.content?.title || "";
+      const id = n.identifier || "";
+      const channel = (n.content?.data as any)?.channel;
+      if (
+        id.startsWith("wellness_") ||
+        channel === "wellness_default" ||
+        title.includes("Hydration") ||
+        title.includes("Good Morning") ||
+        title.includes("Calorie") ||
+        title.includes("Sleep") ||
+        title.includes("Weekly")
+      ) {
         await Notifications.cancelScheduledNotificationAsync(n.identifier);
       }
     }
 
+    // Schedule exact, deduplicated single instances
     await scheduleMorningHealthReminder();   // 7:00 AM
     await scheduleHydrationReminders();      // every 2 hrs 9am–9pm
     await scheduleCalorieReminder();         // 6:00 PM
     await scheduleSleepReminder(22, 30);     // 10:30 PM
     await scheduleWeeklySummary();           // Sunday 8 AM
 
-    await AsyncStorage.setItem(NOTIF_SETUP_KEY, today);
-    console.log("[Notifications] Default notifications set up for", today);
+    console.log("[Notifications] Wellness reminders configured (1 instance each, deduplicated).");
   } catch (e) {
     console.log("[Notifications] Setup error:", e);
   }

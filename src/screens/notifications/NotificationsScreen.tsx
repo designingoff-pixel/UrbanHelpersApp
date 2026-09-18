@@ -15,13 +15,15 @@ import { RootStackParamList } from "@/navigation/types";
 import {
   InAppNotice,
   getInAppNotices,
-  DEFAULT_NOTICES,
+  markNoticeAsRead,
+  markAllNoticesAsRead,
+  clearAllNotices,
 } from "@/services/notificationService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Notifications">;
 
 export default function NotificationsScreen({ navigation }: Props) {
-  const [notices, setNotices] = useState<InAppNotice[]>(DEFAULT_NOTICES);
+  const [notices, setNotices] = useState<InAppNotice[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedNotice, setSelectedNotice] = useState<InAppNotice | null>(null);
 
@@ -44,6 +46,23 @@ export default function NotificationsScreen({ navigation }: Props) {
     setRefreshing(false);
   };
 
+  const handlePressNotice = async (item: InAppNotice) => {
+    setSelectedNotice(item);
+    if (!item.isRead) {
+      await markNoticeAsRead(item.id);
+      setNotices((prev) =>
+        prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n))
+      );
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    await markAllNoticesAsRead();
+    setNotices((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  };
+
+  const unreadCount = notices.filter((n) => !n.isRead).length;
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
@@ -58,8 +77,27 @@ export default function NotificationsScreen({ navigation }: Props) {
         >
           <Ionicons name="chevron-back" size={24} color="#ffffff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notifications & Notices</Text>
-        <View style={styles.headerRightSpace} />
+
+        <View style={styles.headerTitleWrap}>
+          <Text style={styles.headerTitle}>Notifications & Notices</Text>
+          {unreadCount > 0 && (
+            <View style={styles.unreadCountBadge}>
+              <Text style={styles.unreadCountText}>{unreadCount}</Text>
+            </View>
+          )}
+        </View>
+
+        {unreadCount > 0 ? (
+          <TouchableOpacity
+            style={styles.markAllBtn}
+            onPress={handleMarkAllRead}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.markAllBtnText}>Read all</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.headerRightSpace} />
+        )}
       </View>
 
       {/* ── Notices List ── */}
@@ -75,32 +113,69 @@ export default function NotificationsScreen({ navigation }: Props) {
           />
         }
       >
-        {notices.map((item, index) => {
-          const isImportant = item.tag?.includes("Important");
-          return (
-            <TouchableOpacity
-              key={item.id || index}
-              style={styles.noticeRow}
-              onPress={() => setSelectedNotice(item)}
-              activeOpacity={0.65}
-            >
-              <View style={styles.noticeTextCol}>
-                <Text
-                  style={[
-                    styles.noticeTitle,
-                    isImportant && styles.importantNoticeTitle,
-                  ]}
-                  numberOfLines={1}
-                >
-                  <Text style={styles.noticeTag}>{item.tag} </Text>
-                  {item.title}
-                </Text>
+        {notices.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconCircle}>
+              <Ionicons name="notifications-outline" size={42} color="rgba(255, 255, 255, 0.3)" />
+            </View>
+            <Text style={styles.emptyTitle}>No Notifications</Text>
+            <Text style={styles.emptySub}>
+              You're all caught up! Real-time alerts, medicine reminders, and service updates will appear here.
+            </Text>
+          </View>
+        ) : (
+          notices.map((item, index) => {
+            const isUnread = !item.isRead;
+            const isImportant = item.tag?.includes("Important") || item.tag?.includes("Emergency");
 
-                <Text style={styles.noticeDate}>{item.date}</Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
+            return (
+              <TouchableOpacity
+                key={item.id || index}
+                style={[
+                  styles.noticeRow,
+                  isUnread ? styles.noticeRowUnread : styles.noticeRowRead,
+                ]}
+                onPress={() => handlePressNotice(item)}
+                activeOpacity={0.7}
+              >
+                {/* Unread indicator dot */}
+                {isUnread && <View style={styles.unreadDot} />}
+
+                <View style={styles.noticeTextCol}>
+                  <View style={styles.titleRow}>
+                    <Text
+                      style={[
+                        styles.noticeTitle,
+                        isUnread ? styles.titleUnread : styles.titleRead,
+                        isImportant && styles.importantNoticeTitle,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      <Text
+                        style={[
+                          styles.noticeTag,
+                          isUnread ? styles.tagUnread : styles.tagRead,
+                        ]}
+                      >
+                        {item.tag}{" "}
+                      </Text>
+                      {item.title}
+                    </Text>
+                  </View>
+
+                  <Text
+                    style={[
+                      styles.noticeDate,
+                      isUnread ? styles.dateUnread : styles.dateRead,
+                    ]}
+                  >
+                    {item.date}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        )}
 
         <View style={styles.bottomSpacing} />
       </ScrollView>
@@ -121,7 +196,7 @@ export default function NotificationsScreen({ navigation }: Props) {
           <View style={styles.modalBox}>
             <View style={styles.modalHeaderRow}>
               <View style={styles.modalTagBadge}>
-                <Text style={styles.modalTagText}>{selectedNotice?.tag}</Text>
+                <Text style={styles.modalTagText}>{selectedNotice?.tag || "[Notice]"}</Text>
               </View>
               <TouchableOpacity onPress={() => setSelectedNotice(null)}>
                 <Ionicons name="close-circle" size={24} color="#94a3b8" />
@@ -134,8 +209,7 @@ export default function NotificationsScreen({ navigation }: Props) {
             <View style={styles.modalDivider} />
 
             <Text style={styles.modalBody}>
-              {selectedNotice?.body ||
-                "Official announcement and health system update from the Urban Helpers engineering and medical advisory board."}
+              {selectedNotice?.body || "No additional details available."}
             </Text>
 
             <TouchableOpacity
@@ -174,46 +248,153 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  headerTitleWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   headerTitle: {
     fontSize: 17,
     fontWeight: "700",
     color: "#ffffff",
     letterSpacing: 0.3,
   },
+  unreadCountBadge: {
+    backgroundColor: "#10b981",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  unreadCountText: {
+    color: "#ffffff",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  markAllBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: "rgba(16, 185, 129, 0.15)",
+  },
+  markAllBtnText: {
+    color: "#10b981",
+    fontSize: 12,
+    fontWeight: "700",
+  },
   headerRightSpace: {
     width: 40,
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 12,
+    flexGrow: 1,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 100,
+    paddingHorizontal: 32,
+  },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.08)",
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#ffffff",
+    marginBottom: 8,
+  },
+  emptySub: {
+    fontSize: 13,
+    color: "rgba(255, 255, 255, 0.4)",
+    textAlign: "center",
+    lineHeight: 19,
   },
   noticeRow: {
-    paddingVertical: 15,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.08)",
+  },
+  noticeRowUnread: {
+    backgroundColor: "rgba(16, 185, 129, 0.08)",
+    borderBottomColor: "rgba(16, 185, 129, 0.25)",
+    borderWidth: 1,
+    borderColor: "rgba(16, 185, 129, 0.2)",
+  },
+  noticeRowRead: {
+    backgroundColor: "transparent",
+    borderBottomColor: "rgba(255, 255, 255, 0.06)",
+    borderWidth: 0,
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#00e676",
+    marginRight: 10,
+    shadowColor: "#00e676",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 3,
   },
   noticeTextCol: {
+    flex: 1,
     justifyContent: "center",
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   noticeTitle: {
     fontSize: 14.5,
-    fontWeight: "500",
-    color: "#e2e8f0",
     letterSpacing: 0.15,
     lineHeight: 20,
   },
-  importantNoticeTitle: {
+  titleUnread: {
     color: "#ffffff",
-    fontWeight: "600",
+    fontWeight: "700",
+  },
+  titleRead: {
+    color: "rgba(255, 255, 255, 0.48)",
+    fontWeight: "400",
+  },
+  importantNoticeTitle: {
+    color: "#fb7185",
+    fontWeight: "700",
   },
   noticeTag: {
-    color: "#94a3b8",
-    fontWeight: "600",
+    fontWeight: "700",
+  },
+  tagUnread: {
+    color: "#10b981",
+  },
+  tagRead: {
+    color: "rgba(255, 255, 255, 0.35)",
   },
   noticeDate: {
     fontSize: 12,
-    color: "#64748b",
-    marginTop: 5,
+    marginTop: 4,
+  },
+  dateUnread: {
+    color: "rgba(255, 255, 255, 0.7)",
+    fontWeight: "500",
+  },
+  dateRead: {
+    color: "rgba(255, 255, 255, 0.25)",
     fontWeight: "400",
   },
   bottomSpacing: {

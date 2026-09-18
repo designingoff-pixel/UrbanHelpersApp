@@ -10,6 +10,7 @@ import {
   registerForPushNotifications,
   setupDefaultNotifications,
   isValidScreen,
+  addInAppNotice,
 } from "@/services/notificationService";
 import { RootStackParamList } from "@/navigation/types";
 import { AuthProvider } from "@/context/AuthContext";
@@ -51,18 +52,30 @@ export default function App() {
       const token = await registerForPushNotifications();
       if (token) {
         console.log("[App] Expo push token:", token);
-        // TODO: send token to your backend → POST /api/user/push-token
       }
       await setupDefaultNotifications();
     })();
 
     // ── 2. Listener: notification arrives while app is OPEN ───────────────
     notifListener.current = Notifications.addNotificationReceivedListener(
-      (notification) => {
-        console.log(
-          "[App] Notification received:",
-          notification.request.content.title
-        );
+      async (notification) => {
+        const title = notification.request.content.title || "Notification";
+        const body = notification.request.content.body || "";
+
+        let tag = "[Notice]";
+        if (title.includes("Medication") || title.includes("Medicine")) tag = "[Medicine]";
+        else if (title.includes("Hydration")) tag = "[Hydration]";
+        else if (title.includes("Step") || title.includes("Move") || title.includes("Workout")) tag = "[Fitness]";
+        else if (title.includes("Booking") || title.includes("Helper") || title.includes("Vendor")) tag = "[Service]";
+        else if (title.includes("SOS") || title.includes("Emergency")) tag = "[Emergency]";
+
+        await addInAppNotice({
+          tag,
+          title,
+          date: "Just now",
+          body,
+          isRead: false,
+        });
       }
     );
 
