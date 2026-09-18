@@ -907,7 +907,10 @@ export async function searchUSDAFood(
     if (!trimmed || trimmed.length < 2) return [];
 
     // EXPO_PUBLIC_ prefix exposes the var to the JS bundle via Expo's env system.
-    const apiKey = process.env.EXPO_PUBLIC_USDA_API_KEY;
+    const apiKey =
+      process.env.EXPO_PUBLIC_USDA_API_KEY ||
+      process.env.USDA_API_KEY ||
+      "cIZXb3lSBZNqKTYDCAvOUFoaupx8AqkIyBpxqSkM";
     if (!apiKey) return [];
 
     const url =

@@ -9,6 +9,7 @@ import {
   TextInput,
   Dimensions,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -153,31 +154,44 @@ export default function NutritionDashboardScreen({ navigation }: Props) {
     }
   };
 
-  const handleOnlineSearch = async () => {
-    if (!searchQuery.trim()) return;
+  // Automatically search USDA + Open Food Facts as user types (debounced 350ms)
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (trimmed.length < 2) {
+      setUsdaResults([]);
+      setOnlineResults([]);
+      setOnlineSearching(false);
+      return;
+    }
+
     setOnlineSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const localNameSet = new Set(
+          FOOD_DATABASE.map((f) => f.name.toLowerCase().trim())
+        );
 
-    // Build set of local food names for deduplication
-    const localNameSet = new Set(
-      FOOD_DATABASE.map((f) => f.name.toLowerCase().trim())
-    );
+        const [usdaRes, offRes] = await Promise.all([
+          searchUSDAFood(trimmed, localNameSet),
+          searchOpenFoodFacts(trimmed),
+        ]);
 
-    // Run USDA + Open Food Facts in parallel
-    const [usdaRes, offRes] = await Promise.all([
-      searchUSDAFood(searchQuery, localNameSet),
-      searchOpenFoodFacts(searchQuery),
-    ]);
+        const usdaNames = new Set(usdaRes.map((f) => f.name.toLowerCase().trim()));
+        const dedupedOff = offRes.filter(
+          (f) => !usdaNames.has(f.name.toLowerCase().trim()) && !localNameSet.has(f.name.toLowerCase().trim())
+        );
 
-    // Deduplicate OFF results against USDA results by normalised name
-    const usdaNames = new Set(usdaRes.map((f) => f.name.toLowerCase().trim()));
-    const dedupedOff = offRes.filter(
-      (f) => !usdaNames.has(f.name.toLowerCase().trim()) && !localNameSet.has(f.name.toLowerCase().trim())
-    );
+        setUsdaResults(usdaRes);
+        setOnlineResults(dedupedOff);
+      } catch (err) {
+        console.log("Error auto-searching USDA foods:", err);
+      } finally {
+        setOnlineSearching(false);
+      }
+    }, 350);
 
-    setUsdaResults(usdaRes);
-    setOnlineResults(dedupedOff);
-    setOnlineSearching(false);
-  };
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Calculate current dynamic macro percentages
   const totalMacrosWeight =
@@ -583,9 +597,17 @@ export default function NutritionDashboardScreen({ navigation }: Props) {
 
           {/* Search results list */}
           <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120 }}>
-            <Text style={s.resultsCountText}>
-              {filteredFoods.length} {filteredFoods.length === 1 ? "food" : "foods"} in {selectedCategory}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <Text style={s.resultsCountText}>
+                {filteredFoods.length} {filteredFoods.length === 1 ? "food" : "foods"} in {selectedCategory}
+              </Text>
+              {onlineSearching && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <ActivityIndicator size="small" color="#00e676" />
+                  <Text style={{ fontSize: 12, color: "#00e676", fontWeight: "600" }}>Searching USDA...</Text>
+                </View>
+              )}
+            </View>
 
             {filteredFoods.map((food) => (
               <Pressable
@@ -628,25 +650,18 @@ export default function NutritionDashboardScreen({ navigation }: Props) {
               </Pressable>
             ))}
 
-            {filteredFoods.length === 0 && (
+            {filteredFoods.length === 0 && onlineSearching && (
+              <View style={s.noResultsWrap}>
+                <ActivityIndicator size="large" color="#00e676" style={{ marginBottom: 14 }} />
+                <Text style={s.noResultsTitle}>Searching USDA & database...</Text>
+                <Text style={s.noResultsSub}>Finding nutrition details for "{searchQuery}"</Text>
+              </View>
+            )}
+            {filteredFoods.length === 0 && !onlineSearching && (
               <View style={s.noResultsWrap}>
                 <Ionicons name="restaurant-outline" size={40} color="rgba(255,255,255,0.25)" />
                 <Text style={s.noResultsTitle}>No matching foods found</Text>
                 <Text style={s.noResultsSub}>Try a different category or search term.</Text>
-                {searchQuery.trim().length >= 2 && (
-                  <Pressable
-                    style={s.onlineSearchBtn}
-                    onPress={handleOnlineSearch}
-                    disabled={onlineSearching}
-                  >
-                    <Ionicons name="globe-outline" size={16} color="#00e676" />
-                    <Text style={s.onlineSearchText}>
-                      {onlineSearching
-                        ? "Searching USDA + Open Food Facts..."
-                        : "Search USDA + Open Food Facts online"}
-                    </Text>
-                  </Pressable>
-                )}
               </View>
             )}
           </ScrollView>

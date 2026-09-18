@@ -9,6 +9,7 @@ import {
   TextInput,
   Alert,
   StatusBar,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -90,25 +91,35 @@ export default function MedicationCenterScreen({ navigation }: Props) {
     setShowSuggestions(false);
   };
 
-  const handleRxNormSearch = async () => {
-    if (!medName.trim()) return;
+  // Automatically search RxNorm as the user types (debounced 350ms)
+  useEffect(() => {
+    const clean = medName.trim();
+    if (clean.length < 2) {
+      setRxResults([]);
+      setRxSearching(false);
+      setRxError("none");
+      return;
+    }
+
     setRxSearching(true);
     setRxError("none");
-    setRxResults([]);
-    try {
-      // Build set of local names for deduplication
-      const localNameSet = new Set(
-        MEDICINE_DATABASE.map((m) => m.name.toLowerCase().trim())
-      );
-      const list = await searchRxNormDrugs(medName, localNameSet);
-      setRxResults(list);
-      setRxError(list.length === 0 ? "empty" : "none");
-    } catch {
-      setRxError("error");
-    } finally {
-      setRxSearching(false);
-    }
-  };
+    const timer = setTimeout(async () => {
+      try {
+        const localNameSet = new Set(
+          MEDICINE_DATABASE.map((m) => m.name.toLowerCase().trim())
+        );
+        const list = await searchRxNormDrugs(clean, localNameSet);
+        setRxResults(list);
+        setRxError(list.length === 0 ? "empty" : "none");
+      } catch {
+        setRxError("error");
+      } finally {
+        setRxSearching(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [medName]);
 
   const handleAddMedication = async () => {
     if (!medName.trim()) {
@@ -433,27 +444,13 @@ export default function MedicationCenterScreen({ navigation }: Props) {
                               </View>
                             </Pressable>
                           ))
-                        ) : (
-                          <View style={s.suggestionEmpty}>
-                            <Text style={s.suggestionEmptyText}>No matching preset medicine found locally</Text>
-                          </View>
-                        )}
+                        ) : null}
 
-                        {/* RxNorm search trigger — always visible when query ≥ 2 chars */}
-                        {medName.trim().length >= 2 && (
-                          <View style={s.rxTriggerRow}>
-                            <Pressable
-                              style={s.rxSearchBtn}
-                              onPress={handleRxNormSearch}
-                              disabled={rxSearching}
-                            >
-                              <Ionicons name="search" size={14} color="#a855f7" />
-                              <Text style={s.rxSearchBtnText}>
-                                {rxSearching
-                                  ? "Searching NIH RxNorm..."
-                                  : "Search NIH RxNorm (US clinical database)"}
-                              </Text>
-                            </Pressable>
+                        {/* Inline loading indicator when searching RxNorm */}
+                        {rxSearching && (
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 10 }}>
+                            <ActivityIndicator size="small" color="#c084fc" />
+                            <Text style={{ fontSize: 12, color: "#c084fc" }}>Searching NIH RxNorm clinical medicines...</Text>
                           </View>
                         )}
 
@@ -464,7 +461,7 @@ export default function MedicationCenterScreen({ navigation }: Props) {
                             <View style={s.rxDisclaimerRow}>
                               <Ionicons name="information-circle-outline" size={13} color="rgba(255,255,255,0.35)" />
                               <Text style={s.rxDisclaimer}>
-                                RxNorm is a US-focused database. Indian brand names may not appear.
+                                RxNorm is a US clinical database. Results matched by ingredient / name.
                               </Text>
                             </View>
                             {rxResults.map((rx) => (
@@ -497,22 +494,11 @@ export default function MedicationCenterScreen({ navigation }: Props) {
                           </View>
                         )}
 
-                        {/* RxNorm empty state */}
-                        {rxError === "empty" && !rxSearching && (
-                          <View style={s.rxEmptyRow}>
-                            <Ionicons name="search-outline" size={15} color="rgba(255,255,255,0.3)" />
-                            <Text style={s.rxEmptyText}>
-                              No RxNorm results for "{medName}". Try the generic name.
-                            </Text>
-                          </View>
-                        )}
-
-                        {/* RxNorm error state */}
-                        {rxError === "error" && !rxSearching && (
-                          <View style={s.rxEmptyRow}>
-                            <Ionicons name="warning-outline" size={15} color="#f87171" />
-                            <Text style={[s.rxEmptyText, { color: "#f87171" }]}>
-                              Could not reach RxNorm. Check your internet connection.
+                        {/* No results at all state */}
+                        {suggestions.length === 0 && rxResults.length === 0 && !rxSearching && (
+                          <View style={s.suggestionEmpty}>
+                            <Text style={s.suggestionEmptyText}>
+                              No matching medicine found for "{medName}"
                             </Text>
                           </View>
                         )}
