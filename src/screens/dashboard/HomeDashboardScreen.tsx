@@ -1132,12 +1132,6 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               </View>
             </View>
 
-            {/* Edit home */}
-            <View style={s.editHomeWrap}>
-              <Pressable style={s.editHomeBtn} onPress={() => setEditMode(true)}>
-                <Text style={s.editHomeText}>Edit home</Text>
-              </Pressable>
-            </View>
           </View>
         )}
 
@@ -1998,11 +1992,6 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               </LinearGradient>
             </PressCard>
 
-            <View style={s.editHomeWrap}>
-              <Pressable style={s.editHomeBtn} onPress={() => setEditMode(true)}>
-                <Text style={s.editHomeText}>Edit home</Text>
-              </Pressable>
-            </View>
           </View>
         )}
 
@@ -2083,11 +2072,6 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               </LinearGradient>
             </PressCard>
 
-            <View style={s.editHomeWrap}>
-              <Pressable style={s.editHomeBtn} onPress={() => setEditMode(true)}>
-                <Text style={s.editHomeText}>Edit home</Text>
-              </Pressable>
-            </View>
           </View>
         )}
 
@@ -2268,14 +2252,6 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               </LinearGradient>
             </PressCard>
 
-            {!editMode && (
-              <View style={s.editHomeWrap}>
-                <Pressable style={s.editHomeBtn} onPress={() => setEditMode(true)}>
-                  <Ionicons name="pencil-outline" size={16} color="rgba(255,255,255,0.6)" style={{ marginRight: 6 }} />
-                  <Text style={s.editHomeText}>Edit home</Text>
-                </Pressable>
-              </View>
-            )}
           </View>
         )}
 

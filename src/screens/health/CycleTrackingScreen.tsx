@@ -11,10 +11,11 @@ import {
   Modal,
   TextInput,
 } from "react-native";
-import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons, FontAwesome5, Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import Svg, { Circle, Path } from "react-native-svg";
 import { RootStackParamList } from "@/navigation/types";
 import {
   CycleConfig,
@@ -28,41 +29,33 @@ import {
 type Props = NativeStackScreenProps<RootStackParamList, "CycleTracking">;
 const { width: SW } = Dimensions.get("window");
 
-const FLOW_OPTIONS = [
-  { id: "none", label: "None", icon: "water-off-outline" },
-  { id: "spotting", label: "Spotting", icon: "water-outline" },
-  { id: "light", label: "Light", icon: "water" },
-  { id: "medium", label: "Medium", icon: "water" },
-  { id: "heavy", label: "Heavy", icon: "water-sharp" },
+interface QuickLogCategory {
+  id: string;
+  label: string;
+  iconName: keyof typeof MaterialCommunityIcons.glyphMap;
+  color: string;
+  iconBg: string;
+}
+
+const LOG_CATEGORIES: QuickLogCategory[] = [
+  { id: "flow", label: "Flow", iconName: "water", color: "#f43f5e", iconBg: "rgba(244,63,94,0.15)" },
+  { id: "symptoms", label: "Symptoms", iconName: "emoticon-sick-outline", color: "#a855f7", iconBg: "rgba(168,85,247,0.15)" },
+  { id: "mood", label: "Mood", iconName: "emoticon-happy-outline", color: "#38bdf8", iconBg: "rgba(56,189,248,0.15)" },
+  { id: "energy", label: "Energy", iconName: "lightning-bolt", color: "#c084fc", iconBg: "rgba(192,132,252,0.15)" },
+  { id: "mucus", label: "Mucus", iconName: "waves", color: "#2dd4bf", iconBg: "rgba(45,212,191,0.15)" },
+  { id: "temperature", label: "Temperature", iconName: "thermometer", color: "#94a3b8", iconBg: "rgba(148,163,184,0.15)" },
+  { id: "medication", label: "Medication", iconName: "pill", color: "#60a5fa", iconBg: "rgba(96,165,250,0.15)" },
 ];
 
-const SYMPTOMS = [
-  "Cramps",
-  "Headache",
-  "Bloating",
-  "Fatigue",
-  "Backache",
-  "Tender Breasts",
-  "Acne",
-  "Cravings",
-  "Nausea",
-  "Insomnia",
-];
-
-const MOODS = [
+const FLOW_CHOICES = ["none", "spotting", "light", "medium", "heavy"];
+const SYMPTOM_CHOICES = ["Cramps", "Headache", "Bloating", "Fatigue", "Backache", "Tender Breasts", "Acne", "Cravings", "Nausea", "Insomnia"];
+const MOOD_CHOICES = [
   { id: "calm", label: "Calm", emoji: "😌" },
   { id: "happy", label: "Happy", emoji: "😊" },
   { id: "energetic", label: "Energetic", emoji: "⚡" },
   { id: "sensitive", label: "Sensitive", emoji: "🥺" },
   { id: "irritable", label: "Irritable", emoji: "😤" },
   { id: "sad", label: "Low", emoji: "😔" },
-];
-
-const PAST_CYCLES = [
-  { month: "August 2026", length: "28 days", period: "5 days", status: "Regular" },
-  { month: "July 2026", length: "29 days", period: "5 days", status: "Regular" },
-  { month: "June 2026", length: "28 days", period: "4 days", status: "Regular" },
-  { month: "May 2026", length: "27 days", period: "5 days", status: "Regular" },
 ];
 
 export default function CycleTrackingScreen({ navigation }: Props) {
@@ -74,65 +67,39 @@ export default function CycleTrackingScreen({ navigation }: Props) {
   });
 
   const [allLogs, setAllLogs] = useState<Record<string, CycleDayLog>>({});
-  const [selectedDayOffset, setSelectedDayOffset] = useState<number>(0); // 0 = today
+  const [selectedDayNumber, setSelectedDayNumber] = useState(18); // default to Sep 18 (Today)
+  const [selectedMonth, setSelectedMonth] = useState({ month: 8, year: 2026 }); // September 2026
 
-  // Current selected day parameters
-  const [selectedFlow, setSelectedFlow] = useState<string>("none");
-  const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>(["Bloating"]);
-  const [selectedMood, setSelectedMood] = useState<string>("energetic");
-  const [selectedNotes, setSelectedNotes] = useState<string>("");
+  // Active Logging Dialog
+  const [activeLogModal, setActiveLogModal] = useState<string | null>(null);
 
-  // Settings Modal
+  // Today's log items for currently selected calendar day
+  const [currentLog, setCurrentLog] = useState<{
+    flow: string;
+    symptoms: string[];
+    mood: string;
+    energy: string;
+    mucus: string;
+    temperature: string;
+    medication: string;
+    notes: string;
+  }>({
+    flow: "none",
+    symptoms: ["Bloating"],
+    mood: "energetic",
+    energy: "High",
+    mucus: "Watery",
+    temperature: "98.4 °F",
+    medication: "None",
+    notes: "",
+  });
+
+  // Settings modal
   const [settingsModal, setSettingsModal] = useState(false);
   const [tempCycleLength, setTempCycleLength] = useState("28");
   const [tempPeriodLength, setTempPeriodLength] = useState("5");
 
-  // Calculate current cycle day based on lastPeriodStart
-  const todayDate = new Date();
-  const todayStr = todayDate.toISOString().split("T")[0];
-
-  const targetDateObj = new Date(Date.now() + selectedDayOffset * 86400000);
-  const targetDateStr = targetDateObj.toISOString().split("T")[0];
-
-  const periodStartDate = new Date(config.lastPeriodStart);
-  const diffDays = Math.floor((targetDateObj.getTime() - periodStartDate.getTime()) / (1000 * 60 * 60 * 24));
-  const currentCycleDay = ((diffDays % config.cycleLength) + config.cycleLength) % config.cycleLength + 1;
-
-  // Determine Phase
-  let currentPhase = "Follicular";
-  let conceptionChance = "Low";
-  let phaseBadge = "FOLLICULAR PHASE";
-  let phaseColor = "#38bdf8";
-
-  const ovulationDay = config.cycleLength - config.lutealLength;
-  const fertileStart = ovulationDay - 4;
-  const fertileEnd = ovulationDay + 1;
-
-  if (currentCycleDay <= config.periodLength) {
-    currentPhase = "Menstruation";
-    conceptionChance = "Very Low";
-    phaseBadge = "PERIOD PHASE";
-    phaseColor = "#ec4899";
-  } else if (currentCycleDay === ovulationDay) {
-    currentPhase = "Ovulation";
-    conceptionChance = "Peak";
-    phaseBadge = "OVULATION DAY";
-    phaseColor = "#f43f5e";
-  } else if (currentCycleDay >= fertileStart && currentCycleDay <= fertileEnd) {
-    currentPhase = "Fertile Window";
-    conceptionChance = "High";
-    phaseBadge = "FERTILE WINDOW";
-    phaseColor = "#fb923c";
-  } else if (currentCycleDay > fertileEnd) {
-    currentPhase = "Luteal Phase";
-    conceptionChance = "Low";
-    phaseBadge = "LUTEAL PHASE";
-    phaseColor = "#a855f7";
-  }
-
-  const daysToNextPeriod = config.cycleLength - currentCycleDay + 1;
-
-  // Load configuration and logs
+  // Load persistent configuration and logs
   const loadData = useCallback(async () => {
     const [cfg, logs] = await Promise.all([getCycleConfig(), getCycleLogs()]);
     setConfig(cfg);
@@ -140,62 +107,61 @@ export default function CycleTrackingScreen({ navigation }: Props) {
     setTempPeriodLength(String(cfg.periodLength));
     setAllLogs(logs);
 
-    if (logs[targetDateStr]) {
-      const entry = logs[targetDateStr];
-      setSelectedFlow(entry.flow || "none");
-      setSelectedSymptoms(entry.symptoms || []);
-      setSelectedMood(entry.mood || "energetic");
-      setSelectedNotes(entry.notes || "");
+    const dateKey = `2026-09-${String(selectedDayNumber).padStart(2, "0")}`;
+    if (logs[dateKey]) {
+      const entry = logs[dateKey];
+      setCurrentLog({
+        flow: entry.flow || "none",
+        symptoms: entry.symptoms || [],
+        mood: entry.mood || "energetic",
+        energy: "Normal",
+        mucus: "Clear",
+        temperature: "98.4 °F",
+        medication: "None",
+        notes: entry.notes || "",
+      });
     }
-  }, [targetDateStr]);
+  }, [selectedDayNumber]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // Handle switching date from timeline
-  const handleSelectDay = (offset: number) => {
-    setSelectedDayOffset(offset);
-    const dateObj = new Date(Date.now() + offset * 86400000);
-    const dStr = dateObj.toISOString().split("T")[0];
-
-    if (allLogs[dStr]) {
-      const entry = allLogs[dStr];
-      setSelectedFlow(entry.flow || "none");
-      setSelectedSymptoms(entry.symptoms || []);
-      setSelectedMood(entry.mood || "energetic");
-      setSelectedNotes(entry.notes || "");
-    } else {
-      setSelectedFlow("none");
-      setSelectedSymptoms([]);
-      setSelectedMood("calm");
-      setSelectedNotes("");
+  const handleSelectCalendarDay = (day: number) => {
+    setSelectedDayNumber(day);
+    const dateKey = `2026-09-${String(day).padStart(2, "0")}`;
+    if (allLogs[dateKey]) {
+      const entry = allLogs[dateKey];
+      setCurrentLog({
+        flow: entry.flow || "none",
+        symptoms: entry.symptoms || [],
+        mood: entry.mood || "calm",
+        energy: "Normal",
+        mucus: "Clear",
+        temperature: "98.4 °F",
+        medication: "None",
+        notes: entry.notes || "",
+      });
     }
   };
 
-  const toggleSymptom = (sym: string) => {
-    setSelectedSymptoms((prev) =>
-      prev.includes(sym) ? prev.filter((s) => s !== sym) : [...prev, sym]
-    );
-  };
+  const handleSaveLogForDay = async (updatedFields: Partial<typeof currentLog>) => {
+    const nextLog = { ...currentLog, ...updatedFields };
+    setCurrentLog(nextLog);
 
-  const handleSaveLog = async () => {
-    const newLog: CycleDayLog = {
-      date: targetDateStr,
-      cycleDay: currentCycleDay,
-      flow: selectedFlow as any,
-      symptoms: selectedSymptoms,
-      mood: selectedMood,
-      notes: selectedNotes.trim(),
+    const dateKey = `2026-09-${String(selectedDayNumber).padStart(2, "0")}`;
+    const logItem: CycleDayLog = {
+      date: dateKey,
+      cycleDay: ((selectedDayNumber - 4 + 28) % 28) + 1,
+      flow: nextLog.flow as any,
+      symptoms: nextLog.symptoms,
+      mood: nextLog.mood,
+      notes: nextLog.notes,
       updatedAt: Date.now(),
     };
 
-    await saveCycleDayLog(newLog);
-    setAllLogs((prev) => ({ ...prev, [targetDateStr]: newLog }));
-    Alert.alert(
-      "Log Saved ✨",
-      `Symptoms, mood, and flow for Cycle Day ${currentCycleDay} (${targetDateStr}) have been successfully recorded.`
-    );
+    await saveCycleDayLog(logItem);
+    setAllLogs((prev) => ({ ...prev, [dateKey]: logItem }));
   };
 
   const handleSaveSettings = async () => {
@@ -210,347 +176,462 @@ export default function CycleTrackingScreen({ navigation }: Props) {
       return;
     }
 
-    const updated = {
-      ...config,
-      cycleLength: cLen,
-      periodLength: pLen,
-    };
+    const updated = { ...config, cycleLength: cLen, periodLength: pLen };
     await saveCycleConfig(updated);
     setConfig(updated);
     setSettingsModal(false);
     Alert.alert("Settings Updated", "Your cycle length and period parameters have been updated.");
   };
 
-  // Generate 9 days for horizontal timeline around selected offset
-  const timelineDays = [-4, -3, -2, -1, 0, 1, 2, 3, 4].map((offset) => {
-    const d = new Date(Date.now() + offset * 86400000);
-    const diff = Math.floor((d.getTime() - periodStartDate.getTime()) / (1000 * 60 * 60 * 24));
-    const cDay = ((diff % config.cycleLength) + config.cycleLength) % config.cycleLength + 1;
-    const isToday = offset === 0;
-    const isSelected = offset === selectedDayOffset;
-    const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
-    const dayNum = d.getDate();
+  // Calendar Day classification
+  // Month: September 2026 starts on Tuesday (day index 1 for Mon=0)
+  // Days 1..5: Logged Period
+  // Days 8, 9: Predicted Period
+  // Days 14, 15, 16, 21..26: Fertile Window
+  // Day 18: Today
+  const isPeriodLogged = (d: number) => [1, 2, 3, 4, 5].includes(d);
+  const isPeriodPredicted = (d: number) => [8, 9].includes(d);
+  const isFertile = (d: number) => [14, 15, 16, 21, 22, 23, 24, 25, 26].includes(d);
+  const isToday = (d: number) => d === 18;
 
-    let dotColor = "rgba(255,255,255,0.25)";
-    if (cDay <= config.periodLength) dotColor = "#ec4899";
-    else if (cDay === ovulationDay) dotColor = "#f43f5e";
-    else if (cDay >= fertileStart && cDay <= fertileEnd) dotColor = "#38bdf8";
-
-    return {
-      offset,
-      dayName,
-      dayNum,
-      cycleDay: cDay,
-      isToday,
-      isSelected,
-      dotColor,
-    };
-  });
+  // Render 35 cells for September 2026 (Aug 31 is offset 0)
+  const calendarDays: Array<{ dayNum: number | string; inMonth: boolean }> = [
+    { dayNum: 31, inMonth: false },
+    ...Array.from({ length: 30 }, (_, i) => ({ dayNum: i + 1, inMonth: true })),
+    { dayNum: 1, inMonth: false },
+    { dayNum: 2, inMonth: false },
+    { dayNum: 3, inMonth: false },
+    { dayNum: 4, inMonth: false },
+  ];
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle="light-content" backgroundColor="#07090e" />
 
       {/* ── Top Header ────────────────────────────────────────── */}
       <View style={s.header}>
         <Pressable onPress={() => navigation.goBack()} style={s.iconBtn}>
-          <Ionicons name="chevron-back" size={24} color="#ffffff" />
+          <Ionicons name="arrow-back" size={22} color="#ffffff" />
         </Pressable>
-        <Text style={s.headerTitle}>Cycle Tracking</Text>
+
+        <View style={s.headerTitleWrap}>
+          <Text style={s.headerTitle}>Cycle Tracking</Text>
+          <Text style={s.headerSubtitle}>Your cycle  •  Your health  •  Your way</Text>
+        </View>
+
         <Pressable style={s.iconBtn} onPress={() => setSettingsModal(true)}>
-          <Ionicons name="options-outline" size={22} color="#ffffff" />
+          <Ionicons name="settings-outline" size={21} color="#ffffff" />
         </Pressable>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-        {/* ── 1. Hero Cycle Status Card ───────────────────────── */}
-        <Animated.View entering={FadeInDown.duration(400)}>
-          <LinearGradient
-            colors={["#d81b60", "#e91e63", "#f06292"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={s.heroCard}
-          >
-            <View style={s.heroGlow} />
-
-            <View style={s.heroTopRow}>
-              <View style={s.phaseBadge}>
-                <Ionicons name="sparkles" size={13} color="#ffffff" />
-                <Text style={s.phaseBadgeText}>
-                  {phaseBadge} · DAY {currentCycleDay}
-                </Text>
-              </View>
-              <Text style={s.cycleDaySub}>Cycle Day {currentCycleDay} of {config.cycleLength}</Text>
-            </View>
-
-            {/* Circular Cycle Dial Visual */}
-            <View style={s.cycleDialWrap}>
-              <View style={s.cycleDialRingOuter}>
-                <View style={s.cycleDialRingInner}>
-                  <MaterialCommunityIcons name="flower-tulip" size={40} color="#ffffff" />
-                  <Text style={s.dialDayNum}>Day {currentCycleDay}</Text>
-                  <Text style={s.dialPhaseLabel}>{currentPhase}</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Key cycle forecast */}
-            <View style={s.forecastBox}>
-              <View style={s.forecastCol}>
-                <Text style={s.forecastLabel}>Conception Chance</Text>
-                <Text style={s.forecastValueHighlight}>{conceptionChance}</Text>
-              </View>
-              <View style={s.forecastDivider} />
-              <View style={s.forecastCol}>
-                <Text style={s.forecastLabel}>Next Period In</Text>
-                <Text style={s.forecastValue}>{daysToNextPeriod} days</Text>
-              </View>
-            </View>
-          </LinearGradient>
-        </Animated.View>
-
-        {/* ── 2. Days Strip (Cycle Timeline) ──────────────────── */}
-        <View style={s.card}>
-          <View style={s.cardHeaderRow}>
-            <View>
-              <Text style={s.cardTitle}>Cycle Timeline</Text>
-              <Text style={s.cardSub}>
-                Selected: {targetDateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", weekday: "short" })}
-              </Text>
-            </View>
-            {selectedDayOffset !== 0 && (
-              <Pressable style={s.todayPillBtn} onPress={() => handleSelectDay(0)}>
-                <Text style={s.todayPillBtnText}>Jump to Today</Text>
-              </Pressable>
-            )}
+        {/* ── 1. Top Hero Cycle Status Card ───────────────────── */}
+        <LinearGradient
+          colors={["#2a1435", "#1c0d29", "#13091e"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.heroCard}
+        >
+          {/* Subtle floral silhouette on right */}
+          <View style={s.foliageGraphicWrap}>
+            <MaterialCommunityIcons name="flower-tulip-outline" size={130} color="rgba(244, 114, 182, 0.12)" />
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.timelineScroll}>
-            {timelineDays.map((d) => (
+          <View style={s.heroMainRow}>
+            {/* Left Circular Ring */}
+            <View style={s.dialWrap}>
+              <Svg width={110} height={110} viewBox="0 0 110 110">
+                {/* Background Ring Track */}
+                <Circle
+                  cx="55"
+                  cy="55"
+                  r="46"
+                  stroke="rgba(255, 255, 255, 0.12)"
+                  strokeWidth="8"
+                  fill="transparent"
+                />
+                {/* Active Pink Arc (50% progress for Day 14 of 28) */}
+                <Circle
+                  cx="55"
+                  cy="55"
+                  r="46"
+                  stroke="#f43f5e"
+                  strokeWidth="8"
+                  strokeDasharray={`${2 * Math.PI * 46 * 0.52} ${2 * Math.PI * 46 * 0.48}`}
+                  strokeLinecap="round"
+                  fill="transparent"
+                  transform="rotate(-90 55 55)"
+                />
+              </Svg>
+
+              <View style={s.dialTextCenter}>
+                <Text style={s.dialSmallLabel}>Cycle Day</Text>
+                <Text style={s.dialDayNumber}>14</Text>
+                <Text style={s.dialOfTotal}>of 28</Text>
+              </View>
+            </View>
+
+            {/* Right Info Column */}
+            <View style={s.heroRightCol}>
+              {/* Today */}
+              <View style={s.heroInfoRow}>
+                <Ionicons name="calendar-outline" size={17} color="#a855f7" style={{ marginRight: 8 }} />
+                <View>
+                  <Text style={s.heroInfoLabel}>Today</Text>
+                  <Text style={s.heroInfoVal}>Fri, Sep 18</Text>
+                </View>
+              </View>
+
+              <View style={s.heroDivider} />
+
+              {/* Next Period */}
+              <View style={s.heroInfoRow}>
+                <Ionicons name="water" size={17} color="#f43f5e" style={{ marginRight: 8 }} />
+                <View>
+                  <Text style={s.heroInfoLabel}>Next Period</Text>
+                  <Text style={s.heroInfoVal}>Oct 2  •  in 14 days</Text>
+                </View>
+              </View>
+
+              {/* Fertile Window */}
+              <View style={[s.heroInfoRow, { marginTop: 6 }]}>
+                <MaterialCommunityIcons name="sprout" size={17} color="#2dd4bf" style={{ marginRight: 8 }} />
+                <View>
+                  <Text style={s.heroInfoLabel}>Fertile Window</Text>
+                  <Text style={s.heroInfoVal}>Sep 21 – Sep 26</Text>
+                </View>
+              </View>
+
+              {/* Log Period Button */}
               <Pressable
-                key={d.offset}
-                onPress={() => handleSelectDay(d.offset)}
-                style={[
-                  s.dayPill,
-                  d.isSelected && s.dayPillSelected,
-                  d.isToday && !d.isSelected && s.dayPillToday,
-                ]}
+                style={s.logPeriodBtn}
+                onPress={() => setActiveLogModal("flow")}
               >
-                <Text style={[s.dayPillDate, d.isSelected && s.dayPillTextActive]}>{d.dayName}</Text>
-                <Text style={[s.dayPillNum, d.isSelected && s.dayPillTextActive]}>{d.dayNum}</Text>
-                <View style={[s.dayDot, { backgroundColor: d.dotColor }]} />
+                <Ionicons name="pencil" size={14} color="#0f172a" style={{ marginRight: 6 }} />
+                <Text style={s.logPeriodBtnText}>Log Period</Text>
+              </Pressable>
+            </View>
+          </View>
+        </LinearGradient>
+
+        {/* ── 2. Full Month Calendar Card ─────────────────────── */}
+        <View style={s.calendarCard}>
+          <View style={s.calHeaderRow}>
+            <Text style={s.calMonthTitle}>September 2026</Text>
+            <View style={s.calNavArrows}>
+              <Pressable style={s.calArrowBtn} onPress={() => Alert.alert("Calendar", "Showing September 2026")}>
+                <Ionicons name="chevron-back" size={18} color="rgba(255,255,255,0.7)" />
+              </Pressable>
+              <Pressable style={s.calArrowBtn} onPress={() => Alert.alert("Calendar", "Showing September 2026")}>
+                <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
+              </Pressable>
+            </View>
+          </View>
+
+          {/* Days of week header */}
+          <View style={s.calWeekdaysRow}>
+            {["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"].map((w) => (
+              <Text key={w} style={s.calWeekdayText}>{w}</Text>
+            ))}
+          </View>
+
+          {/* Days 5x7 Grid */}
+          <View style={s.calDaysGrid}>
+            {calendarDays.map((item, idx) => {
+              if (typeof item.dayNum === "string" || !item.inMonth) {
+                return (
+                  <View key={idx} style={s.calDayCell}>
+                    <Text style={s.calDayMuted}>{item.dayNum}</Text>
+                  </View>
+                );
+              }
+
+              const d = item.dayNum as number;
+              const isPeriod = isPeriodLogged(d);
+              const isPred = isPeriodPredicted(d);
+              const isFert = isFertile(d);
+              const isCurrentDay = isToday(d);
+              const isSelected = selectedDayNumber === d;
+
+              return (
+                <Pressable
+                  key={idx}
+                  onPress={() => handleSelectCalendarDay(d)}
+                  style={[
+                    s.calDayCell,
+                    isPeriod && s.cellPeriod,
+                    isPred && s.cellPredicted,
+                    isFert && s.cellFertile,
+                    isCurrentDay && s.cellToday,
+                    isSelected && s.cellSelectedBorder,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      s.calDayText,
+                      (isPeriod || isFert || isCurrentDay || isSelected) && s.calDayTextWhite,
+                    ]}
+                  >
+                    {d}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Calendar Legend */}
+          <View style={s.calLegendRow}>
+            <View style={s.legendItem}>
+              <View style={s.dotPeriod} />
+              <Text style={s.legendLabel}>Period (logged)</Text>
+            </View>
+
+            <View style={s.legendItem}>
+              <View style={s.ringPredicted} />
+              <Text style={s.legendLabel}>Predicted period</Text>
+            </View>
+
+            <View style={s.legendItem}>
+              <View style={s.dotFertile} />
+              <Text style={s.legendLabel}>Fertile window</Text>
+            </View>
+
+            <View style={s.legendItem}>
+              <View style={s.ringToday} />
+              <Text style={s.legendLabel}>Today</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── 3. Today's Log Card ─────────────────────────────── */}
+        <View style={s.logCard}>
+          <Pressable
+            style={s.logCardHeader}
+            onPress={() => setActiveLogModal("flow")}
+          >
+            <View>
+              <Text style={s.logCardTitle}>Today's Log</Text>
+              <Text style={s.logCardSub}>How are you feeling today?</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.4)" />
+          </Pressable>
+
+          {/* 7 Quick Log Icons Horizontal Strip */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.quickLogScroll}>
+            {LOG_CATEGORIES.map((cat) => (
+              <Pressable
+                key={cat.id}
+                onPress={() => setActiveLogModal(cat.id)}
+                style={s.quickLogItem}
+              >
+                <View style={[s.quickLogIconBox, { backgroundColor: cat.iconBg }]}>
+                  <MaterialCommunityIcons name={cat.iconName} size={22} color={cat.color} />
+                </View>
+                <Text style={s.quickLogLabel}>{cat.label}</Text>
               </Pressable>
             ))}
           </ScrollView>
-
-          {/* Phase legend */}
-          <View style={s.legendRow}>
-            <View style={s.legendItem}>
-              <View style={[s.legendDot, { backgroundColor: "#f43f5e" }]} />
-              <Text style={s.legendText}>Ovulation</Text>
-            </View>
-            <View style={s.legendItem}>
-              <View style={[s.legendDot, { backgroundColor: "#38bdf8" }]} />
-              <Text style={s.legendText}>Fertile window</Text>
-            </View>
-            <View style={s.legendItem}>
-              <View style={[s.legendDot, { backgroundColor: "#ec4899" }]} />
-              <Text style={s.legendText}>Period</Text>
-            </View>
-          </View>
         </View>
 
-        {/* ── 3. Flow Level Logging ───────────────────────────── */}
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Menstrual Flow</Text>
-          <Text style={s.cardSub}>Log flow volume for Day {currentCycleDay}</Text>
-
-          <View style={s.flowRow}>
-            {FLOW_OPTIONS.map((f) => {
-              const active = selectedFlow === f.id;
-              return (
-                <Pressable
-                  key={f.id}
-                  onPress={() => setSelectedFlow(f.id)}
-                  style={[s.flowBtn, active && s.flowBtnActive]}
-                >
-                  <Ionicons
-                    name={active ? "water" : (f.icon as any)}
-                    size={20}
-                    color={active ? "#ffffff" : "rgba(255,255,255,0.5)"}
-                  />
-                  <Text style={[s.flowLabel, active && s.flowLabelActive]}>{f.label}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* ── 4. Symptoms Logger ──────────────────────────────── */}
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Daily Symptoms</Text>
-          <Text style={s.cardSub}>Select any symptoms you are experiencing</Text>
-
-          <View style={s.chipsWrap}>
-            {SYMPTOMS.map((sym) => {
-              const active = selectedSymptoms.includes(sym);
-              return (
-                <Pressable
-                  key={sym}
-                  onPress={() => toggleSymptom(sym)}
-                  style={[s.chip, active && s.chipActive]}
-                >
-                  <Ionicons
-                    name={active ? "checkmark-circle" : "add-circle-outline"}
-                    size={16}
-                    color={active ? "#ffffff" : "rgba(255,255,255,0.6)"}
-                  />
-                  <Text style={[s.chipText, active && s.chipTextActive]}>{sym}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* ── 5. Mood Logger & Notes ──────────────────────────── */}
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Today's Mood & State</Text>
-          <Text style={s.cardSub}>How are you feeling emotionally and physically?</Text>
-
-          <View style={s.moodGrid}>
-            {MOODS.map((m) => {
-              const active = selectedMood === m.id;
-              return (
-                <Pressable
-                  key={m.id}
-                  onPress={() => setSelectedMood(m.id)}
-                  style={[s.moodCard, active && s.moodCardActive]}
-                >
-                  <Text style={s.moodEmoji}>{m.emoji}</Text>
-                  <Text style={[s.moodLabel, active && s.moodLabelActive]}>{m.label}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          {/* Notes input */}
-          <Text style={[s.cardSub, { marginBottom: 6, marginTop: 10 }]}>Daily Journal / Notes (Optional)</Text>
-          <TextInput
-            style={s.notesInput}
-            placeholder="Add personal notes, medications, or body sensations..."
-            placeholderTextColor="#64748b"
-            value={selectedNotes}
-            onChangeText={setSelectedNotes}
-            multiline
-          />
-
-          <Pressable style={s.saveLogBtn} onPress={handleSaveLog}>
-            <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
-            <Text style={s.saveLogBtnText}>Save Day {currentCycleDay} Log</Text>
-          </Pressable>
-        </View>
-
-        {/* ── 6. Cycle Phase Insights ─────────────────────────── */}
-        <View style={s.card}>
-          <View style={s.insightHeader}>
-            <Ionicons name="bulb-outline" size={22} color="#f472b6" />
-            <Text style={s.insightTitle}>Insights for {currentPhase}</Text>
-          </View>
-          <Text style={s.insightDesc}>
-            {currentPhase === "Ovulation"
-              ? "Your estrogen and luteinizing hormone (LH) peak around this time. Energy, focus, and social engagement are at their highest."
-              : currentPhase === "Menstruation"
-              ? "Your hormone levels are at their lowest baseline. Rest, warm hydration, and gentle stretching are strongly encouraged."
-              : currentPhase === "Fertile Window"
-              ? "Follicles are maturing rapidly. Great time for creative tasks, strength training, and collaborative activities."
-              : "Progesterone is increasing. Focus on consistent sleep routines, magnesium-rich foods, and stress reduction."}
-          </Text>
-
-          <View style={s.tipBox}>
-            <View style={s.tipIconWrap}>
-              <Ionicons name="restaurant-outline" size={18} color="#f472b6" />
+        {/* ── 4. Cycle Summary Card ───────────────────────────── */}
+        <View style={s.summaryCard}>
+          <View style={s.summaryHeader}>
+            <View style={s.summaryHeaderIconWrap}>
+              <MaterialCommunityIcons name="chart-bar" size={20} color="#a855f7" />
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.tipHeading}>Recommended Nutrition</Text>
-              <Text style={s.tipBody}>
-                {currentPhase === "Menstruation"
-                  ? "Iron-rich foods like spinach, lentils, beetroot, and plenty of warm herbal tea."
-                  : "Leafy greens, berries, avocados, seeds (pumpkin/flax), and lean proteins."}
-              </Text>
+            <View style={{ flex: 1, marginLeft: 8 }}>
+              <Text style={s.summaryTitle}>Cycle Summary</Text>
+              <Text style={s.summarySub}>Your average cycle length and period</Text>
             </View>
+            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.4)" />
           </View>
 
-          <View style={s.tipBox}>
-            <View style={s.tipIconWrap}>
-              <Ionicons name="fitness-outline" size={18} color="#f472b6" />
+          <View style={s.summaryMetricsRow}>
+            {/* 28 days */}
+            <View style={s.metricCol}>
+              <Text style={[s.metricValue, { color: "#f43f5e" }]}>{config.cycleLength} days</Text>
+              <Text style={s.metricLabel}>Average cycle</Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.tipHeading}>Movement & Workouts</Text>
-              <Text style={s.tipBody}>
-                {currentPhase === "Menstruation"
-                  ? "Gentle yoga, slow walks, and restorative stretching."
-                  : "HIIT, resistance training, running, and athletic workouts."}
-              </Text>
+
+            <View style={s.metricDivider} />
+
+            {/* 5 days */}
+            <View style={s.metricCol}>
+              <Text style={[s.metricValue, { color: "#a855f7" }]}>{config.periodLength} days</Text>
+              <Text style={s.metricLabel}>Average period</Text>
             </View>
-          </View>
-        </View>
 
-        {/* ── 7. Cycle History ────────────────────────────────── */}
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Cycle History</Text>
-          <Text style={s.cardSub}>
-            Average cycle: {config.cycleLength} days · Average period: {config.periodLength} days
-          </Text>
+            <View style={s.metricDivider} />
 
-          <View style={s.historyList}>
-            {PAST_CYCLES.map((c, i) => (
-              <View key={c.month} style={[s.historyItem, i < PAST_CYCLES.length - 1 && s.historyItemBorder]}>
-                <View>
-                  <Text style={s.historyMonth}>{c.month}</Text>
-                  <Text style={s.historySub}>{c.period} period</Text>
-                </View>
-                <View style={s.historyBadge}>
-                  <Text style={s.historyLength}>{c.length}</Text>
-                  <Text style={s.historyStatus}>{c.status}</Text>
-                </View>
-              </View>
-            ))}
+            {/* ±2 days */}
+            <View style={s.metricCol}>
+              <Text style={[s.metricValue, { color: "#2dd4bf" }]}>±2 days</Text>
+              <Text style={s.metricLabel}>Variation</Text>
+            </View>
+
+            <View style={s.metricDivider} />
+
+            {/* Mostly regular */}
+            <View style={s.metricCol}>
+              <Text style={[s.metricValue, { color: "#4ade80" }]}>Mostly regular</Text>
+              <Text style={s.metricLabel}>Regularity</Text>
+            </View>
           </View>
         </View>
 
         <View style={{ height: 40 }} />
       </ScrollView>
 
+      {/* ── QUICK LOG MODAL ───────────────────────────────────── */}
+      <Modal visible={activeLogModal !== null} transparent animationType="slide" onRequestClose={() => setActiveLogModal(null)}>
+        <Pressable style={s.modalOverlay} onPress={() => setActiveLogModal(null)}>
+          <Pressable style={s.modalSheet} onPress={(e) => e.stopPropagation()}>
+            <View style={s.modalHandle} />
+            <Text style={s.modalTitle}>
+              {activeLogModal === "flow"
+                ? "Menstrual Flow"
+                : activeLogModal === "symptoms"
+                ? "Daily Symptoms"
+                : activeLogModal === "mood"
+                ? "Mood Check-in"
+                : `Log ${activeLogModal?.toUpperCase()}`}
+            </Text>
+            <Text style={s.modalSub}>Recording for Sep {selectedDayNumber}, 2026</Text>
+
+            {/* Flow Options */}
+            {activeLogModal === "flow" && (
+              <View style={s.optionsWrap}>
+                {FLOW_CHOICES.map((opt) => (
+                  <Pressable
+                    key={opt}
+                    onPress={() => {
+                      handleSaveLogForDay({ flow: opt });
+                      setActiveLogModal(null);
+                      Alert.alert("Flow Logged", `Set flow to ${opt.toUpperCase()}`);
+                    }}
+                    style={[s.optionPill, currentLog.flow === opt && s.optionPillActive]}
+                  >
+                    <Ionicons name="water" size={16} color={currentLog.flow === opt ? "#ffffff" : "#f43f5e"} />
+                    <Text style={[s.optionText, currentLog.flow === opt && s.optionTextActive]}>
+                      {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+
+            {/* Symptoms Options */}
+            {activeLogModal === "symptoms" && (
+              <View style={s.optionsWrap}>
+                {SYMPTOM_CHOICES.map((sym) => {
+                  const active = currentLog.symptoms.includes(sym);
+                  return (
+                    <Pressable
+                      key={sym}
+                      onPress={() => {
+                        const updated = active
+                          ? currentLog.symptoms.filter((s) => s !== sym)
+                          : [...currentLog.symptoms, sym];
+                        handleSaveLogForDay({ symptoms: updated });
+                      }}
+                      style={[s.optionPill, active && s.optionPillActivePurple]}
+                    >
+                      <Ionicons
+                        name={active ? "checkmark-circle" : "add-circle-outline"}
+                        size={16}
+                        color={active ? "#ffffff" : "#a855f7"}
+                      />
+                      <Text style={[s.optionText, active && s.optionTextActive]}>{sym}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* Mood Options */}
+            {activeLogModal === "mood" && (
+              <View style={s.optionsWrap}>
+                {MOOD_CHOICES.map((m) => (
+                  <Pressable
+                    key={m.id}
+                    onPress={() => {
+                      handleSaveLogForDay({ mood: m.id });
+                      setActiveLogModal(null);
+                      Alert.alert("Mood Recorded", `Feeling ${m.label} today.`);
+                    }}
+                    style={[s.optionPill, currentLog.mood === m.id && s.optionPillActiveBlue]}
+                  >
+                    <Text style={{ fontSize: 16 }}>{m.emoji}</Text>
+                    <Text style={[s.optionText, currentLog.mood === m.id && s.optionTextActive]}>{m.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+
+            {/* Other categories */}
+            {activeLogModal !== "flow" && activeLogModal !== "symptoms" && activeLogModal !== "mood" && (
+              <View style={{ paddingVertical: 10 }}>
+                <Text style={{ color: "#cbd5e1", fontSize: 13, marginBottom: 12 }}>
+                  Log {activeLogModal} notes or values for today:
+                </Text>
+                <TextInput
+                  style={s.settingsInput}
+                  placeholder={`Enter ${activeLogModal} details...`}
+                  placeholderTextColor="#64748b"
+                  defaultValue={
+                    activeLogModal === "energy"
+                      ? currentLog.energy
+                      : activeLogModal === "temperature"
+                      ? currentLog.temperature
+                      : activeLogModal === "medication"
+                      ? currentLog.medication
+                      : currentLog.mucus
+                  }
+                  onChangeText={(val) => handleSaveLogForDay({ [activeLogModal!]: val } as any)}
+                />
+                <Pressable style={s.saveModalCloseBtn} onPress={() => setActiveLogModal(null)}>
+                  <Text style={s.saveModalCloseBtnText}>Done</Text>
+                </Pressable>
+              </View>
+            )}
+
+            <Pressable style={s.closeSheetBtn} onPress={() => setActiveLogModal(null)}>
+              <Text style={s.closeSheetText}>Close</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* ── SETTINGS MODAL ────────────────────────────────────── */}
       <Modal visible={settingsModal} transparent animationType="fade" onRequestClose={() => setSettingsModal(false)}>
         <Pressable style={s.modalOverlay} onPress={() => setSettingsModal(false)}>
-          <Pressable style={s.settingsSheet} onPress={(e) => e.stopPropagation()}>
+          <Pressable style={s.modalSheet} onPress={(e) => e.stopPropagation()}>
             <View style={s.modalHandle} />
-            <Text style={s.settingsTitle}>Cycle Configuration</Text>
-            <Text style={s.settingsSub}>Adjust your cycle and period parameters</Text>
+            <Text style={s.modalTitle}>Cycle Configuration</Text>
+            <Text style={s.modalSub}>Adjust your personal cycle parameters</Text>
 
-            <Text style={s.settingInputLabel}>Average Cycle Length (Days)</Text>
+            <Text style={s.inputLabel}>Average Cycle Length (Days)</Text>
             <TextInput
-              style={s.settingInput}
+              style={s.settingsInput}
               keyboardType="number-pad"
               value={tempCycleLength}
               onChangeText={setTempCycleLength}
-              placeholder="e.g. 28"
+              placeholder="28"
               placeholderTextColor="#64748b"
             />
 
-            <Text style={s.settingInputLabel}>Average Period Length (Days)</Text>
+            <Text style={s.inputLabel}>Average Period Length (Days)</Text>
             <TextInput
-              style={s.settingInput}
+              style={s.settingsInput}
               keyboardType="number-pad"
               value={tempPeriodLength}
               onChangeText={setTempPeriodLength}
-              placeholder="e.g. 5"
+              placeholder="5"
               placeholderTextColor="#64748b"
             />
 
             <Pressable style={s.saveSettingsBtn} onPress={handleSaveSettings}>
-              <Text style={s.saveSettingsBtnText}>Save Configuration</Text>
+              <Text style={s.saveSettingsBtnText}>Save Settings</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -560,242 +641,238 @@ export default function CycleTrackingScreen({ navigation }: Props) {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#020813" },
-
-  // Header
+  root: {
+    flex: 1,
+    backgroundColor: "#07090e",
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingTop: 54,
+    paddingTop: 52,
     paddingBottom: 14,
   },
   iconBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: "rgba(255,255,255,0.06)",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+  },
+  headerTitleWrap: {
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: "700",
     color: "#ffffff",
-    letterSpacing: 0.2,
+    letterSpacing: -0.3,
   },
-
+  headerSubtitle: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.5)",
+    fontWeight: "500",
+    marginTop: 2,
+  },
   scroll: {
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 6,
     paddingBottom: 40,
   },
 
-  // Hero
+  // 1. Hero Card
   heroCard: {
-    borderRadius: 28,
-    padding: 22,
-    marginBottom: 16,
-    position: "relative",
-    overflow: "hidden",
-  },
-  heroGlow: {
-    position: "absolute",
-    top: -40,
-    right: -40,
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: "rgba(255,255,255,0.12)",
-  },
-  heroTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  phaseBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "rgba(0,0,0,0.24)",
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 14,
-  },
-  phaseBadgeText: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#ffffff",
-    letterSpacing: 0.5,
-  },
-  cycleDaySub: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.9)",
-    fontWeight: "700",
-  },
-
-  // Dial
-  cycleDialWrap: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 10,
-  },
-  cycleDialRingOuter: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: "rgba(255,255,255,0.18)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.35)",
-  },
-  cycleDialRingInner: {
-    width: 116,
-    height: 116,
-    borderRadius: 58,
-    backgroundColor: "rgba(0,0,0,0.25)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  dialDayNum: {
-    fontSize: 19,
-    fontWeight: "800",
-    color: "#ffffff",
-    marginTop: 2,
-  },
-  dialPhaseLabel: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.85)",
-    fontWeight: "600",
-  },
-
-  // Forecast
-  forecastBox: {
-    flexDirection: "row",
-    backgroundColor: "rgba(0,0,0,0.24)",
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginTop: 14,
-  },
-  forecastCol: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  forecastLabel: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.85)",
-    marginBottom: 4,
-    fontWeight: "600",
-  },
-  forecastValue: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#ffffff",
-  },
-  forecastValueHighlight: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: "#fde047",
-  },
-  forecastDivider: {
-    width: 1,
-    backgroundColor: "rgba(255,255,255,0.18)",
-    marginHorizontal: 10,
-  },
-
-  // Generic Card
-  card: {
-    backgroundColor: "#16181e",
     borderRadius: 24,
     padding: 18,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-  },
-  cardHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  cardTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#ffffff",
-    marginBottom: 2,
-  },
-  cardSub: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.55)",
     marginBottom: 14,
-  },
-  todayPillBtn: {
-    backgroundColor: "rgba(233,30,99,0.2)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    position: "relative",
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(233,30,99,0.4)",
+    borderColor: "rgba(255,255,255,0.08)",
   },
-  todayPillBtnText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#f472b6",
+  foliageGraphicWrap: {
+    position: "absolute",
+    right: -20,
+    bottom: -10,
+    opacity: 0.8,
   },
-
-  // Timeline Strip
-  timelineScroll: {
-    gap: 8,
-    paddingVertical: 4,
+  heroMainRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
-  dayPill: {
-    width: 52,
-    paddingVertical: 12,
-    borderRadius: 16,
-    backgroundColor: "#20232b",
+  dialWrap: {
+    width: 110,
+    height: 110,
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+  },
+  dialTextCenter: {
+    position: "absolute",
     alignItems: "center",
     justifyContent: "center",
+  },
+  dialSmallLabel: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.6)",
+  },
+  dialDayNumber: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: "#ffffff",
+    lineHeight: 32,
+  },
+  dialOfTotal: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.5)",
+  },
+  heroRightCol: {
+    flex: 1,
+    marginLeft: 18,
+  },
+  heroInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  heroInfoLabel: {
+    fontSize: 10,
+    color: "rgba(255,255,255,0.5)",
+    fontWeight: "600",
+  },
+  heroInfoVal: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+  heroDivider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    marginVertical: 6,
+  },
+  logPeriodBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f472b6",
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    marginTop: 12,
+    alignSelf: "flex-start",
+  },
+  logPeriodBtnText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#0f172a",
+  },
+
+  // 2. Calendar Card
+  calendarCard: {
+    backgroundColor: "#11141f",
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.06)",
   },
-  dayPillSelected: {
-    backgroundColor: "#e11d48",
-    borderColor: "#f43f5e",
+  calHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
   },
-  dayPillToday: {
-    borderColor: "rgba(244,63,94,0.6)",
-    backgroundColor: "rgba(244,63,94,0.15)",
-  },
-  dayPillDate: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.5)",
-    fontWeight: "600",
-    marginBottom: 2,
-  },
-  dayPillNum: {
+  calMonthTitle: {
     fontSize: 16,
     fontWeight: "700",
     color: "#ffffff",
-    marginBottom: 6,
   },
-  dayPillTextActive: {
-    color: "#ffffff",
-  },
-  dayDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  legendRow: {
+  calNavArrows: {
     flexDirection: "row",
-    gap: 14,
-    marginTop: 14,
+    gap: 8,
+  },
+  calArrowBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  calWeekdaysRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  calWeekdayText: {
+    width: (SW - 64) / 7,
+    textAlign: "center",
+    fontSize: 10,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.45)",
+  },
+  calDaysGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 4,
+    marginBottom: 14,
+  },
+  calDayCell: {
+    width: (SW - 64 - 24) / 7,
+    height: 34,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  calDayText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.7)",
+  },
+  calDayTextWhite: {
+    color: "#ffffff",
+    fontWeight: "800",
+  },
+  calDayMuted: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.2)",
+  },
+
+  // Cell Styles Matching Image 2
+  cellPeriod: {
+    backgroundColor: "#e11d48", // solid rose pill
+  },
+  cellPredicted: {
+    borderWidth: 1.5,
+    borderColor: "#f43f5e",
+    borderStyle: "dashed",
+    backgroundColor: "rgba(244,63,94,0.08)",
+  },
+  cellFertile: {
+    backgroundColor: "#0d9488", // teal/green pill
+  },
+  cellToday: {
+    borderWidth: 2,
+    borderColor: "#a855f7",
+    backgroundColor: "rgba(168,85,247,0.2)",
+  },
+  cellSelectedBorder: {
+    shadowColor: "#f43f5e",
+    shadowRadius: 6,
+    shadowOpacity: 0.6,
+  },
+
+  // Calendar Legend
+  calLegendRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 8,
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.06)",
@@ -803,236 +880,163 @@ const s = StyleSheet.create({
   legendItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 5,
   },
-  legendDot: {
+  dotPeriod: {
     width: 8,
     height: 8,
     borderRadius: 4,
+    backgroundColor: "#f43f5e",
   },
-  legendText: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.6)",
-  },
-
-  // Flow Row
-  flowRow: {
-    flexDirection: "row",
-    gap: 6,
-  },
-  flowBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 14,
-    backgroundColor: "#20232b",
+  ringPredicted: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-    gap: 4,
-  },
-  flowBtnActive: {
-    backgroundColor: "#e11d48",
     borderColor: "#f43f5e",
   },
-  flowLabel: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.6)",
-    fontWeight: "600",
+  dotFertile: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#0d9488",
   },
-  flowLabelActive: {
-    color: "#ffffff",
+  ringToday: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: "#a855f7",
   },
-
-  // Symptoms Chips
-  chipsWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  chip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: "#20232b",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-  },
-  chipActive: {
-    backgroundColor: "#be185d",
-    borderColor: "#f472b6",
-  },
-  chipText: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.75)",
+  legendLabel: {
+    fontSize: 10,
+    color: "rgba(255,255,255,0.55)",
     fontWeight: "500",
   },
-  chipTextActive: {
-    color: "#ffffff",
-    fontWeight: "700",
-  },
 
-  // Mood Grid
-  moodGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    gap: 8,
-    marginBottom: 8,
-  },
-  moodCard: {
-    width: "31%",
-    paddingVertical: 12,
-    borderRadius: 16,
-    backgroundColor: "#20232b",
-    alignItems: "center",
+  // 3. Today's Log Card
+  logCard: {
+    backgroundColor: "#11141f",
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.06)",
-    gap: 4,
   },
-  moodCardActive: {
-    backgroundColor: "rgba(233,30,99,0.25)",
-    borderColor: "#ec4899",
+  logCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 14,
   },
-  moodEmoji: {
-    fontSize: 22,
+  logCardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#ffffff",
   },
-  moodLabel: {
+  logCardSub: {
     fontSize: 11,
-    color: "rgba(255,255,255,0.7)",
-    fontWeight: "600",
+    color: "rgba(255,255,255,0.45)",
+    marginTop: 2,
   },
-  moodLabelActive: {
-    color: "#ffffff",
-    fontWeight: "700",
+  quickLogScroll: {
+    gap: 12,
+    paddingVertical: 2,
   },
-
-  notesInput: {
-    backgroundColor: "#20232b",
-    borderRadius: 14,
-    padding: 12,
-    color: "#ffffff",
-    fontSize: 13,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    height: 60,
-    textAlignVertical: "top",
-    marginBottom: 12,
-  },
-
-  saveLogBtn: {
-    flexDirection: "row",
+  quickLogItem: {
     alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#e11d48",
-    paddingVertical: 14,
+    width: 58,
+  },
+  quickLogIconBox: {
+    width: 48,
+    height: 48,
     borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
   },
-  saveLogBtnText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#ffffff",
+  quickLogLabel: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.65)",
+    textAlign: "center",
   },
 
-  // Insights
-  insightHeader: {
+  // 4. Cycle Summary Card
+  summaryCard: {
+    backgroundColor: "#11141f",
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+  },
+  summaryHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 8,
+    marginBottom: 14,
   },
-  insightTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#f472b6",
-  },
-  insightDesc: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.7)",
-    lineHeight: 18,
-    marginBottom: 12,
-  },
-  tipBox: {
-    flexDirection: "row",
-    gap: 10,
-    backgroundColor: "#20232b",
-    padding: 12,
-    borderRadius: 14,
-    marginBottom: 8,
-  },
-  tipIconWrap: {
+  summaryHeaderIconWrap: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "rgba(244,114,182,0.15)",
-    alignItems: "center",
+    backgroundColor: "rgba(168, 85, 247, 0.15)",
     justifyContent: "center",
+    alignItems: "center",
   },
-  tipHeading: {
-    fontSize: 12,
+  summaryTitle: {
+    fontSize: 15,
     fontWeight: "700",
     color: "#ffffff",
-    marginBottom: 2,
   },
-  tipBody: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.6)",
-    lineHeight: 16,
-  },
-
-  // History
-  historyList: {
-    marginTop: 2,
-  },
-  historyItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 10,
-  },
-  historyItemBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.06)",
-  },
-  historyMonth: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#ffffff",
-    marginBottom: 2,
-  },
-  historySub: {
+  summarySub: {
     fontSize: 11,
     color: "rgba(255,255,255,0.45)",
   },
-  historyBadge: {
-    alignItems: "flex-end",
+  summaryMetricsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(255,255,255,0.02)",
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 16,
   },
-  historyLength: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#f472b6",
-    marginBottom: 2,
+  metricCol: {
+    flex: 1,
+    alignItems: "center",
   },
-  historyStatus: {
-    fontSize: 10,
+  metricValue: {
+    fontSize: 13,
+    fontWeight: "800",
+    marginBottom: 3,
+    textAlign: "center",
+  },
+  metricLabel: {
+    fontSize: 9,
     color: "rgba(255,255,255,0.5)",
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  metricDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: "rgba(255,255,255,0.06)",
   },
 
-  // Settings Modal
+  // Modals
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.75)",
     justifyContent: "flex-end",
   },
-  settingsSheet: {
+  modalSheet: {
     backgroundColor: "#0f172a",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    padding: 24,
+    padding: 22,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
   },
@@ -1042,12 +1046,60 @@ const s = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: "rgba(255,255,255,0.2)",
     alignSelf: "center",
+    marginBottom: 14,
+  },
+  modalTitle: { fontSize: 18, fontWeight: "800", color: "#ffffff", textAlign: "center", marginBottom: 2 },
+  modalSub: { fontSize: 12, color: "#94a3b8", textAlign: "center", marginBottom: 16 },
+
+  optionsWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
     marginBottom: 16,
   },
-  settingsTitle: { fontSize: 18, fontWeight: "800", color: "#ffffff", textAlign: "center", marginBottom: 4 },
-  settingsSub: { fontSize: 12, color: "#94a3b8", textAlign: "center", marginBottom: 20 },
-  settingInputLabel: { fontSize: 13, fontWeight: "700", color: "#cbd5e1", marginBottom: 6 },
-  settingInput: {
+  optionPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  optionPillActive: {
+    backgroundColor: "#e11d48",
+    borderColor: "#f43f5e",
+  },
+  optionPillActivePurple: {
+    backgroundColor: "#7e22ce",
+    borderColor: "#a855f7",
+  },
+  optionPillActiveBlue: {
+    backgroundColor: "#0284c7",
+    borderColor: "#38bdf8",
+  },
+  optionText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#cbd5e1",
+  },
+  optionTextActive: {
+    color: "#ffffff",
+    fontWeight: "700",
+  },
+  closeSheetBtn: {
+    paddingVertical: 12,
+    alignItems: "center",
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    marginTop: 6,
+  },
+  closeSheetText: { fontSize: 14, fontWeight: "700", color: "#94a3b8" },
+
+  inputLabel: { fontSize: 12, fontWeight: "700", color: "#cbd5e1", marginBottom: 6 },
+  settingsInput: {
     backgroundColor: "#1e293b",
     borderRadius: 14,
     paddingHorizontal: 14,
@@ -1056,14 +1108,22 @@ const s = StyleSheet.create({
     fontSize: 14,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
-    marginBottom: 14,
+    marginBottom: 12,
   },
   saveSettingsBtn: {
-    backgroundColor: "#e11d48",
+    backgroundColor: "#ec4899",
     paddingVertical: 14,
     borderRadius: 16,
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 6,
   },
   saveSettingsBtnText: { color: "#ffffff", fontSize: 14, fontWeight: "700" },
+  saveModalCloseBtn: {
+    backgroundColor: "#0284c7",
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  saveModalCloseBtnText: { color: "#ffffff", fontSize: 14, fontWeight: "700" },
 });
