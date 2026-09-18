@@ -40,6 +40,7 @@ jobs:
           EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: 843343743619-q4jpmh7eouc3kom1kias1hnh1ps4qom8.apps.googleusercontent.com
           EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: 843343743619-u5nmtb1nhbmd6rhoptm6406lisjhna60.apps.googleusercontent.com
           EXPO_PUBLIC_GOOGLE_MAPS_API_KEY: AIzaSyAMzsDmDdT2c7r5j1dWTSxev6XSHJZTf-s
+          EXPO_PUBLIC_USDA_API_KEY: cIZXb3lSBZNqKTYDCAvOUFoaupx8AqkIyBpxqSkM
 
       - name: Build APK
         run: |
@@ -55,6 +56,7 @@ jobs:
           EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: 843343743619-q4jpmh7eouc3kom1kias1hnh1ps4qom8.apps.googleusercontent.com
           EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: 843343743619-u5nmtb1nhbmd6rhoptm6406lisjhna60.apps.googleusercontent.com
           EXPO_PUBLIC_GOOGLE_MAPS_API_KEY: AIzaSyAMzsDmDdT2c7r5j1dWTSxev6XSHJZTf-s
+          EXPO_PUBLIC_USDA_API_KEY: cIZXb3lSBZNqKTYDCAvOUFoaupx8AqkIyBpxqSkM
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

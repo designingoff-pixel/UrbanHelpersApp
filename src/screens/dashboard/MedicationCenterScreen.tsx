@@ -32,6 +32,7 @@ import {
   MedicineDefinition,
   MedicineCategory,
   MEDICINE_CATEGORIES,
+  MEDICINE_DATABASE,
   searchMedicineDatabase,
   searchRxNormDrugs,
 } from "@/services/medicineDatabase";
@@ -63,6 +64,7 @@ export default function MedicationCenterScreen({ navigation }: Props) {
   const [selectedMedDef, setSelectedMedDef] = useState<MedicineDefinition | null>(null);
   const [rxSearching, setRxSearching] = useState(false);
   const [rxResults, setRxResults] = useState<MedicineDefinition[]>([]);
+  const [rxError, setRxError] = useState<"none" | "error" | "empty">("none");
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const todayKey = getTodayKey();
@@ -91,9 +93,21 @@ export default function MedicationCenterScreen({ navigation }: Props) {
   const handleRxNormSearch = async () => {
     if (!medName.trim()) return;
     setRxSearching(true);
-    const list = await searchRxNormDrugs(medName);
-    setRxResults(list);
-    setRxSearching(false);
+    setRxError("none");
+    setRxResults([]);
+    try {
+      // Build set of local names for deduplication
+      const localNameSet = new Set(
+        MEDICINE_DATABASE.map((m) => m.name.toLowerCase().trim())
+      );
+      const list = await searchRxNormDrugs(medName, localNameSet);
+      setRxResults(list);
+      setRxError(list.length === 0 ? "empty" : "none");
+    } catch {
+      setRxError("error");
+    } finally {
+      setRxSearching(false);
+    }
   };
 
   const handleAddMedication = async () => {
@@ -421,7 +435,13 @@ export default function MedicationCenterScreen({ navigation }: Props) {
                           ))
                         ) : (
                           <View style={s.suggestionEmpty}>
-                            <Text style={s.suggestionEmptyText}>No matching preset tablet</Text>
+                            <Text style={s.suggestionEmptyText}>No matching preset medicine found locally</Text>
+                          </View>
+                        )}
+
+                        {/* RxNorm search trigger — always visible when query ≥ 2 chars */}
+                        {medName.trim().length >= 2 && (
+                          <View style={s.rxTriggerRow}>
                             <Pressable
                               style={s.rxSearchBtn}
                               onPress={handleRxNormSearch}
@@ -429,31 +449,71 @@ export default function MedicationCenterScreen({ navigation }: Props) {
                             >
                               <Ionicons name="search" size={14} color="#a855f7" />
                               <Text style={s.rxSearchBtnText}>
-                                {rxSearching ? "Searching NIH RxNorm..." : "Search NIH Clinical Drugs"}
+                                {rxSearching
+                                  ? "Searching NIH RxNorm..."
+                                  : "Search NIH RxNorm (US clinical database)"}
                               </Text>
                             </Pressable>
                           </View>
                         )}
 
-                        {/* RxNorm results if any */}
+                        {/* RxNorm results */}
                         {rxResults.length > 0 && (
                           <View style={s.rxSection}>
-                            <Text style={s.rxSectionTitle}>NIH Clinical Database Results</Text>
-                            {rxResults.slice(0, 4).map((rx) => (
+                            <Text style={s.rxSectionTitle}>NIH RxNorm Results</Text>
+                            <View style={s.rxDisclaimerRow}>
+                              <Ionicons name="information-circle-outline" size={13} color="rgba(255,255,255,0.35)" />
+                              <Text style={s.rxDisclaimer}>
+                                RxNorm is a US-focused database. Indian brand names may not appear.
+                              </Text>
+                            </View>
+                            {rxResults.map((rx) => (
                               <Pressable
                                 key={rx.id}
                                 style={s.suggestionItem}
                                 onPress={() => handleSelectMedicine(rx)}
                               >
                                 <View style={{ flex: 1 }}>
-                                  <Text style={s.suggestionTitle}>{rx.name}</Text>
-                                  <Text style={s.suggestionGeneric}>{rx.category}</Text>
+                                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                                    <Text style={s.suggestionTitle}>{rx.name}</Text>
+                                    <View style={s.rxBadge}>
+                                      <Text style={s.rxBadgeText}>RxNorm</Text>
+                                    </View>
+                                  </View>
+                                  {rx.genericName && rx.genericName !== rx.name && (
+                                    <Text style={s.suggestionGeneric}>Active: {rx.genericName}</Text>
+                                  )}
+                                  {rx.notes ? (
+                                    <Text style={s.rxNoteText}>{rx.notes}</Text>
+                                  ) : null}
                                 </View>
-                                <View style={s.miniDosePill}>
-                                  <Text style={s.miniDoseText}>{rx.commonDosages[0]}</Text>
-                                </View>
+                                {rx.commonDosages.length > 0 && (
+                                  <View style={s.miniDosePill}>
+                                    <Text style={s.miniDoseText}>{rx.commonDosages[0]}</Text>
+                                  </View>
+                                )}
                               </Pressable>
                             ))}
+                          </View>
+                        )}
+
+                        {/* RxNorm empty state */}
+                        {rxError === "empty" && !rxSearching && (
+                          <View style={s.rxEmptyRow}>
+                            <Ionicons name="search-outline" size={15} color="rgba(255,255,255,0.3)" />
+                            <Text style={s.rxEmptyText}>
+                              No RxNorm results for "{medName}". Try the generic name.
+                            </Text>
+                          </View>
+                        )}
+
+                        {/* RxNorm error state */}
+                        {rxError === "error" && !rxSearching && (
+                          <View style={s.rxEmptyRow}>
+                            <Ionicons name="warning-outline" size={15} color="#f87171" />
+                            <Text style={[s.rxEmptyText, { color: "#f87171" }]}>
+                              Could not reach RxNorm. Check your internet connection.
+                            </Text>
                           </View>
                         )}
                       </>
@@ -1049,6 +1109,59 @@ const s = StyleSheet.create({
     paddingVertical: 4,
     textTransform: "uppercase",
     letterSpacing: 0.5,
+  },
+  rxTriggerRow: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.06)",
+    alignItems: "flex-start",
+  },
+  rxBadge: {
+    backgroundColor: "rgba(139,92,246,0.2)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: "rgba(139,92,246,0.4)",
+  },
+  rxBadgeText: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#c084fc",
+    letterSpacing: 0.4,
+  },
+  rxDisclaimerRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 5,
+    paddingHorizontal: 14,
+    paddingBottom: 6,
+  },
+  rxDisclaimer: {
+    fontSize: 10,
+    color: "rgba(255,255,255,0.35)",
+    flex: 1,
+    lineHeight: 14,
+  },
+  rxNoteText: {
+    fontSize: 10,
+    color: "rgba(255,255,255,0.4)",
+    marginTop: 2,
+  },
+  rxEmptyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.06)",
+  },
+  rxEmptyText: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.4)",
+    flex: 1,
   },
 
   // Dosage Chips

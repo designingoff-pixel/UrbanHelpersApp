@@ -506,46 +506,183 @@ export function searchMedicineDatabase(
   });
 }
 
+
 /**
- * Fallback to NIH RxNorm Free Open API for uncommon or clinical drugs
+ * RxNorm term-type priority order.
+ * SBD = branded drug, SCD = clinical drug, BPCK = brand pack, GPCK = generic pack
+ * We prefer SCD > SBD > BPCK > GPCK > everything else.
  */
-export async function searchRxNormDrugs(query: string): Promise<MedicineDefinition[]> {
+const RX_TTY_PRIORITY: Record<string, number> = {
+  SCD: 1,
+  SBD: 2,
+  BPCK: 3,
+  GPCK: 4,
+};
+
+/**
+ * Search the official NLM RxNorm API (https://rxnav.nlm.nih.gov/REST/).
+ *
+ * Step 1 – /drugs.json?name= : find all concept groups for the query term.
+ * Step 2 – For each unique rxcui, fetch /RxTerms/rxcui/{id}/allinfo.json to
+ *           get real strength and dosage form (never invented values).
+ *
+ * Deduplicates against the local MEDICINE_DATABASE names.
+ *
+ * NOTE: RxNorm is a US-centric clinical database. Indian brand names may not
+ * appear; results are based on generic/active-ingredient matching.
+ */
+export async function searchRxNormDrugs(
+  query: string,
+  localNames: Set<string> = new Set()
+): Promise<MedicineDefinition[]> {
+  const clean = query.trim();
+  if (!clean || clean.length < 2) return [];
+
+  const BASE = "https://rxnav.nlm.nih.gov/REST";
+
   try {
-    const clean = query.trim();
-    if (!clean || clean.length < 2) return [];
+    // ── Step 1: concept search ──────────────────────────────────────────────
+    const controller1 = new AbortController();
+    const t1 = setTimeout(() => controller1.abort(), 7000);
 
-    const url = `https://rxnav.nlm.nih.gov/REST/drugs.json?name=${encodeURIComponent(clean)}`;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
+    const res1 = await fetch(
+      `${BASE}/drugs.json?name=${encodeURIComponent(clean)}`,
+      { signal: controller1.signal }
+    );
+    clearTimeout(t1);
 
-    const res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeout);
+    if (!res1.ok) return [];
 
-    if (!res.ok) return [];
-    const data = await res.json();
-    const conceptGroup = data.drugGroup?.conceptGroup;
-    if (!conceptGroup || !Array.isArray(conceptGroup)) return [];
+    const data1 = await res1.json();
+    const conceptGroup: any[] = data1.drugGroup?.conceptGroup ?? [];
+    if (!conceptGroup.length) return [];
 
-    const results: MedicineDefinition[] = [];
+    // Collect candidate concepts, sorted by TTY priority
+    interface Candidate {
+      rxcui: string;
+      name: string;
+      synonym: string;
+      tty: string;
+      priority: number;
+    }
+
+    const candidates: Candidate[] = [];
     for (const group of conceptGroup) {
-      if (group.conceptProperties && Array.isArray(group.conceptProperties)) {
-        for (const prop of group.conceptProperties.slice(0, 5)) {
-          results.push({
-            id: `rx_${prop.rxcui || Math.random().toString(36).substring(2, 8)}`,
-            name: prop.name || clean,
-            genericName: prop.synonym || prop.name || clean,
-            category: "All",
-            commonDosages: ["250mg", "500mg"],
-            defaultForm: "tablet",
-            defaultTiming: "After food",
-            color: "#3b82f6",
-            notes: "NIH RxNorm verified clinical concept",
-          });
-        }
+      const tty: string = group.tty ?? "";
+      const priority = RX_TTY_PRIORITY[tty] ?? 99;
+      for (const prop of group.conceptProperties ?? []) {
+        if (!prop.rxcui || !prop.name) continue;
+        candidates.push({
+          rxcui: String(prop.rxcui),
+          name: String(prop.name),
+          synonym: String(prop.synonym || prop.name),
+          tty,
+          priority,
+        });
       }
     }
+
+    // Sort: preferred TTYs first, then alphabetically
+    candidates.sort((a, b) =>
+      a.priority !== b.priority
+        ? a.priority - b.priority
+        : a.name.localeCompare(b.name)
+    );
+
+    // Deduplicate by rxcui and remove entries already in local DB
+    const seenRxcui = new Set<string>();
+    const deduped = candidates.filter((c) => {
+      const normName = c.name.toLowerCase().trim();
+      if (seenRxcui.has(c.rxcui)) return false;
+      if (localNames.has(normName)) return false;
+      seenRxcui.add(c.rxcui);
+      return true;
+    });
+
+    // Take top-15 candidates to fetch RxTerms for
+    const top = deduped.slice(0, 15);
+    if (!top.length) return [];
+
+    // ── Step 2: fetch RxTerms for real strength + form ──────────────────────
+    const rxTermsResults = await Promise.allSettled(
+      top.map(async (c) => {
+        const controller2 = new AbortController();
+        const t2 = setTimeout(() => controller2.abort(), 5000);
+        try {
+          const res2 = await fetch(
+            `${BASE}/RxTerms/rxcui/${c.rxcui}/allinfo.json`,
+            { signal: controller2.signal }
+          );
+          clearTimeout(t2);
+          if (!res2.ok) return { c, terms: null };
+          const d2 = await res2.json();
+          return { c, terms: d2.rxtermsProperties ?? null };
+        } catch {
+          clearTimeout(t2);
+          return { c, terms: null };
+        }
+      })
+    );
+
+    const results: MedicineDefinition[] = [];
+
+    for (const settled of rxTermsResults) {
+      if (settled.status !== "fulfilled") continue;
+      const { c, terms } = settled.value;
+
+      // Derive display name: prefer RxTerms fullName > original concept name
+      const displayName: string =
+        (terms?.fullName ?? terms?.displayName ?? c.name).trim();
+
+      // Real strength from RxTerms (may be empty string if not applicable)
+      const strengthRaw: string = (terms?.strength ?? "").trim();
+      const dosageFormRaw: string = (terms?.dosageForm ?? "").trim();
+
+      // Map RxTerms dosageForm → our PillForm type
+      const form: PillForm = mapDosageForm(dosageFormRaw);
+
+      // Build commonDosages ONLY from real API data – never invented
+      const commonDosages: string[] =
+        strengthRaw.length > 0 ? [strengthRaw] : [];
+
+      // Generic/active ingredient from RxTerms or synonym
+      const genericIngredient: string = (
+        terms?.synonym ??
+        c.synonym ??
+        ""
+      ).trim();
+
+      results.push({
+        id: `rx_${c.rxcui}`,
+        name: displayName,
+        genericName: genericIngredient || displayName,
+        category: "All",
+        commonDosages,
+        defaultForm: form,
+        defaultTiming: "After food",
+        color: "#7c3aed",
+        notes: dosageFormRaw
+          ? `${dosageFormRaw}${strengthRaw ? " · " + strengthRaw : ""} — RxNorm (US clinical database)`
+          : "RxNorm (US clinical database)",
+      });
+    }
+
     return results;
   } catch {
     return [];
   }
 }
+
+/**
+ * Maps a free-text RxTerms dosage form string to our internal PillForm type.
+ * Falls back to "tablet" if no match is found.
+ */
+function mapDosageForm(form: string): PillForm {
+  const f = form.toLowerCase();
+  if (f.includes("capsule") || f.includes("cap")) return "capsule";
+  if (f.includes("solution") || f.includes("liquid") || f.includes("syrup") || f.includes("suspension")) return "liquid";
+  if (f.includes("drop")) return "drops";
+  if (f.includes("inject") || f.includes("vial") || f.includes("prefilled")) return "injection";
+  return "tablet";
+}
+

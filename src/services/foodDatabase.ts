@@ -893,6 +893,112 @@ export function searchFoodDatabase(
 }
 
 /**
+ * USDA FoodData Central API search.
+ * Returns up to 15 foods mapped to FoodDefinition.
+ * Deduplicates against the local FOOD_DATABASE by normalised name.
+ * Uses process.env.EXPO_PUBLIC_USDA_API_KEY (set in .env).
+ */
+export async function searchUSDAFood(
+  query: string,
+  localNames: Set<string> = new Set()
+): Promise<FoodDefinition[]> {
+  try {
+    const trimmed = query.trim();
+    if (!trimmed || trimmed.length < 2) return [];
+
+    // EXPO_PUBLIC_ prefix exposes the var to the JS bundle via Expo's env system.
+    const apiKey = process.env.EXPO_PUBLIC_USDA_API_KEY;
+    if (!apiKey) return [];
+
+    const url =
+      `https://api.nal.usda.gov/fdc/v1/foods/search` +
+      `?query=${encodeURIComponent(trimmed)}` +
+      `&dataType=Foundation,SR%20Legacy,Survey%20(FNDDS)` +
+      `&pageSize=20` +
+      `&api_key=${apiKey}`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!data.foods || !Array.isArray(data.foods)) return [];
+
+    /** Helper: pull a nutrient value (per 100 g) by nutrient number */
+    const getNutrient = (nutrients: any[], number: string): number => {
+      const n = nutrients.find((x: any) => String(x.nutrientNumber) === number);
+      return n ? Math.round((n.value || 0) * 10) / 10 : 0;
+    };
+
+    const results: FoodDefinition[] = [];
+    for (const food of data.foods) {
+      if (results.length >= 15) break;
+
+      const name: string = food.description || food.lowercaseDescription || "";
+      if (!name) continue;
+
+      // Deduplicate against local DB (case-insensitive, trimmed)
+      const normName = name.toLowerCase().trim();
+      if (localNames.has(normName)) continue;
+
+      const nutrients: any[] = food.foodNutrients || [];
+
+      // USDA nutrient numbers:
+      // 208 = Energy (kcal), 205 = Carbs, 204 = Fat, 203 = Protein
+      // 606 = Sat Fat, 601 = Cholesterol, 307 = Sodium
+      // 291 = Fiber, 269 = Sugars, 318 = Vit A (IU), 401 = Vit C
+      // 301 = Calcium, 303 = Iron, 306 = Potassium
+      const calories    = Math.round(getNutrient(nutrients, "208"));
+      const carbs       = getNutrient(nutrients, "205");
+      const fat         = getNutrient(nutrients, "204");
+      const protein     = getNutrient(nutrients, "203");
+      const satFat      = getNutrient(nutrients, "606");
+      const cholesterol = Math.round(getNutrient(nutrients, "601"));
+      const sodium      = Math.round(getNutrient(nutrients, "307"));
+      const fibre       = getNutrient(nutrients, "291");
+      const sugars      = getNutrient(nutrients, "269");
+      const vitaminA    = Math.round(getNutrient(nutrients, "318"));
+      const vitaminC    = getNutrient(nutrients, "401");
+      const calcium     = Math.round(getNutrient(nutrients, "301"));
+      const iron        = Math.round(getNutrient(nutrients, "303") * 10) / 10;
+      const potassium   = Math.round(getNutrient(nutrients, "306"));
+
+      // Skip entries with zero calories (likely incomplete data)
+      if (calories === 0) continue;
+
+      results.push({
+        id: `usda_${food.fdcId}`,
+        name,
+        category: "All" as FoodCategory,
+        brand: food.brandOwner || undefined,
+        calories,
+        unit: "serving (100 g)",
+        grams: 100,
+        carbs,
+        fat,
+        protein,
+        satFat,
+        cholesterol,
+        sodium,
+        fibre,
+        sugars,
+        vitaminA,
+        vitaminC,
+        calcium,
+        iron,
+        potassium,
+      });
+    }
+
+    return results;
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Fallback to Open Food Facts free public API for barcode or rare foods
  */
 export async function searchOpenFoodFacts(query: string): Promise<FoodDefinition[]> {

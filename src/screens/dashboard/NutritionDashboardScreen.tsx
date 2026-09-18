@@ -25,8 +25,10 @@ import {
   FoodDefinition,
   FoodCategory,
   FOOD_CATEGORIES,
+  FOOD_DATABASE,
   searchFoodDatabase,
   searchOpenFoodFacts,
+  searchUSDAFood,
 } from "@/services/foodDatabase";
 
 type Props = NativeStackScreenProps<RootStackParamList, "NutritionDashboard">;
@@ -70,6 +72,7 @@ export default function NutritionDashboardScreen({ navigation }: Props) {
   const [selectedCategory, setSelectedCategory] = useState<FoodCategory>("All");
   const [onlineSearching, setOnlineSearching] = useState(false);
   const [onlineResults, setOnlineResults] = useState<FoodDefinition[]>([]);
+  const [usdaResults, setUsdaResults] = useState<FoodDefinition[]>([]);
   const [selectedFood, setSelectedFood] = useState<FoodDefinition | null>(null);
 
   // Portion size modal state
@@ -153,8 +156,26 @@ export default function NutritionDashboardScreen({ navigation }: Props) {
   const handleOnlineSearch = async () => {
     if (!searchQuery.trim()) return;
     setOnlineSearching(true);
-    const results = await searchOpenFoodFacts(searchQuery);
-    setOnlineResults(results);
+
+    // Build set of local food names for deduplication
+    const localNameSet = new Set(
+      FOOD_DATABASE.map((f) => f.name.toLowerCase().trim())
+    );
+
+    // Run USDA + Open Food Facts in parallel
+    const [usdaRes, offRes] = await Promise.all([
+      searchUSDAFood(searchQuery, localNameSet),
+      searchOpenFoodFacts(searchQuery),
+    ]);
+
+    // Deduplicate OFF results against USDA results by normalised name
+    const usdaNames = new Set(usdaRes.map((f) => f.name.toLowerCase().trim()));
+    const dedupedOff = offRes.filter(
+      (f) => !usdaNames.has(f.name.toLowerCase().trim()) && !localNameSet.has(f.name.toLowerCase().trim())
+    );
+
+    setUsdaResults(usdaRes);
+    setOnlineResults(dedupedOff);
     setOnlineSearching(false);
   };
 
@@ -166,9 +187,12 @@ export default function NutritionDashboardScreen({ navigation }: Props) {
   const fatPct = hasMacros ? Math.round((nutritionTotals.totalFat / totalMacrosWeight) * 100) : 0;
   const proteinPct = hasMacros ? Math.max(100 - carbPct - fatPct, 0) : 0;
 
-  // Filter food search from database + online results
+  // Filter food search from database + online results + USDA results
   const localFoods = searchFoodDatabase(searchQuery, selectedCategory);
-  const filteredFoods = onlineResults.length > 0 ? [...localFoods, ...onlineResults] : localFoods;
+  const hasExtraResults = usdaResults.length > 0 || onlineResults.length > 0;
+  const filteredFoods = hasExtraResults
+    ? [...localFoods, ...usdaResults, ...onlineResults]
+    : localFoods;
 
   return (
     <View style={s.root}>
@@ -545,6 +569,7 @@ export default function NutritionDashboardScreen({ navigation }: Props) {
                     onPress={() => {
                       setSelectedCategory(cat);
                       setOnlineResults([]);
+                      setUsdaResults([]);
                     }}
                   >
                     <Text style={[s.catChipText, isActive && s.catChipTextActive]}>
@@ -573,7 +598,12 @@ export default function NutritionDashboardScreen({ navigation }: Props) {
                   <View style={s.foodTextWrap}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                       <Text style={s.foodSearchName}>{food.name}</Text>
-                      {food.category && food.category !== "All" && (
+                      {food.id.startsWith("usda_") && (
+                        <View style={s.usdaBadge}>
+                          <Text style={s.usdaBadgeText}>USDA</Text>
+                        </View>
+                      )}
+                      {!food.id.startsWith("usda_") && food.category && food.category !== "All" && (
                         <View style={s.categoryBadge}>
                           <Text style={s.categoryBadgeText}>{food.category}</Text>
                         </View>
@@ -611,7 +641,9 @@ export default function NutritionDashboardScreen({ navigation }: Props) {
                   >
                     <Ionicons name="globe-outline" size={16} color="#00e676" />
                     <Text style={s.onlineSearchText}>
-                      {onlineSearching ? "Searching Open Food Facts..." : "Search Open Food Facts online"}
+                      {onlineSearching
+                        ? "Searching USDA + Open Food Facts..."
+                        : "Search USDA + Open Food Facts online"}
                     </Text>
                   </Pressable>
                 )}
@@ -1336,6 +1368,20 @@ const s = StyleSheet.create({
     fontSize: 11,
     color: "rgba(255,255,255,0.7)",
     fontWeight: "600",
+  },
+  usdaBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: "rgba(0,200,130,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(0,200,130,0.4)",
+  },
+  usdaBadgeText: {
+    fontSize: 10,
+    color: "#00c882",
+    fontWeight: "700",
+    letterSpacing: 0.5,
   },
   foodSearchSub: { fontSize: 12.5, color: "rgba(255,255,255,0.45)", marginTop: 2 },
   foodMacroPillRow: {
