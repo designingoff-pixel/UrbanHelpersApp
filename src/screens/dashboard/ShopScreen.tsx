@@ -29,7 +29,9 @@ import {
   addProductToFirestore,
   getSavedCart,
   saveUserCart,
+  placeShopOrder,
 } from "@/services/shopService";
+import { sendOrderPlacedNotification } from "@/services/notificationService";
 import { OrderRecord } from "./OrderHistoryScreen";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Shop">;
@@ -146,10 +148,23 @@ export default function ShopScreen({ navigation }: Props) {
   const cartTotalPoints = cart.reduce((acc, item) => acc + item.product.pointsPrice * item.quantity, 0);
 
   const saveOrder = async (method: "cash" | "points") => {
-    const newOrder: OrderRecord = {
-      id: `ord-${Date.now()}`,
+    const orderNumber = `UH-ORD-${Date.now().toString().slice(-6)}`;
+    const earned = method === "cash" ? Math.round(cartTotalCash * 0.05) : 0;
+
+    await placeShopOrder({
+      orderNumber,
+      customerId: "user-current",
+      customerName: "Current User",
+      customerPhone: "+91 98765 43210",
+      shippingAddress: {
+        street: "Default Delivery Address",
+        city: "Urban District",
+        pincode: "600001",
+      },
       items: cart.map((c) => ({
+        productId: c.product.id,
         name: c.product.name,
+        category: c.product.category,
         imageUrl: c.product.imageUrl,
         quantity: c.quantity,
         price: c.product.price,
@@ -157,13 +172,13 @@ export default function ShopScreen({ navigation }: Props) {
       totalCash: cartTotalCash,
       totalPoints: cartTotalPoints,
       paymentMethod: method,
+      paymentStatus: method === "cash" ? "cod" : "paid",
       status: "processing",
-      createdAt: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
-      pointsEarned: method === "cash" ? Math.round(cartTotalCash * 0.05) : 0,
-    };
-    const raw = await AsyncStorage.getItem(ORDER_HISTORY_KEY);
-    const existing: OrderRecord[] = raw ? JSON.parse(raw) : [];
-    await AsyncStorage.setItem(ORDER_HISTORY_KEY, JSON.stringify([newOrder, ...existing]));
+      pointsEarned: earned,
+    });
+
+    // Send order placed notification
+    await sendOrderPlacedNotification(orderNumber, cartTotalCash, totalCartCount);
   };
 
   const handleCheckoutCash = () => {

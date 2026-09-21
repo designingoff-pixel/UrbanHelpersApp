@@ -269,7 +269,7 @@ export default function HeartRateScreen({ navigation }: Props) {
       >
         {/* Watch Status Banner */}
         <WatchStatusBanner
-          onPressPrompt={() => setWatchPromptVisible(true)}
+          onPressPrompt={() => (navigation as any).navigate("Shop")}
           style={{ marginHorizontal: 0, marginBottom: 14 }}
         />
         {/* Segmented Period Tabs: [Hours] [Days] [Weeks] [Months] */}

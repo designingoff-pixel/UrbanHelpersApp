@@ -135,7 +135,7 @@ export default function VitalsScreen({ navigation }: Props) {
       >
         {/* Watch Status Banner */}
         <WatchStatusBanner
-          onPressPrompt={() => setWatchPromptVisible(true)}
+          onPressPrompt={() => (navigation as any).navigate("Shop")}
           style={{ marginHorizontal: 0, marginBottom: 16 }}
         />
 

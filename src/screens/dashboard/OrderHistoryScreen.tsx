@@ -16,6 +16,13 @@ import { RootStackParamList } from "@/navigation/types";
 import { useTheme } from "@/context/ThemeContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import {
+  subscribeToCustomerOrders,
+  cancelShopOrder,
+  ShopOrder,
+} from "@/services/shopService";
+import { sendOrderStatusUpdateNotification } from "@/services/notificationService";
+
 type Props = NativeStackScreenProps<RootStackParamList, "OrderHistory">;
 const { width: SW } = Dimensions.get("window");
 
@@ -23,10 +30,11 @@ const ORDER_HISTORY_KEY = "@urban_shop_order_history_v1";
 
 export interface OrderRecord {
   id: string;
+  orderNumber?: string;
   items: { name: string; imageUrl?: string; quantity: number; price: number }[];
   totalCash: number;
   totalPoints: number;
-  paymentMethod: "cash" | "points";
+  paymentMethod: "cash" | "points" | "upi" | "card";
   status: "delivered" | "processing" | "shipped" | "cancelled";
   createdAt: string;
   pointsEarned?: number;
@@ -43,6 +51,7 @@ const STATUS_META: Record<string, { color: string; icon: string; label: string }
 const DEMO_ORDERS: OrderRecord[] = [
   {
     id: "ord-001",
+    orderNumber: "UH-ORD-001",
     items: [
       { name: "Smart Body Composition Scale", imageUrl: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=200&q=80", quantity: 1, price: 2999 },
     ],
@@ -55,6 +64,7 @@ const DEMO_ORDERS: OrderRecord[] = [
   },
   {
     id: "ord-002",
+    orderNumber: "UH-ORD-002",
     items: [
       { name: "Herbal Detox & Cleanse Pack", imageUrl: "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=200&q=80", quantity: 2, price: 1299 },
     ],
@@ -66,6 +76,7 @@ const DEMO_ORDERS: OrderRecord[] = [
   },
   {
     id: "ord-003",
+    orderNumber: "UH-ORD-003",
     items: [
       { name: "Orthopedic Yoga & Pilates Mat", imageUrl: "https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=200&q=80", quantity: 1, price: 1499 },
       { name: "Sonic Smart Electric Toothbrush", imageUrl: "https://images.unsplash.com/photo-1559591937-e1032c5453e0?w=200&q=80", quantity: 1, price: 1899 },
@@ -85,10 +96,19 @@ export default function OrderHistoryScreen({ navigation }: Props) {
   const [filter, setFilter] = useState<"all" | "delivered" | "processing" | "shipped" | "cancelled">("all");
 
   useEffect(() => {
-    loadOrders();
+    // Subscribe to real-time Firestore orders
+    const unsub = subscribeToCustomerOrders("user-current", (liveOrders) => {
+      if (liveOrders && liveOrders.length > 0) {
+        setOrders(liveOrders as any);
+      } else {
+        loadFallbackOrders();
+      }
+    });
+
+    return () => unsub();
   }, []);
 
-  const loadOrders = async () => {
+  const loadFallbackOrders = async () => {
     try {
       const raw = await AsyncStorage.getItem(ORDER_HISTORY_KEY);
       if (raw) {
@@ -96,9 +116,20 @@ export default function OrderHistoryScreen({ navigation }: Props) {
         if (parsed.length > 0) { setOrders(parsed); return; }
       }
     } catch (_) {}
-    // Seed demo
     await AsyncStorage.setItem(ORDER_HISTORY_KEY, JSON.stringify(DEMO_ORDERS));
     setOrders(DEMO_ORDERS);
+  };
+
+  const handleCancelOrder = async (order: OrderRecord) => {
+    try {
+      await cancelShopOrder(order.id);
+      await sendOrderStatusUpdateNotification(order.orderNumber || order.id, "cancelled");
+      setOrders((prev) =>
+        prev.map((o) => (o.id === order.id ? { ...o, status: "cancelled" } : o))
+      );
+    } catch (e) {
+      console.warn("Cancel order failed:", e);
+    }
   };
 
   const c = {
@@ -219,6 +250,19 @@ export default function OrderHistoryScreen({ navigation }: Props) {
                       : `₹${order.totalCash.toLocaleString()}`}
                   </Text>
                 </View>
+
+                {/* Cancel Button if processing */}
+                {order.status === "processing" && (
+                  <View style={{ paddingTop: 10, borderTopWidth: 1, borderTopColor: c.border, flexDirection: "row", justifyContent: "flex-end" }}>
+                    <TouchableOpacity
+                      style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: "#fee2e2" }}
+                      onPress={() => handleCancelOrder(order)}
+                    >
+                      <Ionicons name="close-circle-outline" size={14} color="#e11d48" />
+                      <Text style={{ fontSize: 12, fontWeight: "700", color: "#e11d48" }}>Cancel Order</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
 
                 {/* Reorder button */}
                 {order.status === "delivered" && (

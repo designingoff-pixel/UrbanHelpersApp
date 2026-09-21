@@ -291,3 +291,156 @@ export async function saveUserCart(cart: CartItem[]): Promise<void> {
     console.warn("Error saving cart", e);
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 📦 ORDERS PIPELINE (Mobile App <-> Firestore <-> Admin Web)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type OrderStatus = "placed" | "processing" | "shipped" | "delivered" | "cancelled";
+
+export interface ShopOrderItem {
+  productId: string;
+  name: string;
+  category?: string;
+  imageUrl?: string;
+  quantity: number;
+  price: number;
+}
+
+export interface ShopOrder {
+  id: string;
+  orderNumber: string;
+  customerId: string;
+  customerName: string;
+  customerPhone?: string;
+  shippingAddress: {
+    street: string;
+    flat?: string;
+    landmark?: string;
+    city?: string;
+    pincode?: string;
+  };
+  items: ShopOrderItem[];
+  totalCash: number;
+  totalPoints: number;
+  paymentMethod: "cash" | "points" | "upi" | "card";
+  paymentStatus: "paid" | "pending" | "cod";
+  status: OrderStatus;
+  pointsEarned?: number;
+  createdAt: any;
+  updatedAt?: any;
+}
+
+/**
+ * Place a new Shop Order in Firestore collection "orders"
+ */
+export async function placeShopOrder(
+  order: Omit<ShopOrder, "id" | "createdAt" | "updatedAt">
+): Promise<string> {
+  try {
+    const docRef = await addDoc(collection(db, "orders"), {
+      ...order,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    // Also cache locally in order history
+    const raw = await AsyncStorage.getItem("@urban_shop_order_history_v1");
+    const existing: any[] = raw ? JSON.parse(raw) : [];
+    const localOrder = {
+      id: docRef.id,
+      ...order,
+      createdAt: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
+    };
+    await AsyncStorage.setItem("@urban_shop_order_history_v1", JSON.stringify([localOrder, ...existing]));
+
+    return docRef.id;
+  } catch (err: any) {
+    console.warn("Failed saving order to Firestore:", err);
+    // Fallback: save to local cache
+    const fallbackId = `ord-${Date.now()}`;
+    const raw = await AsyncStorage.getItem("@urban_shop_order_history_v1");
+    const existing: any[] = raw ? JSON.parse(raw) : [];
+    const localOrder = {
+      id: fallbackId,
+      ...order,
+      createdAt: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
+    };
+    await AsyncStorage.setItem("@urban_shop_order_history_v1", JSON.stringify([localOrder, ...existing]));
+    return fallbackId;
+  }
+}
+
+/**
+ * Real-time subscription to Customer's Orders
+ */
+export function subscribeToCustomerOrders(
+  customerId: string,
+  onOrdersUpdate: (orders: ShopOrder[]) => void
+): () => void {
+  try {
+    const ordersColl = collection(db, "orders");
+    const unsub = onSnapshot(
+      ordersColl,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const list: ShopOrder[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            // Filter by customerId if provided, or include all user orders
+            if (!customerId || data.customerId === customerId || !data.customerId) {
+              list.push({
+                id: docSnap.id,
+                orderNumber: data.orderNumber || `UH-ORD-${docSnap.id.substring(0, 6).toUpperCase()}`,
+                customerId: data.customerId || customerId,
+                customerName: data.customerName || "Customer",
+                customerPhone: data.customerPhone || "",
+                shippingAddress: data.shippingAddress || { street: "Home Delivery" },
+                items: data.items || [],
+                totalCash: Number(data.totalCash) || 0,
+                totalPoints: Number(data.totalPoints) || 0,
+                paymentMethod: data.paymentMethod || "cash",
+                paymentStatus: data.paymentStatus || "cod",
+                status: (data.status as OrderStatus) || "processing",
+                pointsEarned: data.pointsEarned,
+                createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : (typeof data.createdAt === "string" ? data.createdAt : "Recent"),
+                updatedAt: data.updatedAt,
+              });
+            }
+          });
+          onOrdersUpdate(list);
+        } else {
+          // Empty in Firestore -> read local fallback
+          AsyncStorage.getItem("@urban_shop_order_history_v1").then((raw) => {
+            if (raw) onOrdersUpdate(JSON.parse(raw));
+          });
+        }
+      },
+      (error) => {
+        console.warn("Firestore orders listener warning:", error.message);
+        AsyncStorage.getItem("@urban_shop_order_history_v1").then((raw) => {
+          if (raw) onOrdersUpdate(JSON.parse(raw));
+        });
+      }
+    );
+    return unsub;
+  } catch (err) {
+    console.warn("Orders subscription setup error:", err);
+    return () => {};
+  }
+}
+
+/**
+ * Cancel an Order in Firestore
+ */
+export async function cancelShopOrder(orderId: string): Promise<void> {
+  try {
+    const docRef = doc(db, "orders", orderId);
+    await updateDoc(docRef, {
+      status: "cancelled",
+      updatedAt: serverTimestamp(),
+    });
+  } catch (err) {
+    console.warn("Failed cancelling order in Firestore:", err);
+  }
+}

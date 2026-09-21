@@ -602,6 +602,70 @@ export async function sendPaymentSuccessNotification(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 🛍️ SHOP ORDERS NOTIFICATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function sendOrderPlacedNotification(
+  orderNumber: string,
+  totalAmount: number,
+  itemCount: number
+): Promise<void> {
+  const dedupKey = `order-placed-${orderNumber}`;
+  if (!shouldDeliverNotification(dedupKey)) return;
+
+  await addInAppNotice({
+    tag: "[Order]",
+    title: `Order Placed: ${orderNumber}`,
+    date: "Just now",
+    body: `Your order of ${itemCount} item(s) for ₹${totalAmount.toLocaleString("en-IN")} is placed. Delivery in 2-3 business days.`,
+  });
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: "🛍️ Order Placed Successfully!",
+      body: `Order #${orderNumber} for ₹${totalAmount.toLocaleString("en-IN")} is confirmed and being packed.`,
+      sound: true,
+      data: { screen: "OrderHistory" },
+    },
+    trigger: { ...intervalTrigger(1), channelId: "services" },
+  });
+}
+
+export async function sendOrderStatusUpdateNotification(
+  orderNumber: string,
+  status: string
+): Promise<void> {
+  const dedupKey = `order-status-${orderNumber}-${status}`;
+  if (!shouldDeliverNotification(dedupKey)) return;
+
+  const statusEmojis: Record<string, string> = {
+    shipped: "📦 Your order has been shipped!",
+    delivered: "🎉 Order Delivered!",
+    cancelled: "❌ Order Cancelled",
+    processing: "⚙️ Your order is being packed",
+  };
+
+  const title = statusEmojis[status.toLowerCase()] || `Order Update: #${orderNumber}`;
+
+  await addInAppNotice({
+    tag: "[Order]",
+    title,
+    date: "Just now",
+    body: `Your Urban Helpers order #${orderNumber} is now ${status.toUpperCase()}.`,
+  });
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title,
+      body: `Status for order #${orderNumber} is now: ${status.toUpperCase()}`,
+      sound: true,
+      data: { screen: "OrderHistory" },
+    },
+    trigger: { ...intervalTrigger(1), channelId: "services" },
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 🆘 EMERGENCY
 // ─────────────────────────────────────────────────────────────────────────────
 
