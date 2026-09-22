@@ -28,6 +28,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import SamsungBottomNav from "@/components/SamsungBottomNav";
 import { SERVICE_LOCAL_IMAGES } from "@/assets/serviceImages";
+import { SERVICE_CATEGORIES } from "./servicesData";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServicesDashboard">;
 
@@ -53,6 +54,20 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
   const [searchText, setSearchText] = useState("");
   const [locationName, setLocationName] = useState("Coimbatore");
   const [locationModal, setLocationModal] = useState(false);
+  const [sideMenuVisible, setSideMenuVisible] = useState(false);
+
+  const getRealtimeGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 4 && hour < 12) return "Good Morning 👋";
+    if (hour >= 12 && hour < 17) return "Good Afternoon ☀️";
+    if (hour >= 17 && hour < 22) return "Good Evening 🌆";
+    return "Good Night 🌙";
+  };
+
+  const getCategoryServiceCount = (catId: string) => {
+    const found = SERVICE_CATEGORIES.find((c) => c.id === catId);
+    return found ? `${found.subServices.length} services` : "Services";
+  };
 
   const headerOp = useSharedValue(0);
   const headerY = useSharedValue(-20);
@@ -85,22 +100,22 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={s.scrollContent}
         >
-          {/* ── 1. Top Location & Action Bar ──────────────────────────── */}
+          {/* ── 1. Top Three-Line Menu & Brand Bar ────────────────────────── */}
           <Animated.View style={[s.topBar, headerStyle]}>
-            <Pressable style={s.locationPicker} onPress={() => setLocationModal(true)}>
-              <View style={s.locationPinCircle}>
-                <Ionicons name="location" size={16} color="#2563eb" />
-              </View>
-              <View>
-                <View style={s.locationTitleRow}>
-                  <Text style={[s.locationCity, { color: colors.text }]}>{locationName}</Text>
-                  <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
-                </View>
-                <Text style={[s.locationSub, { color: colors.textMuted }]}>
-                  Home Services • Health • More
+            <View style={s.topBarLeftRow}>
+              <Pressable
+                style={[s.menuHamburgerBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#f1f5f9" }]}
+                onPress={() => setSideMenuVisible(true)}
+              >
+                <Ionicons name="menu" size={24} color={colors.text} />
+              </Pressable>
+              <View style={s.brandCol}>
+                <Text style={[s.brandTitleText, { color: colors.text }]}>Urban Services</Text>
+                <Text style={[s.brandSubtitleText, { color: colors.textMuted }]}>
+                  Home & Living Solutions
                 </Text>
               </View>
-            </Pressable>
+            </View>
 
             <View style={s.topBarIcons}>
               {/* Notification bell */}
@@ -126,7 +141,7 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
 
           {/* ── 2. Greeting Header ───────────────────────────────────── */}
           <View style={s.greetingSection}>
-            <Text style={[s.greetingText, { color: colors.text }]}>Good Morning 👋</Text>
+            <Text style={[s.greetingText, { color: colors.text }]}>{getRealtimeGreeting()}</Text>
             <Text style={[s.greetingSubText, { color: colors.textSecondary }]}>
               Make your home, life and health easier today.
             </Text>
@@ -296,7 +311,7 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                   Spotless home,{"\n"}happy life
                 </Text>
                 <View style={[s.cardPillBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#f0fdf4" }]}>
-                  <Text style={[s.cardPillBtnText, { color: "#059669" }]}>6 services</Text>
+                  <Text style={[s.cardPillBtnText, { color: "#059669" }]}>{getCategoryServiceCount("cleaning")}</Text>
                   <Ionicons name="arrow-forward" size={12} color="#059669" />
                 </View>
               </View>
@@ -328,7 +343,7 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                   Pure water,{"\n"}every drop
                 </Text>
                 <View style={[s.cardPillBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#f0f9ff" }]}>
-                  <Text style={[s.cardPillBtnText, { color: "#0284c7" }]}>5 services</Text>
+                  <Text style={[s.cardPillBtnText, { color: "#0284c7" }]}>{getCategoryServiceCount("ro")}</Text>
                   <Ionicons name="arrow-forward" size={12} color="#0284c7" />
                 </View>
               </View>
@@ -360,7 +375,7 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                   Your home,{"\n"}pest-free
                 </Text>
                 <View style={[s.cardPillBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#fffbeb" }]}>
-                  <Text style={[s.cardPillBtnText, { color: "#d97706" }]}>5 services</Text>
+                  <Text style={[s.cardPillBtnText, { color: "#d97706" }]}>{getCategoryServiceCount("pest")}</Text>
                   <Ionicons name="arrow-forward" size={12} color="#d97706" />
                 </View>
               </View>
@@ -392,7 +407,7 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                   Love them{"\n"}the right way
                 </Text>
                 <View style={[s.cardPillBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#fff1f2" }]}>
-                  <Text style={[s.cardPillBtnText, { color: "#e11d48" }]}>4 services</Text>
+                  <Text style={[s.cardPillBtnText, { color: "#e11d48" }]}>{getCategoryServiceCount("pet")}</Text>
                   <Ionicons name="arrow-forward" size={12} color="#e11d48" />
                 </View>
               </View>
@@ -949,6 +964,76 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
         </Pressable>
       </Modal>
 
+      {/* ── Side Menu Drawer Modal (3-Line Menu) ──────────────────── */}
+      <Modal
+        visible={sideMenuVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setSideMenuVisible(false)}
+      >
+        <Pressable style={s.drawerBackdrop} onPress={() => setSideMenuVisible(false)}>
+          <Pressable style={[s.drawerCard, { backgroundColor: isDark ? "#0f172a" : "#ffffff" }]} onPress={(e) => e.stopPropagation()}>
+            {/* Drawer Header */}
+            <View style={[s.drawerHeader, { borderBottomColor: isDark ? "#1e293b" : "#f1f5f9" }]}>
+              <View style={s.drawerAvatar}>
+                <LinearGradient colors={["#00c6aa", "#0f9b8e"]} style={s.avatarInner}>
+                  <Text style={s.avatarInitial}>{firstName.charAt(0).toUpperCase()}</Text>
+                </LinearGradient>
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={[s.drawerUserName, { color: colors.text }]}>{user?.displayName || "Urban User"}</Text>
+                <Text style={[s.drawerUserEmail, { color: colors.textMuted }]}>{user?.email || "user@urbanhelpers.app"}</Text>
+              </View>
+              <Pressable onPress={() => setSideMenuVisible(false)} style={s.drawerCloseBtn}>
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+
+            {/* Menu Items List */}
+            <ScrollView showsVerticalScrollIndicator={false} style={s.drawerList}>
+              {[
+                { label: "My Bookings & Invoices", icon: "calendar-outline", color: "#10b981", route: "MyBookings" },
+                { label: "Doctor Consultations", icon: "medkit-outline", color: "#00bcd4", route: "DoctorAdvice" },
+                { label: "Family Safety & SOS Hub", icon: "shield-checkmark-outline", color: "#ef4444", route: "FamilyDashboard" },
+                { label: "Urban Store & Gadgets", icon: "bag-handle-outline", color: "#8b5cf6", route: "Shop" },
+                { label: "Points & Rewards", icon: "gift-outline", color: "#f59e0b", route: "Points" },
+                { label: "App Settings", icon: "settings-outline", color: "#64748b", route: "Settings" },
+                { label: "Help & Support", icon: "help-circle-outline", color: "#3b82f6", route: "Notifications" },
+              ].map((item, idx) => (
+                <Pressable
+                  key={idx}
+                  style={s.drawerItem}
+                  onPress={() => {
+                    setSideMenuVisible(false);
+                    navigation.navigate(item.route as any);
+                  }}
+                >
+                  <View style={[s.drawerIconCircle, { backgroundColor: item.color + "18" }]}>
+                    <Ionicons name={item.icon as any} size={18} color={item.color} />
+                  </View>
+                  <Text style={[s.drawerItemText, { color: colors.text }]}>{item.label}</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.textMuted} style={{ marginLeft: "auto" }} />
+                </Pressable>
+              ))}
+            </ScrollView>
+
+            {/* Drawer Footer */}
+            <View style={[s.drawerFooter, { borderTopColor: isDark ? "#1e293b" : "#f1f5f9" }]}>
+              <Pressable
+                style={s.drawerSignOutBtn}
+                onPress={() => {
+                  setSideMenuVisible(false);
+                  navigation.navigate("Profile");
+                }}
+              >
+                <Ionicons name="person-circle-outline" size={18} color="#00bcd4" />
+                <Text style={s.drawerSignOutText}>My Profile</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* ── Samsung Bottom Nav (Persistent) ──────────────────────── */}
       <SamsungBottomNav activeRoute="ServicesDashboard" />
     </View>
@@ -972,30 +1057,28 @@ const s = StyleSheet.create({
     paddingTop: 50,
     paddingBottom: 8,
   },
-  locationPicker: {
+  topBarLeftRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
   },
-  locationPinCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "rgba(37, 99, 235, 0.12)",
+  menuHamburgerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
   },
-  locationTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
+  brandCol: {
+    justifyContent: "center",
   },
-  locationCity: {
-    fontSize: 16,
-    fontWeight: "700",
+  brandTitleText: {
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: -0.3,
   },
-  locationSub: {
-    fontSize: 11.5,
+  brandSubtitleText: {
+    fontSize: 11,
     marginTop: 1,
   },
   topBarIcons: {
@@ -1035,6 +1118,84 @@ const s = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     color: "#ffffff",
+  },
+
+  // ── Drawer Styles ─────────────────────────────────────────────
+  drawerBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "flex-start",
+  },
+  drawerCard: {
+    width: "80%",
+    maxWidth: 320,
+    height: "100%",
+    paddingTop: 50,
+    paddingBottom: 20,
+    elevation: 10,
+  },
+  drawerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+  },
+  drawerAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: "hidden",
+  },
+  drawerUserName: {
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  drawerUserEmail: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  drawerCloseBtn: {
+    padding: 6,
+  },
+  drawerList: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  drawerItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    marginBottom: 4,
+  },
+  drawerIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  drawerItemText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  drawerFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    borderTopWidth: 1,
+  },
+  drawerSignOutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  drawerSignOutText: {
+    color: "#00bcd4",
+    fontSize: 14,
+    fontWeight: "700",
   },
 
   // ── Greeting ───────────────────────────────────────────────────

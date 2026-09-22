@@ -50,6 +50,12 @@ export default function DiscoverScreen({ navigation }: Props) {
         </Pressable>
       </View>
 
+      {/* ── Universal Search Box (Page 2 Requirement) ─────────── */}
+      <View style={s.searchWrap}>
+        <Ionicons name="search-outline" size={18} color="rgba(255,255,255,0.4)" style={{ marginRight: 8 }} />
+        <Text style={s.searchInputPlaceholder}>Search healthy living, diets, workouts, care...</Text>
+      </View>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={s.scroll}
@@ -868,5 +874,21 @@ const s = StyleSheet.create({
     fontSize: 11,
     color: "#64748b",
     fontWeight: "500",
+  },
+  searchWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    marginHorizontal: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    marginBottom: 12,
+  },
+  searchInputPlaceholder: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.4)",
   },
 });

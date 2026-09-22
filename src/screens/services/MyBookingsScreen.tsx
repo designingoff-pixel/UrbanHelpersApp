@@ -70,6 +70,8 @@ export default function MyBookingsScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<"All" | "Active" | "Completed" | "Cancelled">("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("All");
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [selectedInvoiceBooking, setSelectedInvoiceBooking] = useState<Booking | null>(null);
 
   useEffect(() => {
@@ -97,6 +99,11 @@ export default function MyBookingsScreen({ navigation }: Props) {
         if (b.status !== "cancelled") return false;
       }
 
+      // Category filter modal
+      if (selectedCategoryFilter !== "All" && b.serviceCategory !== selectedCategoryFilter) {
+        return false;
+      }
+
       // Search query filtering (Invoice ID, Category, SubService, Vendor)
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
@@ -108,7 +115,7 @@ export default function MyBookingsScreen({ navigation }: Props) {
       }
       return true;
     });
-  }, [bookings, activeFilter, searchQuery]);
+  }, [bookings, activeFilter, selectedCategoryFilter, searchQuery]);
 
   return (
     <View style={s.root}>
@@ -118,24 +125,44 @@ export default function MyBookingsScreen({ navigation }: Props) {
           <Ionicons name="arrow-back" size={22} color={colors.text.primary} />
         </Pressable>
         <Text style={s.headerTitle}>My Bookings & Invoices</Text>
-        <View style={{ width: 40 }} />
+        <Pressable style={s.filterTopBtn} onPress={() => setFilterModalVisible(true)}>
+          <Ionicons
+            name="options-outline"
+            size={20}
+            color={selectedCategoryFilter !== "All" ? "#00bcd4" : colors.text.secondary}
+          />
+          {selectedCategoryFilter !== "All" && <View style={s.filterActiveDot} />}
+        </Pressable>
       </View>
 
-      {/* Universal Search Bar */}
-      <View style={s.searchWrap}>
-        <Ionicons name="search-outline" size={18} color="rgba(255,255,255,0.4)" style={{ marginRight: 8 }} />
-        <TextInput
-          style={s.searchInput}
-          placeholder="Search by invoice ID, service name..."
-          placeholderTextColor="rgba(255,255,255,0.4)"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-        {searchQuery.length > 0 && (
-          <Pressable onPress={() => setSearchQuery("")}>
-            <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.5)" />
-          </Pressable>
-        )}
+      {/* Universal Search Bar with Working Filter Button */}
+      <View style={s.searchRow}>
+        <View style={s.searchWrap}>
+          <Ionicons name="search-outline" size={18} color="rgba(255,255,255,0.4)" style={{ marginRight: 8 }} />
+          <TextInput
+            style={s.searchInput}
+            placeholder="Search by invoice ID, service name..."
+            placeholderTextColor="rgba(255,255,255,0.4)"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <Pressable onPress={() => setSearchQuery("")}>
+              <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.5)" />
+            </Pressable>
+          )}
+        </View>
+
+        <Pressable
+          style={[s.filterIconBtn, selectedCategoryFilter !== "All" && s.filterIconBtnActive]}
+          onPress={() => setFilterModalVisible(true)}
+        >
+          <Ionicons
+            name="funnel"
+            size={16}
+            color={selectedCategoryFilter !== "All" ? "#ffffff" : "rgba(255,255,255,0.7)"}
+          />
+        </Pressable>
       </View>
 
       {/* Filter Tabs */}
@@ -261,6 +288,56 @@ export default function MyBookingsScreen({ navigation }: Props) {
         <View style={{ height: 40 }} />
       </ScrollView>
 
+      {/* Category Filter Modal */}
+      <Modal
+        visible={filterModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setFilterModalVisible(false)}
+      >
+        <Pressable style={s.modalOverlay} onPress={() => setFilterModalVisible(false)}>
+          <Pressable style={s.filterModalCard} onPress={(e) => e.stopPropagation()}>
+            <View style={s.filterModalHeader}>
+              <Text style={s.filterModalTitle}>Filter by Service</Text>
+              <Pressable onPress={() => setFilterModalVisible(false)}>
+                <Ionicons name="close" size={22} color="#64748b" />
+              </Pressable>
+            </View>
+
+            <ScrollView style={{ maxHeight: 300 }}>
+              <Pressable
+                style={[s.filterCatOption, selectedCategoryFilter === "All" && s.filterCatOptionActive]}
+                onPress={() => {
+                  setSelectedCategoryFilter("All");
+                  setFilterModalVisible(false);
+                }}
+              >
+                <Text style={[s.filterCatText, selectedCategoryFilter === "All" && s.filterCatTextActive]}>
+                  All Services
+                </Text>
+                {selectedCategoryFilter === "All" && <Ionicons name="checkmark" size={18} color="#00bcd4" />}
+              </Pressable>
+
+              {SERVICE_CATEGORIES.map((cat) => (
+                <Pressable
+                  key={cat.id}
+                  style={[s.filterCatOption, selectedCategoryFilter === cat.name && s.filterCatOptionActive]}
+                  onPress={() => {
+                    setSelectedCategoryFilter(cat.name);
+                    setFilterModalVisible(false);
+                  }}
+                >
+                  <Text style={[s.filterCatText, selectedCategoryFilter === cat.name && s.filterCatTextActive]}>
+                    {cat.name}
+                  </Text>
+                  {selectedCategoryFilter === cat.name && <Ionicons name="checkmark" size={18} color="#00bcd4" />}
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* Itemized Bill / Invoice Modal */}
       <Modal
         visible={!!selectedInvoiceBooking}
@@ -345,14 +422,51 @@ const s = StyleSheet.create({
     justifyContent: "center", alignItems: "center",
   },
   headerTitle: { fontSize: 19, fontWeight: "700", color: colors.text.primary },
-  searchWrap: {
-    flexDirection: "row", alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.06)",
-    marginHorizontal: 16, paddingHorizontal: 14, paddingVertical: 10,
-    borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+  filterTopBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    justifyContent: "center", alignItems: "center",
+    position: "relative",
+  },
+  filterActiveDot: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: "#00bcd4",
+  },
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    gap: 8,
     marginBottom: 12,
   },
+  searchWrap: {
+    flex: 1,
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+  },
   searchInput: { flex: 1, fontSize: 13, color: "#ffffff" },
+  filterIconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  filterIconBtnActive: {
+    backgroundColor: "#00bcd4",
+    borderColor: "#00bcd4",
+  },
   filterTabs: {
     flexDirection: "row", gap: 8, paddingHorizontal: 16, marginBottom: 16,
   },
@@ -448,6 +562,49 @@ const s = StyleSheet.create({
     borderRadius: 20, backgroundColor: "#00bcd4",
   },
   signInBtnText: { fontSize: 13, fontWeight: "700", color: "white" },
+
+  // Filter Modal
+  filterModalCard: {
+    width: "100%",
+    maxWidth: 320,
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    padding: 20,
+  },
+  filterModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+    paddingBottom: 10,
+  },
+  filterModalTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#0f172a",
+  },
+  filterCatOption: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+  },
+  filterCatOptionActive: {
+    backgroundColor: "#f0fdf4",
+  },
+  filterCatText: {
+    fontSize: 14,
+    color: "#334155",
+    fontWeight: "600",
+  },
+  filterCatTextActive: {
+    color: "#00bcd4",
+    fontWeight: "700",
+  },
 
   // Invoice Modal Styles
   modalOverlay: {
