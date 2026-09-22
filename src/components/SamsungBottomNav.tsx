@@ -6,7 +6,7 @@ import { useNavigation } from "@react-navigation/native";
 
 import { useTheme } from "@/context/ThemeContext";
 
-export type HealthTab = "Home" | "Service" | "Together" | "Discover" | "Fitness";
+export type HealthTab = "Home" | "Health" | "Together" | "Discover" | "Fitness";
 
 export const NAV_TABS: {
   icon: keyof typeof Ionicons.glyphMap;
@@ -15,8 +15,8 @@ export const NAV_TABS: {
   label: HealthTab;
   hasDot: boolean;
 }[] = [
-  { icon: "home-outline",     activeIcon: "home",     route: "HomeDashboard",     label: "Home",     hasDot: false },
-  { icon: "grid-outline",     activeIcon: "grid",     route: "ServicesDashboard", label: "Service",  hasDot: false },
+  { icon: "home-outline",     activeIcon: "home",     route: "ServicesDashboard", label: "Home",     hasDot: false },
+  { icon: "heart-outline",    activeIcon: "heart",    route: "HomeDashboard",     label: "Health",   hasDot: false },
   { icon: "people-outline",   activeIcon: "people",   route: "FamilyDashboard",   label: "Together", hasDot: true },
   { icon: "compass-outline",  activeIcon: "compass",  route: "Discover",          label: "Discover", hasDot: true },
   { icon: "barbell-outline",  activeIcon: "barbell",  route: "FitnessDashboard",  label: "Fitness",  hasDot: true },

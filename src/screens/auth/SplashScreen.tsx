@@ -33,7 +33,7 @@ export default function SplashScreen({ navigation }: Props) {
         if (firebaseUser || isLocalLoggedIn === "true") {
           navigation.reset({
             index: 0,
-            routes: [{ name: "HomeDashboard" }],
+            routes: [{ name: "ServicesDashboard" }],
           });
         } else {
           navigation.reset({
@@ -51,7 +51,7 @@ export default function SplashScreen({ navigation }: Props) {
           if (auth.currentUser || isLocalLoggedIn === "true") {
             navigation.reset({
               index: 0,
-              routes: [{ name: "HomeDashboard" }],
+              routes: [{ name: "ServicesDashboard" }],
             });
           } else {
             navigation.reset({

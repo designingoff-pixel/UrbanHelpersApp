@@ -191,6 +191,8 @@ export default function HomeDashboardScreen({ navigation }: Props) {
   // Edit home & 3-dot menu state
   const [hiddenCards, setHiddenCards] = useState<string[]>([]);
   const [editMode, setEditMode] = useState(false);
+  const [editMenuVisible, setEditMenuVisible] = useState(false);
+  const [addCardsModalVisible, setAddCardsModalVisible] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -404,14 +406,35 @@ export default function HomeDashboardScreen({ navigation }: Props) {
       {/* ── Top App Bar (Persistent) ─────────────────────────── */}
       <Animated.View style={[s.topBar, headerStyle]}>
         {editMode ? (
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", flex: 1, marginRight: 8 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", flex: 1 }}>
             <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Ionicons name="create-outline" size={20} color="#00c6aa" style={{ marginRight: 8 }} />
+              <Pressable
+                onPress={() => setEditMode(false)}
+                style={{ padding: 6, marginRight: 6 }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="arrow-back" size={24} color="#ffffff" />
+              </Pressable>
               <Text style={{ color: "#ffffff", fontSize: 18, fontWeight: "700" }}>Edit Home Cards</Text>
             </View>
-            <Pressable onPress={() => setEditMode(false)} style={s.doneBtn}>
-              <Text style={s.doneBtnText}>Done</Text>
-            </Pressable>
+
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <Pressable
+                onPress={() => setEditMode(false)}
+                style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(0,198,170,0.18)", justifyContent: "center", alignItems: "center", borderWidth: 1, borderColor: "rgba(0,198,170,0.4)" }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="checkmark" size={20} color="#00c6aa" />
+              </Pressable>
+
+              <Pressable
+                onPress={() => setEditMenuVisible(true)}
+                style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(255,255,255,0.08)", justifyContent: "center", alignItems: "center" }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="ellipsis-vertical" size={18} color="#ffffff" />
+              </Pressable>
+            </View>
           </View>
         ) : (
           <View style={s.topBarLeft}>
@@ -861,15 +884,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
         </View>
       </Animated.View>
 
-      {/* ── Urban Health Live Synced Toast ── */}
-      {syncedBannerVisible && (
-        <Animated.View entering={FadeInDown.duration(300)} style={s.syncedToast}>
-          <LinearGradient colors={["#00c6aa", "#0f9b8e"]} style={s.syncedToastInner}>
-            <Ionicons name="checkmark-circle" size={16} color="#ffffff" />
-            <Text style={s.syncedToastText}>Urban Health data refreshed & synced</Text>
-          </LinearGradient>
-        </Animated.View>
-      )}
+      {/* Synced toast removed */}
 
       {/* ── Main Scrollable Content Area ─────────────────────── */}
       <ScrollView
@@ -1212,7 +1227,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 </PressCard>
                 {editMode && (
                   <Pressable style={s.removeBtn} onPress={() => hideCard("energy")}>
-                    <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                    <Ionicons name="close" size={13} color="#ffffff" />
                   </Pressable>
                 )}
               </View>
@@ -1276,7 +1291,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 </PressCard>
                 {editMode && (
                   <Pressable style={s.removeBtn} onPress={() => hideCard("today_earnings")}>
-                    <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                    <Ionicons name="close" size={13} color="#ffffff" />
                   </Pressable>
                 )}
               </View>
@@ -1303,7 +1318,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                     </PressCard>
                     {editMode && (
                       <Pressable style={s.removeBtn} onPress={() => hideCard("daily_activity")}>
-                        <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                        <Ionicons name="close" size={13} color="#ffffff" />
                       </Pressable>
                     )}
                   </View>
@@ -1326,7 +1341,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                     </PressCard>
                     {editMode && (
                       <Pressable style={s.removeBtn} onPress={() => hideCard("sleep")}>
-                        <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                        <Ionicons name="close" size={13} color="#ffffff" />
                       </Pressable>
                     )}
                   </View>
@@ -1357,7 +1372,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                   </PressCard>
                   {editMode && (
                     <Pressable style={s.removeBtn} onPress={() => hideCard("food")}>
-                      <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                      <Ionicons name="close" size={13} color="#ffffff" />
                     </Pressable>
                   )}
                 </View>
@@ -1402,7 +1417,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 </PressCard>
                 {editMode && (
                   <Pressable style={s.removeBtn} onPress={() => hideCard("heart_health")}>
-                    <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                    <Ionicons name="close" size={13} color="#ffffff" />
                   </Pressable>
                 )}
               </View>
@@ -1430,7 +1445,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 </PressCard>
                 {editMode && (
                   <Pressable style={s.removeBtn} onPress={() => hideCard("cycle")}>
-                    <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                    <Ionicons name="close" size={13} color="#ffffff" />
                   </Pressable>
                 )}
               </View>
@@ -1459,7 +1474,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                     </PressCard>
                     {editMode && (
                       <Pressable style={s.removeBtn} onPress={() => hideCard("medications")}>
-                        <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                        <Ionicons name="close" size={13} color="#ffffff" />
                       </Pressable>
                     )}
                   </View>
@@ -1479,7 +1494,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                     </PressCard>
                     {editMode && (
                       <Pressable style={s.removeBtn} onPress={() => hideCard("health_records")}>
-                        <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                        <Ionicons name="close" size={13} color="#ffffff" />
                       </Pressable>
                     )}
                   </View>
@@ -1509,7 +1524,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                     </PressCard>
                     {editMode && (
                       <Pressable style={s.removeBtn} onPress={() => hideCard("hearing")}>
-                        <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                        <Ionicons name="close" size={13} color="#ffffff" />
                       </Pressable>
                     )}
                   </View>
@@ -1538,7 +1553,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                     </PressCard>
                     {editMode && (
                       <Pressable style={s.removeBtn} onPress={() => hideCard("steps")}>
-                        <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                        <Ionicons name="close" size={13} color="#ffffff" />
                       </Pressable>
                     )}
                   </View>
@@ -1569,7 +1584,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 </PressCard>
                 {editMode && (
                   <Pressable style={s.removeBtn} onPress={() => hideCard("vitals")}>
-                    <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                    <Ionicons name="close" size={13} color="#ffffff" />
                   </Pressable>
                 )}
               </View>
@@ -1595,7 +1610,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                     </PressCard>
                     {editMode && (
                       <Pressable style={s.removeBtn} onPress={() => hideCard("mindfulness")}>
-                        <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                        <Ionicons name="close" size={13} color="#ffffff" />
                       </Pressable>
                     )}
                   </View>
@@ -1617,7 +1632,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                     </PressCard>
                     {editMode && (
                       <Pressable style={s.removeBtn} onPress={() => hideCard("stress")}>
-                        <Ionicons name="close-circle" size={26} color="#ff3b30" />
+                        <Ionicons name="close" size={13} color="#ffffff" />
                       </Pressable>
                     )}
                   </View>
@@ -1625,75 +1640,9 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               </View>
             )}
 
-            {/* Urban Helpers Services CTA */}
-            {isVisible("services") && (
-              <View style={s.cardWrapper}>
-                <PressCard index={15} onPress={() => navigation.navigate("ServicesDashboard")}>
-                  <LinearGradient
-                    colors={["#007c8a", "#00bcd4", "#26c6da"]}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                    style={s.servicesBtn}
-                  >
-                    <View style={s.servicesBtnBlob} />
-                    <View style={s.servicesBtnIconWrap}>
-                      <Ionicons name="construct" size={26} color="white" />
-                    </View>
-                    <View style={s.servicesBtnText}>
-                      <View style={s.servicesBadge}>
-                        <Text style={s.servicesBadgeTxt}>10 CATEGORIES</Text>
-                      </View>
-                      <Text style={s.servicesBtnTitle}>Urban Helpers Services</Text>
-                      <Text style={s.servicesBtnSub}>RO · Pest · Cleaning · Care & more</Text>
-                    </View>
-                    <Ionicons name="arrow-forward-circle" size={32} color="rgba(255,255,255,0.85)" />
-                  </LinearGradient>
-                </PressCard>
-                {editMode && (
-                  <Pressable style={s.removeBtn} onPress={() => hideCard("services")}>
-                    <Ionicons name="close-circle" size={26} color="#ff3b30" />
-                  </Pressable>
-                )}
-              </View>
-            )}
+            {/* Urban Helpers Services CTA removed */}
 
-            {/* When in edit mode, show hidden cards to re-add them, or reset button */}
-            {editMode && (
-              <View style={s.restoreCardsWrap}>
-                <View style={s.restoreCardsHeader}>
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <Ionicons name="layers-outline" size={18} color="#00c6aa" style={{ marginRight: 6 }} />
-                    <Text style={s.restoreCardsTitle}>Customize Cards</Text>
-                  </View>
-                  <Pressable style={s.resetAllBtn} onPress={resetHome}>
-                    <Ionicons name="refresh-outline" size={14} color="#38bdf8" />
-                    <Text style={s.resetAllBtnText}>Reset All</Text>
-                  </Pressable>
-                </View>
-
-                {hiddenCards.length > 0 ? (
-                  <View style={{ marginTop: 12 }}>
-                    <Text style={s.restoreCardsSubtitle}>Tap a removed card to add it back:</Text>
-                    <View style={s.restoreChipsRow}>
-                      {hiddenCards.map((cid) => (
-                        <Pressable key={cid} style={s.restoreChip} onPress={() => unhideCard(cid)}>
-                          <Ionicons name="add-circle" size={16} color="#00c6aa" style={{ marginRight: 5 }} />
-                          <Text style={s.restoreChipText}>{CARD_LABELS[cid] || cid}</Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  </View>
-                ) : (
-                  <Text style={s.restoreCardsNotice}>
-                    Tap the red minus icon on any card above to remove it. You can also long-press any card anytime to customize.
-                  </Text>
-                )}
-
-                <Pressable style={s.doneEditingBtn} onPress={() => setEditMode(false)}>
-                  <Ionicons name="checkmark-circle-outline" size={18} color="#051f1a" style={{ marginRight: 6 }} />
-                  <Text style={s.doneEditingBtnText}>Done Editing</Text>
-                </Pressable>
-              </View>
-            )}
+            {/* Bottom restoreCardsWrap removed */}
 
             {/* Edit home button */}
             {!editMode && (
@@ -3823,11 +3772,19 @@ const s = StyleSheet.create({
   removeBtn: {
     position: "absolute",
     top: 6,
-    left: 6,
+    right: 6,
     zIndex: 99,
-    backgroundColor: "rgba(10,10,20,0.7)",
-    borderRadius: 14,
-    padding: 1,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#ef4444",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 3,
   },
   doneBtn: {
     paddingHorizontal: 14,

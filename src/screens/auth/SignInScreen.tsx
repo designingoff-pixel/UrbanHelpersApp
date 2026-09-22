@@ -23,7 +23,7 @@ export default function SignInScreen({ navigation }: Props) {
       AsyncStorage.setItem("@customer_logged_in", "true");
       navigation.reset({
         index: 0,
-        routes: [{ name: "HomeDashboard" }],
+        routes: [{ name: "ServicesDashboard" }],
       });
     }
   }, [user]);
@@ -51,7 +51,7 @@ export default function SignInScreen({ navigation }: Props) {
       await AsyncStorage.setItem("@customer_logged_in", "true");
       navigation.reset({
         index: 0,
-        routes: [{ name: "HomeDashboard" }],
+        routes: [{ name: "ServicesDashboard" }],
       });
     } catch (e: any) {
       Alert.alert("Sign In Failed", e.message ?? "Could not sign in. Please try again.");
@@ -66,7 +66,7 @@ export default function SignInScreen({ navigation }: Props) {
       await AsyncStorage.setItem("@customer_logged_in", "true");
       navigation.reset({
         index: 0,
-        routes: [{ name: "HomeDashboard" }],
+        routes: [{ name: "ServicesDashboard" }],
       });
     } catch (err) {
       Alert.alert("Sign in failed", "Couldn't sign in with Google. Please try again.");
@@ -78,7 +78,7 @@ export default function SignInScreen({ navigation }: Props) {
       await AsyncStorage.setItem("@customer_logged_in", "true");
       navigation.reset({
         index: 0,
-        routes: [{ name: "HomeDashboard" }],
+        routes: [{ name: "ServicesDashboard" }],
       });
     } catch (_) {}
   };

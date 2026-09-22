@@ -2,8 +2,8 @@ import { NavTab } from "@/components/BottomNav";
 
 /** Shared tab set used by Module 2 dashboards + most Module 3/4 sub-screens. */
 export const mainTabs: NavTab[] = [
-  { label: "Home", icon: "home", screen: "HomeDashboard" },
-  { label: "Service", icon: "grid", screen: "ServicesDashboard" },
+  { label: "Home", icon: "home", screen: "ServicesDashboard" },
+  { label: "Health", icon: "heart", screen: "HomeDashboard" },
   { label: "Together", icon: "people", screen: "FamilyDashboard" },
   { label: "Discover", icon: "compass", screen: "Discover" },
   { label: "Fitness", icon: "barbell", screen: "FitnessDashboard" },

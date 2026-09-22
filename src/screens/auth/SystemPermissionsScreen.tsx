@@ -15,7 +15,7 @@ const PERMISSIONS: { icon: keyof typeof Ionicons.glyphMap; title: string; desc: 
 ];
 
 export default function SystemPermissionsScreen({ navigation }: Props) {
-  const goHome = () => navigation.navigate("HomeDashboard");
+  const goHome = () => navigation.navigate("ServicesDashboard");
 
   return (
     <ScreenContainer>
