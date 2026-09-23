@@ -1507,7 +1507,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               <View style={[s.row2, { marginTop: 10 }]}>
                 {isVisible("hearing") && (
                   <View style={[s.halfOuter, { position: "relative" }]}>
-                    <PressCard index={9} onPress={() => navigation.navigate("HealthPrecautions" as any)} style={{ flex: 1 }}>
+                    <PressCard index={9} onPress={() => navigation.navigate("Hearing" as any)} style={{ flex: 1 }}>
                       <LinearGradient
                         colors={["#795548", "#8d6e63", "#a1887f"]}
                         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}

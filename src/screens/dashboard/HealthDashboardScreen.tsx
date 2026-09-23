@@ -116,6 +116,7 @@ export default function HealthDashboardScreen({ navigation }: Props) {
             { icon: "water-outline", label: "Blood Test", route: "BloodTestReports", color: "#f59e0b" },
             { icon: "shield-checkmark", label: "Vaccination", route: "VaccinationCenter", color: "#10b981" },
             { icon: "receipt", label: "Prescription", route: "PrescriptionManagement", color: "#8b5cf6" },
+            { icon: "volume-high", label: "Hearing", route: "Hearing", color: "#795548" },
           ].map((q) => (
             <Pressable key={q.label} onPress={() => navigation.navigate(q.route as any)} style={[s.quickCard, { backgroundColor: q.color }]}>
               <Ionicons name={q.icon as any} size={26} color="white" />

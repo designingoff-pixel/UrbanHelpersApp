@@ -811,3 +811,109 @@ export async function saveBodyComp(data: {
   return newEntry;
 }
 
+// ═════════════════════════════════════════════════════════════
+// HEARING LOGGING
+// ═════════════════════════════════════════════════════════════
+
+const HEARING_KEY = "@urban_health_hearing_v1";
+
+export type HearingStatus = "ok" | "caution" | "unsafe";
+
+export interface HearingEntry {
+  id: string;
+  date: string;          // YYYY-MM-DD
+  dBAvg: number;         // average dB measured (0–120)
+  status: HearingStatus; // derived from dBAvg
+  durationMins: number;  // minutes of exposure tracked
+  timestamp: number;
+}
+
+/** Derive hearing status from an average dB value.
+ *  < 70 dB  → OK
+ *  70–85 dB → Caution
+ *  > 85 dB  → Unsafe
+ */
+export function hearingStatusFromDB(dbLevel: number): HearingStatus {
+  if (dbLevel < 70) return "ok";
+  if (dbLevel <= 85) return "caution";
+  return "unsafe";
+}
+
+/** Human-readable label for a hearing status */
+export function hearingStatusLabel(status: HearingStatus): string {
+  switch (status) {
+    case "ok": return "OK";
+    case "caution": return "Caution";
+    case "unsafe": return "Unsafe";
+  }
+}
+
+export async function getHearingEntries(uid: string): Promise<HearingEntry[]> {
+  try {
+    const raw = await AsyncStorage.getItem(`${HEARING_KEY}_${uid}`);
+    if (!raw) return [];
+    return JSON.parse(raw) as HearingEntry[];
+  } catch (e) {
+    console.error("Error loading hearing entries:", e);
+    return [];
+  }
+}
+
+export async function getHearingForDate(
+  uid: string,
+  date: string
+): Promise<HearingEntry | null> {
+  try {
+    const all = await getHearingEntries(uid);
+    return all.find((e) => e.date === date) ?? null;
+  } catch (e) {
+    console.error("Error loading hearing entry for date:", e);
+    return null;
+  }
+}
+
+/**
+ * Returns an array of 7 slots from (today − 6 days) through today.
+ * Each slot is { date: string, entry: HearingEntry | null }.
+ */
+export async function getLast7DaysHearing(
+  uid: string
+): Promise<{ date: string; entry: HearingEntry | null }[]> {
+  try {
+    const all = await getHearingEntries(uid);
+    const result: { date: string; entry: HearingEntry | null }[] = [];
+    const now = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const entry = all.find((e) => e.date === dateStr) ?? null;
+      result.push({ date: dateStr, entry });
+    }
+    return result;
+  } catch (e) {
+    console.error("Error loading 7-day hearing data:", e);
+    return [];
+  }
+}
+
+export async function addHearingEntry(
+  uid: string,
+  entry: Omit<HearingEntry, "id" | "timestamp">
+): Promise<HearingEntry> {
+  const newEntry: HearingEntry = {
+    ...entry,
+    id: `hearing_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    timestamp: Date.now(),
+  };
+  try {
+    const raw = await AsyncStorage.getItem(`${HEARING_KEY}_${uid}`);
+    const all: HearingEntry[] = raw ? JSON.parse(raw) : [];
+    const filtered = all.filter((e) => e.date !== newEntry.date);
+    filtered.unshift(newEntry);
+    await AsyncStorage.setItem(`${HEARING_KEY}_${uid}`, JSON.stringify(filtered));
+  } catch (e) {
+    console.error("Error saving hearing entry:", e);
+  }
+  return newEntry;
+}
