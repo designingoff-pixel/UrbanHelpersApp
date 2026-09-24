@@ -15,6 +15,7 @@ platform :ios do
     # Step 1: Generate native iOS Xcode project from Expo config (free, local)
     Dir.chdir("..") do
       sh("npx expo prebuild --platform ios --no-install --clean")
+      sh("cd ios && pod install")
     end
 
     # Step 2: Build with Xcode — skip all code signing
