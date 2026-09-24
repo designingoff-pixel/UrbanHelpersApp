@@ -1,0 +1,94 @@
+# Urban Helpers — Fastfile
+# Builds an iOS IPA using Xcode directly (no Expo/EAS)
+# Two lanes:
+#   1. `adhoc`      → IPA signed for direct iPhone install (needs Apple Dev account)
+#   2. `unsigned`   → Unsigned IPA for Sideloadly/AltStore (no Apple Dev account)
+
+default_platform(:ios)
+
+platform :ios do
+
+  # ─── Shared: prebuild the iOS native project from Expo config ────────────────
+  lane :prebuild do
+    Dir.chdir("..") do
+      sh("npm install --legacy-peer-deps")
+      sh("npx expo prebuild --platform ios --no-install")
+    end
+  end
+
+  # ─── Lane 1: Ad-hoc build (Apple Dev account required) ───────────────────────
+  # Produces a signed .ipa installable directly on registered iPhones
+  desc "Build signed ad-hoc IPA for direct iPhone install"
+  lane :adhoc do
+    prebuild
+
+    # Import the provisioning profile and certificate from GitHub Secrets
+    # (stored as base64-encoded files in secrets)
+    create_keychain(
+      name:            "build.keychain",
+      password:        ENV["KEYCHAIN_PASSWORD"],
+      default_keychain: true,
+      unlock:          true,
+      timeout:         3600,
+      lock_when_sleeps: false
+    )
+
+    import_certificate(
+      certificate_path:     "ios_dist.p12",
+      certificate_password: ENV["CERTIFICATE_PASSWORD"],
+      keychain_name:        "build.keychain",
+      keychain_password:    ENV["KEYCHAIN_PASSWORD"]
+    )
+
+    install_provisioning_profile(path: "UrbanHelpers_AdHoc.mobileprovision")
+
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path:                  "ios/UrbanHelpers.xcodeproj",
+      team_id:               ENV["APPLE_TEAM_ID"],
+      profile_name:          "UrbanHelpers AdHoc",
+      code_sign_identity:    "iPhone Distribution"
+    )
+
+    build_app(
+      workspace:        "ios/UrbanHelpers.xcworkspace",
+      scheme:           "UrbanHelpers",
+      configuration:    "Release",
+      export_method:    "ad-hoc",
+      output_directory: "./build",
+      output_name:      "UrbanHelpers-AdHoc.ipa",
+      clean:            true,
+      export_options: {
+        method:                  "ad-hoc",
+        teamID:                  ENV["APPLE_TEAM_ID"],
+        compileBitcode:          false,
+        thinning:                "<none>"
+      }
+    )
+
+    puts "✅ Ad-hoc IPA built: ./build/UrbanHelpers-AdHoc.ipa"
+  end
+
+  # ─── Lane 2: Unsigned IPA (No Apple Developer account needed) ────────────────
+  # Produces an .ipa you can re-sign locally with Sideloadly using your free Apple ID
+  desc "Build unsigned IPA for Sideloadly / AltStore install (no Apple Dev account)"
+  lane :unsigned do
+    prebuild
+
+    build_app(
+      workspace:          "ios/UrbanHelpers.xcworkspace",
+      scheme:             "UrbanHelpers",
+      configuration:      "Release",
+      output_directory:   "./build",
+      output_name:        "UrbanHelpers-Unsigned.ipa",
+      clean:              true,
+      skip_codesigning:   true,
+      export_xcargs:      "CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO",
+      skip_package_ipa:   false
+    )
+
+    puts "✅ Unsigned IPA built: ./build/UrbanHelpers-Unsigned.ipa"
+    puts "📱 Install on iPhone using: Sideloadly (sideloadly.io) with your free Apple ID"
+  end
+
+end

@@ -1,4 +1,4 @@
-name: Build iOS IPA — Urban Helpers (EAS)
+name: Build iOS IPA — Urban Helpers (Fastlane, No Expo)
 
 on:
   push:
@@ -7,51 +7,54 @@ on:
       - 'ios_app/**'
   workflow_dispatch:
     inputs:
-      profile:
-        description: 'EAS Build profile'
+      lane:
+        description: 'Fastlane lane to run'
         required: true
-        default: 'preview'
+        default: 'unsigned'
         type: choice
         options:
-          - preview
-          - production
+          - unsigned
+          - adhoc
 
 jobs:
   build-ios:
-    name: Build iOS with EAS
-    runs-on: ubuntu-latest
+    name: 🍎 Build iOS IPA (macOS + Xcode + Fastlane)
+    runs-on: macos-14          # Apple Silicon Mac — fastest & free for public repos
     timeout-minutes: 90
 
     steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # ── 2. Node.js ───────────────────────────────────────────────────────────
       - name: Setup Node 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: npm
           cache-dependency-path: ios_app/package-lock.json
 
-      - name: Install dependencies
+      # ── 3. Ruby + Fastlane ───────────────────────────────────────────────────
+      - name: Setup Ruby 3.2 for Fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+          working-directory: ios_app
+
+      - name: Install Fastlane
+        working-directory: ios_app
+        run: gem install fastlane --no-document
+
+      # ── 4. Select correct Xcode version ──────────────────────────────────────
+      - name: Select Xcode 15
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+
+      # ── 5. Install JS dependencies ────────────────────────────────────────────
+      - name: Install npm dependencies
         working-directory: ios_app
         run: npm install --legacy-peer-deps
-
-      - name: Setup Expo & EAS
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Build iOS IPA via EAS
-        working-directory: ios_app
-        run: |
-          eas build \
-            --platform ios \
-            --profile ${{ github.event.inputs.profile || 'preview' }} \
-            --non-interactive \
-            --wait \
-            --output ./build/UrbanHelpers-iOS.ipa
         env:
           EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
           EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
@@ -60,13 +63,67 @@ jobs:
           EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
           EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
           EXPO_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY }}
+          EXPO_PUBLIC_USDA_API_KEY: ${{ secrets.EXPO_PUBLIC_USDA_API_KEY }}
 
+      # ── 6. Expo Prebuild — generates native ios/ Xcode project ───────────────
+      # (This is just code generation — no Expo cloud, no EAS, fully local)
+      - name: Generate iOS native project (expo prebuild)
+        working-directory: ios_app
+        run: npx expo prebuild --platform ios --no-install
+        env:
+          EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
+          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
+          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
+          EXPO_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY }}
+          EXPO_PUBLIC_USDA_API_KEY: ${{ secrets.EXPO_PUBLIC_USDA_API_KEY }}
+
+      # ── 7. CocoaPods — install iOS native dependencies ────────────────────────
+      - name: Install CocoaPods
+        working-directory: ios_app/ios
+        run: pod install --repo-update
+
+      # ── 8. Fastlane Build ─────────────────────────────────────────────────────
+      - name: Build IPA via Fastlane
+        working-directory: ios_app
+        run: fastlane ${{ github.event.inputs.lane || 'unsigned' }}
+        env:
+          # Firebase
+          EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
+          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
+          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
+          EXPO_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY }}
+          EXPO_PUBLIC_USDA_API_KEY: ${{ secrets.EXPO_PUBLIC_USDA_API_KEY }}
+          # Apple (only needed for 'adhoc' lane)
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+
+      # ── 9. Upload IPA artifact ────────────────────────────────────────────────
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
           name: UrbanHelpers-iOS-IPA
-          path: ios_app/build/UrbanHelpers-iOS.ipa
+          path: |
+            ios_app/build/UrbanHelpers-AdHoc.ipa
+            ios_app/build/UrbanHelpers-Unsigned.ipa
+          if-no-files-found: warn
           retention-days: 14
 
-      - name: Notify build complete
-        run: echo "✅ iOS IPA built successfully! Download from the Actions artifacts above and install via Apple Configurator 2 or TestFlight."
+      - name: 🎉 Build summary
+        run: |
+          echo "================================================================"
+          echo "✅ iOS IPA built successfully!"
+          echo "📥 Download from: Actions → This run → Artifacts → UrbanHelpers-iOS-IPA"
+          echo ""
+          echo "📱 To install on your iPhone:"
+          echo "   unsigned IPA → Download Sideloadly from sideloadly.io"
+          echo "                  Plug in iPhone, open Sideloadly, drag IPA in"
+          echo "                  Sign with your free Apple ID (refresh every 7 days)"
+          echo "================================================================"
