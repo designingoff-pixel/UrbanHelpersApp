@@ -12,28 +12,32 @@ platform :ios do
   desc "Build unsigned IPA — install via AltStore (free, no Apple Dev account)"
   lane :altstore do
 
+    app_dir = File.expand_path("..", __dir__)
+    build_dir = File.join(app_dir, "build")
+    payload_dir = File.join(build_dir, "Payload")
+
     # Step 1: Generate native iOS Xcode project from Expo config (free, local)
-    Dir.chdir("..") do
+    Dir.chdir(app_dir) do
       sh("npx expo prebuild --platform ios --no-install --clean")
       sh("cd ios && pod install")
     end
 
     # Step 2: Build with Xcode — skip all code signing and packaging
     build_app(
-      workspace:        "ios/UrbanHelpers.xcworkspace",
+      workspace:        File.join(app_dir, "ios", "UrbanHelpers.xcworkspace"),
       scheme:           "UrbanHelpers",
       configuration:    "Release",
       clean:            true,
       skip_package:     true,
       skip_codesigning: true,
       xcargs:           "CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' CODE_SIGNING_IDENTITY=''",
-      archive_path:     "./build/UrbanHelpers.xcarchive"
+      archive_path:     File.join(build_dir, "UrbanHelpers.xcarchive")
     )
 
     # Step 3: Package unsigned IPA manually (AltStore payload)
-    sh("mkdir -p build/Payload")
-    sh("cp -R build/UrbanHelpers.xcarchive/Products/Applications/UrbanHelpers.app build/Payload/")
-    sh("cd build && zip -qr UrbanHelpers.ipa Payload")
+    sh("rm -rf '#{payload_dir}' && mkdir -p '#{payload_dir}'")
+    sh("cp -R '#{build_dir}/UrbanHelpers.xcarchive/Products/Applications/'*.app '#{payload_dir}/'")
+    sh("cd '#{build_dir}' && zip -qr UrbanHelpers.ipa Payload")
 
     puts ""
     puts "================================================================"

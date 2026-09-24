@@ -4,10 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'ios_app/src/**'
-      - 'ios_app/App.tsx'
-      - 'ios_app/app.json'
-      - 'ios_app/package.json'
+      - 'ios_app/**'
+      - '.github/workflows/build-ios.yml'
   workflow_dispatch:   # ← Manual trigger button in GitHub Actions UI
 
 jobs:
