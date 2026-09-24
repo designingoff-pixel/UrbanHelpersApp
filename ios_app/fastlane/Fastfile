@@ -18,18 +18,22 @@ platform :ios do
       sh("cd ios && pod install")
     end
 
-    # Step 2: Build with Xcode — skip all code signing
+    # Step 2: Build with Xcode — skip all code signing and packaging
     build_app(
       workspace:        "ios/UrbanHelpers.xcworkspace",
       scheme:           "UrbanHelpers",
       configuration:    "Release",
-      output_directory: "./build",
-      output_name:      "UrbanHelpers.ipa",
       clean:            true,
+      skip_package:     true,
       skip_codesigning: true,
       xcargs:           "CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' CODE_SIGNING_IDENTITY=''",
-      export_method:    "development"
+      archive_path:     "./build/UrbanHelpers.xcarchive"
     )
+
+    # Step 3: Package unsigned IPA manually (AltStore payload)
+    sh("mkdir -p build/Payload")
+    sh("cp -R build/UrbanHelpers.xcarchive/Products/Applications/UrbanHelpers.app build/Payload/")
+    sh("cd build && zip -qr UrbanHelpers.ipa Payload")
 
     puts ""
     puts "================================================================"
