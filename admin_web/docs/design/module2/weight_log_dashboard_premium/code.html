@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Weight Log Dashboard - Urban Helpers</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#93000a",
+                        "on-primary": "#002a78",
+                        "on-secondary-fixed-variant": "#005048",
+                        "secondary-fixed": "#71f8e4",
+                        "surface-bright": "#2b3b4b",
+                        "tertiary-fixed": "#eaddff",
+                        "secondary": "#4fdbc8",
+                        "primary": "#b4c5ff",
+                        "on-primary-container": "#eeefff",
+                        "surface-container": "#112130",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "surface-tint": "#b4c5ff",
+                        "background": "#041423",
+                        "tertiary-fixed-dim": "#d2bbff",
+                        "on-secondary-container": "#003f38",
+                        "on-tertiary-fixed-variant": "#5a00c6",
+                        "secondary-fixed-dim": "#4fdbc8",
+                        "outline-variant": "#434655",
+                        "surface-container-low": "#0c1d2c",
+                        "inverse-primary": "#0053db",
+                        "error": "#ffb4ab",
+                        "on-tertiary-fixed": "#25005a",
+                        "surface-container-highest": "#263646",
+                        "on-surface-variant": "#c3c6d7",
+                        "surface-container-lowest": "#000f1e",
+                        "inverse-on-surface": "#223242",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed": "#00174b",
+                        "surface-dim": "#041423",
+                        "surface-container-high": "#1b2b3b",
+                        "primary-container": "#2563eb",
+                        "on-tertiary": "#3f008e",
+                        "on-background": "#d4e4f9",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-error": "#690005",
+                        "surface-variant": "#263646",
+                        "on-tertiary-container": "#f7edff",
+                        "primary-fixed": "#dbe1ff",
+                        "on-secondary": "#003731",
+                        "tertiary": "#d2bbff",
+                        "surface": "#041423",
+                        "on-surface": "#d4e4f9",
+                        "secondary-container": "#04b4a2",
+                        "inverse-surface": "#d4e4f9",
+                        "on-secondary-fixed": "#00201c",
+                        "outline": "#8d90a0",
+                        "tertiary-container": "#8343f4"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "xs": "4px",
+                        "md": "24px",
+                        "margin-mobile": "16px",
+                        "xl": "80px",
+                        "sm": "12px",
+                        "base": "8px",
+                        "lg": "48px",
+                        "margin-desktop": "40px"
+                    },
+                    "fontFamily": {
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "label-caps": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "caption": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-xl": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "label-caps": ["11px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "700" }],
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "500" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { background-color: #081826; }
+        .glass-panel {
+            background: rgba(255,255,255,0.06);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .solid-card {
+            background-color: #18344F;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 30px;
+        }
+        .glow-effect {
+            box-shadow: 0 0 30px rgba(6, 214, 160, 0.3);
+        }
+    </style>
+</head>
+<body class="text-on-surface antialiased min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="bg-background dark:bg-background sticky top-0 w-full z-40 flat no shadows flex justify-between items-center px-margin-mobile py-4 w-full">
+<div class="flex items-center gap-4 hover:opacity-80 transition-opacity cursor-pointer">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant">person</span>
+</div>
+<h1 class="text-headline-md font-headline-md font-bold text-primary dark:text-primary">Urban Helpers</h1>
+</div>
+<button class="w-10 h-10 rounded-full flex items-center justify-center hover:opacity-80 transition-opacity text-on-surface dark:text-on-surface">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</header>
+<main class="px-margin-mobile md:px-margin-desktop max-w-[1440px] mx-auto space-y-6 pt-4">
+<!-- Hero Section -->
+<section class="relative w-full rounded-[30px] overflow-hidden bg-gradient-to-br from-[#06D6A0] to-[#00CEC9] p-8 md:p-12 flex flex-col md:flex-row items-center justify-between shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
+<div class="z-10 flex-1 space-y-4">
+<h2 class="text-headline-lg-mobile md:text-headline-lg font-headline-lg-mobile md:font-headline-lg text-[#002a78]">Weight Log Dashboard</h2>
+<p class="text-body-lg font-body-lg text-[#003ea8] max-w-md">Track your progress, monitor your metrics, and stay on top of your health goals with clinical precision.</p>
+<button class="mt-4 px-6 py-3 bg-[#002a78] text-[#eeefff] rounded-full font-body-md text-body-md hover:bg-[#00174b] transition-colors shadow-lg">
+                    Log New Entry
+                </button>
+</div>
+<div class="mt-8 md:mt-0 flex-1 relative flex justify-end h-64 md:h-80 w-full md:w-auto">
+<img alt="3D illustration of a smart weight scale glowing in a dark room" class="object-contain h-full w-full max-w-md drop-shadow-[0_20px_40px_rgba(0,0,0,0.4)] filter brightness-110 contrast-125" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZkPICye7KBRDw0VOCsnT-3gCnY4F--8zZP9yXtHMS65kKUSzDBWkvXT8Cyg28RmCvbTIMorAXGf63tbcZVQJ52N-zF6CQEJF-CWjB-1RzOK2PrBwi58zumbL0e0-A7a3oo2o8tvmNNaBOIXmgigu9rixxnXedVVpyUFHD3q17D7Y7EQeq7mmmN8vooC36S2kwe7nyyfnRk_0KSzFRMVi2Dq4mwDHB2hlIefkVONiCWkm-kC88LWIX"/>
+</div>
+<!-- Decorative Glows -->
+<div class="absolute top-0 right-0 w-64 h-64 bg-white/20 blur-[80px] rounded-full"></div>
+<div class="absolute bottom-0 left-0 w-64 h-64 bg-[#002a78]/20 blur-[80px] rounded-full"></div>
+</section>
+<!-- Bento Grid: Key Metrics -->
+<section class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-gutter">
+<!-- Current Weight -->
+<div class="solid-card p-6 flex flex-col justify-between h-48 shadow-[0_10px_30px_rgba(0,0,0,0.2)]">
+<div class="flex items-center gap-2 text-secondary-fixed">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">monitor_weight</span>
+<span class="text-body-sm font-body-sm text-on-surface-variant">Current Weight</span>
+</div>
+<div>
+<div class="text-headline-lg-mobile md:text-headline-lg font-headline-lg-mobile md:font-headline-lg text-on-surface">72.5 <span class="text-body-md font-body-md text-on-surface-variant">kg</span></div>
+<div class="text-caption font-caption text-secondary mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">arrow_downward</span>
+                        1.2 kg this week
+                    </div>
+</div>
+</div>
+<!-- BMI Index -->
+<div class="solid-card p-6 flex flex-col justify-between h-48 shadow-[0_10px_30px_rgba(0,0,0,0.2)] relative overflow-hidden">
+<div class="flex items-center gap-2 text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">accessibility_new</span>
+<span class="text-body-sm font-body-sm text-on-surface-variant">BMI Index</span>
+</div>
+<div>
+<div class="text-headline-lg-mobile md:text-headline-lg font-headline-lg-mobile md:font-headline-lg text-on-surface">23.1</div>
+<div class="inline-block mt-2 px-3 py-1 bg-secondary-container/20 text-secondary rounded-full text-caption font-caption font-bold border border-secondary/30">
+                        Normal Weight
+                    </div>
+</div>
+<div class="absolute -bottom-12 -right-12 text-[120px] text-primary/5 select-none pointer-events-none">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">accessibility_new</span>
+</div>
+</div>
+<!-- Goal Progress -->
+<div class="solid-card p-6 flex flex-col items-center justify-center h-48 shadow-[0_10px_30px_rgba(0,0,0,0.2)] col-span-2 md:col-span-1">
+<div class="relative w-32 h-32 flex items-center justify-center">
+<svg class="w-full h-full transform -rotate-90" viewbox="0 0 100 100">
+<circle cx="50" cy="50" fill="none" r="40" stroke="rgba(255,255,255,0.1)" stroke-width="8"></circle>
+<circle class="glow-effect" cx="50" cy="50" fill="none" r="40" stroke="#06D6A0" stroke-dasharray="251.2" stroke-dashoffset="62.8" stroke-linecap="round" stroke-width="8"></circle>
+</svg>
+<div class="absolute flex flex-col items-center">
+<span class="text-headline-md font-headline-md text-on-surface">75%</span>
+<span class="text-caption font-caption text-on-surface-variant">to Goal</span>
+</div>
+</div>
+</div>
+<!-- Body Comp -->
+<div class="solid-card p-6 flex flex-col justify-between h-48 shadow-[0_10px_30px_rgba(0,0,0,0.2)] col-span-2 md:col-span-1">
+<div class="space-y-4">
+<div>
+<div class="flex justify-between items-center mb-1">
+<span class="text-body-sm font-body-sm text-on-surface-variant flex items-center gap-1"><span class="material-symbols-outlined text-[16px] text-tertiary">fitness_center</span> Muscle Mass</span>
+<span class="text-body-md font-body-md text-on-surface">55%</span>
+</div>
+<div class="w-full bg-surface-container-highest rounded-full h-2">
+<div class="bg-tertiary h-2 rounded-full shadow-[0_0_10px_rgba(210,187,255,0.5)]" style="width: 55%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between items-center mb-1">
+<span class="text-body-sm font-body-sm text-on-surface-variant flex items-center gap-1"><span class="material-symbols-outlined text-[16px] text-error">water_drop</span> Body Fat</span>
+<span class="text-body-md font-body-md text-on-surface">18%</span>
+</div>
+<div class="w-full bg-surface-container-highest rounded-full h-2">
+<div class="bg-error h-2 rounded-full shadow-[0_0_10px_rgba(255,180,171,0.5)]" style="width: 18%"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-6 left-0 right-0 mx-auto w-[90%] max-w-md z-50 flex justify-around items-center px-2 py-3 bg-white/5 dark:bg-white/5 border border-white/10 shadow-[0_20px_40px_rgba(0,0,0,0.4)] fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-32px)] rounded-full backdrop-blur-xl md:hidden">
+<button class="flex flex-col items-center justify-center bg-primary text-on-primary rounded-full w-12 h-12 shadow-[0_0_15px_rgba(180,197,255,0.3)] scale-95 transition-transform hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">favorite</span>
+<span class="text-caption font-caption hidden">Health</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">psychology</span>
+<span class="text-caption font-caption hidden">Coaching</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">add_circle</span>
+<span class="text-caption font-caption hidden">Log</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">restaurant</span>
+<span class="text-caption font-caption hidden">Nutrition</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">person</span>
+<span class="text-caption font-caption hidden">Profile</span>
+</button>
+</nav>
+</main>
+</body></html>

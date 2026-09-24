@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Urban Helpers - Yoga Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "tertiary": "#d2bbff",
+                "on-tertiary-fixed": "#25005a",
+                "error": "#ffb4ab",
+                "on-primary-fixed-variant": "#003ea8",
+                "on-error-container": "#ffdad6",
+                "error-container": "#93000a",
+                "tertiary-container": "#8343f4",
+                "on-tertiary-fixed-variant": "#5a00c6",
+                "outline": "#8d90a0",
+                "tertiary-fixed-dim": "#d2bbff",
+                "on-error": "#690005",
+                "tertiary-fixed": "#eaddff",
+                "background": "#041423",
+                "on-secondary-container": "#003f38",
+                "primary": "#b4c5ff",
+                "secondary-fixed-dim": "#4fdbc8",
+                "on-tertiary": "#3f008e",
+                "on-secondary": "#003731",
+                "primary-fixed-dim": "#b4c5ff",
+                "secondary-fixed": "#71f8e4",
+                "surface-container-high": "#1b2b3b",
+                "surface-tint": "#b4c5ff",
+                "on-primary-fixed": "#00174b",
+                "surface-container-low": "#0c1d2c",
+                "surface-dim": "#041423",
+                "surface-container-highest": "#263646",
+                "outline-variant": "#434655",
+                "on-secondary-fixed": "#00201c",
+                "inverse-primary": "#0053db",
+                "surface": "#041423",
+                "on-primary": "#002a78",
+                "inverse-on-surface": "#223242",
+                "on-background": "#d4e4f9",
+                "on-surface-variant": "#c3c6d7",
+                "secondary": "#4fdbc8",
+                "on-primary-container": "#eeefff",
+                "surface-bright": "#2b3b4b",
+                "on-tertiary-container": "#f7edff",
+                "surface-variant": "#263646",
+                "primary-fixed": "#dbe1ff",
+                "inverse-surface": "#d4e4f9",
+                "surface-container-lowest": "#000f1e",
+                "surface-container": "#112130",
+                "on-surface": "#d4e4f9",
+                "secondary-container": "#04b4a2",
+                "primary-container": "#2563eb",
+                "on-secondary-fixed-variant": "#005048"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px",
+                "2xl": "32px",
+                "3xl": "40px"
+        },
+        "spacing": {
+                "base": "8px",
+                "lg": "48px",
+                "xs": "4px",
+                "gutter": "24px",
+                "xl": "80px",
+                "md": "24px",
+                "sm": "12px",
+                "margin-mobile": "16px",
+                "margin-desktop": "40px"
+        },
+        "fontFamily": {
+                "body-md": [
+                        "Plus Jakarta Sans"
+                ],
+                "headline-xl": [
+                        "Plus Jakarta Sans"
+                ],
+                "headline-lg": [
+                        "Plus Jakarta Sans"
+                ],
+                "label-caps": [
+                        "Plus Jakarta Sans"
+                ],
+                "headline-md": [
+                        "Plus Jakarta Sans"
+                ],
+                "body-lg": [
+                        "Plus Jakarta Sans"
+                ],
+                "caption": [
+                        "Plus Jakarta Sans"
+                ],
+                "body-sm": [
+                        "Plus Jakarta Sans"
+                ],
+                "headline-lg-mobile": [
+                        "Plus Jakarta Sans"
+                ]
+        },
+        "fontSize": {
+                "body-md": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "500"
+                        }
+                ],
+                "headline-xl": [
+                        "48px",
+                        {
+                                "lineHeight": "56px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "40px",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "label-caps": [
+                        "11px",
+                        {
+                                "lineHeight": "14px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-md": [
+                        "24px",
+                        {
+                                "lineHeight": "32px",
+                                "fontWeight": "700"
+                        }
+                ],
+                "body-lg": [
+                        "18px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "500"
+                        }
+                ],
+                "caption": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-sm": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "500"
+                        }
+                ],
+                "headline-lg-mobile": [
+                        "28px",
+                        {
+                                "lineHeight": "36px",
+                                "fontWeight": "700"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        body {
+            background-color: #041423;
+            color: #d4e4f9;
+        }
+        .glow-effect {
+            box-shadow: 0 0 30px rgba(180, 197, 255, 0.2);
+        }
+        
+        /* Custom Scrollbar for horizontal lists */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.5); opacity: 1; }
+        }
+        .breathe-animation {
+            animation: breathe 8s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen pb-32">
+<!-- Top Navigation (Desktop) -->
+<header class="hidden md:flex fixed top-0 w-full z-50 bg-surface/60 backdrop-blur-xl dark:bg-surface/60 border-b border-white/10 shadow-lg shadow-black/40 justify-between items-center px-margin-desktop h-16 max-w-7xl mx-auto left-0 right-0">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary dark:text-primary cursor-pointer hover:bg-white/5 p-2 rounded-full transition-colors active:scale-95 duration-200">menu</span>
+<span class="font-headline-md text-headline-md font-bold tracking-tight text-primary">Urban Helpers</span>
+</div>
+<nav class="flex gap-6">
+<a class="font-body-md text-body-md text-on-surface-variant hover:bg-white/5 px-3 py-2 rounded-lg transition-colors active:scale-95 duration-200" href="#">Home</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:bg-white/5 px-3 py-2 rounded-lg transition-colors active:scale-95 duration-200" href="#">Health</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:bg-white/5 px-3 py-2 rounded-lg transition-colors active:scale-95 duration-200" href="#">Discover</a>
+<a class="font-body-md text-body-md text-primary font-bold hover:bg-white/5 px-3 py-2 rounded-lg transition-colors active:scale-95 duration-200" href="#">Fitness</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:bg-white/5 px-3 py-2 rounded-lg transition-colors active:scale-95 duration-200" href="#">Profile</a>
+</nav>
+<span class="material-symbols-outlined text-primary dark:text-primary cursor-pointer hover:bg-white/5 p-2 rounded-full transition-colors active:scale-95 duration-200">notifications</span>
+</header>
+<!-- Top App Bar (Mobile) -->
+<header class="md:hidden fixed top-0 w-full z-50 bg-surface/60 backdrop-blur-xl dark:bg-surface/60 border-b border-white/10 shadow-lg shadow-black/40 flex justify-between items-center px-margin-mobile h-16">
+<span class="material-symbols-outlined text-primary dark:text-primary active:scale-95 duration-200 p-2">menu</span>
+<span class="font-headline-md text-headline-lg-mobile font-bold tracking-tight text-primary">Urban Helpers</span>
+<span class="material-symbols-outlined text-primary dark:text-primary active:scale-95 duration-200 p-2">notifications</span>
+</header>
+<main class="pt-24 px-margin-mobile md:px-margin-desktop max-w-7xl mx-auto grid grid-cols-4 md:grid-cols-12 gap-gutter">
+<!-- Hero Section -->
+<section class="col-span-4 md:col-span-12 rounded-2xl overflow-hidden relative min-h-[300px] md:min-h-[400px] shadow-[0_20px_40px_rgba(0,0,0,0.6)] flex items-end p-6 md:p-10 border border-white/5">
+<img alt="Yoga Hero" class="absolute inset-0 w-full h-full object-cover z-0" data-alt="A serene, ethereal illustration of a person meditating in a lotus pose, glowing with a soft purple and pink aura. The background features a twilight landscape with rolling hills and delicate lotus flowers floating gently. The overall mood is peaceful, spiritual, and high-end, utilizing a deep navy backdrop with vibrant lavender and magenta highlights." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6O67hCbVyC4VfPpnxMctt5BlRE0AbTCBe1OIxlWGsx8PI6W2R8SAom5F5yT_-RrDSM_fLa8R3Wh8lXc_rhibYkh3F8Fe4E1Y5RKXyJXiQQned4gPJVmvrl3I7zC7lCO9UPhJeNnmF93BhRBhaWqgeTdrN6L0-1bZab9KFs5Rr7rcxDy3Sqz22tmLmOTMr3lS0GPOyKXguUn5THqw28ba7ci_pE5V-9cCTv0N91MRxbINuDM_JJvlY"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent z-10"></div>
+<div class="relative z-20 w-full">
+<h1 class="font-headline-xl text-headline-lg-mobile md:text-headline-xl text-white mb-2" style="background: linear-gradient(90deg, #d2bbff, #ffffff); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Yoga</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-md">Relax your body and mind.</p>
+</div>
+</section>
+<!-- Main Content Area -->
+<div class="col-span-4 md:col-span-8 flex flex-col gap-md">
+<!-- Today's Session -->
+<div class="rounded-2xl p-6 relative overflow-hidden group cursor-pointer shadow-[0_10px_30px_rgba(37,99,235,0.3)] bg-primary-container">
+<div class="relative z-10 flex justify-between items-center h-full">
+<div>
+<span class="inline-block bg-white/20 text-white font-label-caps text-label-caps px-3 py-1 rounded-full mb-4">Today's Session</span>
+<h2 class="font-headline-md text-headline-md text-white mb-2">Morning Flow</h2>
+<p class="font-body-md text-body-sm text-white/80 flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">schedule</span> 30 min
+                            <span class="material-symbols-outlined text-[16px] ml-2">local_fire_department</span> 150 kcal
+                        </p>
+</div>
+<div class="w-16 h-16 rounded-full bg-white flex items-center justify-center group-hover:scale-110 group-active:scale-95 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.4)]">
+<span class="material-symbols-outlined text-primary-container text-3xl" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</div>
+</div>
+</div>
+<!-- Categories Section -->
+<div>
+<div class="w-full h-48 md:h-64 rounded-2xl mb-4 overflow-hidden shadow-[0_15px_30px_rgba(0,0,0,0.5)]">
+<img alt="Yoga Categories Illustration" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4jKRXxOoKa0mMjs2l40FVOi3Z-lrG5SuzL28juecKxoDFzoIPsQMLnKrZr8jao-B3B1drFZcG1FtGoG3tIeAII0BjTHgxZeuUukPBVDI9PsWW4DQV6f2YJFtutXwDNjXKIZtgNWef-LV6Ypm6chKyOT53-3QHhU9Aa6AVKOLkH1DHuIL6uGhEjc42NCcvKWGYxmjxPmCMFJJei1ag5lMYVcbI9afkxTfEmEmhmHiiSNecj672d26f"/>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-sm">
+<!-- Beginner -->
+<div class="rounded-2xl p-5 flex flex-col items-center justify-center text-center shadow-[0_10px_20px_rgba(4,180,162,0.3)] bg-secondary-container cursor-pointer hover:brightness-110 transition-all">
+<span class="material-symbols-outlined text-4xl mb-3 text-white">self_improvement</span>
+<h3 class="font-body-lg text-body-md text-white font-bold">Beginner</h3>
+<p class="font-caption text-caption text-white/80 mt-1">Foundation</p>
+</div>
+<!-- Intermediate -->
+<div class="rounded-2xl p-5 flex flex-col items-center justify-center text-center shadow-[0_10px_20px_rgba(131,67,244,0.3)] bg-tertiary-container cursor-pointer hover:brightness-110 transition-all">
+<span class="material-symbols-outlined text-4xl mb-3 text-white">fitness_center</span>
+<h3 class="font-body-lg text-body-md text-white font-bold">Intermediate</h3>
+<p class="font-caption text-caption text-white/80 mt-1">Strength</p>
+</div>
+<!-- Advanced -->
+<div class="rounded-2xl p-5 flex flex-col items-center justify-center text-center shadow-[0_10px_20px_rgba(225,29,72,0.3)] bg-[#e11d48] cursor-pointer hover:brightness-110 transition-all">
+<span class="material-symbols-outlined text-4xl mb-3 text-white">bolt</span>
+<h3 class="font-body-lg text-body-md text-white font-bold">Advanced</h3>
+<p class="font-caption text-caption text-white/80 mt-1">Challenge</p>
+</div>
+</div>
+</div>
+<!-- Popular Poses Carousel -->
+<div>
+<h3 class="font-headline-md text-headline-lg-mobile text-white mb-4">Popular Poses</h3>
+<div class="flex overflow-x-auto hide-scrollbar gap-4 pb-4 -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0">
+<!-- Pose 1 -->
+<div class="min-w-[160px] md:min-w-[200px] bg-[#0c4a6e] shadow-[0_10px_20px_rgba(12,74,110,0.4)] rounded-2xl p-4 flex flex-col">
+<div class="w-full h-32 rounded-xl mb-3 overflow-hidden bg-black/20 relative">
+<img alt="Tree Pose" class="object-cover w-full h-full" data-alt="A stylized 3D icon of a person doing the Tree Yoga Pose." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBDthSNb54Ye3Ony-UguHECsMN7MZ7bmG5JQRGIfho_xFPLnAQxhCZncuGPrA8vchOzW324Z4IpwWxwuYf94X97Dd9Lct3qGNOBU_K6Rc_zQG-jV5B5mucsCJZjU0G70aqeSDRiFhoXUNRzKcPNOD2VxF94Bd49dFOs9_Auyc1iINk9F9kpq38hhHrAnnTwJPqIbyatmB5A8ig8VNom4Sg-rzZWVMlCh_R1wRjvpdO9NVhsN8B9JEkI"/>
+</div>
+<h4 class="font-body-md text-body-md text-white font-bold">Tree Pose</h4>
+<p class="font-caption text-caption text-white/70">Vrksasana</p>
+</div>
+<!-- Pose 2 -->
+<div class="min-w-[160px] md:min-w-[200px] bg-[#4c1d95] shadow-[0_10px_20px_rgba(76,29,149,0.4)] rounded-2xl p-4 flex flex-col">
+<div class="w-full h-32 rounded-xl mb-3 overflow-hidden bg-black/20 relative">
+<img alt="Lotus Pose" class="object-cover w-full h-full" data-alt="A stylized 3D icon of a person doing the Lotus Yoga Pose." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBGcJa_dfvIvUUw-4vFpZB7HQyrQiQVGRoj2jGwJeFRdwUqMXmK8RJYUGp5HHeDJoaasdqTkV53KsUp0NlMBX8DQVMvoTD2q-xytJkNLU5mZLV-Bteaz1kHfZ44NHiCmUQfiVAXEETVb4d7boYPo1EQ9fWd6-gcne3wCbXRCSCoYRuC9I7dU7dOqUmKgVMa3Vm71565a9Dr7G5GSNoYXqZLGppA5HU3iUdcXNx5rGx1h8BvRucwZbX5"/>
+</div>
+<h4 class="font-body-md text-body-md text-white font-bold">Lotus</h4>
+<p class="font-caption text-caption text-white/70">Padmasana</p>
+</div>
+<!-- Pose 3 -->
+<div class="min-w-[160px] md:min-w-[200px] bg-[#9f1239] shadow-[0_10px_20px_rgba(159,18,57,0.4)] rounded-2xl p-4 flex flex-col">
+<div class="w-full h-32 rounded-xl mb-3 overflow-hidden bg-black/20 relative">
+<img alt="Warrior Pose" class="object-cover w-full h-full" data-alt="A stylized 3D icon of a person doing the Warrior II Yoga Pose." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1Zr_bjnuiPChBmP9cxAKILYOOfrEfM3TYN7LMCcNFQs6qc4UezbmLOsTVkjGbMJiKvln6MWXDHlADqQ4Q89skAFVHfapwAgRLf8SPLw37XMponcSGniPyMo6VNKolXb-NV-b2iEAa1LP-htKqAHn6IT8RiF3LP3pZlsZTsX4d8hlto05PNNSnqwDEc7SkHCw1dV7pOUfGzgRcFIT_trZ5GXsRJXZC696sh1XWe3t7QwBcZyUPgmIL"/>
+</div>
+<h4 class="font-body-md text-body-md text-white font-bold">Warrior</h4>
+<p class="font-caption text-caption text-white/70">Virabhadrasana</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Sidebar / Widgets -->
+<div class="col-span-4 md:col-span-4 flex flex-col gap-md">
+<!-- Breathing Exercise Interactive -->
+<div class="bg-primary-container rounded-2xl p-6 flex flex-col items-center justify-center text-center shadow-[0_20px_40px_rgba(37,99,235,0.4)] min-h-[250px] relative overflow-hidden">
+<h3 class="font-body-lg text-body-lg text-white mb-2 z-10 font-bold">Breathe</h3>
+<p class="font-caption text-caption text-white/80 mb-6 z-10">Follow the circle</p>
+<div class="relative w-32 h-32 flex items-center justify-center z-10 cursor-pointer" onclick="this.querySelector('.breathe-circle').classList.toggle('breathe-animation')">
+<div class="w-24 h-24 bg-white rounded-full breathe-circle flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.6)]">
+<span class="material-symbols-outlined text-primary-container text-3xl">air</span>
+</div>
+</div>
+<p class="font-caption text-caption text-white/80 mt-6 z-10 opacity-90">Tap to start/stop</p>
+</div>
+<!-- Progress Widgets -->
+<div class="grid grid-cols-2 gap-sm">
+<!-- Meditation Minutes -->
+<div class="bg-tertiary-container rounded-2xl p-4 flex flex-col justify-between shadow-[0_15px_30px_rgba(131,67,244,0.4)] h-32">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-white text-[20px]">timer</span>
+<span class="font-caption text-caption text-white/90 font-bold">Minutes</span>
+</div>
+<div>
+<span class="font-headline-md text-headline-md text-white">120</span>
+<span class="font-caption text-caption text-white/70 ml-1">+15 today</span>
+</div>
+</div>
+<!-- Completed Sessions -->
+<div class="bg-secondary-container rounded-2xl p-4 flex flex-col justify-between shadow-[0_15px_30px_rgba(4,180,162,0.4)] h-32">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-white text-[20px]">check_circle</span>
+<span class="font-caption text-caption text-white/90 font-bold">Sessions</span>
+</div>
+<div>
+<span class="font-headline-md text-headline-md text-white">24</span>
+<span class="font-caption text-caption text-white/70 ml-1">This month</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar (Mobile) -->
+<nav class="md:hidden bg-surface-container-high border border-white/10 shadow-[0px_20px_40px_rgba(0,0,0,0.4)] fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md rounded-full flex justify-around items-center py-2 px-4 z-50">
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 p-3 hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1">home</span>
+<span class="font-label-caps text-label-caps">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 p-3 hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1">medical_services</span>
+<span class="font-label-caps text-label-caps">Health</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 p-3 hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1">explore</span>
+<span class="font-label-caps text-label-caps">Discover</span>
+</a>
+<!-- Active Tab: Fitness -->
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full p-3 shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">fitness_center</span>
+<span class="font-label-caps text-label-caps">Fitness</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 p-3 hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1">person</span>
+<span class="font-label-caps text-label-caps">Profile</span>
+</a>
+</nav>
+</body></html>

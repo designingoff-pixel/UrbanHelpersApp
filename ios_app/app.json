@@ -1,0 +1,69 @@
+{
+  "expo": {
+    "name": "Urban Helpers",
+    "slug": "urban-helpers-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#081826"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#00bcd4",
+          "defaultChannel": "default"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Urban Helpers needs your location to show your professional's route."
+        }
+      ]
+    ],
+    "android": {
+      "package": "com.urbanhelpers.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#081826"
+      },
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "POST_NOTIFICATIONS",
+        "SCHEDULE_EXACT_ALARM",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "INTERNET",
+        "ACTIVITY_RECOGNITION"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAMzsDmDdT2c7r5j1dWTSxev6XSHJZTf-s"
+        }
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.urbanhelpers.app",
+      "supportsTablet": false,
+      "config": {
+        "googleMapsApiKey": "AIzaSyAMzsDmDdT2c7r5j1dWTSxev6XSHJZTf-s"
+      },
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Urban Helpers needs your location to show your professional's route and find nearby helper services.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Urban Helpers uses your location to keep track of service requests and professional arrival.",
+        "NSMotionUsageDescription": "Urban Helpers tracks your daily steps and physical activity.",
+        "NSBluetoothAlwaysUsageDescription": "Urban Helpers connects to your smartwatch to sync health data like heart rate, steps, and activity metrics.",
+        "NSBluetoothPeripheralUsageDescription": "Urban Helpers needs Bluetooth to sync your wearable device.",
+        "NSCameraUsageDescription": "Urban Helpers requires access to the camera to upload profile and health record photos.",
+        "NSPhotoLibraryUsageDescription": "Urban Helpers requires access to your photo library to select profile and health document pictures."
+      }
+    }
+  }
+}

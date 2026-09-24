@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Urban Helpers - Prescription</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary": "#002a78",
+                        "tertiary-container": "#8343f4",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-tertiary": "#3f008e",
+                        "on-background": "#d4e4f9",
+                        "on-secondary-fixed-variant": "#005048",
+                        "on-secondary-container": "#003f38",
+                        "surface-container-high": "#1b2b3b",
+                        "background": "#041423",
+                        "secondary-container": "#04b4a2",
+                        "surface-tint": "#b4c5ff",
+                        "surface-container": "#112130",
+                        "on-secondary-fixed": "#00201c",
+                        "outline-variant": "#434655",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "inverse-on-surface": "#223242",
+                        "surface-bright": "#2b3b4b",
+                        "surface-container-lowest": "#000f1e",
+                        "surface-dim": "#041423",
+                        "primary-fixed": "#dbe1ff",
+                        "on-primary-fixed": "#00174b",
+                        "outline": "#8d90a0",
+                        "tertiary-fixed-dim": "#d2bbff",
+                        "inverse-primary": "#0053db",
+                        "on-secondary": "#003731",
+                        "on-tertiary-container": "#f7edff",
+                        "primary": "#b4c5ff",
+                        "on-primary-container": "#eeefff",
+                        "on-surface-variant": "#c3c6d7",
+                        "on-tertiary-fixed-variant": "#5a00c6",
+                        "surface-container-highest": "#263646",
+                        "primary-container": "#2563eb",
+                        "on-error-container": "#ffdad6",
+                        "error": "#ffb4ab",
+                        "on-error": "#690005",
+                        "on-surface": "#d4e4f9",
+                        "tertiary-fixed": "#eaddff",
+                        "secondary-fixed": "#71f8e4",
+                        "error-container": "#93000a",
+                        "tertiary": "#d2bbff",
+                        "surface-container-low": "#0c1d2c",
+                        "on-tertiary-fixed": "#25005a",
+                        "surface": "#041423",
+                        "surface-variant": "#263646",
+                        "secondary-fixed-dim": "#4fdbc8",
+                        "inverse-surface": "#d4e4f9",
+                        "secondary": "#4fdbc8"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "40px",
+                        "base": "8px",
+                        "xl": "80px",
+                        "gutter": "24px",
+                        "lg": "48px",
+                        "xs": "4px",
+                        "sm": "12px",
+                        "margin-mobile": "16px",
+                        "md": "24px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "label-caps": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "caption": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "700" }],
+                        "label-caps": ["11px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-xl": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #081826;
+            color: #d4e4f9;
+        }
+        .text-glow {
+            text-shadow: 0 0 20px rgba(180, 197, 255, 0.5);
+        }
+        .icon-glow {
+            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+        }
+        
+        /* Custom Scrollbar for chips */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="font-body-md text-body-md min-h-screen pb-32 overflow-x-hidden relative">
+<!-- Background Animation -->
+
+<!-- TopAppBar -->
+<header class="fixed w-full top-0 z-50 bg-background/80 backdrop-blur-xl flex justify-between items-center px-margin-mobile md:px-margin-desktop py-4 hidden md:flex">
+<div class="flex items-center gap-4">
+<button class="text-on-background hover:bg-surface-container-high rounded-full p-2 transition-all active:scale-95 duration-150">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary font-bold">Urban Helpers</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-background hover:bg-surface-container-high rounded-full p-2 transition-all">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button class="text-on-background hover:bg-surface-container-high rounded-full p-2 transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="w-10 h-10 rounded-full bg-surface-container overflow-hidden border border-outline-variant/30 flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant">person</span>
+</button>
+</div>
+</header>
+<!-- Mobile Header Placeholder (since TopAppBar is typically responsive but logic dictates full cluster on web, we do a simplified mobile header) -->
+<header class="fixed w-full top-0 z-50 bg-background/80 backdrop-blur-xl flex justify-between items-center px-margin-mobile py-4 md:hidden">
+<div class="flex items-center gap-2">
+<button class="text-on-background rounded-full p-2">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-on-background">Prescription</h1>
+</div>
+<button class="text-on-background rounded-full p-2">
+<span class="material-symbols-outlined">search</span>
+</button>
+</header>
+<main class="pt-24 px-margin-mobile md:px-margin-desktop max-w-7xl mx-auto space-y-md">
+<!-- Hero Section -->
+<section class="relative rounded-[32px] overflow-hidden p-6 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8 bg-gradient-to-br from-primary-container via-tertiary-container to-[#3f008e] shadow-[0_20px_40px_rgba(0,0,0,0.4)] border border-white/10">
+<div class="z-10 flex-1 space-y-4">
+<h2 class="font-headline-xl text-headline-xl text-white font-bold leading-tight">Digital<br/>Prescriptions</h2>
+<p class="font-body-lg text-body-lg text-white/80 max-w-md">Store, organize and access all your prescriptions securely in one place.</p>
+<div class="flex flex-col sm:flex-row gap-4 pt-4">
+<button class="bg-primary text-on-primary font-bold py-4 px-8 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition-opacity shadow-[0_0_20px_rgba(180,197,255,0.3)]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">upload_file</span>
+                        Upload Prescription
+                    </button>
+<button class="bg-white/10 backdrop-blur-xl border border-white/10 text-white font-bold py-4 px-8 rounded-xl flex items-center justify-center gap-2 hover:bg-white/20 transition-colors">
+<span class="material-symbols-outlined">document_scanner</span>
+                        Scan Prescription
+                    </button>
+</div>
+</div>
+<div class="w-full md:w-1/2 max-w-sm relative z-10">
+<div class="aspect-square rounded-2xl overflow-hidden relative shadow-2xl">
+<img class="w-full h-full object-cover" data-alt="A premium, high-end 3D illustration of a doctor writing on a medical clipboard with floating pills and digital medical documents. Royal blue, indigo, and purple tones with cinematic lighting. Futuristic healthcare aesthetic, high-fidelity 3D render." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDAV-7umoxUEwEk9qEj2YAfmwR7m09Y1YHPrk__CWTpM5Hy9CF4UslVT4JJxdf_NFKz_x4k_KCWtX4Nq9s0UAZJf6rRKrNYpDbQq_9UfiWsyYlZpZYfzJ2LzSW9lKoJMCWEtk5KotSAnSo7GbtOgyPtnygweGg1751Yizaco4Hi30f38Wm7zS-jbiYFdxS6tMfEOLFOWvjNjv2y-0GsSFkaiRK14aWh7X9P9ZcS4taPxi4tG8xXaccU"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+</div>
+</div>
+<!-- Decorative Elements -->
+<div class="absolute top-0 right-0 w-96 h-96 bg-primary/20 blur-[100px] rounded-full pointer-events-none mix-blend-screen"></div>
+<div class="absolute bottom-0 left-0 w-64 h-64 bg-tertiary-container/30 blur-[80px] rounded-full pointer-events-none mix-blend-screen"></div>
+</section>
+<!-- Categories -->
+<section class="py-2">
+<div class="flex gap-3 overflow-x-auto hide-scrollbar pb-2">
+<button class="bg-primary text-on-primary px-6 py-2 rounded-full font-bold whitespace-nowrap text-sm shadow-[0_0_15px_rgba(180,197,255,0.2)]">Active</button>
+<button class="bg-white/5 backdrop-blur-xl border border-white/10 text-on-surface-variant px-6 py-2 rounded-full font-medium whitespace-nowrap text-sm hover:text-white transition-colors">Completed</button>
+<button class="bg-white/5 backdrop-blur-xl border border-white/10 text-on-surface-variant px-6 py-2 rounded-full font-medium whitespace-nowrap text-sm hover:text-white transition-colors">Upcoming</button>
+<button class="bg-white/5 backdrop-blur-xl border border-white/10 text-on-surface-variant px-6 py-2 rounded-full font-medium whitespace-nowrap text-sm hover:text-white transition-colors">Expired</button>
+</div>
+</section>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-md">
+<!-- Left Column: Recent Prescriptions -->
+<div class="lg:col-span-2 space-y-6">
+<h3 class="font-headline-md text-headline-md font-bold text-on-background flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">history</span>
+                    Recent Prescriptions
+                </h3>
+<!-- Prescription Card 1 -->
+<div class="bg-indigo-600 rounded-[32px] p-6 flex flex-col sm:flex-row gap-6 relative overflow-hidden group hover:opacity-95 transition-opacity shadow-[0_10px_30px_rgba(79,70,229,0.3)]">
+<div class="absolute top-0 left-0 w-1 h-full bg-white/50"></div>
+<div class="flex-1 space-y-4">
+<div class="flex justify-between items-start">
+<div>
+<h4 class="font-headline-lg-mobile text-headline-lg-mobile text-white">Dr. Sarah Jenkins</h4>
+<p class="text-white/80 text-sm flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[16px]">local_hospital</span>
+                                    City General Hospital
+                                </p>
+</div>
+<span class="text-xs font-label-caps bg-white/20 px-3 py-1 rounded-full text-white">ACTIVE</span>
+</div>
+<div class="bg-black/10 rounded-xl p-4 border border-white/10">
+<p class="text-xs text-white/70 mb-2">Prescribed Medicines</p>
+<ul class="space-y-2">
+<li class="flex items-center justify-between text-sm">
+<span class="text-white font-bold">Amoxicillin 500mg</span>
+<span class="text-white/90">1-0-1</span>
+</li>
+<li class="flex items-center justify-between text-sm">
+<span class="text-white font-bold">Ibuprofen 400mg</span>
+<span class="text-white/90">0-1-0</span>
+</li>
+</ul>
+</div>
+<div class="flex items-center justify-between pt-2">
+<span class="text-xs text-white/80">Oct 12, 2023</span>
+<div class="flex gap-2">
+<button class="p-2 rounded-full bg-black/10 hover:bg-black/20 transition-colors text-white">
+<span class="material-symbols-outlined text-[20px]">share</span>
+</button>
+<button class="flex items-center gap-1 px-4 py-2 rounded-lg bg-black/10 hover:bg-black/20 transition-colors text-white text-sm font-bold">
+<span class="material-symbols-outlined text-[18px]">download</span>
+                                    PDF
+                                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Prescription Card 2 -->
+<div class="bg-teal-600 rounded-[32px] p-6 flex flex-col sm:flex-row gap-6 relative overflow-hidden group hover:opacity-95 transition-opacity shadow-[0_10px_30px_rgba(13,148,136,0.3)]">
+<div class="absolute top-0 left-0 w-1 h-full bg-white/50"></div>
+<div class="flex-1 space-y-4">
+<div class="flex justify-between items-start">
+<div>
+<h4 class="font-headline-lg-mobile text-headline-lg-mobile text-white">Dr. Michael Chen</h4>
+<p class="text-white/80 text-sm flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[16px]">local_hospital</span>
+                                    Metro Health Clinic
+                                </p>
+</div>
+<span class="text-xs font-label-caps bg-white/20 px-3 py-1 rounded-full text-white">COMPLETED</span>
+</div>
+<div class="bg-black/10 rounded-xl p-4 border border-white/10">
+<p class="text-xs text-white/70 mb-2">Prescribed Medicines</p>
+<ul class="space-y-2">
+<li class="flex items-center justify-between text-sm">
+<span class="text-white font-bold">Lisinopril 10mg</span>
+<span class="text-white/90">1-0-0</span>
+</li>
+</ul>
+</div>
+<div class="flex items-center justify-between pt-2">
+<span class="text-xs text-white/80">Sep 05, 2023</span>
+<div class="flex gap-2">
+<button class="p-2 rounded-full bg-black/10 hover:bg-black/20 transition-colors text-white">
+<span class="material-symbols-outlined text-[20px]">share</span>
+</button>
+<button class="flex items-center gap-1 px-4 py-2 rounded-lg bg-black/10 hover:bg-black/20 transition-colors text-white text-sm font-bold">
+<span class="material-symbols-outlined text-[18px]">download</span>
+                                    PDF
+                                </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Tools & Extraction -->
+<div class="space-y-6">
+<!-- OCR Scanner -->
+<div class="bg-violet-600 rounded-[32px] p-6 flex flex-col items-center justify-center text-center space-y-4 h-48 shadow-[0_10px_30px_rgba(124,58,237,0.3)]">
+<div class="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mb-2">
+<span class="material-symbols-outlined text-white text-3xl icon-glow">document_scanner</span>
+</div>
+<div>
+<h4 class="font-bold text-white">Smart Scan</h4>
+<p class="text-xs text-white/80 mt-1">Extract text automatically</p>
+</div>
+<button class="text-white font-bold text-sm hover:underline mt-2">Scan New Document</button>
+</div>
+<!-- Medicine Extraction Widget -->
+<div class="bg-indigo-700 rounded-[32px] p-5 space-y-4 shadow-[0_10px_30px_rgba(67,56,202,0.3)]">
+<div class="flex items-center gap-2 border-b border-white/20 pb-3">
+<span class="material-symbols-outlined text-white">psychiatry</span>
+<h4 class="font-bold text-white">Active Regimen</h4>
+</div>
+<div class="space-y-3">
+<div class="bg-black/10 rounded-lg p-3 flex justify-between items-center border border-white/10">
+<div>
+<p class="text-sm font-bold text-white">Amoxicillin</p>
+<div class="flex gap-1 mt-1">
+<span class="w-5 h-5 rounded bg-white/30 text-white text-[10px] flex items-center justify-center font-bold">M</span>
+<span class="w-5 h-5 rounded bg-black/20 text-white/70 text-[10px] flex items-center justify-center">A</span>
+<span class="w-5 h-5 rounded bg-white/30 text-white text-[10px] flex items-center justify-center font-bold">N</span>
+</div>
+</div>
+<span class="text-xs text-white/90 bg-black/20 px-2 py-1 rounded font-medium">5 Days</span>
+</div>
+<div class="bg-black/10 rounded-lg p-3 flex justify-between items-center border border-white/10">
+<div>
+<p class="text-sm font-bold text-white">Ibuprofen</p>
+<div class="flex gap-1 mt-1">
+<span class="w-5 h-5 rounded bg-black/20 text-white/70 text-[10px] flex items-center justify-center">M</span>
+<span class="w-5 h-5 rounded bg-white/30 text-white text-[10px] flex items-center justify-center font-bold">A</span>
+<span class="w-5 h-5 rounded bg-black/20 text-white/70 text-[10px] flex items-center justify-center">N</span>
+</div>
+</div>
+<span class="text-xs text-white/90 bg-black/20 px-2 py-1 rounded font-medium">3 Days</span>
+</div>
+</div>
+</div>
+<!-- Cloud Backup -->
+<div class="bg-blue-600 rounded-[32px] p-5 flex items-center justify-between shadow-[0_10px_30px_rgba(37,99,235,0.3)]">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-white">cloud_sync</span>
+</div>
+<div>
+<p class="text-sm font-bold text-white">Cloud Backup</p>
+<p class="text-[10px] text-white/80">Synced 2m ago</p>
+</div>
+</div>
+<div class="w-12 h-6 bg-white rounded-full relative cursor-pointer">
+<div class="absolute right-1 top-1 w-4 h-4 bg-blue-600 rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar (Mobile Only per Semantic Shell Logic) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-margin-mobile pb-safe h-20 bg-surface-container border-t border-outline-variant/20 md:hidden">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors gap-1 w-16" href="#">
+<span class="material-symbols-outlined text-[24px]">home</span>
+<span class="font-label-caps text-label-caps-mobile">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors gap-1 w-16" href="#">
+<span class="material-symbols-outlined text-[24px]">category</span>
+<span class="font-label-caps text-label-caps-mobile">Categories</span>
+</a>
+<a class="bg-[#E62E2E] text-white rounded-full h-16 w-16 -mt-8 flex flex-col items-center justify-center shadow-[0_0_20px_rgba(230,46,46,0.5)] animate-pulse" href="#">
+<span class="material-symbols-outlined text-[28px]" style="font-variation-settings: 'FILL' 1;">emergency</span>
+</a>
+<!-- Active Tab: Assuming Together maps to Health/Community in this context, but using literal string from JSON -->
+<a class="flex flex-col items-center justify-center text-primary font-bold transition-colors gap-1 w-16" href="#">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">groups</span>
+<span class="font-label-caps text-label-caps-mobile">Together</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors gap-1 w-16" href="#">
+<span class="material-symbols-outlined text-[24px]">person</span>
+<span class="font-label-caps text-label-caps-mobile">Profile</span>
+</a>
+</nav>
+</body></html>

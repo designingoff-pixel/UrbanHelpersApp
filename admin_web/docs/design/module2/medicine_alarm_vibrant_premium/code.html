@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Medicine Alarm - Urban Helpers</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "secondary-fixed-dim": "#4fdbc8",
+                      "surface-variant": "#263646",
+                      "outline-variant": "#434655",
+                      "background": "#041423",
+                      "on-secondary-fixed": "#00201c",
+                      "on-tertiary-container": "#f7edff",
+                      "error": "#ffb4ab",
+                      "tertiary-container": "#8343f4",
+                      "on-tertiary": "#3f008e",
+                      "surface-bright": "#2b3b4b",
+                      "surface-dim": "#041423",
+                      "on-tertiary-fixed-variant": "#5a00c6",
+                      "primary-fixed-dim": "#b4c5ff",
+                      "on-secondary-container": "#003f38",
+                      "on-background": "#d4e4f9",
+                      "tertiary-fixed-dim": "#d2bbff",
+                      "surface-container-low": "#0c1d2c",
+                      "on-secondary": "#003731",
+                      "surface-container": "#112130",
+                      "tertiary": "#d2bbff",
+                      "surface-container-high": "#1b2b3b",
+                      "error-container": "#93000a",
+                      "on-primary-fixed-variant": "#003ea8",
+                      "primary-container": "#2563eb",
+                      "secondary-container": "#04b4a2",
+                      "on-surface-variant": "#c3c6d7",
+                      "inverse-on-surface": "#223242",
+                      "inverse-primary": "#0053db",
+                      "surface-tint": "#b4c5ff",
+                      "secondary-fixed": "#71f8e4",
+                      "surface-container-highest": "#263646",
+                      "surface": "#041423",
+                      "primary": "#b4c5ff",
+                      "on-primary-container": "#eeefff",
+                      "on-surface": "#d4e4f9",
+                      "inverse-surface": "#d4e4f9",
+                      "on-primary-fixed": "#00174b",
+                      "on-secondary-fixed-variant": "#005048",
+                      "on-primary": "#002a78",
+                      "secondary": "#4fdbc8",
+                      "tertiary-fixed": "#eaddff",
+                      "on-tertiary-fixed": "#25005a",
+                      "on-error-container": "#ffdad6",
+                      "surface-container-lowest": "#000f1e",
+                      "primary-fixed": "#dbe1ff",
+                      "on-error": "#690005",
+                      "outline": "#8d90a0"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-mobile": "16px",
+                      "xl": "80px",
+                      "gutter": "24px",
+                      "lg": "48px",
+                      "margin-desktop": "40px",
+                      "xs": "4px",
+                      "base": "8px",
+                      "md": "24px",
+                      "sm": "12px"
+              },
+              "fontFamily": {
+                      "headline-xl": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "label-caps": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-lg-mobile": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-sm": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "caption": [
+                              "Plus Jakarta Sans"
+                      ]
+              },
+              "fontSize": {
+                      "headline-xl": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-caps": [
+                              "11px",
+                              {
+                                      "lineHeight": "14px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "caption": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        body {
+            background-color: #081826;
+            color: #d4e4f9;
+        }
+        
+        .hero-gradient {
+            background: linear-gradient(135deg, #2ECC71, #27AE60, #16A085);
+        }
+
+        .solid-card-gradient-1 {
+            background: linear-gradient(145deg, #18344F, #10243B);
+            box-shadow: 0px 20px 40px rgba(0, 0, 0, 0.4);
+            border-radius: 32px;
+        }
+        
+        .solid-card-gradient-2 {
+            background: linear-gradient(145deg, #1e3f60, #18344F);
+            box-shadow: 0px 20px 40px rgba(0, 0, 0, 0.4);
+            border-radius: 32px;
+        }
+        
+        .solid-card-gradient-3 {
+            background: linear-gradient(145deg, #2b4c6e, #1e3f60);
+            box-shadow: 0px 20px 40px rgba(0, 0, 0, 0.4);
+            border-radius: 32px;
+        }
+
+        .pulse-ring {
+            animation: pulsate 2s infinite ease-out;
+        }
+
+        @keyframes pulsate {
+            0% { transform: scale(0.95); opacity: 0.8; box-shadow: 0 0 0 0 rgba(79, 219, 200, 0.7); }
+            70% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 15px rgba(79, 219, 200, 0); }
+            100% { transform: scale(0.95); opacity: 0.8; box-shadow: 0 0 0 0 rgba(79, 219, 200, 0); }
+        }
+
+        .floating {
+            animation: float 4s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        /* Hide scrollbar for clean UI */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="font-sans antialiased min-h-screen pb-32">
+<!-- Top Navigation (Desktop) -->
+<header class="hidden md:flex justify-between items-center w-full px-margin-desktop py-md bg-background dark:bg-background z-40 sticky top-0">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full bg-surface-variant overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A small circular avatar placeholder image with a soft gradient background in deep navy and vibrant teal tones, clean and modern style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZE6K0JXLcfSF4xKR1cRTTZPgZsVmsRyafX7SIAS0nZukCChTM35Zwr0a_ngaymbPNK4lThHgQk_uWUGiE0B_3V7L_6HjkuLDUiiZIjvamU6S03lG7eWlyhFvAIeLamdaaTaC3WVLm3WTtbDJFrlK2qXre9gFTnuoC70MJbr-Nt_iULXJHitDB4F9Q_ZLUIf3WLqqHP3X7wbPduEplU5QuGSyxJ6bP849oZhQ8b775_GF8DOtMuNf5"/>
+</div>
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-primary">Urban Helpers</span>
+</div>
+<div class="flex gap-md">
+<span class="font-body-md text-body-md font-bold text-primary cursor-pointer hover:opacity-80 transition-opacity">Health</span>
+<span class="font-body-md text-body-md text-on-surface-variant cursor-pointer hover:opacity-80 transition-opacity">History</span>
+<span class="font-body-md text-body-md text-on-surface-variant cursor-pointer hover:opacity-80 transition-opacity">Alarm</span>
+<span class="font-body-md text-body-md text-on-surface-variant cursor-pointer hover:opacity-80 transition-opacity">Reminders</span>
+<span class="font-body-md text-body-md text-on-surface-variant cursor-pointer hover:opacity-80 transition-opacity">Profile</span>
+</div>
+<div class="w-10 h-10 flex items-center justify-center text-on-surface-variant cursor-pointer hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined text-[24px]">settings</span>
+</div>
+</header>
+<!-- Mobile Header Fallback -->
+<div class="md:hidden flex justify-between items-center px-margin-mobile py-base pt-md sticky top-0 z-40 bg-[#081826]/90 backdrop-blur-md">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary font-bold tracking-tight">Medicine Alarm</h1>
+<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface">notifications</span>
+</div>
+</div>
+<main class="max-w-[1440px] mx-auto px-margin-mobile md:px-margin-desktop py-md md:py-lg grid grid-cols-4 md:grid-cols-12 gap-gutter">
+<!-- Hero Section -->
+<div class="col-span-4 md:col-span-12 hero-gradient rounded-[32px] p-6 md:p-10 flex flex-col md:flex-row items-center justify-between overflow-hidden relative shadow-[0px_20px_40px_rgba(46,204,113,0.2)]">
+<div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjEpIi8+PC9zdmc+')] opacity-50 pointer-events-none"></div>
+<div class="z-10 text-white md:w-1/2 flex flex-col gap-4 mb-6 md:mb-0">
+<div class="inline-flex items-center gap-2 bg-black/20 backdrop-blur-md px-4 py-2 rounded-full w-fit">
+<span class="material-symbols-outlined text-sm pulse-ring rounded-full">medical_services</span>
+<span class="font-label-caps text-label-caps tracking-wider uppercase">Active Tracking</span>
+</div>
+<h1 class="font-headline-xl text-[40px] md:text-headline-xl leading-tight text-white drop-shadow-md">
+                    Medicine Alarm
+                </h1>
+<p class="font-body-lg text-body-lg text-white/90">
+                    Never miss your medicines again.
+                </p>
+<div class="mt-4 flex items-center gap-4">
+<div class="text-center">
+<span class="block font-headline-md text-headline-md font-bold">02</span>
+<span class="font-caption text-caption text-white/70">Pending Today</span>
+</div>
+<div class="w-px h-10 bg-white/20"></div>
+<div class="text-center">
+<span class="block font-headline-md text-headline-md font-bold">100%</span>
+<span class="font-caption text-caption text-white/70">Adherence Rate</span>
+</div>
+</div>
+</div>
+<div class="z-10 w-full md:w-[400px] aspect-square relative floating">
+<img alt="Medicine Alarm 3D Illustration" class="w-full h-full object-contain drop-shadow-2xl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAi5oPNJoy_B9CFVzFKd_XYyywu91gpH7dLjbrjyIcIGtjahP8AkbpRzWqQL_8V6pDUarBHTOJFciSmR6Z8g5h_dMN9M3_OZXj6Y98v6hqOcyKWJPaJooHOkOakA3xVM2IpveMrthFQ26AJfjg1jlS5YeXu2geVeTQkcgcl8trKAWh-EZXHWSK_ybwhAU5mptWaee5Hry3aVoGecrJr8AhLwzyrNkscErxYluwhiigzmKv5DvMlJl_"/>
+</div>
+</div>
+<!-- Today's Medicines -->
+<div class="col-span-4 md:col-span-8 solid-card-gradient-1 p-6 md:p-8 flex flex-col gap-6">
+<div class="flex justify-between items-end">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-1">Today's Medicines</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">2 doses remaining</p>
+</div>
+<button class="bg-secondary text-on-secondary-fixed font-body-sm text-body-sm px-4 py-2 rounded-full hover:opacity-90 transition-opacity shadow-[0_0_15px_rgba(79,219,200,0.3)]">
+                    + Add New
+                </button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Med Card 1 -->
+<div class="bg-surface-bright rounded-2xl p-4 border border-outline-variant/30 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-container" style="font-variation-settings: 'FILL' 1;">medication</span>
+</div>
+<div>
+<h3 class="font-body-md text-body-md text-on-surface font-bold">Amoxicillin</h3>
+<p class="font-caption text-caption text-on-surface-variant">500mg • After Food</p>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1">
+<span class="font-body-sm text-body-sm text-on-surface font-bold">14:00</span>
+<div class="flex items-center gap-1 text-secondary">
+<span class="material-symbols-outlined text-[16px]">timer</span>
+<span class="font-caption text-caption font-bold">In 2h</span>
+</div>
+</div>
+</div>
+<!-- Med Card 2 -->
+<div class="bg-surface-bright rounded-2xl p-4 border border-outline-variant/30 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings: 'FILL' 1;">vaccines</span>
+</div>
+<div>
+<h3 class="font-body-md text-body-md text-on-surface font-bold">Vitamin D3</h3>
+<p class="font-caption text-caption text-on-surface-variant">1000 IU • With Food</p>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1">
+<span class="font-body-sm text-body-sm text-on-surface font-bold">20:00</span>
+<span class="font-caption text-caption text-on-surface-variant">Tonight</span>
+</div>
+</div>
+</div>
+</div>
+<!-- AI Reminders Insight -->
+<div class="col-span-4 md:col-span-4 solid-card-gradient-2 p-6 md:p-8 flex flex-col justify-between relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-3xl rounded-full"></div>
+<div>
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-tertiary">psychology</span>
+<span class="font-label-caps text-label-caps text-tertiary uppercase tracking-wider">AI Insights</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-2">Optimal Timing</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                     Based on your sleep patterns, we suggest moving your Vitamin D intake to mornings for better absorption and sleep quality.
+                 </p>
+</div>
+<button class="w-full bg-surface-bright text-on-surface py-3 rounded-xl mt-6 border border-outline-variant/50 hover:bg-surface-variant transition-colors font-body-md text-body-md font-bold">
+                 Review Schedule
+             </button>
+</div>
+<!-- Upcoming Reminder Slots -->
+<div class="col-span-4 md:col-span-12 solid-card-gradient-3 p-6 md:p-8">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-6">Upcoming Reminder</h2>
+<div class="grid grid-cols-3 gap-4">
+<!-- Morning -->
+<div class="bg-surface-bright/50 rounded-2xl p-4 border border-outline-variant/20 flex flex-col items-center justify-center gap-2 opacity-50 grayscale">
+<span class="material-symbols-outlined text-[32px] text-on-surface-variant" style="font-variation-settings: 'FILL' 1;">wb_sunny</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant font-bold">Morning</span>
+<span class="font-caption text-caption text-on-surface-variant">Completed</span>
+</div>
+<!-- Afternoon -->
+<div class="bg-secondary-container/20 rounded-2xl p-4 border border-secondary/50 flex flex-col items-center justify-center gap-2 relative shadow-[0_0_20px_rgba(79,219,200,0.1)] pulse-ring">
+<span class="material-symbols-outlined text-[32px] text-secondary" style="font-variation-settings: 'FILL' 1;">partly_cloudy_day</span>
+<span class="font-body-sm text-body-sm text-on-surface font-bold">Afternoon</span>
+<span class="font-caption text-caption text-secondary font-bold">Next (14:00)</span>
+</div>
+<!-- Night -->
+<div class="bg-surface-bright/80 rounded-2xl p-4 border border-outline-variant/30 flex flex-col items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[32px] text-primary" style="font-variation-settings: 'FILL' 1;">nights_stay</span>
+<span class="font-body-sm text-body-sm text-on-surface font-bold">Night</span>
+<span class="font-caption text-caption text-on-surface-variant">1 Pending</span>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile) -->
+<nav class="md:hidden fixed bottom-md left-md right-md z-50 flex justify-around items-center px-sm py-xs bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0px_20px_40px_rgba(0,0,0,0.4)] rounded-full">
+<!-- Health (Active) -->
+<div class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full w-12 h-12 shadow-[0_0_15px_rgba(79,219,200,0.3)] scale-110 duration-300 ease-out">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</div>
+<!-- History -->
+<div class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-secondary transition-colors cursor-pointer">
+<span class="material-symbols-outlined">history</span>
+<span class="font-label-caps text-label-caps mt-1">History</span>
+</div>
+<!-- Alarm -->
+<div class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-secondary transition-colors cursor-pointer">
+<span class="material-symbols-outlined">alarm</span>
+<span class="font-label-caps text-label-caps mt-1">Alarm</span>
+</div>
+<!-- Reminders -->
+<div class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-secondary transition-colors cursor-pointer">
+<span class="material-symbols-outlined">notifications</span>
+<span class="font-label-caps text-label-caps mt-1">Reminders</span>
+</div>
+<!-- Profile -->
+<div class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-secondary transition-colors cursor-pointer">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-caps text-label-caps mt-1">Profile</span>
+</div>
+</nav>
+</body></html>

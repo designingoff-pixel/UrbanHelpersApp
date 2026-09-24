@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Health Data - Urban Helpers</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary": "#002a78",
+                      "tertiary-container": "#8343f4",
+                      "primary-fixed-dim": "#b4c5ff",
+                      "on-tertiary": "#3f008e",
+                      "on-background": "#d4e4f9",
+                      "on-secondary-fixed-variant": "#005048",
+                      "on-secondary-container": "#003f38",
+                      "surface-container-high": "#1b2b3b",
+                      "background": "#041423",
+                      "secondary-container": "#04b4a2",
+                      "surface-tint": "#b4c5ff",
+                      "surface-container": "#112130",
+                      "on-secondary-fixed": "#00201c",
+                      "outline-variant": "#434655",
+                      "on-primary-fixed-variant": "#003ea8",
+                      "inverse-on-surface": "#223242",
+                      "surface-bright": "#2b3b4b",
+                      "surface-container-lowest": "#000f1e",
+                      "surface-dim": "#041423",
+                      "primary-fixed": "#dbe1ff",
+                      "on-primary-fixed": "#00174b",
+                      "outline": "#8d90a0",
+                      "tertiary-fixed-dim": "#d2bbff",
+                      "inverse-primary": "#0053db",
+                      "on-secondary": "#003731",
+                      "on-tertiary-container": "#f7edff",
+                      "primary": "#b4c5ff",
+                      "on-primary-container": "#eeefff",
+                      "on-surface-variant": "#c3c6d7",
+                      "on-tertiary-fixed-variant": "#5a00c6",
+                      "surface-container-highest": "#263646",
+                      "primary-container": "#2563eb",
+                      "on-error-container": "#ffdad6",
+                      "error": "#ffb4ab",
+                      "on-error": "#690005",
+                      "on-surface": "#d4e4f9",
+                      "tertiary-fixed": "#eaddff",
+                      "secondary-fixed": "#71f8e4",
+                      "error-container": "#93000a",
+                      "tertiary": "#d2bbff",
+                      "surface-container-low": "#0c1d2c",
+                      "on-tertiary-fixed": "#25005a",
+                      "surface": "#041423",
+                      "surface-variant": "#263646",
+                      "secondary-fixed-dim": "#4fdbc8",
+                      "inverse-surface": "#d4e4f9",
+                      "secondary": "#4fdbc8"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px",
+                      "30": "30px"
+              },
+              "spacing": {
+                      "margin-desktop": "40px",
+                      "base": "8px",
+                      "xl": "80px",
+                      "gutter": "24px",
+                      "lg": "48px",
+                      "xs": "4px",
+                      "sm": "12px",
+                      "margin-mobile": "16px",
+                      "md": "24px"
+              },
+              "fontFamily": {
+                      "body-md": ["Plus Jakarta Sans"],
+                      "headline-lg-mobile": ["Plus Jakarta Sans"],
+                      "label-caps": ["Plus Jakarta Sans"],
+                      "body-sm": ["Plus Jakarta Sans"],
+                      "headline-xl": ["Plus Jakarta Sans"],
+                      "headline-lg": ["Plus Jakarta Sans"],
+                      "body-lg": ["Plus Jakarta Sans"],
+                      "caption": ["Plus Jakarta Sans"],
+                      "headline-md": ["Plus Jakarta Sans"],
+                      "headline-md-mobile": ["Plus Jakarta Sans"]
+              },
+              "fontSize": {
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                      "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                      "label-caps": ["11px", {"lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                      "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "500"}],
+                      "caption": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                      "headline-md-mobile": ["20px", {"lineHeight": "28px", "fontWeight": "700"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body {
+            background-color: #081826;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glow-effect {
+            box-shadow: 0px 20px 40px rgba(0, 0, 0, 0.4);
+        }
+        .premium-gradient {
+            background: linear-gradient(135deg, #2563eb, #04b4a2, #8343f4);
+        }
+        
+        .animated-bar {
+            animation: riseUp 1.5s ease-out forwards;
+            transform-origin: bottom;
+            transform: scaleY(0);
+        }
+        
+        @keyframes riseUp {
+            to { transform: scaleY(1); }
+        }
+    </style>
+</head>
+<body class="text-on-background min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="docked full-width top-0 z-50 bg-background/80 backdrop-blur-xl flex justify-between items-center w-full px-margin-desktop py-4 sticky">
+<button class="text-on-surface-variant hover:bg-surface-container-high rounded-full p-2 transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md md:font-headline-lg md:text-headline-lg text-primary font-bold">Health Data</h1>
+<div class="flex gap-4">
+<button class="text-on-surface-variant hover:bg-surface-container-high rounded-full p-2 transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:bg-surface-container-high rounded-full p-2 transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+</button>
+</div>
+</header>
+<main class="max-w-[1440px] mx-auto px-margin-mobile md:px-margin-desktop mt-md space-y-xl">
+<!-- Hero Section -->
+<section class="premium-gradient rounded-30 p-1 glow-effect relative overflow-hidden group">
+<div class="bg-surface-container-high rounded-[29px] p-lg md:p-xl flex flex-col md:flex-row items-center gap-lg relative z-10 overflow-hidden h-full">
+<!-- Abstract Glow -->
+<div class="absolute -top-32 -left-32 w-96 h-96 bg-primary opacity-20 blur-[100px] rounded-full"></div>
+<div class="absolute -bottom-32 -right-32 w-96 h-96 bg-secondary opacity-20 blur-[100px] rounded-full"></div>
+<div class="flex-1 space-y-md z-20">
+<h2 class="font-headline-xl text-headline-xl text-on-background">Health Overview</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-lg">
+                        Your complete health insights in one place. Monitor your vitals, track your progress, and optimize your well-being with precision analytics.
+                    </p>
+<button class="mt-md bg-primary text-on-primary font-body-md text-body-md px-8 py-4 rounded-xl shadow-[0_0_20px_rgba(180,197,255,0.3)] hover:scale-105 transition-transform duration-300">
+                        View Detailed Report
+                    </button>
+</div>
+<div class="w-full md:w-1/2 aspect-square max-w-[400px] relative z-20 rounded-2xl overflow-hidden shadow-2xl">
+<img alt="Health Dashboard" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDZcnfqAUR4p0BHttfyCDxbVnpsqy1zPtN4wfqaXIp-9IvrVcIK6YuhG0CTHZ2D-SiRM9O4SAugzwSB3Kv_G3dzjne2JLc-Z8msmegVnVTKVrSY2F6SwwO2Mf00Zr95oAga8kyKIHr8KoQXTx-H2GHxuR7s4i3-521x1Tqnmam4HVsUyYxFaSpk9VDVkiB9ufuBJTuKsomC8t7IXqxPBwZJ4p-4_Iwx90WVSOaf2LBeOyy6JKwhHVXx"/>
+</div>
+</div>
+</section>
+<!-- Health Summary Grid -->
+<section class="space-y-md">
+<h3 class="font-headline-lg text-headline-lg text-on-background px-xs">Health Summary</h3>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-gutter">
+<!-- Heart Rate -->
+<div class="bg-[#93000a] rounded-30 p-md flex flex-col gap-sm relative overflow-hidden group border border-white/10 glow-effect">
+<div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</div>
+<div class="font-body-sm text-body-sm text-white/80">Heart Rate</div>
+<div class="font-headline-lg-mobile text-headline-lg-mobile text-white">72 <span class="font-body-sm text-body-sm text-white/70">bpm</span></div>
+</div>
+<!-- Blood Pressure -->
+<div class="bg-[#5a00c6] rounded-30 p-md flex flex-col gap-sm relative overflow-hidden group border border-white/10 glow-effect">
+<div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">monitor_heart</span>
+</div>
+<div class="font-body-sm text-body-sm text-white/80">Blood Pressure</div>
+<div class="font-headline-lg-mobile text-headline-lg-mobile text-white">120/80</div>
+</div>
+<!-- SpO2 -->
+<div class="bg-[#005048] rounded-30 p-md flex flex-col gap-sm relative overflow-hidden group border border-white/10 glow-effect">
+<div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">air</span>
+</div>
+<div class="font-body-sm text-body-sm text-white/80">SpO2</div>
+<div class="font-headline-lg-mobile text-headline-lg-mobile text-white">98 <span class="font-body-sm text-body-sm text-white/70">%</span></div>
+</div>
+<!-- Sleep -->
+<div class="bg-[#00174b] rounded-30 p-md flex flex-col gap-sm relative overflow-hidden group border border-white/10 glow-effect">
+<div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">bedtime</span>
+</div>
+<div class="font-body-sm text-body-sm text-white/80">Sleep</div>
+<div class="font-headline-lg-mobile text-headline-lg-mobile text-white">7h 20m</div>
+</div>
+</div>
+</section>
+<!-- Weekly Trends (Bar Chart) & Health Score -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<section class="glass-card rounded-30 p-lg flex flex-col gap-md glow-effect">
+<h3 class="font-headline-md text-headline-md text-on-background">Weekly Trends</h3>
+<div class="flex-1 min-h-[200px] flex items-end justify-between gap-2 pt-8 border-b border-outline-variant/30 pb-4"><div class="w-full bg-white/5 rounded-full h-[40%] relative group">
+<div class="absolute bottom-0 w-full premium-gradient rounded-full animated-bar h-full shadow-[0_0_15px_rgba(37,99,235,0.4)]"></div>
+</div>
+<div class="w-full bg-white/5 rounded-full h-[60%] relative group">
+<div class="absolute bottom-0 w-full premium-gradient rounded-full animated-bar h-full shadow-[0_0_15px_rgba(4,180,162,0.4)]" style="animation-delay: 0.1s"></div>
+</div>
+<div class="w-full bg-white/5 rounded-full h-[80%] relative group">
+<div class="absolute bottom-0 w-full premium-gradient rounded-full animated-bar h-full shadow-[0_0_15px_rgba(131,67,244,0.4)]" style="animation-delay: 0.2s"></div>
+</div>
+<div class="w-full bg-white/5 rounded-full h-[50%] relative group">
+<div class="absolute bottom-0 w-full premium-gradient rounded-full animated-bar h-full shadow-[0_0_15px_rgba(37,99,235,0.4)]" style="animation-delay: 0.3s"></div>
+</div>
+<div class="w-full bg-white/5 rounded-full h-[90%] relative group">
+<div class="absolute bottom-0 w-full premium-gradient rounded-full animated-bar h-full shadow-[0_0_15px_rgba(4,180,162,0.4)]" style="animation-delay: 0.4s"></div>
+</div>
+<div class="w-full bg-white/5 rounded-full h-[70%] relative group">
+<div class="absolute bottom-0 w-full premium-gradient rounded-full animated-bar h-full shadow-[0_0_15px_rgba(131,67,244,0.4)]" style="animation-delay: 0.5s"></div>
+</div>
+<div class="w-full bg-white/5 rounded-full h-[85%] relative group">
+<div class="absolute bottom-0 w-full premium-gradient rounded-full animated-bar h-full shadow-[0_0_15px_rgba(37,99,235,0.4)]" style="animation-delay: 0.6s"></div>
+</div></div>
+<div class="flex justify-between font-label-caps text-label-caps text-on-surface-variant px-2">
+<span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+</div>
+</section>
+<section class="bg-[#18344F] rounded-30 p-lg flex flex-col items-center justify-center gap-md relative overflow-hidden glow-effect border border-white/10">
+<h3 class="font-headline-md text-headline-md text-on-background absolute top-lg left-lg">Health Score</h3>
+<div class="w-64 h-64 relative mt-8">
+<!-- STITCH_SVG_START:ANIMATION_74 class="w-full h-full" --><div class="w-full h-full" id="animated-svg-ANIMATION_74" style="display:block;"><svg viewbox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+<circle cx="100" cy="100" fill="none" r="80" stroke="#1e293b" stroke-width="8"></circle>
+<circle cx="100" cy="100" fill="none" r="80" stroke="#22d3ee" stroke-dasharray="502" stroke-dashoffset="502" stroke-linecap="round" stroke-width="8">
+<animate attributename="stroke-dashoffset" dur="2s" fill="freeze" from="502" to="120"></animate>
+</circle>
+<text fill="white" font-family="sans-serif" font-size="24" font-weight="bold" text-anchor="middle" x="100" y="105">84</text>
+<text fill="#94a3b8" font-family="sans-serif" font-size="10" text-anchor="middle" x="100" y="125">Health Score</text>
+</svg></div><!-- STITCH_SVG_END:ANIMATION_74 -->
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="font-headline-xl text-headline-xl text-primary font-bold shadow-[0_0_15px_rgba(180,197,255,0.5)]">85</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Excellent</span>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-margin-mobile pb-safe bg-surface-container dark:bg-surface-container-low border-t border-outline-variant/20 h-20 md:hidden">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors gap-1" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-caps text-label-caps">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors gap-1" href="#">
+<span class="material-symbols-outlined">category</span>
+<span class="font-label-caps text-label-caps">Categories</span>
+</a>
+<a class="bg-[#E62E2E] text-white rounded-full h-16 w-16 -mt-8 flex items-center justify-center shadow-lg animate-pulse" href="#">
+<span class="material-symbols-outlined">emergency</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary font-bold hover:text-primary transition-colors gap-1" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">monitor_heart</span>
+<span class="font-label-caps text-label-caps">Health</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors gap-1" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-caps text-label-caps">Profile</span>
+</a>
+</nav>
+</body></html>

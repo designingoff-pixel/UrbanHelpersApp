@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Urban Helpers - Hydration Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "error-container": "#93000a",
+                        "on-primary": "#002a78",
+                        "on-secondary-fixed-variant": "#005048",
+                        "secondary-fixed": "#71f8e4",
+                        "surface-bright": "#2b3b4b",
+                        "tertiary-fixed": "#eaddff",
+                        "secondary": "#4fdbc8",
+                        "primary": "#b4c5ff",
+                        "on-primary-container": "#eeefff",
+                        "surface-container": "#112130",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "surface-tint": "#b4c5ff",
+                        "background": "#041423",
+                        "tertiary-fixed-dim": "#d2bbff",
+                        "on-secondary-container": "#003f38",
+                        "on-tertiary-fixed-variant": "#5a00c6",
+                        "secondary-fixed-dim": "#4fdbc8",
+                        "outline-variant": "#434655",
+                        "surface-container-low": "#0c1d2c",
+                        "inverse-primary": "#0053db",
+                        "error": "#ffb4ab",
+                        "on-tertiary-fixed": "#25005a",
+                        "surface-container-highest": "#263646",
+                        "on-surface-variant": "#c3c6d7",
+                        "surface-container-lowest": "#000f1e",
+                        "inverse-on-surface": "#223242",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed": "#00174b",
+                        "surface-dim": "#041423",
+                        "surface-container-high": "#1b2b3b",
+                        "primary-container": "#2563eb",
+                        "on-tertiary": "#3f008e",
+                        "on-background": "#d4e4f9",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-error": "#690005",
+                        "surface-variant": "#263646",
+                        "on-tertiary-container": "#f7edff",
+                        "primary-fixed": "#dbe1ff",
+                        "on-secondary": "#003731",
+                        "tertiary": "#d2bbff",
+                        "surface": "#041423",
+                        "on-surface": "#d4e4f9",
+                        "secondary-container": "#04b4a2",
+                        "inverse-surface": "#d4e4f9",
+                        "on-secondary-fixed": "#00201c",
+                        "outline": "#8d90a0",
+                        "tertiary-container": "#8343f4"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "gutter": "24px",
+                        "xs": "4px",
+                        "md": "24px",
+                        "margin-mobile": "16px",
+                        "xl": "80px",
+                        "sm": "12px",
+                        "base": "8px",
+                        "lg": "48px",
+                        "margin-desktop": "40px"
+                    },
+                    fontFamily: {
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "label-caps": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "caption": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"]
+                    },
+                    fontSize: {
+                        "headline-xl": ["48px", { lineHeight: "56px", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "headline-md": ["24px", { lineHeight: "32px", fontWeight: "700" }],
+                        "label-caps": ["11px", { lineHeight: "14px", letterSpacing: "0.05em", fontWeight: "700" }],
+                        "body-lg": ["18px", { lineHeight: "28px", fontWeight: "500" }],
+                        "body-sm": ["14px", { lineHeight: "20px", fontWeight: "500" }],
+                        "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.01em", fontWeight: "700" }],
+                        "headline-lg-mobile": ["28px", { lineHeight: "36px", fontWeight: "700" }],
+                        "caption": ["12px", { lineHeight: "16px", fontWeight: "400" }],
+                        "body-md": ["16px", { lineHeight: "24px", fontWeight: "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #071827; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .card-solid {
+            background-color: #18344F;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1), 0 20px 40px rgba(0,0,0,0.4);
+            border-radius: 30px;
+        }
+        .water-gradient {
+            background: linear-gradient(135deg, #4FACFE 0%, #2196F3 100%);
+        }
+        .glow-effect {
+            box-shadow: 0 0 20px rgba(180, 197, 255, 0.3);
+        }
+    </style>
+</head>
+<body class="text-on-surface font-body-md antialiased pb-[120px]">
+<!-- TopAppBar -->
+<header class="sticky top-0 w-full z-40 bg-background dark:bg-background">
+<div class="flex justify-between items-center px-margin-mobile md:px-margin-desktop py-4 w-full">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border border-outline/30">
+<img class="w-full h-full object-cover" data-alt="A close up, high resolution portrait of a professional individual looking at the camera, with a smooth dark background. The lighting is soft and flattering, highlighting facial features. Professional urban utility context." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAEhd-HwYNjLBDSH2GsY7HZC0vF0Hz5ELyGcG8tpdJ6lHcmeDVuSaoC87rtyJbWEgEdMmzjK1htkw0bBMDYcPaarg_s7MRB9lQvtWsnpfJRPydqNON0tOdvlPB09dqGvsGpWGH-Ze3vHzLxnGs44yAoOJmHBgqyajIgQQQPTaKHdGz81XBFPrDszqVuPBE37ql33woTkppXyWmLL5rHw2NrXa10eu0G17LHu8nZoHjsLL52SWqNmsU6"/>
+</div>
+</div>
+<h1 class="text-headline-md font-headline-md font-bold text-primary dark:text-primary">Urban Helpers</h1>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:opacity-80 transition-opacity active:scale-95 text-primary dark:text-primary">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+</header>
+<main class="container mx-auto px-margin-mobile md:px-margin-desktop max-w-[1440px] flex flex-col gap-gutter mt-6">
+<!-- Hero Section -->
+<section class="card-solid water-gradient relative overflow-hidden h-[300px] md:h-[400px] flex items-center">
+<div class="absolute inset-0 z-0">
+<img alt="Water Splash" class="w-full h-full object-cover mix-blend-overlay opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDXLMvG2engvX2I9QpUsoy2wGIBJp3D1ygrhf2vwrcKxQ8paXe1SNPBcs1IrWgq2B2t7XKV0eIYB7RJJ1pPm7TB92n6woPRutHQrUrSlGbQPaKD4NBp11ArCA4U4ti9ABT0sN43B4koK6_glkD08uTi8hS8WnnYXI-hVqmU9WIqdSWqarAFMAEYoF6MZAGf5qxf-u3dXvMrMpMxnAVVja-YHns2-YUkP05M_6ck28cmtY8bxDuGk3Y4"/>
+</div>
+<div class="relative z-10 p-8 md:p-12 w-full max-w-2xl text-on-primary-container">
+<h2 class="text-headline-lg-mobile md:text-headline-lg font-headline-lg-mobile md:font-headline-lg mb-2 text-white">Hydration Dashboard</h2>
+<p class="text-body-lg font-body-lg text-white/90">Stay refreshed, stay active.</p>
+</div>
+</section>
+<!-- Bento Grid for Features -->
+<section class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Today's Intake -->
+<div class="card-solid md:col-span-5 p-6 flex flex-col relative overflow-hidden h-[250px]">
+<div class="flex justify-between items-start z-10">
+<h3 class="text-headline-md font-headline-md text-primary">Today's Intake</h3>
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">water_drop</span>
+</div>
+<div class="flex-grow flex items-end justify-center z-10 mt-4">
+<div class="text-center">
+<span class="text-headline-xl font-headline-xl text-on-surface block leading-none">1.2<span class="text-headline-md font-headline-md text-on-surface-variant ml-1">L</span></span>
+<span class="text-body-sm font-body-sm text-on-surface-variant">of 2.5L Goal</span>
+</div>
+</div>
+<!-- Mock Water Level Animation (CSS) -->
+<div class="absolute bottom-0 left-0 w-full h-[48%] bg-primary/20 backdrop-blur-sm z-0 border-t border-primary/30 rounded-b-[30px]" style="border-top-left-radius: 40% 10px; border-top-right-radius: 40% 10px;"></div>
+</div>
+<!-- Quick Add -->
+<div class="card-solid md:col-span-7 p-6 flex flex-col justify-between h-[250px]">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-headline-md font-headline-md text-primary">Quick Add</h3>
+<span class="material-symbols-outlined text-on-surface-variant">add_circle</span>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 h-full">
+<button class="bg-surface-container-high hover:bg-surface-container-highest transition-colors rounded-xl flex flex-col items-center justify-center gap-2 border border-white/5 active:scale-95 text-on-surface group">
+<span class="material-symbols-outlined text-secondary group-hover:text-primary transition-colors">local_drink</span>
+<span class="text-body-md font-body-md">250ml</span>
+</button>
+<button class="bg-surface-container-high hover:bg-surface-container-highest transition-colors rounded-xl flex flex-col items-center justify-center gap-2 border border-white/5 active:scale-95 text-on-surface group">
+<span class="material-symbols-outlined text-secondary group-hover:text-primary transition-colors">water_bottle</span>
+<span class="text-body-md font-body-md">500ml</span>
+</button>
+<button class="bg-surface-container-high hover:bg-surface-container-highest transition-colors rounded-xl flex flex-col items-center justify-center gap-2 border border-white/5 active:scale-95 text-on-surface group">
+<span class="material-symbols-outlined text-secondary group-hover:text-primary transition-colors">coffee_maker</span>
+<span class="text-body-md font-body-md">750ml</span>
+</button>
+<button class="bg-primary/20 hover:bg-primary/30 text-primary transition-colors rounded-xl flex flex-col items-center justify-center gap-2 border border-primary/30 active:scale-95 glow-effect">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">opacity</span>
+<span class="text-body-md font-body-md font-bold">1000ml</span>
+</button>
+</div>
+</div>
+</section>
+<!-- AI Insights & Analytics Row -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- AI Suggestions -->
+<div class="card-solid p-6 relative overflow-hidden">
+<div class="absolute -top-10 -right-10 w-32 h-32 bg-secondary/10 rounded-full blur-2xl"></div>
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">psychology</span>
+<h3 class="text-headline-md font-headline-md text-primary">Hydration AI</h3>
+</div>
+<div class="space-y-4">
+<div class="bg-surface-container-low p-4 rounded-xl border border-white/5">
+<p class="text-body-md font-body-md text-on-surface">You usually drink water around this time. Grab a glass to keep your energy up!</p>
+</div>
+<div class="bg-surface-container-low p-4 rounded-xl border border-white/5 flex justify-between items-center">
+<p class="text-body-md font-body-md text-on-surface-variant">Recommended next intake:</p>
+<span class="text-body-lg font-body-lg font-bold text-secondary">3:00 PM</span>
+</div>
+</div>
+</div>
+<!-- Timeline/Wave (Placeholder for analytics) -->
+<div class="card-solid p-6 flex flex-col">
+<div class="flex justify-between items-center mb-6">
+<h3 class="text-headline-md font-headline-md text-primary">Timeline</h3>
+<span class="text-body-sm font-body-sm text-on-surface-variant">Today</span>
+</div>
+<div class="flex-grow flex items-center justify-center bg-surface-container-low rounded-xl border border-white/5 relative overflow-hidden min-h-[150px]">
+<!-- Abstract representation of a wave -->
+<div class="absolute inset-0 opacity-30 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxwYXRoIGQ9Ik0wLDUwIFEzMCw4MCA1MCw1MCBUNTAwLDUwIiBzdHJva2U9IiM0ZmRiYzgiIGZpbGw9Im5vbmUiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==')] bg-repeat-x bg-[length:200px_100%] animate-[wave_5s_linear_infinite]"></div>
+<p class="text-on-surface-variant relative z-10">Analytics Visualization Area</p>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-6 left-0 right-0 mx-auto w-[90%] max-w-md z-50 flex justify-around items-center px-2 py-3 bg-white/5 dark:bg-white/5 border border-white/10 shadow-[0_20px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl rounded-full md:hidden">
+<button class="flex flex-col items-center justify-center bg-primary text-on-primary rounded-full w-12 h-12 shadow-[0_0_15px_rgba(180,197,255,0.3)] hover:text-on-surface transition-colors active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined">favorite</span>
+<span class="text-caption font-caption hidden">Health</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-on-surface transition-colors active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined">psychology</span>
+<span class="text-caption font-caption mt-1">Coaching</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-on-surface transition-colors active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined">add_circle</span>
+<span class="text-caption font-caption mt-1">Log</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-on-surface transition-colors active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined">restaurant</span>
+<span class="text-caption font-caption mt-1">Nutrition</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-on-surface transition-colors active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined">person</span>
+<span class="text-caption font-caption mt-1">Profile</span>
+</button>
+</nav>
+</body></html>

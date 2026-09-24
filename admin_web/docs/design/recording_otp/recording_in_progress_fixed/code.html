@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Service in Progress</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config from Brand Anchors -->
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "inverse-surface": "#e6e0e9",
+                "surface": "#0e0d15",
+                "secondary-fixed-dim": "#cdc0e9",
+                "inverse-on-surface": "#322f35",
+                "on-tertiary-fixed": "#241a00",
+                "on-surface": "#e6e0e9",
+                "primary": "#cfbcff",
+                "surface-container-high": "#2b292f",
+                "surface-bright": "#3b383e",
+                "on-primary": "#381e72",
+                "on-tertiary": "#3e2e00",
+                "surface-dim": "#0e0d15",
+                "surface-variant": "#36343a",
+                "secondary-container": "#4d4465",
+                "on-background": "#e6e0e9",
+                "inverse-primary": "#6750a4",
+                "primary-fixed": "#e9ddff",
+                "on-tertiary-container": "#503d00",
+                "tertiary-container": "#c9a74d",
+                "surface-container-lowest": "#0f0d13",
+                "surface-tint": "#cfbcff",
+                "error": "#ffb4ab",
+                "on-secondary-fixed-variant": "#4b4263",
+                "on-secondary-container": "#bfb2da",
+                "on-error": "#690005",
+                "surface-container-highest": "#36343a",
+                "surface-container": "#1d1a24",
+                "tertiary-fixed": "#ffdf93",
+                "on-surface-variant": "#cbc4d2",
+                "surface-container-low": "#15131b",
+                "on-secondary-fixed": "#1f1635",
+                "background": "#0e0d15",
+                "secondary-fixed": "#e9ddff",
+                "outline-variant": "#494551",
+                "tertiary": "#e7c365",
+                "on-secondary": "#342b4b",
+                "on-primary-container": "#e0d2ff",
+                "on-tertiary-fixed-variant": "#594400",
+                "on-primary-fixed": "#22005d",
+                "secondary": "#cdc0e9",
+                "primary-container": "#6750a4",
+                "primary-fixed-dim": "#cfbcff",
+                "tertiary-fixed-dim": "#e7c365",
+                "on-error-container": "#ffdad6",
+                "on-primary-fixed-variant": "#4f378a",
+                "outline": "#948e9c",
+                "error-container": "#93000a"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "gutter": "16px",
+                "card-gap": "24px",
+                "section-margin": "48px",
+                "base": "8px",
+                "container-padding-mobile": "20px",
+                "container-padding-desktop": "40px"
+        },
+        "fontFamily": {
+                "label-sm": [
+                        "Inter"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "label-md": [
+                        "Inter"
+                ],
+                "headline-lg-mobile": [
+                        "Plus Jakarta Sans"
+                ],
+                "display-lg": [
+                        "Plus Jakarta Sans"
+                ],
+                "headline-lg": [
+                        "Plus Jakarta Sans"
+                ],
+                "title-lg": [
+                        "Plus Jakarta Sans"
+                ]
+        },
+        "fontSize": {
+                "label-sm": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "fontWeight": "500"
+                        }
+                ],
+                "body-md": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-lg": [
+                        "18px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-md": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "headline-lg-mobile": [
+                        "28px",
+                        {
+                                "lineHeight": "34px",
+                                "fontWeight": "700"
+                        }
+                ],
+                "display-lg": [
+                        "48px",
+                        {
+                                "lineHeight": "56px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "800"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "40px",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "title-lg": [
+                        "22px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "600"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        .animate-pulse-ring {
+            animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background antialiased min-h-screen flex flex-col overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="bg-surface fixed top-0 w-full flex items-center justify-between px-md h-16 z-50 px-container-padding-mobile md:px-container-padding-desktop">
+<div class="flex items-center gap-gutter">
+<button class="text-on-surface hover:bg-surface-container-high transition-colors active:scale-95 transition-transform p-2 rounded-full flex items-center justify-center -ml-2">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-title-lg text-title-lg text-on-surface">Book Service</h1>
+</div>
+<button class="text-on-surface hover:bg-surface-container-high transition-colors active:scale-95 transition-transform p-2 rounded-full flex items-center justify-center -mr-2">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</header>
+<!-- Main Canvas -->
+<main class="flex-grow pt-20 pb-section-margin px-container-padding-mobile md:px-container-padding-desktop max-w-[1440px] mx-auto w-full flex flex-col gap-8">
+<!-- Header Context -->
+<div class="flex flex-col items-center justify-center gap-4 text-center mt-4">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Service in Progress</h2>
+<!-- Active Recording Indicator -->
+<div class="inline-flex items-center gap-2 bg-[#2D1A1F] border border-[#5A2C35] rounded-full px-5 py-2">
+<div class="relative flex items-center justify-center w-3 h-3">
+<span class="absolute inline-flex h-full w-full rounded-full bg-[#FF8F94] opacity-75 animate-pulse-ring"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-[#FF8F94]"></span>
+</div>
+<span class="font-label-md text-label-md text-[#FF8F94] tracking-widest uppercase">Recording</span>
+<span class="font-label-md text-label-md text-[#FF8F94] ml-2" id="recording-timer">00:03:45</span>
+</div>
+</div>
+<!-- Vendor & Service Card -->
+<div class="flex flex-col items-center gap-4">
+<div class="bg-surface-container rounded-2xl p-4 flex items-center gap-4 w-full max-w-sm">
+<div class="w-14 h-14 rounded-full overflow-hidden border-2 border-primary-container flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="Rahul Kumar" src="https://lh3.googleusercontent.com/aida/AP1WRLtg0bSjHRoN0_bgNUVHp6po12DKvvVFIWGy2vWTWz2F4-2jdeDgg4HU29be5zoMReqL1CAo9iVnM1fJ2UKXOSZIBjUrPb_d5zbb88PpgWymisQ-q9IUOY0VsaSqzgfmjRdgNtIMsI4SZUWyaWnUsRwE62r2YAVRdCYKtkLbqrTiVrFijUUW1J3BPq7Kvfk-kz417LSngQWSEQiMxD-CTkrLewOT6mJnf95GLy7alUyD9kVPDepd_phxCa0"/>
+</div>
+<div class="flex flex-col">
+<span class="font-title-lg text-title-lg text-on-surface">Rahul Kumar</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Home Cleaning</span>
+</div>
+</div>
+<!-- Status Chip -->
+<div class="bg-[#2D283E] text-[#B8A5E6] border border-[#443C5C] px-4 py-1.5 rounded-full font-label-md text-label-md">
+        Service Started
+    </div>
+</div>
+<!-- Central Recording Visual -->
+<div class="flex-grow flex flex-col items-center justify-center py-8 relative">
+<div class="relative flex items-center justify-center w-40 h-40 mb-6">
+<!-- Concentric animated rings -->
+<div class="absolute inset-0 rounded-full border border-[#5A2C35] animate-[spin_4s_linear_infinite]"></div>
+<div class="absolute inset-4 rounded-full border border-[#7A3644] animate-[spin_3s_linear_infinite_reverse]"></div>
+<div class="absolute inset-8 rounded-full border border-[#443C5C]"></div>
+<!-- Center Icon Container -->
+<div class="relative z-10 bg-[#1D1A24] rounded-full w-24 h-24 flex items-center justify-center">
+<span class="material-symbols-outlined text-[#FF8F94] text-5xl" data-icon="videocam" style="font-variation-settings: 'FILL' 1;">videocam</span>
+</div>
+</div>
+<p class="font-body-lg text-body-lg text-on-surface text-center max-w-sm">
+        Service session is being recorded
+    </p>
+</div>
+<!-- Privacy Indicator -->
+<div class="bg-surface-container rounded-xl p-4 flex items-start gap-3 border border-outline-variant/20">
+<span class="material-symbols-outlined text-on-surface-variant mt-0.5" data-icon="verified_user">verified_user</span>
+<p class="font-body-md text-body-md text-on-surface-variant leading-snug">
+        Recording is visible to both customer and helper. Protected under Urban Helpers Privacy Policy.
+    </p>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-col gap-4 mt-2">
+<button class="w-full py-4 px-6 rounded-full border border-outline-variant text-on-surface font-label-md text-label-md uppercase tracking-wider hover:bg-surface-container-high transition-colors flex items-center justify-center gap-2 active:scale-95 bg-transparent">
+<span class="material-symbols-outlined" data-icon="pause">pause</span>
+        Pause Recording
+    </button>
+<button class="w-full py-4 px-6 rounded-full bg-gradient-to-r from-[#FF8F94] to-[#E36870] text-[#4A151A] font-label-md text-[15px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity shadow-[0_0_20px_rgba(255,143,148,0.2)] flex items-center justify-center gap-2 active:scale-95">
+<span class="material-symbols-outlined" data-icon="stop_circle">stop_circle</span>
+        End Service
+    </button>
+</div>
+</main>
+<script>
+        // Simple timer logic for demonstration
+        let seconds = 225; // 00:03:45
+        const timerElement = document.getElementById('recording-timer');
+        
+        setInterval(() => {
+            seconds++;
+            const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+            const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+            const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+            timerElement.textContent = `${h}:${m}:${s}`;
+        }, 1000);
+    </script>
+</body></html>

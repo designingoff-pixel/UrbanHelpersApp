@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Screen 2 – Home Cleaning | Urban Helpers</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&amp;family=Plus+Jakarta+Sans:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary-fixed": "#dbe1ff",
+                    "on-error-container": "#93000a",
+                    "surface-container-lowest": "#ffffff",
+                    "outline": "#737686",
+                    "surface-container-high": "#e2e8f8",
+                    "inverse-on-surface": "#ebf1ff",
+                    "surface-container": "#e7eefe",
+                    "secondary-fixed": "#71f8e4",
+                    "background": "#f9f9ff",
+                    "on-tertiary-container": "#ffede6",
+                    "on-tertiary": "#ffffff",
+                    "on-surface-variant": "#434655",
+                    "on-primary-fixed": "#00174b",
+                    "on-background": "#151c27",
+                    "on-tertiary-fixed-variant": "#7d2d00",
+                    "surface-variant": "#dce2f3",
+                    "surface-container-low": "#f0f3ff",
+                    "on-tertiary-fixed": "#360f00",
+                    "tertiary-fixed": "#ffdbcd",
+                    "primary-container": "#2563eb",
+                    "error": "#ba1a1a",
+                    "inverse-primary": "#b4c5ff",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "surface-bright": "#f9f9ff",
+                    "outline-variant": "#c3c6d7",
+                    "on-surface": "#151c27",
+                    "secondary-container": "#6df5e1",
+                    "on-primary": "#ffffff",
+                    "primary": "#004ac6",
+                    "tertiary": "#943700",
+                    "on-secondary-container": "#006f64",
+                    "surface-dim": "#d3daea",
+                    "tertiary-container": "#bc4800",
+                    "surface-container-highest": "#dce2f3",
+                    "on-secondary-fixed": "#00201c",
+                    "secondary-fixed-dim": "#4fdbc8",
+                    "tertiary-fixed-dim": "#ffb596",
+                    "on-error": "#ffffff",
+                    "inverse-surface": "#2a313d",
+                    "on-secondary": "#ffffff",
+                    "secondary": "#006b5f",
+                    "on-secondary-fixed-variant": "#005048",
+                    "on-primary-container": "#eeefff",
+                    "surface-tint": "#0053db",
+                    "error-container": "#ffdad6",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "surface": "#f9f9ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "base": "8px",
+                    "lg": "48px",
+                    "sm": "12px",
+                    "xl": "80px",
+                    "md": "24px",
+                    "container-max": "1200px",
+                    "xs": "4px",
+                    "gutter": "24px"
+            },
+            "fontFamily": {
+                    "display-lg": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "body-md": [
+                            "Manrope"
+                    ],
+                    "body-lg": [
+                            "Manrope"
+                    ],
+                    "headline-lg-mobile": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "headline-md": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "headline-lg": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "label-md": [
+                            "Manrope"
+                    ],
+                    "label-sm": [
+                            "Manrope"
+                    ],
+                    "body-sm": [
+                            "Manrope"
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #081826;
+            color: #ffffff;
+        }
+        
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="antialiased min-h-screen relative pb-32">
+<!-- Header -->
+<header class="sticky top-0 z-40 bg-[#081826]/90 backdrop-blur-md w-full max-w-7xl mx-auto flex justify-between items-center px-md py-base">
+<button class="w-10 h-10 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition-colors">
+<span class="material-symbols-outlined text-white" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-[20px] md:text-[24px] font-bold text-white text-center">Home Cleaning</h1>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition-colors">
+<span class="material-symbols-outlined text-white" data-icon="favorite_border">favorite_border</span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition-colors">
+<span class="material-symbols-outlined text-white" data-icon="share">share</span>
+</button>
+</div>
+</header>
+<main class="w-full max-w-7xl mx-auto px-md md:px-lg space-y-8 mt-4">
+<!-- Hero Section -->
+<section class="w-full rounded-[24px] overflow-hidden relative" style="background: linear-gradient(135deg, #00BCD4 0%, #0097A7 100%);">
+<div class="relative z-10 p-6 md:p-10 flex flex-col md:flex-row items-center gap-6">
+<div class="flex-1 space-y-4 text-white">
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-white">Professional Home Cleaning</h2>
+<p class="font-body-md text-white/90">Book trained professionals for a cleaner, healthier home with our premium services.</p>
+<div class="flex flex-wrap gap-4 pt-4">
+<button class="bg-white text-[#0097A7] font-label-md px-6 py-3 rounded-full shadow-[0px_12px_32px_rgba(0,188,212,0.2)] hover:scale-105 transition-transform">Book Now</button>
+<button class="bg-transparent border border-white text-white font-label-md px-6 py-3 rounded-full hover:bg-white/10 transition-colors">View Packages</button>
+</div>
+</div>
+<div class="w-full md:w-1/2 h-64 md:h-80 rounded-xl overflow-hidden shadow-2xl">
+<img class="w-full h-full object-cover" data-alt="A highly detailed 3D illustration of a professional cleaner in a sleek, modern luxury living room. The cleaner is holding a high-tech vacuum and an eco-friendly spray bottle. The room is sparkling clean with subtle glowing sparkle effects emphasizing cleanliness. The color palette features cool cyans and teals matching the gradient background, lit by bright, high-key studio lighting for a pristine, premium look." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDup8hHXuKoKsJrygE09iKFfqeCKrbwZzcLfQEL0mKOsT5UsTtpF6Chd4ICiqxmc5bRvzWB4eUUZ9oy54ZsGBdYzU-Cylnl43ZviqVmDWLdQnkLTBMmPV0qlwR13A5p19Y8qhjpUOWjQclhxaBchNJ4q2HgKdmG3wSUoiZpazZVwGT3JPELaXmltZJStj3g8S1LTSJJfLQZjpo67Mx4D15xUMtZlwcQ7C2jdRiUpSqaBIHeqpAyGwC6"/>
+</div>
+</div>
+</section>
+<!-- Service Highlights Grid -->
+<section>
+<h3 class="font-headline-md text-white mb-6">Service Highlights</h3>
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+<div class="rounded-[20px] p-4 flex flex-col items-center text-center justify-center gap-3" style="background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); box-shadow: 0px 12px 32px rgba(37,99,235,0.2);">
+<div class="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+<img class="w-12 h-12 object-contain" data-alt="A stylized 3D icon of a smiling professional cleaner wearing a blue uniform with a visible ID badge. Clean, vibrant aesthetic with a blue gradient background, high-quality rendering." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCy8izJiTt4ebWyUC5dkSrX7_Ei002aUwz6Olzy9IoN95M3IkQdezeYTEnFJCSHu-fAG6aomMNidAKjQI5WgaqChn2fhS70t1mmZxc3sWP3ITdqZDtSERBFjc1rL7fBNcUhcvm4qk4maCbxqcmqreEWbT6fw-qIosMsGh3ex6YZ_S_kYcJEfYcKFCMKDXtS0E8uDa15iuyJW4EtP7txTaGbyPVawxAxU4OJHcGqk1DfuOMwhw5P9Cq8"/>
+</div>
+<span class="font-label-md text-white">Verified<br/>Professionals</span>
+</div>
+<div class="rounded-[20px] p-4 flex flex-col items-center text-center justify-center gap-3" style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); box-shadow: 0px 12px 32px rgba(16,185,129,0.2);">
+<div class="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+<img class="w-12 h-12 object-contain" data-alt="A high-quality 3D illustration of an eco-friendly green spray bottle with a small vibrant green leaf wrapping around it. Set against a lush green gradient background with bright, clean lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8rnmo7U6JyPhXGru3BtfALMFsGhUrXWvCbkXCD0_It7IMURmteFp6QGM8tEHdYy5O5W2U1teh4e5EVVNqTB0eQ-TbHHHKOFxgXoloR0WjZjSgfH8dxj02gk2Cwy1MszvkLTwEtnAucbUB-mhYLWx9RMbgHk3XZ4GyhHH30QLqRpJ8C-B_lGpVY2mUONEgIzKog0NKp6SVvh77kh0aJja5txeQm5Pqrv3kw5pVyZSSOXJHweCPF2TL"/>
+</div>
+<span class="font-label-md text-white">Eco-Friendly<br/>Products</span>
+</div>
+<div class="rounded-[20px] p-4 flex flex-col items-center text-center justify-center gap-3" style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); box-shadow: 0px 12px 32px rgba(245,158,11,0.2);">
+<div class="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+<img class="w-12 h-12 object-contain" data-alt="A sleek 3D illustration of a modern calendar with a glowing clock icon overlaid, symbolizing speed. The background is a warm amber gradient, bright and welcoming." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3OvLGsqFO_DOTtW3EzmrhUfY5caz1kIpIFpYZd68QrADzWerh7DLbG9vJZvbFC1Prm9sOTKPSc25U0aEv8yPtLOITnlTaVC4zCiYRD2Xc0OsVvlPLWUTjSTnTW8OpDnOQHZGbGOMfXrw8Pn9cTqWPcFxqDUgq1yeMd_XKUH5eJ7gHYTMgvzaAe_lV4meVGw0_tl0ou7ieJpcB-rlT7JJNBBiqrcd3g4kz8phaS_m_1yWeMbRsLxkM"/>
+</div>
+<span class="font-label-md text-white">Same-Day<br/>Booking</span>
+</div>
+<div class="rounded-[20px] p-4 flex flex-col items-center text-center justify-center gap-3" style="background: linear-gradient(135deg, #EC4899 0%, #DB2777 100%); box-shadow: 0px 12px 32px rgba(236,72,153,0.2);">
+<div class="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+<img class="w-12 h-12 object-contain" data-alt="A stylized 3D icon of a happy family holding hands with floating hearts around them, representing satisfaction. Set against a vibrant pink gradient background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB1xf8TgbWpBSHiALZgGLzDvm6QKkjLHtvlysfZxikJCFIPQ3HLNqcSOQjIy5MbIa246lGje5mCHCO2NselFjyQJdseWZUqDS68nnKe0qm5CwIq2K2P8yZ0gGJcuR5Dm8LcjFyanu6-Edkuthc_T3oU6Vkit9CrWDPx_O65mHhq1thCgTPJeDVaN7mEwjvBcevoRttBSxkg85bV8yliTZS4sU2yRMmBLYnLI9eXZgHH-ax7zXzDjpuS"/>
+</div>
+<span class="font-label-md text-white">100%<br/>Satisfaction</span>
+</div>
+</div>
+</section>
+<!-- What We Clean -->
+<section>
+<h3 class="font-headline-md text-white mb-6">What We Clean</h3>
+<div class="flex overflow-x-auto hide-scrollbar gap-4 pb-4">
+<div class="flex-none w-[280px] h-[160px] rounded-[24px] relative overflow-hidden group shadow-lg" style="background: linear-gradient(135deg, #4CC9F0 0%, #4361EE 100%);">
+<div class="absolute inset-0 p-5 flex flex-col justify-end z-10 bg-gradient-to-t from-black/50 to-transparent">
+<h4 class="font-headline-md text-[18px] text-white">Living Room</h4>
+<span class="font-body-sm text-white/80">Dusting &amp; Mopping</span>
+</div>
+<img class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-500" data-alt="A 3D render of a pristine, modern living room with a sleek sofa, softly lit with cool blue and cyan tones reflecting a clean, refreshing atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-W5QjTG4z1-z1VUHiipqhqlyfu_Dkrs43jPzad8hgQccu3-ry26EgQrlvxUYK09gUYituqmMVNCEfev47FLq_X7GWGwAOSZWrB2wXctgDrWiF5yqEwl7BTtOGzX2dtgAxlSB8AorYZfWB6vcDgk4loGW4rNglz_lh-vsHwyeY0CBadQussVToRi5eEuRt5_n9wDWjylwXkB7XzCxwntWsnLHDHAeh1vyy2CwKzbnP9CQ290l3o70P"/>
+</div>
+<div class="flex-none w-[280px] h-[160px] rounded-[24px] relative overflow-hidden group shadow-lg" style="background: linear-gradient(135deg, #8B5CF6 0%, #C084FC 100%);">
+<div class="absolute inset-0 p-5 flex flex-col justify-end z-10 bg-gradient-to-t from-black/50 to-transparent">
+<h4 class="font-headline-md text-[18px] text-white">Bedroom</h4>
+<span class="font-body-sm text-white/80">Deep Cleaning</span>
+</div>
+<img class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-500" data-alt="A 3D render of a luxurious, perfectly made bed in a modern bedroom, illuminated by soft purple and violet gradient lighting conveying calm and cleanliness." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9_Mf8BX4My01UP_GYa9rvodAhASBnDMinmAExNgkIdUdR916vN8Yn6eEHtUa21oEBP3Q3GcRrfpnb6trV49R96eGZcN8xGOPIzSfEgSl1Ie8ad_2fda2CC_rT-LX--rPAgrq7BuZ0nNutXwpTblWElOBKVG8zti4EMvxvWGIHFsNF9wfmtXzatIVIPVI4IHWqpoNCl9waJ0xXu1-PIaVha5ZGWfd25Q-bT5WX4HgQmlrB3pcsfpDL"/>
+</div>
+<div class="flex-none w-[280px] h-[160px] rounded-[24px] relative overflow-hidden group shadow-lg" style="background: linear-gradient(135deg, #10B981 0%, #34D399 100%);">
+<div class="absolute inset-0 p-5 flex flex-col justify-end z-10 bg-gradient-to-t from-black/50 to-transparent">
+<h4 class="font-headline-md text-[18px] text-white">Kitchen</h4>
+<span class="font-body-sm text-white/80">Degreasing &amp; Scrubbing</span>
+</div>
+<img class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-500" data-alt="A highly detailed 3D illustration of a sparkling clean modern kitchen counter with high-end appliances, bathed in fresh emerald and mint green light to signify sanitation." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6MAko11vsS6UKyIMeA9IoOzBlPqIOnm1BwkbdTnjePnltP_MbYgVLsUOEK6iUCqq90szGVJx3aTLBeNWrG0XQbNEIaXROPCgg2HUTeRhdPV7Vvl0jGX1T8oiYRkYNlWtIvECqG_Tjpx7XoPNeAeBHLz1GFIbSUquEvDRAY1YgnT6M32uVofuc7KbbuQeZcHsbZr-QSNkpFe7iAdlq8VVIF5Vk6vD-M1Y-xkyOzsPJHw8jKrrBBc6Z"/>
+</div>
+<div class="flex-none w-[280px] h-[160px] rounded-[24px] relative overflow-hidden group shadow-lg" style="background: linear-gradient(135deg, #0EA5E9 0%, #38BDF8 100%);">
+<div class="absolute inset-0 p-5 flex flex-col justify-end z-10 bg-gradient-to-t from-black/50 to-transparent">
+<h4 class="font-headline-md text-[18px] text-white">Bathroom</h4>
+<span class="font-body-sm text-white/80">Sanitization</span>
+</div>
+<img class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-500" data-alt="A 3D render of a gleaming white luxury wash basin in a modern bathroom, lit with bright, crisp sky blue lighting highlighting a sanitized, fresh environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCf1gYRWpHUIpH9KD_kfO5qDVH2enBKdIPrJRXSYU6HA3CG3907AOGo1NsPZmhE2dPctnpqACszl556fmhhtYJh3KYUeBKWGp1xmhPmOkSs4lsZNmpEff6ScTTy0PLgoD4vpYv3pqQXr0mvDqh_bYsghTHsnz3OiKWPB2cXG_qO_NBr6OOfqmCc37Rq-5_pmAEEfln_WcyyMIdpuDJr8V_givtGOcx2EeC7HOFt3mlwHN85m9Vr0X3X"/>
+</div>
+</div>
+</section>
+<!-- Spacer for sticky CTA and Nav -->
+<div class="h-10"></div>
+</main>
+</body></html>

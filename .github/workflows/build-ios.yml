@@ -1,0 +1,72 @@
+name: Build iOS IPA — Urban Helpers (EAS)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ios_app/**'
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'EAS Build profile'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - production
+
+jobs:
+  build-ios:
+    name: Build iOS with EAS
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: ios_app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ios_app
+        run: npm install --legacy-peer-deps
+
+      - name: Setup Expo & EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build iOS IPA via EAS
+        working-directory: ios_app
+        run: |
+          eas build \
+            --platform ios \
+            --profile ${{ github.event.inputs.profile || 'preview' }} \
+            --non-interactive \
+            --wait \
+            --output ./build/UrbanHelpers-iOS.ipa
+        env:
+          EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
+          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
+          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
+          EXPO_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY }}
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: UrbanHelpers-iOS-IPA
+          path: ios_app/build/UrbanHelpers-iOS.ipa
+          retention-days: 14
+
+      - name: Notify build complete
+        run: echo "✅ iOS IPA built successfully! Download from the Actions artifacts above and install via Apple Configurator 2 or TestFlight."

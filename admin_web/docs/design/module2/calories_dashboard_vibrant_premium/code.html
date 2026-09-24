@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Calories Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed": "#eaddff",
+                    "on-secondary-fixed": "#00201c",
+                    "secondary-fixed": "#71f8e4",
+                    "on-background": "#d4e4f9",
+                    "background": "#041423",
+                    "on-primary-container": "#eeefff",
+                    "inverse-surface": "#d4e4f9",
+                    "surface-variant": "#263646",
+                    "surface-container-high": "#1b2b3b",
+                    "surface": "#041423",
+                    "inverse-primary": "#0053db",
+                    "error-container": "#93000a",
+                    "on-error-container": "#ffdad6",
+                    "error": "#ffb4ab",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "on-primary-fixed": "#00174b",
+                    "surface-container": "#112130",
+                    "on-secondary": "#003731",
+                    "on-primary": "#002a78",
+                    "secondary-container": "#04b4a2",
+                    "outline": "#8d90a0",
+                    "on-error": "#690005",
+                    "tertiary-fixed-dim": "#d2bbff",
+                    "on-tertiary": "#3f008e",
+                    "on-secondary-fixed-variant": "#005048",
+                    "primary-fixed": "#dbe1ff",
+                    "inverse-on-surface": "#223242",
+                    "surface-container-highest": "#263646",
+                    "surface-bright": "#2b3b4b",
+                    "surface-container-low": "#0c1d2c",
+                    "surface-tint": "#b4c5ff",
+                    "on-tertiary-container": "#f7edff",
+                    "surface-dim": "#041423",
+                    "on-secondary-container": "#003f38",
+                    "outline-variant": "#434655",
+                    "on-tertiary-fixed-variant": "#5a00c6",
+                    "secondary-fixed-dim": "#4fdbc8",
+                    "primary": "#b4c5ff",
+                    "on-tertiary-fixed": "#25005a",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "on-surface": "#d4e4f9",
+                    "surface-container-lowest": "#000f1e",
+                    "tertiary": "#d2bbff",
+                    "on-surface-variant": "#c3c6d7",
+                    "primary-container": "#2563eb",
+                    "tertiary-container": "#8343f4",
+                    "secondary": "#4fdbc8"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "sm": "12px",
+                    "xs": "4px",
+                    "margin-mobile": "16px",
+                    "margin-desktop": "40px",
+                    "lg": "48px",
+                    "xl": "80px",
+                    "base": "8px",
+                    "md": "24px"
+            },
+            "fontFamily": {
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "body-md": ["Plus Jakarta Sans"],
+                    "caption": ["Plus Jakarta Sans"],
+                    "body-lg": ["Plus Jakarta Sans"],
+                    "label-caps": ["Plus Jakarta Sans"],
+                    "headline-xl": ["Plus Jakarta Sans"],
+                    "headline-lg-mobile": ["Plus Jakarta Sans"],
+                    "body-sm": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "caption": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "500"}],
+                    "label-caps": ["11px", {"lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { background-color: #041423; color: #d4e4f9; }
+        .glass-card {
+            background: rgba(24, 52, 79, 0.4);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+        .glow-accent {
+            box-shadow: 0 0 20px rgba(79, 219, 200, 0.3);
+        }
+        .bg-sunset {
+            background: linear-gradient(135deg, #FF8C42 0%, #FF3D00 100%);
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col pt-16 pb-24 md:pb-8">
+<!-- Top Navigation -->
+<header class="fixed top-0 w-full z-50 bg-surface-dim/80 backdrop-blur-xl border-b border-white/10 shadow-lg flex justify-between items-center px-margin-mobile md:px-margin-desktop h-16">
+<div class="flex items-center gap-4 text-on-surface hover:bg-white/5 transition-transform duration-200 active:scale-95 cursor-pointer rounded-full p-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">menu</span>
+</div>
+<h1 class="text-headline-md font-headline-md font-bold text-on-surface">Nutrition</h1>
+<div class="flex items-center gap-4 text-on-surface hover:bg-white/5 transition-transform duration-200 active:scale-95 cursor-pointer rounded-full p-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">search</span>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-grow w-full max-w-[1440px] mx-auto px-margin-mobile md:px-margin-desktop mt-gutter grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Hero Section -->
+<section class="col-span-1 md:col-span-12 rounded-[32px] bg-sunset p-8 md:p-12 relative overflow-hidden flex flex-col md:flex-row items-center justify-between shadow-[0_20px_40px_rgba(255,61,0,0.3)]">
+<div class="z-10 flex-1 mb-8 md:mb-0">
+<h2 class="text-headline-xl font-headline-xl text-white mb-4 drop-shadow-md">Calories</h2>
+<p class="text-body-lg font-body-lg text-white/90 max-w-md">Track every calorie you consume and burn.</p>
+</div>
+<div class="relative w-full max-w-[300px] md:max-w-[400px] aspect-square flex-shrink-0 z-10">
+<img alt="Food and fire illustration for calorie tracking" class="w-full h-full object-contain drop-shadow-2xl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_6XStk7qByf3kTYu4ByMzeIqpc47don1xt9Cawtp113_3V6MAtmnIhHksvyuXIt56EXm_Mt8HUmhCfYbNe1qsbwi4tKQA8NDLg48wEy5CtbtENfoQkk34x6MwSLEQlLY5WrM5qQnjJyE693YgrSt6nwk2iWijaxdNTj5NQTIT8u6ObK0nnIQjesNBrT04QazaXmYIlYlNvr5JxmPW4Nd8-btL12nD3JaA0R8rLMp5DyPIi-wNArS-"/>
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
+</section>
+<!-- Daily Balance & Meal Logs Container -->
+<div class="col-span-1 md:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- Daily Balance -->
+<div class="col-span-1 md:col-span-2 rounded-[32px] p-8 shadow-lg border border-white/5 relative overflow-hidden bg-surface-container-high">
+<h3 class="text-headline-md font-headline-md text-on-surface mb-6">Daily Balance</h3>
+<div class="flex flex-col md:flex-row items-center gap-8 justify-around">
+<div class="flex flex-col items-center">
+<span class="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider mb-2">Consumed</span>
+<div class="text-headline-lg font-headline-lg text-secondary">2,150</div>
+<span class="text-caption font-caption text-outline">kcal</span>
+</div>
+<!-- Circular Graphic Placeholder -->
+<div class="w-48 h-48 relative flex items-center justify-center rounded-full bg-surface-container-high border-[8px] border-surface-variant">
+<div class="absolute inset-0 rounded-full border-[8px] border-secondary" style="clip-path: polygon(50% 50%, 50% 0, 100% 0, 100% 100%, 0 100%, 0 50%); transform: rotate(45deg);"></div>
+<div class="text-center z-10">
+<div class="text-headline-md font-headline-md text-on-surface">350</div>
+<div class="text-caption font-caption text-outline">Remaining</div>
+</div>
+</div>
+<div class="flex flex-col items-center">
+<span class="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider mb-2">Burned</span>
+<div class="text-headline-lg font-headline-lg text-primary">650</div>
+<span class="text-caption font-caption text-outline">kcal</span>
+</div>
+</div>
+</div>
+<!-- Meal Logs -->
+<div class="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- Breakfast Card -->
+<div class="bg-[#FF8C42] rounded-[32px] p-6 flex items-center justify-between overflow-hidden relative h-48 shadow-lg">
+<div class="z-10">
+<h4 class="text-headline-md text-white mb-1">Breakfast</h4>
+<p class="text-body-md text-white/90">450 kcal</p>
+</div>
+<div class="absolute right-0 top-0 h-full w-1/2">
+<img alt="Breakfast" class="w-full h-full object-cover opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC49ellJCdA3ccf9hgR4VrfiudxtBFqWlnY5wVTy4OrMRRs3kfByYb16-maGC1BUrYirMvbSho9ArprDge4LptfTWJv60hiNFOJHXD3Fl1Gdxowf0YjA_VQKUalKFSwOFFX_E37ok8nldN27z-QcSxJCUO6yIhMntlUkW0fR1duRnzMTdNi4gGQJgQeT6N53kC54UfxULTGMlchqrQVzxuM2agFj80sB3Fmr4Oxfa0JLyfzXSR7yF3t"/>
+</div>
+</div>
+<!-- Lunch Card -->
+<div class="bg-[#06D6A0] rounded-[32px] p-6 flex items-center justify-between overflow-hidden relative h-48 shadow-lg">
+<div class="z-10">
+<h4 class="text-headline-md text-white mb-1">Lunch</h4>
+<p class="text-body-md text-white/90">620 kcal</p>
+</div>
+<div class="absolute right-0 top-0 h-full w-1/2">
+<img alt="Lunch" class="w-full h-full object-cover opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAhiD578dQQ87pBhbNC2VQVfj0ZIEipSkFX7LoHj9fdVfZJfKqEnCbExDYGybkDKDWQ4deorYUv0cVs7Tp8D6YT1_nJ_6ydUTBlQCTaBdbxqnzY1ga-dIfnAQUPPWTtEdoSlL_cqhf6KxdgQ9FvoViQfsKLOR4Ghji661ZWUOOsOFP1lXNsEj9XWyiU7weqKLCtwSeFpFtZEs26q1xQR1lU9R9S_ihuPT7cVtXYUDvJDyq90W_upI0K"/>
+</div>
+</div>
+<!-- Dinner Card -->
+<div class="bg-[#2563eb] rounded-[32px] p-6 flex items-center justify-between overflow-hidden relative h-48 shadow-lg">
+<div class="z-10">
+<h4 class="text-headline-md text-white mb-1">Dinner</h4>
+<p class="text-body-md text-white/90">800 kcal</p>
+</div>
+<div class="absolute right-0 top-0 h-full w-1/2">
+<img alt="Dinner" class="w-full h-full object-cover opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAXy2dAznyr2_rc_zH2KvqPs_7x_HYxW3WCSZ5ZaCBTjPmHWJHqTgB9rI550YbakmvjfKau943cRq6vKsEnSZEFK4hw4Dwc1gse0nHBLnqfXOnrZ89fLXw8s0GtefGsLxz6y6ILGCMRG3FUamLO8j5SvFbqULRonYoQX0TgJV7UW0GxxY7dRW5ezWwZat6h-N-F2UctrPGAPJDefAG-bGqVr8GRtbqgt5qtz9JCinOSQCldr_IYrS1t"/>
+</div>
+</div>
+<!-- Snacks Card -->
+<div class="bg-[#EF476F] rounded-[32px] p-6 flex items-center justify-between overflow-hidden relative h-48 shadow-lg">
+<div class="z-10">
+<h4 class="text-headline-md text-white mb-1">Snacks</h4>
+<p class="text-body-md text-white/90">280 kcal</p>
+</div>
+<div class="absolute right-0 top-0 h-full w-1/2">
+<img alt="Snacks" class="w-full h-full object-cover opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCrzB3KuWWSZsmlffD1IHhH-zOjg1aDI2s54JE738qTbnkqpQoqT4XBYHePGmNd5JCDy-_bCtDFwVo3QITLwyzo_LNCRcv-e-vBzw-ExP18sZSgWKJ4bQKvOEqETjKrC87PygOYZdEzJXLLMVvWhjNfCiw6E8YfYeZUhcrTA_kp7QncKxhJ1-6ovWPztQvoDNrCZGNrXmkGdMgsN0J9JUFGF2Pjnz19L2UdG4hTC2-0sfS7-7gavftr"/>
+</div>
+</div>
+</div>
+<!-- Workout Burn Grid -->
+<div class="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- Running -->
+<div class="bg-[#118AB2] rounded-[32px] p-6 flex items-center gap-4 overflow-hidden relative h-32 shadow-lg">
+<div class="z-10">
+<div class="text-body-lg font-bold text-white">Running</div>
+<div class="text-body-md text-white/80">320 kcal</div>
+</div>
+<img alt="Running" class="absolute right-0 top-0 h-full w-1/3 object-cover opacity-60" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwDtmMDOIxSWHoeZ0QT5v8X2FRZtaspVIxpf6T1HLSBtmIrXFPP_ZYGq-xaGYIcPhOnNcy300nJQn-P2rzh5DhA8GZs2O80NKeEF9zvI7AWbJTazBrXAv8ZGVogP3hc3xEzYrVZhcpjf_EVoaPsIfVARJaUimuwx4RCUs0UgcyXGRpZTCtYEqP6QEXlS8q1F-GgNqlLvYg50kkZGZ2Tqb0slGS9Rb354jlvHR_ITuWmr8agCnDdKM7"/>
+</div>
+<!-- Cycling -->
+<div class="bg-[#06D6A0] rounded-[32px] p-6 flex items-center gap-4 overflow-hidden relative h-32 shadow-lg">
+<div class="z-10">
+<div class="text-body-lg font-bold text-white">Cycling</div>
+<div class="text-body-md text-white/80">210 kcal</div>
+</div>
+<img alt="Cycling" class="absolute right-0 top-0 h-full w-1/3 object-cover opacity-60" src="https://www.gstatic.com/labs-code/stitch/stitch-placeholder-300x300.svg"/>
+</div>
+<!-- Gym -->
+<div class="bg-[#8343f4] rounded-[32px] p-6 flex items-center gap-4 overflow-hidden relative h-32 shadow-lg">
+<div class="z-10">
+<div class="text-body-lg font-bold text-white">Gym</div>
+<div class="text-body-md text-white/80">0 kcal</div>
+</div>
+<img alt="Gym" class="absolute right-0 top-0 h-full w-1/3 object-cover opacity-60" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCusp3QZgHAb1paHFRf5zHGFt-iQLlfUBXZ2TJGVr9lgfoj3IdpyiHQwanliHcOB6UN3pdRhqFfz9rSS-CkKV9bLtAkKdHv726axoQsPCx47rACSX7gHPr0HvbIQ4D5CGvHJzkbYpR1lpXXW1RQeW5TXICJolW-eLEb5Y_1cleyidGgLBAPeIGDYN315A_5AuMDbhLuLkd1-IBch9oK4h2YzmZpwRFatu505wGvItWIcTvU1XjICaXG"/>
+</div>
+<!-- Walking -->
+<div class="bg-[#FFD166] rounded-[32px] p-6 flex items-center gap-4 overflow-hidden relative h-32 shadow-lg">
+<div class="z-10">
+<div class="text-body-lg font-bold text-white">Walking</div>
+<div class="text-body-md text-white/80">120 kcal</div>
+</div>
+<img alt="Walking" class="absolute right-0 top-0 h-full w-1/3 object-cover opacity-60" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNqu-cTdWwgFlFVx_pi87z4IwTehb-zIIbxOZhKPQhMp1hzAeZ2Zs5u6hyEj7Un9kmuYWNmOl2XWSVTjMKSRAKsIaNBhA9VqSd5-h3qgqTSm8W-eWS0mKUrqIKIn9VGo04IuV3ffTlZJFDVyjp6v8GOA6IfbJ3XPslTejCN7T6HtKaPWFuMfuqVfOoNLdwIs6QWxUFz86ewl9xzhbT3PUuxswNKzKvv_4fyYIiFDXCOu-HltlVTuwY"/>
+</div>
+</div>
+</div>
+<!-- Analytics & Insights Sidebar -->
+<div class="col-span-1 md:col-span-4 flex flex-col gap-gutter">
+<!-- Analytics Chart -->
+<div class="bg-[#18344F] rounded-[32px] p-6 shadow-lg border border-white/5 flex-grow"><h3 class="text-headline-md font-headline-md text-on-surface mb-6">Weekly Trends</h3>
+<div class="h-48 flex items-end justify-between gap-2 border-b border-surface-variant pb-2 relative">
+<div class="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-caption font-caption text-outline text-right pr-2">
+<span>3k</span><span>2k</span><span>1k</span><span>0</span>
+</div>
+<div class="w-full flex justify-around items-end h-full pl-8">
+<div class="w-8 bg-gradient-to-t from-[#FF8C42] to-[#FFD166] rounded-t-lg h-[60%] relative group cursor-pointer transition-all hover:scale-105"></div>
+<div class="w-8 bg-gradient-to-t from-[#06D6A0] to-[#71f8e4] rounded-t-lg h-[75%] relative group cursor-pointer transition-all hover:scale-105"></div>
+<div class="w-8 bg-gradient-to-t from-[#118AB2] to-[#b4c5ff] rounded-t-lg h-[50%] relative group cursor-pointer transition-all hover:scale-105"></div>
+<div class="w-8 bg-gradient-to-t from-[#2563eb] to-[#b4c5ff] rounded-t-lg h-[90%] relative group cursor-pointer transition-all hover:scale-105 glow-accent drop-shadow-[0_0_12px_rgba(180,197,255,0.6)]"></div>
+<div class="w-8 bg-gradient-to-t from-[#8343f4] to-[#eaddff] rounded-t-lg h-[80%] relative group cursor-pointer transition-all hover:scale-105"></div>
+<div class="w-8 bg-gradient-to-t from-[#EF476F] to-[#ffdad6] rounded-t-lg h-[65%] relative group cursor-pointer transition-all hover:scale-105"></div>
+<div class="w-8 bg-gradient-to-t from-[#FF8C42] to-[#FFD166] rounded-t-lg h-[40%] relative group cursor-pointer transition-all hover:scale-105"></div>
+</div>
+</div>
+<div class="flex justify-around items-center pt-2 pl-8 text-caption font-caption text-outline">
+<span>M</span><span>T</span><span>W</span><span class="text-primary font-bold">T</span><span>F</span><span>S</span><span>S</span>
+</div></div>
+<!-- AI Insight -->
+<div class="bg-surface-container rounded-[32px] p-6 border-l-4 border-secondary relative overflow-hidden shadow-lg">
+<div class="absolute top-0 right-0 p-4 opacity-10">
+<span class="material-symbols-outlined text-6xl text-secondary">psychology</span>
+</div>
+<div class="flex items-center gap-3 mb-3 relative z-10">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">lightbulb</span>
+<h4 class="text-body-lg font-body-lg text-on-surface">Nutrition Suggestion</h4>
+</div>
+<p class="text-body-md font-body-md text-on-surface-variant relative z-10 leading-relaxed">
+                    You're a bit low on protein today. Consider adding a lean chicken breast or a protein shake to your dinner to support muscle recovery from your run.
+                </p>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-20 px-4 pb-2 bg-surface-container-highest/60 backdrop-blur-2xl border-t border-white/5 shadow-[0px_-10px_30px_rgba(0,0,0,0.5)] md:hidden">
+<a class="flex flex-col items-center justify-center text-outline hover:text-primary-fixed-dim transition-all duration-300" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">home</span>
+<span class="text-caption font-caption">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary drop-shadow-[0_0_8px_rgba(79,219,200,0.4)] scale-110 transition-all duration-300" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">ecg_heart</span>
+<span class="text-caption font-caption">Health</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline hover:text-primary-fixed-dim transition-all duration-300" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">add_circle</span>
+<span class="text-caption font-caption">Log</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline hover:text-primary-fixed-dim transition-all duration-300" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">restaurant_menu</span>
+<span class="text-caption font-caption">Plans</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline hover:text-primary-fixed-dim transition-all duration-300" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">person</span>
+<span class="text-caption font-caption">Profile</span>
+</a>
+</nav>
+</body></html>

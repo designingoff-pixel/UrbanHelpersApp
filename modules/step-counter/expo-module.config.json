@@ -1,7 +1,0 @@
-{
-  "name": "expo-step-counter",
-  "platforms": ["android"],
-  "android": {
-    "modules": ["expo.modules.stepcounter.StepCounterModule"]
-  }
-}

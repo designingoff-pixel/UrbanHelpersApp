@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Service Recording Paused</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-primary": "#6750a4",
+                        "on-surface": "#e6e0e9",
+                        "on-secondary": "#342b4b",
+                        "on-primary-fixed-variant": "#4f378a",
+                        "on-surface-variant": "#cbc4d2",
+                        "on-tertiary": "#3e2e00",
+                        "surface-container-high": "#2b292f",
+                        "surface-container": "#211f24",
+                        "on-primary-fixed": "#22005d",
+                        "secondary": "#cdc0e9",
+                        "surface": "#141218",
+                        "primary-container": "#6750a4",
+                        "surface-container-highest": "#36343a",
+                        "on-background": "#e6e0e9",
+                        "surface-variant": "#36343a",
+                        "tertiary": "#e7c365",
+                        "on-secondary-fixed": "#1f1635",
+                        "tertiary-fixed-dim": "#e7c365",
+                        "secondary-container": "#4d4465",
+                        "surface-bright": "#3b383e",
+                        "error-container": "#93000a",
+                        "on-primary": "#381e72",
+                        "surface-container-lowest": "#0f0d13",
+                        "primary-fixed": "#e9ddff",
+                        "surface-container-low": "#1d1b20",
+                        "secondary-fixed": "#e9ddff",
+                        "on-error-container": "#ffdad6",
+                        "on-secondary-fixed-variant": "#4b4263",
+                        "on-tertiary-fixed": "#241a00",
+                        "inverse-surface": "#e6e0e9",
+                        "on-tertiary-container": "#503d00",
+                        "on-primary-container": "#e0d2ff",
+                        "surface-tint": "#cfbcff",
+                        "on-error": "#690005",
+                        "primary-fixed-dim": "#cfbcff",
+                        "error": "#ffb4ab",
+                        "primary": "#cfbcff",
+                        "background": "#141218",
+                        "outline": "#948e9c",
+                        "secondary-fixed-dim": "#cdc0e9",
+                        "tertiary-container": "#c9a74d",
+                        "tertiary-fixed": "#ffdf93",
+                        "on-tertiary-fixed-variant": "#594400",
+                        "outline-variant": "#494551",
+                        "on-secondary-container": "#bfb2da",
+                        "surface-dim": "#141218",
+                        "inverse-on-surface": "#322f35"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px",
+                        "card": "24px"
+                    },
+                    "spacing": {
+                        "card-gap": "24px",
+                        "container-padding-desktop": "40px",
+                        "gutter": "16px",
+                        "base": "8px",
+                        "section-margin": "48px",
+                        "container-padding-mobile": "20px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "title-lg": ["Plus Jakarta Sans"],
+                        "label-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "label-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "34px", "fontWeight": "700" }],
+                        "title-lg": ["22px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Pulse Animation for Paused State */
+        @keyframes subtle-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(0.98); }
+        }
+        .animate-paused-pulse {
+            animation: subtle-pulse 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen flex flex-col selection:bg-primary selection:text-on-primary">
+<!-- TopAppBar (Customized for Task Screen) -->
+<header class="fixed top-0 w-full bg-background/80 backdrop-blur-xl z-50 flex items-center justify-between px-container-padding-mobile h-16 shadow-[0_1px_0_0_rgba(255,255,255,0.05)]">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high active:scale-95 transition-all">
+<span class="material-symbols-outlined text-on-surface" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<h1 class="font-title-lg text-title-lg text-on-surface">Recording Paused</h1>
+<div class="w-10 h-10"></div> <!-- Spacer for centering -->
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col items-center justify-center px-container-padding-mobile pt-24 pb-8 w-full max-w-[1440px] mx-auto">
+<!-- Paused Status Visualization -->
+<div class="relative flex flex-col items-center justify-center w-full max-w-sm mx-auto mb-section-margin animate-paused-pulse">
+<!-- Ambient Glow -->
+<div class="absolute inset-0 bg-tertiary/20 rounded-full blur-[60px] w-48 h-48 mx-auto -z-10"></div>
+<!-- Pause Icon Container -->
+<div class="w-32 h-32 rounded-full bg-surface-container border border-tertiary/30 shadow-[0_0_30px_rgba(231,195,101,0.15)] flex items-center justify-center mb-6 relative overflow-hidden">
+<!-- Subtle inner gradient -->
+<div class="absolute inset-0 bg-gradient-to-b from-tertiary/10 to-transparent"></div>
+<span class="material-symbols-outlined text-[64px] text-tertiary relative z-10" style="font-variation-settings: 'FILL' 1;">pause</span>
+</div>
+<!-- Context Text -->
+<p class="font-body-lg text-body-lg text-on-surface-variant text-center px-4 max-w-[280px]">
+                The service recording is currently paused.
+            </p>
+</div>
+<!-- Duration Display -->
+<div class="text-center mb-auto w-full">
+<div class="inline-flex flex-col items-center justify-center bg-surface-container-low rounded-card px-8 py-6 border border-white/5 w-full max-w-sm shadow-sm relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-tertiary/0 via-tertiary/50 to-tertiary/0 opacity-50"></div>
+<span class="font-label-md text-label-md text-tertiary uppercase tracking-widest mb-2">Duration</span>
+<span class="font-display-lg text-display-lg text-on-surface tracking-tight tabular-nums">00:18:42</span>
+</div>
+</div>
+<!-- Action Buttons (Bottom Anchor) -->
+<div class="w-full max-w-sm flex flex-col gap-gutter mt-8">
+<!-- Primary CTA -->
+<button class="w-full relative group rounded-full overflow-hidden p-[1px] active:scale-[0.98] transition-transform">
+<!-- Gradient Border / Inner Glow simulation -->
+<span class="absolute inset-0 bg-gradient-to-r from-primary to-inverse-primary rounded-full"></span>
+<div class="relative bg-gradient-to-r from-primary to-inverse-primary px-8 py-4 rounded-full flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(207,188,255,0.2)]">
+<span class="material-symbols-outlined text-on-primary" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+<span class="font-label-md text-label-md text-on-primary uppercase tracking-wider">Resume Recording</span>
+</div>
+</button>
+<!-- Secondary CTA -->
+<button class="w-full rounded-full bg-surface-container border border-error/50 px-8 py-4 flex items-center justify-center gap-2 hover:bg-error-container/20 active:scale-[0.98] transition-all">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 0;">stop_circle</span>
+<span class="font-label-md text-label-md text-error uppercase tracking-wider">End Service</span>
+</button>
+</div>
+</main>
+</body></html>

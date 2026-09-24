@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Smart Reminders - Urban Helpers</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#4fdbc8",
+                        "surface-variant": "#263646",
+                        "outline-variant": "#434655",
+                        "background": "#041423",
+                        "on-secondary-fixed": "#00201c",
+                        "on-tertiary-container": "#f7edff",
+                        "error": "#ffb4ab",
+                        "tertiary-container": "#8343f4",
+                        "on-tertiary": "#3f008e",
+                        "surface-bright": "#2b3b4b",
+                        "surface-dim": "#041423",
+                        "on-tertiary-fixed-variant": "#5a00c6",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-secondary-container": "#003f38",
+                        "on-background": "#d4e4f9",
+                        "tertiary-fixed-dim": "#d2bbff",
+                        "surface-container-low": "#0c1d2c",
+                        "on-secondary": "#003731",
+                        "surface-container": "#112130",
+                        "tertiary": "#d2bbff",
+                        "surface-container-high": "#1b2b3b",
+                        "error-container": "#93000a",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "primary-container": "#2563eb",
+                        "secondary-container": "#04b4a2",
+                        "on-surface-variant": "#c3c6d7",
+                        "inverse-on-surface": "#223242",
+                        "inverse-primary": "#0053db",
+                        "surface-tint": "#b4c5ff",
+                        "secondary-fixed": "#71f8e4",
+                        "surface-container-highest": "#263646",
+                        "surface": "#041423",
+                        "primary": "#b4c5ff",
+                        "on-primary-container": "#eeefff",
+                        "on-surface": "#d4e4f9",
+                        "inverse-surface": "#d4e4f9",
+                        "on-primary-fixed": "#00174b",
+                        "on-secondary-fixed-variant": "#005048",
+                        "on-primary": "#002a78",
+                        "secondary": "#4fdbc8",
+                        "tertiary-fixed": "#eaddff",
+                        "on-tertiary-fixed": "#25005a",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-lowest": "#000f1e",
+                        "primary-fixed": "#dbe1ff",
+                        "on-error": "#690005",
+                        "outline": "#8d90a0"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "xl": "80px",
+                        "gutter": "24px",
+                        "lg": "48px",
+                        "margin-desktop": "40px",
+                        "xs": "4px",
+                        "base": "8px",
+                        "md": "24px",
+                        "sm": "12px"
+                    },
+                    "fontFamily": {
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "label-caps": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "caption": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-xl": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-caps": ["11px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "400" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #081826;
+            color: #d4e4f9;
+        }
+        
+        .hero-gradient {
+            background: linear-gradient(135deg, #F9C74F 0%, #F8961E 50%, #F3722C 100%);
+        }
+        
+        .card-solid {
+            border-radius: 32px;
+            box-shadow: 0px 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .bell-shake:hover .material-symbols-outlined {
+            animation: shake 0.5s ease-in-out infinite;
+        }
+        
+        @keyframes shake {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(15deg); }
+            50% { transform: rotate(0deg); }
+            75% { transform: rotate(-15deg); }
+            100% { transform: rotate(0deg); }
+        }
+
+        .flip-animate:hover .flip-inner {
+            transform: rotateX(180deg);
+        }
+
+        .flip-container {
+            perspective: 1000px;
+        }
+        
+        .flip-inner {
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+
+        .slide-up {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: slideUp 0.6s forwards;
+        }
+
+        @keyframes slideUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+
+    </style>
+</head>
+<body class="font-body-md overflow-x-hidden pb-32">
+<!-- Top App Bar (Web) -->
+<header class="hidden md:flex justify-between items-center w-full px-margin-desktop py-base bg-background dark:bg-background top-0 z-50 sticky shadow-sm">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full bg-surface-container overflow-hidden border border-outline/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="person">person</span>
+</div>
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-primary">Urban Helpers</span>
+</div>
+<nav class="flex gap-md">
+<a class="text-on-surface-variant hover:opacity-80 transition-opacity" href="#">Health</a>
+<a class="text-on-surface-variant hover:opacity-80 transition-opacity" href="#">History</a>
+<a class="text-primary hover:opacity-80 transition-opacity" href="#">Alarm</a>
+<a class="text-on-surface-variant hover:opacity-80 transition-opacity" href="#">Reminders</a>
+<a class="text-on-surface-variant hover:opacity-80 transition-opacity" href="#">Profile</a>
+</nav>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-primary" data-icon="settings">settings</span>
+</button>
+</header>
+<main class="max-w-[1440px] mx-auto px-margin-mobile md:px-margin-desktop pt-lg">
+<!-- Hero Section -->
+<section class="hero-gradient rounded-[40px] p-8 md:p-12 mb-gutter flex flex-col md:flex-row items-center justify-between overflow-hidden relative shadow-[0_20px_50px_rgba(243,114,44,0.3)] slide-up">
+<div class="z-10 max-w-xl text-on-secondary-fixed">
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg mb-sm">Reminders</h1>
+<p class="font-body-lg text-body-lg opacity-90">Manage every important reminder.</p>
+</div>
+<div class="mt-8 md:mt-0 w-full md:w-1/2 flex justify-center md:justify-end z-10 relative">
+<img alt="Reminders Illustration" class="w-64 h-64 md:w-80 md:h-80 object-cover rounded-full shadow-2xl drop-shadow-[0_0_30px_rgba(249,199,79,0.5)]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAVSEm4-S5khHTTWJzs8fXxh8jCp327jSjARdkssvQHDbkJZB2FetH_-v3dEEaB9_R8-8uFuOWpeWXyzFzMwbLDMY1RtHpAlu_s7RARie5cJWJBl9tsCzvKnM7Y_1a-0_84KiMNLVIrg-9BsP7p1UJaKdBH0a80h7HtYzxMfGwE5uAJsLc9D2osddHc8RK1yO8eOnbT6XlwWcZlSk_J1eLZ4PKni-ftOdtxubxZefwSrJktZ6Q8dNfZ"/>
+</div>
+</section>
+<!-- Cards Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter mt-lg">
+<!-- Medicine Card -->
+<div class="card-solid bg-gradient-to-br from-primary-container to-primary p-6 relative overflow-hidden bell-shake slide-up delay-1 group cursor-pointer transition-transform hover:scale-[1.02]">
+<div class="flex items-start justify-between">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-primary-container mb-xs">Medicine</h2>
+<p class="font-body-sm text-body-sm text-on-primary-container/80">Next dose in 2 hours</p>
+</div>
+<div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-3xl" data-icon="notifications_active" data-weight="fill" style="font-variation-settings: 'FILL' 1;">notifications_active</span>
+</div>
+</div>
+<div class="mt-8 flex gap-sm">
+<span class="px-3 py-1 bg-white/20 text-white rounded-full font-label-caps text-label-caps">Vitamin D</span>
+<span class="px-3 py-1 bg-white/20 text-white rounded-full font-label-caps text-label-caps">Omega 3</span>
+</div>
+</div>
+<!-- Appointments Card -->
+<div class="card-solid bg-gradient-to-br from-tertiary-container to-tertiary p-6 relative overflow-hidden flip-container slide-up delay-2 group cursor-pointer">
+<div class="flip-inner w-full h-full relative">
+<div class="flex items-start justify-between">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-tertiary-container mb-xs">Appointments</h2>
+<p class="font-body-sm text-body-sm text-on-tertiary-container/80">Dr. Smith - 3:00 PM</p>
+</div>
+<div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center transition-transform group-hover:rotate-12">
+<span class="material-symbols-outlined text-white text-3xl" data-icon="calendar_month" data-weight="fill" style="font-variation-settings: 'FILL' 1;">calendar_month</span>
+</div>
+</div>
+<div class="mt-8 bg-white/10 rounded-2xl p-4 border border-white/20">
+<div class="flex justify-between items-center text-white">
+<span class="font-body-sm">Today</span>
+<span class="font-bold">Clinic Visit</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Health Checkup Card -->
+<div class="card-solid bg-gradient-to-br from-[#EF4444] to-[#B91C1C] p-6 relative overflow-hidden slide-up delay-3 shadow-[0_0_40px_rgba(239,68,68,0.3)]">
+<div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-xl"></div>
+<div class="flex items-start justify-between relative z-10">
+<div>
+<div class="flex items-center gap-xs mb-xs">
+<span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+<h2 class="font-headline-md text-headline-md text-white">Health Checkup</h2>
+</div>
+<p class="font-body-sm text-body-sm text-white/80">Overdue by 5 days</p>
+</div>
+<div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-3xl" data-icon="monitor_heart" data-weight="fill" style="font-variation-settings: 'FILL' 1;">monitor_heart</span>
+</div>
+</div>
+<button class="mt-8 w-full bg-white text-[#B91C1C] font-bold py-3 rounded-xl hover:bg-opacity-90 transition-colors">
+                    Schedule Now
+                </button>
+</div>
+<!-- Custom Reminders Card -->
+<div class="card-solid bg-gradient-to-br from-surface-bright to-surface-variant p-6 relative overflow-hidden slide-up delay-4 flex flex-col justify-center items-center text-center cursor-pointer hover:bg-surface-variant transition-colors border border-outline/10">
+<div class="w-16 h-16 rounded-full bg-secondary-container/20 flex items-center justify-center mb-sm group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-secondary text-4xl" data-icon="add">add</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-xs">Custom Reminders</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Create a new task</p>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar (Mobile) -->
+<nav class="md:hidden fixed bottom-md left-md right-md z-50 flex justify-around items-center px-sm py-xs bg-white/5 backdrop-blur-xl border border-white/10 rounded-full shadow-[0px_20px_40px_rgba(0,0,0,0.4)]">
+<!-- Health (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-secondary transition-colors scale-110 duration-300 ease-out w-12 h-12" href="#">
+<span class="material-symbols-outlined" data-icon="favorite">favorite</span>
+</a>
+<!-- History (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-secondary transition-colors scale-110 duration-300 ease-out w-12 h-12" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+</a>
+<!-- Alarm (Active - Based on Prompt) -->
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full w-12 h-12 shadow-[0_0_15px_rgba(79,219,200,0.3)] scale-110 duration-300 ease-out" href="#">
+<span class="material-symbols-outlined" data-icon="alarm" data-weight="fill" style="font-variation-settings: 'FILL' 1;">alarm</span>
+</a>
+<!-- Reminders (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-secondary transition-colors scale-110 duration-300 ease-out w-12 h-12" href="#">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</a>
+<!-- Profile (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-secondary transition-colors scale-110 duration-300 ease-out w-12 h-12" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+</a>
+</nav>
+</body></html>
