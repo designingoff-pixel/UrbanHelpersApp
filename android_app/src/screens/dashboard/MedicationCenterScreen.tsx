@@ -35,6 +35,7 @@ import {
   MEDICINE_CATEGORIES,
   MEDICINE_DATABASE,
   searchMedicineDatabase,
+  searchMedicineDatabaseExpanded,
   searchRxNormDrugs,
 } from "@/services/medicineDatabase";
 
@@ -416,7 +417,7 @@ export default function MedicationCenterScreen({ navigation }: Props) {
               {showSuggestions && (
                 <View style={s.suggestionsBox}>
                   {(() => {
-                    const suggestions = searchMedicineDatabase(medName, selectedMedCategory).slice(0, 6);
+                    const suggestions = searchMedicineDatabaseExpanded(medName, selectedMedCategory).slice(0, 8);
                     return (
                       <>
                         {suggestions.length > 0 ? (
@@ -494,11 +495,14 @@ export default function MedicationCenterScreen({ navigation }: Props) {
                           </View>
                         )}
 
-                        {/* No results at all state */}
-                        {suggestions.length === 0 && rxResults.length === 0 && !rxSearching && (
+                        {suggestions.length === 0 && rxResults.length === 0 && !rxSearching && medName.trim().length >= 2 && (
                           <View style={s.suggestionEmpty}>
+                            <Ionicons name="alert-circle-outline" size={16} color="rgba(255,180,171,0.7)" style={{ marginBottom: 4 }} />
                             <Text style={s.suggestionEmptyText}>
-                              No matching medicine found for "{medName}"
+                              No medicine found for "{medName}".
+                            </Text>
+                            <Text style={[s.suggestionEmptyText, { fontSize: 11, marginTop: 3, color: "rgba(255,255,255,0.35)" }]}>
+                              Please verify the name, strength, and dosage with your pharmacist or clinician.
                             </Text>
                           </View>
                         )}

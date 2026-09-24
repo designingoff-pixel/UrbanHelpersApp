@@ -44,6 +44,7 @@ export type RootStackParamList = {
   HeartRate: undefined;
   BloodOxygen: undefined;
   VascularLoad: undefined;
+  Hearing: undefined;
 
   // Samsung Health Mindfulness & Stress Suite
   Mindfulness: undefined;

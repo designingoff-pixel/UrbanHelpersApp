@@ -52,6 +52,7 @@ import MoodCheckInScreen from "@/screens/health/MoodCheckInScreen";
 import BreathingExercisesScreen from "@/screens/health/BreathingExercisesScreen";
 import MeditationScreen from "@/screens/health/MeditationScreen";
 import StressScreen from "@/screens/health/StressScreen";
+import HearingScreen from "@/screens/health/HearingScreen";
 
 // Module 3 — Medical Records
 import HealthDataAnalyticsScreen from "@/screens/medical/HealthDataAnalyticsScreen";
@@ -249,6 +250,7 @@ export function RootNavigator() {
       <Stack.Screen name="BreathingExercises" component={BreathingExercisesScreen} />
       <Stack.Screen name="Meditation" component={MeditationScreen} />
       <Stack.Screen name="Stress" component={StressScreen} />
+      <Stack.Screen name="Hearing" component={HearingScreen} />
 
       {/* Module 3 */}
       <Stack.Screen name="HealthDataAnalytics" component={HealthDataAnalyticsScreen} />

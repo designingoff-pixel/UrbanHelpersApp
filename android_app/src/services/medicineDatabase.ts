@@ -506,6 +506,72 @@ export function searchMedicineDatabase(
   });
 }
 
+/**
+ * Expanded search — each dosage strength becomes a separate result row.
+ *
+ * Example: Paracetamol with commonDosages ["500mg", "650mg"] produces:
+ *   { name: "Paracetamol 500mg", commonDosages: ["500mg"], id: "med_paracetamol_500mg" }
+ *   { name: "Paracetamol 650mg", commonDosages: ["650mg"], id: "med_paracetamol_650mg" }
+ *
+ * Also matches by strength number alone ("500" matches "500mg").
+ * Returns at most 12 de-duplicated results.
+ */
+export function searchMedicineDatabaseExpanded(
+  query: string = "",
+  category: MedicineCategory = "All",
+  limit = 12
+): MedicineDefinition[] {
+  const cleanQ = query.trim().toLowerCase();
+
+  const results: MedicineDefinition[] = [];
+  const seenIds = new Set<string>();
+
+  for (const med of MEDICINE_DATABASE) {
+    if (results.length >= limit) break;
+
+    const matchesCat = category === "All" || med.category === category;
+    if (!matchesCat) continue;
+
+    // Check if the query matches the base medicine (name or generic)
+    const nameMatch =
+      cleanQ.length === 0 ||
+      med.name.toLowerCase().includes(cleanQ) ||
+      med.genericName.toLowerCase().includes(cleanQ) ||
+      med.category.toLowerCase().includes(cleanQ);
+
+    // Check if the query looks like a strength query ("500", "500mg", "650 mg")
+    // Strip spaces: "500 mg" → "500mg"
+    const normQ = cleanQ.replace(/\s+/g, "");
+    const strengthQuery =
+      cleanQ.length > 0 &&
+      /\d/.test(cleanQ) &&
+      med.commonDosages.some((d) => d.toLowerCase().replace(/\s+/g, "").includes(normQ));
+
+    if (!nameMatch && !strengthQuery) continue;
+
+    // Expand each matching dosage into its own virtual record
+    const dosagesToExpand = strengthQuery
+      ? med.commonDosages.filter((d) => d.toLowerCase().replace(/\s+/g, "").includes(normQ))
+      : med.commonDosages;
+
+    for (const strength of dosagesToExpand) {
+      if (results.length >= limit) break;
+      const virtualId = `${med.id}_${strength.replace(/\s+/g, "").toLowerCase()}`;
+      if (seenIds.has(virtualId)) continue;
+      seenIds.add(virtualId);
+
+      results.push({
+        ...med,
+        id: virtualId,
+        name: `${med.name} ${strength}`,
+        commonDosages: [strength],
+      });
+    }
+  }
+
+  return results;
+}
+
 
 /**
  * RxNorm term-type priority order.
