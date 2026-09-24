@@ -28,7 +28,7 @@ platform :ios do
       scheme:           "UrbanHelpers",
       configuration:    "Release",
       clean:            true,
-      skip_package:     true,
+      skip_package_ipa: true,
       skip_codesigning: true,
       xcargs:           "CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' CODE_SIGNING_IDENTITY=''",
       archive_path:     File.join(build_dir, "UrbanHelpers.xcarchive")
