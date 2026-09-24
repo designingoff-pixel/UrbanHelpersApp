@@ -26,9 +26,11 @@ jobs:
           java-version: '17'
 
       - name: Install dependencies
+        working-directory: android_app
         run: npm install --legacy-peer-deps
 
       - name: Expo Prebuild
+        working-directory: android_app
         run: npx expo prebuild --platform android --no-install
         env:
           EXPO_PUBLIC_FIREBASE_API_KEY: AIzaSyDhkD-wS-wCc2ZlMbHSNTEp3MFxSrLIUQY
@@ -43,6 +45,7 @@ jobs:
           EXPO_PUBLIC_USDA_API_KEY: cIZXb3lSBZNqKTYDCAvOUFoaupx8AqkIyBpxqSkM
 
       - name: Build APK
+        working-directory: android_app
         run: |
           cd android
           ./gradlew assembleRelease
@@ -62,5 +65,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: UrbanHelpers-Customer-APK
-          path: android/app/build/outputs/apk/release/app-release.apk
+          path: android_app/android/app/build/outputs/apk/release/app-release.apk
           retention-days: 14
