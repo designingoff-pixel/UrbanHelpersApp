@@ -2,6 +2,7 @@
   "expo": {
     "name": "Urban Helpers",
     "slug": "urban-helpers-app",
+    "scheme": "urbanhelpers",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",

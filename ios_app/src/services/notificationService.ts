@@ -38,74 +38,79 @@ function weeklyTrigger(weekday: number, hour: number, minute: number) {
 // ── Permission + Channel Setup ────────────────────────────────────────────────
 
 export async function registerForPushNotifications(): Promise<string | null> {
-  if (!Device.isDevice) {
-    console.log("[Notifications] Skipped — not a real device");
-    return null;
-  }
-
-  if (Platform.OS === "android") {
-    // Create notification channels (Android 8+)
-    await Notifications.setNotificationChannelAsync("default", {
-      name: "Urban Helpers",
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: "#00bcd4",
-      sound: "default",
-      enableVibrate: true,
-      showBadge: true,
-    });
-    await Notifications.setNotificationChannelAsync("medicine", {
-      name: "Medicine Reminders",
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 500, 200, 500],
-      lightColor: "#10b981",
-      sound: "default",
-      enableVibrate: true,
-      showBadge: true,
-    });
-    await Notifications.setNotificationChannelAsync("fitness", {
-      name: "Fitness Reminders",
-      importance: Notifications.AndroidImportance.DEFAULT,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: "#3b82f6",
-      sound: "default",
-    });
-    await Notifications.setNotificationChannelAsync("services", {
-      name: "Service Updates",
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 300, 200, 300],
-      lightColor: "#00bcd4",
-      sound: "default",
-      showBadge: true,
-    });
-    await Notifications.setNotificationChannelAsync("emergency", {
-      name: "Emergency Alerts",
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 1000, 500, 1000],
-      lightColor: "#ef4444",
-      sound: "default",
-      enableVibrate: true,
-      showBadge: true,
-    });
-  }
-
-  const { status: existing } = await Notifications.getPermissionsAsync();
-  let finalStatus = existing;
-  if (existing !== "granted") {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
-  if (finalStatus !== "granted") {
-    console.log("[Notifications] Permission denied");
-    return null;
-  }
-
   try {
-    const token = await Notifications.getExpoPushTokenAsync();
-    console.log("[Notifications] Push token:", token.data);
-    return token.data;
-  } catch (e) {
-    console.log("[Notifications] Token error:", e);
+    if (!Device.isDevice) {
+      console.log("[Notifications] Skipped — not a real device");
+      return null;
+    }
+
+    if (Platform.OS === "android") {
+      // Create notification channels (Android 8+)
+      await Notifications.setNotificationChannelAsync("default", {
+        name: "Urban Helpers",
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#00bcd4",
+        sound: "default",
+        enableVibrate: true,
+        showBadge: true,
+      });
+      await Notifications.setNotificationChannelAsync("medicine", {
+        name: "Medicine Reminders",
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 500, 200, 500],
+        lightColor: "#10b981",
+        sound: "default",
+        enableVibrate: true,
+        showBadge: true,
+      });
+      await Notifications.setNotificationChannelAsync("fitness", {
+        name: "Fitness Reminders",
+        importance: Notifications.AndroidImportance.DEFAULT,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#3b82f6",
+        sound: "default",
+      });
+      await Notifications.setNotificationChannelAsync("services", {
+        name: "Service Updates",
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 300, 200, 300],
+        lightColor: "#00bcd4",
+        sound: "default",
+        showBadge: true,
+      });
+      await Notifications.setNotificationChannelAsync("emergency", {
+        name: "Emergency Alerts",
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 1000, 500, 1000],
+        lightColor: "#ef4444",
+        sound: "default",
+        enableVibrate: true,
+        showBadge: true,
+      });
+    }
+
+    const { status: existing } = await Notifications.getPermissionsAsync();
+    let finalStatus = existing;
+    if (existing !== "granted") {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== "granted") {
+      console.log("[Notifications] Permission denied");
+      return null;
+    }
+
+    try {
+      const token = await Notifications.getExpoPushTokenAsync();
+      console.log("[Notifications] Push token:", token.data);
+      return token.data;
+    } catch (e) {
+      console.log("[Notifications] Token error (normal for AltStore/sideloaded builds):", e);
+      return null;
+    }
+  } catch (err) {
+    console.log("[Notifications] registerForPushNotifications error:", err);
     return null;
   }
 }

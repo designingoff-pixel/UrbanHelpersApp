@@ -23,25 +23,35 @@ export default function SplashScreen({ navigation }: Props) {
     let resolved = false;
 
     const checkAuth = async () => {
-      const isLocalLoggedIn = await AsyncStorage.getItem("@customer_logged_in");
+      let isLocalLoggedIn = "false";
+      try {
+        isLocalLoggedIn = (await AsyncStorage.getItem("@customer_logged_in")) || "false";
+      } catch {}
 
-      const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-        if (resolved) return;
-        resolved = true;
-        unsubscribe();
+      let unsubscribe = () => {};
+      try {
+        if (auth) {
+          unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+            if (resolved) return;
+            resolved = true;
+            unsubscribe();
 
-        if (firebaseUser || isLocalLoggedIn === "true") {
-          navigation.reset({
-            index: 0,
-            routes: [{ name: "ServicesDashboard" }],
-          });
-        } else {
-          navigation.reset({
-            index: 0,
-            routes: [{ name: "Welcome" }],
+            if (firebaseUser || isLocalLoggedIn === "true") {
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "ServicesDashboard" }],
+              });
+            } else {
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "Welcome" }],
+              });
+            }
           });
         }
-      });
+      } catch (err) {
+        console.warn("[Splash] onAuthStateChanged error:", err);
+      }
 
       // Safety fallback
       const fallback = setTimeout(() => {

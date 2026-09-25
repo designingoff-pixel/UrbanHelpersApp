@@ -47,14 +47,16 @@ jobs:
         working-directory: ios_app
         run: npm install --legacy-peer-deps
         env:
-          EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
-          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
-          EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
-          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}
-          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
-          EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
-          EXPO_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY }}
-          EXPO_PUBLIC_USDA_API_KEY: ${{ secrets.EXPO_PUBLIC_USDA_API_KEY }}
+          EXPO_PUBLIC_FIREBASE_API_KEY: AIzaSyDhkD-wS-wCc2ZlMbHSNTEp3MFxSrLIUQY
+          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: urban-helpers-admin.firebaseapp.com
+          EXPO_PUBLIC_FIREBASE_PROJECT_ID: urban-helpers-admin
+          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: urban-helpers-admin.firebasestorage.app
+          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "843343743619"
+          EXPO_PUBLIC_FIREBASE_APP_ID: "1:843343743619:web:a0c09ea15fa85780d6a9b6"
+          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: 843343743619-q4jpmh7eouc3kom1kias1hnh1ps4qom8.apps.googleusercontent.com
+          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: 843343743619-u5nmtb1nhbmd6rhoptm6406lisjhna60.apps.googleusercontent.com
+          EXPO_PUBLIC_GOOGLE_MAPS_API_KEY: AIzaSyAMzsDmDdT2c7r5j1dWTSxev6XSHJZTf-s
+          EXPO_PUBLIC_USDA_API_KEY: cIZXb3lSBZNqKTYDCAvOUFoaupx8AqkIyBpxqSkM
 
       # ── 6. CocoaPods cache ────────────────────────────────────────────────────
       - name: Cache CocoaPods
@@ -69,14 +71,16 @@ jobs:
         working-directory: ios_app
         run: fastlane altstore
         env:
-          EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
-          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
-          EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
-          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}
-          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
-          EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
-          EXPO_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY }}
-          EXPO_PUBLIC_USDA_API_KEY: ${{ secrets.EXPO_PUBLIC_USDA_API_KEY }}
+          EXPO_PUBLIC_FIREBASE_API_KEY: AIzaSyDhkD-wS-wCc2ZlMbHSNTEp3MFxSrLIUQY
+          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: urban-helpers-admin.firebaseapp.com
+          EXPO_PUBLIC_FIREBASE_PROJECT_ID: urban-helpers-admin
+          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: urban-helpers-admin.firebasestorage.app
+          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "843343743619"
+          EXPO_PUBLIC_FIREBASE_APP_ID: "1:843343743619:web:a0c09ea15fa85780d6a9b6"
+          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: 843343743619-q4jpmh7eouc3kom1kias1hnh1ps4qom8.apps.googleusercontent.com
+          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: 843343743619-u5nmtb1nhbmd6rhoptm6406lisjhna60.apps.googleusercontent.com
+          EXPO_PUBLIC_GOOGLE_MAPS_API_KEY: AIzaSyAMzsDmDdT2c7r5j1dWTSxev6XSHJZTf-s
+          EXPO_PUBLIC_USDA_API_KEY: cIZXb3lSBZNqKTYDCAvOUFoaupx8AqkIyBpxqSkM
 
       # ── 8. Upload IPA as artifact (same as Android APK) ──────────────────────
       - name: Upload IPA artifact

@@ -123,66 +123,76 @@ function GlobalBookingListener() {
   const isInitialMount = useRef<boolean>(true);
 
   useEffect(() => {
-    if (!user) return;
-    const q = query(
-      collection(db, "bookings"),
-      where("customerId", "==", user.uid),
-      where("status", "in", ["assigned", "accepted", "en_route", "arrived", "in_progress", "completed"])
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      if (snap.empty) {
-        prevStatus.current = null;
-        activeBookingId.current = null;
-        isInitialMount.current = false;
-        return;
-      }
+    if (!user || !db) return;
+    try {
+      const q = query(
+        collection(db, "bookings"),
+        where("customerId", "==", user.uid),
+        where("status", "in", ["assigned", "accepted", "en_route", "arrived", "in_progress", "completed"])
+      );
+      const unsub = onSnapshot(
+        q,
+        (snap) => {
+          if (snap.empty) {
+            prevStatus.current = null;
+            activeBookingId.current = null;
+            isInitialMount.current = false;
+            return;
+          }
 
-      // Prioritize actively ongoing bookings first
-      const activeDoc = snap.docs.find((d) =>
-        ["in_progress", "arrived", "en_route", "accepted", "assigned"].includes(d.data().status)
-      ) || snap.docs[0];
+          // Prioritize actively ongoing bookings first
+          const activeDoc = snap.docs.find((d) =>
+            ["in_progress", "arrived", "en_route", "accepted", "assigned"].includes(d.data().status)
+          ) || snap.docs[0];
 
-      const data = activeDoc.data();
-      const newStatus = data.status;
-      const currentId = activeDoc.id;
+          const data = activeDoc.data();
+          const newStatus = data.status;
+          const currentId = activeDoc.id;
 
-      // On initial load, record initial state without firing transition notifications
-      if (isInitialMount.current) {
-        isInitialMount.current = false;
-        activeBookingId.current = currentId;
-        prevStatus.current = newStatus;
-        return;
-      }
+          // On initial load, record initial state without firing transition notifications
+          if (isInitialMount.current) {
+            isInitialMount.current = false;
+            activeBookingId.current = currentId;
+            prevStatus.current = newStatus;
+            return;
+          }
 
-      // If transition to arrived, fire notification!
-      if (
-        activeBookingId.current === currentId &&
-        prevStatus.current &&
-        prevStatus.current !== "arrived" &&
-        newStatus === "arrived"
-      ) {
-        if (data.otp) {
-          sendVendorArrivedOTPNotification(String(data.otp));
+          // If transition to arrived, fire notification!
+          if (
+            activeBookingId.current === currentId &&
+            prevStatus.current &&
+            prevStatus.current !== "arrived" &&
+            newStatus === "arrived"
+          ) {
+            if (data.otp) {
+              sendVendorArrivedOTPNotification(String(data.otp));
+            }
+          }
+
+          // ONLY when vendor explicitly completes the service in their app:
+          if (
+            activeBookingId.current === currentId &&
+            (prevStatus.current === "in_progress" || prevStatus.current === "arrived") &&
+            newStatus === "completed"
+          ) {
+            sendServiceCompletedNotification(data.serviceCategory ?? "Service").catch(console.log);
+            navigation.navigate("RatingFeedback", {
+              categoryId: data.serviceCategory,
+              subServiceId: data.subServiceName,
+            });
+          }
+
+          activeBookingId.current = currentId;
+          prevStatus.current = newStatus;
+        },
+        (error) => {
+          console.warn("[GlobalBookingListener] Snapshot error:", error);
         }
-      }
-
-      // ONLY when vendor explicitly completes the service in their app:
-      if (
-        activeBookingId.current === currentId &&
-        (prevStatus.current === "in_progress" || prevStatus.current === "arrived") &&
-        newStatus === "completed"
-      ) {
-        sendServiceCompletedNotification(data.serviceCategory ?? "Service").catch(console.log);
-        navigation.navigate("RatingFeedback", {
-          categoryId: data.serviceCategory,
-          subServiceId: data.subServiceName,
-        });
-      }
-
-      activeBookingId.current = currentId;
-      prevStatus.current = newStatus;
-    });
-    return () => unsub();
+      );
+      return () => unsub();
+    } catch (err) {
+      console.warn("[GlobalBookingListener] Setup error:", err);
+    }
   }, [user, navigation]);
 
   return null;
