@@ -790,7 +790,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         <View style={s.mapModalRoot}>
           <MapView
             style={s.mapModalView}
-            provider={PROVIDER_GOOGLE}
+            provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
             region={mapRegion}
             onRegionChangeComplete={(r) => {
               setMapRegion(r);

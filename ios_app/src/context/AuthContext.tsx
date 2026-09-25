@@ -23,32 +23,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [initializing, setInitializing] = useState(true);
   const [signingIn, setSigningIn] = useState(false);
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: GOOGLE_WEB_CLIENT_ID,
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
-  });
+  let authRequestHook: any = [null, null, async () => {}];
+  try {
+    authRequestHook = Google.useAuthRequest({
+      webClientId: GOOGLE_WEB_CLIENT_ID,
+      androidClientId: GOOGLE_ANDROID_CLIENT_ID,
+    });
+  } catch (err) {
+    console.warn("[AuthContext] Google.useAuthRequest error:", err);
+  }
+  const [request, response, promptAsync] = authRequestHook;
 
   useEffect(() => {
-    return onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
+    if (!auth) {
       setInitializing(false);
+      return;
+    }
+    try {
+      const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+        setUser(firebaseUser);
+        setInitializing(false);
 
-      if (firebaseUser) {
-        // Automatically request push token and save to user profile
-        try {
-          const token = await registerForPushNotifications();
-          if (token) {
-            await setDoc(
-              doc(db, "users", firebaseUser.uid),
-              { pushToken: token },
-              { merge: true }
-            );
+        if (firebaseUser && db) {
+          // Automatically request push token and save to user profile
+          try {
+            const token = await registerForPushNotifications();
+            if (token) {
+              await setDoc(
+                doc(db, "users", firebaseUser.uid),
+                { pushToken: token },
+                { merge: true }
+              );
+            }
+          } catch (e) {
+            console.warn("Failed to save push token", e);
           }
-        } catch (e) {
-          console.warn("Failed to save push token", e);
         }
-      }
-    });
+      });
+      return () => unsub();
+    } catch (err) {
+      console.warn("[AuthContext] onAuthStateChanged error:", err);
+      setInitializing(false);
+    }
   }, []);
 
   useEffect(() => {

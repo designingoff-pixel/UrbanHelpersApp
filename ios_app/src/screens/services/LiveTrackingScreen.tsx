@@ -388,7 +388,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
           <MapView
             ref={mapRef}
             style={s.map}
-            provider={PROVIDER_GOOGLE}
+            provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
             region={mapRegion}
             showsUserLocation={false}
             showsTraffic={false}

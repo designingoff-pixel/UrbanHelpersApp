@@ -58,7 +58,7 @@ export default function SplashScreen({ navigation }: Props) {
         if (!resolved) {
           resolved = true;
           unsubscribe();
-          if (auth.currentUser || isLocalLoggedIn === "true") {
+          if (auth?.currentUser || isLocalLoggedIn === "true") {
             navigation.reset({
               index: 0,
               routes: [{ name: "ServicesDashboard" }],

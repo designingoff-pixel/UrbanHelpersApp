@@ -157,10 +157,9 @@ export async function scheduleMedicineReminder(
       sound: true,
       data: { screen: "MedicationCenter", medicine: medicineName },
     },
-    trigger: {
-      date: getNextTriggerDate(hour, minute),
-      channelId: "medicine",
-    },
+    trigger: Platform.OS === "android"
+      ? { ...dailyTrigger(hour, minute), channelId: "medicine" }
+      : dailyTrigger(hour, minute),
   });
 }
 
@@ -201,9 +200,7 @@ export async function scheduleHydrationReminders(): Promise<void> {
       sound: true,
       data: { screen: "HydrationDashboard", channel: "wellness_default" },
     },
-    trigger: {
-      date: next2Hours,
-    } as any,
+    trigger: intervalTrigger(2 * 60 * 60),
   });
 }
 
@@ -275,10 +272,9 @@ export async function scheduleWorkoutReminder(
       sound: true,
       data: { screen: screenMap[workoutType] ?? "FitnessDashboard" },
     },
-    trigger: {
-      date: getNextTriggerDate(hour, minute),
-      channelId: "fitness",
-    },
+    trigger: Platform.OS === "android"
+      ? { ...dailyTrigger(hour, minute), channelId: "fitness" }
+      : dailyTrigger(hour, minute),
   });
 }
 
@@ -437,10 +433,9 @@ export async function scheduleSleepReminder(hour = 22, minute = 30): Promise<voi
       sound: true,
       data: { screen: "SleepDashboard", channel: "wellness_default" },
     },
-    trigger: {
-      date: getNextTriggerDate(hour, minute),
-      channelId: "fitness",
-    },
+    trigger: Platform.OS === "android"
+      ? { ...dailyTrigger(hour, minute), channelId: "fitness" }
+      : dailyTrigger(hour, minute),
   });
 }
 
@@ -457,10 +452,9 @@ export async function scheduleMorningHealthReminder(): Promise<void> {
       sound: true,
       data: { screen: "HealthDashboard", channel: "wellness_default" },
     },
-    trigger: {
-      date: getNextTriggerDate(7, 0),
-      channelId: "fitness",
-    },
+    trigger: Platform.OS === "android"
+      ? { ...dailyTrigger(7, 0), channelId: "fitness" }
+      : dailyTrigger(7, 0),
   });
 }
 
@@ -477,10 +471,9 @@ export async function scheduleCalorieReminder(): Promise<void> {
       sound: true,
       data: { screen: "CaloriesDashboard", channel: "wellness_default" },
     },
-    trigger: {
-      date: getNextTriggerDate(18, 0),
-      channelId: "fitness",
-    },
+    trigger: Platform.OS === "android"
+      ? { ...dailyTrigger(18, 0), channelId: "fitness" }
+      : dailyTrigger(18, 0),
   });
 }
 

@@ -53,9 +53,6 @@
     "ios": {
       "bundleIdentifier": "com.urbanhelpers.app",
       "supportsTablet": false,
-      "config": {
-        "googleMapsApiKey": "AIzaSyAMzsDmDdT2c7r5j1dWTSxev6XSHJZTf-s"
-      },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Urban Helpers needs your location to show your professional's route and find nearby helper services.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Urban Helpers uses your location to keep track of service requests and professional arrival.",
