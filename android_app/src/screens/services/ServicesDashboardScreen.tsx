@@ -56,13 +56,7 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
   const [locationModal, setLocationModal] = useState(false);
   const [sideMenuVisible, setSideMenuVisible] = useState(false);
 
-  const getRealtimeGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour >= 4 && hour < 12) return "Good Morning 👋";
-    if (hour >= 12 && hour < 17) return "Good Afternoon ☀️";
-    if (hour >= 17 && hour < 22) return "Good Evening 🌆";
-    return "Good Night 🌙";
-  };
+
 
   const getCategoryServiceCount = (catId: string) => {
     const found = SERVICE_CATEGORIES.find((c) => c.id === catId);
@@ -139,13 +133,6 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
             </View>
           </Animated.View>
 
-          {/* ── 2. Greeting Header ───────────────────────────────────── */}
-          <View style={s.greetingSection}>
-            <Text style={[s.greetingText, { color: colors.text }]}>{getRealtimeGreeting()}</Text>
-            <Text style={[s.greetingSubText, { color: colors.textSecondary }]}>
-              Make your home, life and health easier today.
-            </Text>
-          </View>
 
           {/* ── 3. Search Bar with Mic ───────────────────────────────── */}
           <View
@@ -881,14 +868,14 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
             {/* Other Services */}
             <Pressable
               style={s.moreServiceRow}
-              onPress={() => Alert.alert("Other Services", "Gardening, painting, sanitation, and deep sanitation.")}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "other" })}
             >
-              <View style={[s.moreServiceIcon, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#f1f5f9" }]}>
-                <Ionicons name="ellipsis-horizontal" size={18} color={colors.textSecondary} />
+              <View style={[s.moreServiceIcon, { backgroundColor: isDark ? "rgba(167,139,250,0.15)" : "#ede9fe" }]}>
+                <Ionicons name="ellipsis-horizontal" size={18} color="#7c3aed" />
               </View>
               <View style={s.moreServiceTextWrap}>
                 <Text style={[s.moreServiceName, { color: colors.text }]}>Other Services</Text>
-                <Text style={[s.moreServiceDesc, { color: colors.textMuted }]}>And many more...</Text>
+                <Text style={[s.moreServiceDesc, { color: colors.textMuted }]}>Gardening, painting, sanitation & more</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </Pressable>
@@ -1198,22 +1185,6 @@ const s = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // ── Greeting ───────────────────────────────────────────────────
-  greetingSection: {
-    paddingHorizontal: 16,
-    marginTop: 10,
-    marginBottom: 12,
-  },
-  greetingText: {
-    fontSize: 27,
-    fontWeight: "800",
-    letterSpacing: -0.3,
-  },
-  greetingSubText: {
-    fontSize: 14,
-    marginTop: 3,
-    lineHeight: 20,
-  },
 
   // ── Search Bar ─────────────────────────────────────────────────
   searchContainer: {

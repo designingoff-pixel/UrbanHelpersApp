@@ -1,10 +1,13 @@
 import {
   addDoc,
   collection,
+  doc,
+  getDoc,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
+  updateDoc,
   where,
 } from "firebase/firestore";
 import { db } from "@/services/firebase";
@@ -91,5 +94,75 @@ export function subscribeToUserBookings(
     onChange(
       snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Booking))
     );
+  });
+}
+
+// ─── Cancellation ─────────────────────────────────────────────────────────────
+
+export type CancellationReason =
+  | "Changed my mind"
+  | "Found another service"
+  | "Booked by mistake"
+  | "Service no longer required"
+  | "Other";
+
+export const CANCELLATION_REASONS: CancellationReason[] = [
+  "Changed my mind",
+  "Found another service",
+  "Booked by mistake",
+  "Service no longer required",
+  "Other",
+];
+
+/** Statuses that are no longer eligible for customer cancellation. */
+const NON_CANCELLABLE_STATUSES = new Set<BookingStatus>(["completed", "cancelled"]);
+
+/**
+ * Cancels a booking in Firestore.
+ *
+ * Safety guarantees:
+ *  - Ownership: verifies the booking's customerId matches the caller's uid.
+ *  - Race-condition guard: re-fetches the live document status immediately
+ *    before writing, rejecting if the status has changed to non-cancellable.
+ *  - No local-only mutation: only updates the UI indirectly via the live
+ *    onSnapshot subscription in subscribeToUserBookings.
+ *
+ * @throws Error with descriptive message on ownership, status, or network failure.
+ */
+export async function cancelBooking(
+  bookingId: string,
+  callerUid: string,
+  reason: CancellationReason
+): Promise<void> {
+  const bookingRef = doc(db, "bookings", bookingId);
+
+  // Re-fetch the live document to guard against race conditions.
+  const snap = await getDoc(bookingRef);
+  if (!snap.exists()) {
+    throw new Error("Booking not found.");
+  }
+
+  const data = snap.data() as Booking;
+
+  // Ownership check — customer may only cancel their own bookings.
+  if (data.customerId !== callerUid) {
+    throw new Error("You are not authorised to cancel this booking.");
+  }
+
+  // Status validation — re-confirm eligibility using the live value.
+  if (NON_CANCELLABLE_STATUSES.has(data.status)) {
+    throw new Error(
+      data.status === "cancelled"
+        ? "This booking has already been cancelled."
+        : "This booking cannot be cancelled because it is already completed."
+    );
+  }
+
+  // Persist the cancellation.
+  await updateDoc(bookingRef, {
+    status: "cancelled" as BookingStatus,
+    cancellationReason: reason,
+    cancelledAt: serverTimestamp(),
+    cancelledBy: "customer",
   });
 }

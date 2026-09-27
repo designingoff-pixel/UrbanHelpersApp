@@ -194,4 +194,46 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
       { id: "cl-disinfect",name: "Disinfectant Service",  price: "₹999",  duration: "2 hrs",   description: "EPA-grade disinfectant spray throughout the home." },
     ],
   },
+  // ─── Other Services ──────────────────────────────────────────────────────────
+  {
+    id: "other",
+    name: "Other Services",
+    icon: "ellipsis-horizontal-circle",
+    gradient: ["#6d28d9", "#a78bfa"],
+    accent: "#a78bfa",
+    tagline: "More ways we can help you",
+    subServices: [
+      {
+        id: "oth-garden",
+        name: "Gardening",
+        price: "₹599",
+        duration: "2 hrs",
+        description: "Expert gardeners for pruning, weeding, lawn mowing and general garden upkeep.",
+        popular: true,
+      },
+      {
+        id: "oth-paint",
+        name: "Painting",
+        price: "₹2,499",
+        duration: "1 day",
+        description: "Interior and exterior painting with premium quality paint — walls, ceilings and trims.",
+      },
+      {
+        id: "oth-sanit",
+        name: "Sanitation",
+        price: "₹799",
+        duration: "90 min",
+        description: "Professional sanitation of bathrooms, kitchens, drains and waste areas.",
+      },
+      {
+        id: "oth-deep-sanit",
+        name: "Deep Sanitation",
+        price: "₹1,499",
+        duration: "3 hrs",
+        description: "Comprehensive deep sanitation and hygiene treatment for the entire home.",
+        popular: true,
+      },
+    ],
+  },
 ];
+

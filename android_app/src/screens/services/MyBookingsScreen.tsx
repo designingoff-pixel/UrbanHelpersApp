@@ -17,7 +17,14 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 import { useAuth } from "@/context/AuthContext";
-import { Booking, BookingStatus, subscribeToUserBookings } from "@/services/bookingService";
+import {
+  Booking,
+  BookingStatus,
+  CancellationReason,
+  CANCELLATION_REASONS,
+  cancelBooking,
+  subscribeToUserBookings,
+} from "@/services/bookingService";
 import { SERVICE_CATEGORIES } from "./servicesData";
 
 type Props = NativeStackScreenProps<RootStackParamList, "MyBookings">;
@@ -64,6 +71,17 @@ const STATUS_LABELS: Record<BookingStatus, string> = {
   cancelled: "Cancelled",
 };
 
+/** Statuses for which the customer is allowed to request cancellation. */
+const CANCELLABLE_STATUSES = new Set<BookingStatus>([
+  "requested",
+  "assigned",
+  "accepted",
+]);
+
+function isCancellable(status: BookingStatus): boolean {
+  return CANCELLABLE_STATUSES.has(status);
+}
+
 export default function MyBookingsScreen({ navigation }: Props) {
   const { user } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -73,6 +91,41 @@ export default function MyBookingsScreen({ navigation }: Props) {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("All");
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [selectedInvoiceBooking, setSelectedInvoiceBooking] = useState<Booking | null>(null);
+
+  // ── Cancellation state ────────────────────────────────────────────────────
+  const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
+  const [cancelReason, setCancelReason] = useState<CancellationReason>("Changed my mind");
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
+  const openCancelModal = (booking: Booking) => {
+    setCancelTarget(booking);
+    setCancelReason("Changed my mind");
+    setCancelError(null);
+  };
+
+  const closeCancelModal = () => {
+    if (cancelLoading) return; // prevent closing while request is in-flight
+    setCancelTarget(null);
+    setCancelError(null);
+  };
+
+  const confirmCancellation = async () => {
+    if (!cancelTarget || !user) return;
+    setCancelLoading(true);
+    setCancelError(null);
+    try {
+      await cancelBooking(cancelTarget.id, user.uid, cancelReason);
+      // The live onSnapshot subscription will automatically refresh the list.
+      setCancelTarget(null);
+    } catch (err: any) {
+      const message: string =
+        err?.message ?? "Unable to cancel the booking. Please try again.";
+      setCancelError(message);
+    } finally {
+      setCancelLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!user) {
@@ -258,19 +311,30 @@ export default function MyBookingsScreen({ navigation }: Props) {
                     </View>
                   )}
 
-                  {/* Footer with Invoice ID & View Bill CTA */}
+                  {/* Footer with Invoice ID, Cancel & View Bill CTA */}
                   <View style={s.footerRow}>
                     <View style={s.invoiceBadge}>
                       <Ionicons name="receipt-outline" size={12} color="#00bcd4" />
                       <Text style={s.invoiceText}>{invoiceId}</Text>
                     </View>
-                    <Pressable
-                      style={s.billBtn}
-                      onPress={() => setSelectedInvoiceBooking(booking)}
-                    >
-                      <Ionicons name="document-text-outline" size={13} color="#ffffff" />
-                      <Text style={s.billBtnText}>View Bill</Text>
-                    </Pressable>
+                    <View style={s.footerActions}>
+                      {isCancellable(booking.status) && (
+                        <Pressable
+                          style={s.cancelBtn}
+                          onPress={() => openCancelModal(booking)}
+                        >
+                          <Ionicons name="close-circle-outline" size={13} color="#ef4444" />
+                          <Text style={s.cancelBtnText}>Cancel</Text>
+                        </Pressable>
+                      )}
+                      <Pressable
+                        style={s.billBtn}
+                        onPress={() => setSelectedInvoiceBooking(booking)}
+                      >
+                        <Ionicons name="document-text-outline" size={13} color="#ffffff" />
+                        <Text style={s.billBtnText}>View Bill</Text>
+                      </Pressable>
+                    </View>
                   </View>
                 </View>
               </View>
@@ -287,6 +351,98 @@ export default function MyBookingsScreen({ navigation }: Props) {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* ── Cancel Booking Confirmation Modal ──────────────────────────────── */}
+      <Modal
+        visible={!!cancelTarget}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={closeCancelModal}
+      >
+        <View style={s.modalOverlay}>
+          <View style={s.cancelModalCard}>
+            {/* Header */}
+            <View style={s.cancelModalHeader}>
+              <View style={s.cancelModalIconWrap}>
+                <Ionicons name="alert-circle-outline" size={26} color="#ef4444" />
+              </View>
+              <Text style={s.cancelModalTitle}>Cancel Booking?</Text>
+              <Text style={s.cancelModalSub}>
+                Are you sure you want to cancel this booking?
+              </Text>
+            </View>
+
+            {/* Booking summary */}
+            {cancelTarget && (
+              <View style={s.cancelBookingSummary}>
+                <Text style={s.cancelBookingService}>
+                  {cancelTarget.serviceCategory}
+                </Text>
+                <Text style={s.cancelBookingSubService}>
+                  {cancelTarget.subServiceName}
+                </Text>
+                <Text style={s.cancelBookingInvoice}>
+                  {`INV-${cancelTarget.id.slice(-8).toUpperCase()}`}
+                </Text>
+              </View>
+            )}
+
+            {/* Cancellation reason picker */}
+            <Text style={s.cancelReasonLabel}>Reason for cancellation</Text>
+            {CANCELLATION_REASONS.map((r) => (
+              <Pressable
+                key={r}
+                style={[
+                  s.cancelReasonOption,
+                  cancelReason === r && s.cancelReasonOptionActive,
+                ]}
+                onPress={() => setCancelReason(r)}
+              >
+                <View style={[
+                  s.cancelReasonRadio,
+                  cancelReason === r && s.cancelReasonRadioActive,
+                ]}>
+                  {cancelReason === r && <View style={s.cancelReasonRadioDot} />}
+                </View>
+                <Text style={[
+                  s.cancelReasonText,
+                  cancelReason === r && s.cancelReasonTextActive,
+                ]}>{r}</Text>
+              </Pressable>
+            ))}
+
+            {/* Error message */}
+            {cancelError && (
+              <View style={s.cancelErrorBanner}>
+                <Ionicons name="warning-outline" size={14} color="#fca5a5" />
+                <Text style={s.cancelErrorText}>{cancelError}</Text>
+              </View>
+            )}
+
+            {/* Action buttons */}
+            <View style={s.cancelActionRow}>
+              <Pressable
+                style={[s.keepBtn, cancelLoading && { opacity: 0.5 }]}
+                onPress={closeCancelModal}
+                disabled={cancelLoading}
+              >
+                <Text style={s.keepBtnText}>Keep Booking</Text>
+              </Pressable>
+              <Pressable
+                style={[s.confirmCancelBtn, cancelLoading && { opacity: 0.7 }]}
+                onPress={confirmCancellation}
+                disabled={cancelLoading}
+              >
+                {cancelLoading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text style={s.confirmCancelBtnText}>Cancel Booking</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Category Filter Modal */}
       <Modal
@@ -534,12 +690,34 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    flexShrink: 1,
   },
   invoiceText: {
     fontSize: 11,
     fontWeight: "700",
     color: "#00bcd4",
     letterSpacing: 0.5,
+  },
+  footerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  cancelBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(239, 68, 68, 0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(239, 68, 68, 0.3)",
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  cancelBtnText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#ef4444",
   },
   billBtn: {
     flexDirection: "row",
@@ -554,6 +732,162 @@ const s = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     color: "#00bcd4",
+  },
+
+  // ── Cancel Booking Modal ────────────────────────────────────────────────
+  cancelModalCard: {
+    width: "100%",
+    backgroundColor: "#0f1e2e",
+    borderRadius: 24,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: "rgba(239,68,68,0.25)",
+    elevation: 12,
+  },
+  cancelModalHeader: {
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  cancelModalIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "rgba(239,68,68,0.12)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  cancelModalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#ffffff",
+    marginBottom: 4,
+  },
+  cancelModalSub: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.55)",
+    textAlign: "center",
+    lineHeight: 18,
+  },
+  cancelBookingSummary: {
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    gap: 2,
+  },
+  cancelBookingService: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+  cancelBookingSubService: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.55)",
+  },
+  cancelBookingInvoice: {
+    fontSize: 11,
+    color: "#00bcd4",
+    fontWeight: "600",
+    marginTop: 4,
+  },
+  cancelReasonLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.6)",
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    textTransform: "uppercase",
+  },
+  cancelReasonOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    marginBottom: 4,
+  },
+  cancelReasonOptionActive: {
+    backgroundColor: "rgba(239,68,68,0.08)",
+  },
+  cancelReasonRadio: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.25)",
+    justifyContent: "center",
+    alignItems: "center",
+    flexShrink: 0,
+  },
+  cancelReasonRadioActive: {
+    borderColor: "#ef4444",
+  },
+  cancelReasonRadioDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#ef4444",
+  },
+  cancelReasonText: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.7)",
+  },
+  cancelReasonTextActive: {
+    color: "#ffffff",
+    fontWeight: "600",
+  },
+  cancelErrorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(239,68,68,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(239,68,68,0.3)",
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 10,
+  },
+  cancelErrorText: {
+    fontSize: 12,
+    color: "#fca5a5",
+    flex: 1,
+    lineHeight: 16,
+  },
+  cancelActionRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 18,
+  },
+  keepBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+  },
+  keepBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.8)",
+  },
+  confirmCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "#dc2626",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 44,
+  },
+  confirmCancelBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#ffffff",
   },
   emptyHint: { alignItems: "center", gap: 8, marginTop: 16, paddingVertical: 24 },
   emptyHintText: { fontSize: 13, color: "rgba(255,255,255,0.4)", textAlign: "center", paddingHorizontal: 24 },
