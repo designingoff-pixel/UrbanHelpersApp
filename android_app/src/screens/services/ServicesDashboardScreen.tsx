@@ -87,54 +87,80 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
       />
 
       {/* ═════════════════════════════════════════════════════════════════════════
-          VIEW 1: MAIN HOME SERVICES (Matching Left Screenshot)
+          VIEW 1: MAIN HOME (Reference Screenshot Style)
           ═════════════════════════════════════════════════════════════════════════ */}
       {activeView === "main" ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={s.scrollContent}
         >
-          {/* ── 1. Top Three-Line Menu & Brand Bar ────────────────────────── */}
-          <Animated.View style={[s.topBar, headerStyle]}>
-            <View style={s.topBarLeftRow}>
-              <Pressable
-                style={[s.menuHamburgerBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#f1f5f9" }]}
-                onPress={() => setSideMenuVisible(true)}
-              >
-                <Ionicons name="menu" size={24} color={colors.text} />
-              </Pressable>
-              <View style={s.brandCol}>
-                <Text style={[s.brandTitleText, { color: colors.text }]}>Urban Services</Text>
-                <Text style={[s.brandSubtitleText, { color: colors.textMuted }]}>
-                  Home & Living Solutions
+          {/* ── 1. HERO HEADER — deep green gradient, full-width ──────── */}
+          <LinearGradient
+            colors={["#064e3b", "#065f46", "#047857"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.mainHeroHeader}
+          >
+            {/* Top Bar: hamburger + brand + icons */}
+            <Animated.View style={[s.heroTopBar, headerStyle]}>
+              <View style={s.heroTopBarLeft}>
+                <Pressable
+                  style={s.heroHamburgerBtn}
+                  onPress={() => setSideMenuVisible(true)}
+                >
+                  <Ionicons name="menu" size={24} color="#ffffff" />
+                </Pressable>
+                <View>
+                  <Text style={s.heroBrandTitle}>Urban Services</Text>
+                  <Text style={s.heroBrandSub}>Home &amp; Living Solutions</Text>
+                </View>
+              </View>
+              <View style={s.heroTopBarIcons}>
+                <Pressable
+                  style={s.heroIconBtn}
+                  onPress={() => navigation.navigate("Notifications")}
+                >
+                  <Ionicons name="notifications-outline" size={20} color="#ffffff" />
+                  <View style={s.notifDot} />
+                </Pressable>
+                <Pressable
+                  style={s.heroAvatarCircle}
+                  onPress={() => navigation.navigate("Profile")}
+                >
+                  <LinearGradient colors={["#00c6aa", "#0f9b8e"]} style={s.avatarInner}>
+                    <Text style={s.avatarInitial}>{firstName.charAt(0).toUpperCase()}</Text>
+                  </LinearGradient>
+                </Pressable>
+              </View>
+            </Animated.View>
+
+            {/* Hero Heading + Illustration */}
+            <View style={s.heroContentRow}>
+              <View style={s.heroTextCol}>
+                <Text style={s.heroMainTitle}>Make Your{"\n"}Home Better</Text>
+                <Text style={s.heroMainSubtitle}>
+                  Find the right service for your home, health and lifestyle.
                 </Text>
+                <Pressable style={s.heroExploreBtn} onPress={() => setActiveView("explore")}>
+                  <Text style={s.heroExploreBtnText}>Explore Services</Text>
+                  <Ionicons name="arrow-forward" size={13} color="#ffffff" />
+                </Pressable>
+              </View>
+
+              {/* House illustration reused from explore view */}
+              <View style={s.houseIllustration}>
+                <View style={s.houseRoof} />
+                <View style={s.houseWalls}>
+                  <View style={s.houseDoor} />
+                  <View style={s.houseWindow} />
+                </View>
+                <View style={s.houseChimney} />
+                <View style={s.houseLawn} />
               </View>
             </View>
+          </LinearGradient>
 
-            <View style={s.topBarIcons}>
-              {/* Notification bell */}
-              <Pressable
-                style={[s.iconBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#f1f5f9" }]}
-                onPress={() => navigation.navigate("Notifications")}
-              >
-                <Ionicons name="notifications-outline" size={20} color={colors.text} />
-                <View style={s.notifDot} />
-              </Pressable>
-
-              {/* Avatar circle */}
-              <Pressable
-                style={[s.avatarCircle, { borderColor: colors.primary }]}
-                onPress={() => navigation.navigate("Profile")}
-              >
-                <LinearGradient colors={["#00c6aa", "#0f9b8e"]} style={s.avatarInner}>
-                  <Text style={s.avatarInitial}>{firstName.charAt(0).toUpperCase()}</Text>
-                </LinearGradient>
-              </Pressable>
-            </View>
-          </Animated.View>
-
-
-          {/* ── 3. Search Bar with Mic ───────────────────────────────── */}
+          {/* ── 2. SEARCH BAR ────────────────────────────────────────── */}
           <View
             style={[
               s.searchContainer,
@@ -161,96 +187,178 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
             </Pressable>
           </View>
 
-          {/* ── 4. Hero Banner ("A Cleaner Home, A Healthier You") ───── */}
-          <View style={s.heroCardWrapper}>
-            <LinearGradient
-              colors={isDark ? ["#064e3b", "#065f46", "#047857"] : ["#ebfbee", "#d3f9d8", "#c3fae8"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={s.heroCard}
-            >
-              {/* Left Content */}
-              <View style={s.heroLeftCol}>
-                <View style={s.heroPill}>
-                  <Ionicons name="sparkles" size={12} color="#f59e0b" />
-                  <Text style={s.heroPillText}>Premium Care</Text>
-                </View>
-
-                <Text style={[s.heroHeading, { color: isDark ? "#ffffff" : "#134e4a" }]}>
-                  A Cleaner Home,{"\n"}A Healthier You
-                </Text>
-
-                <Text style={[s.heroTagline, { color: isDark ? "rgba(255,255,255,0.85)" : "#2d3748" }]}>
-                  Trusted professionals.{"\n"}Quality service. Guaranteed.
-                </Text>
-
+          {/* ── 3. CATEGORY FILTER PILLS (horizontal scroll) ─────────── */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.exploreChipsRow}
+          >
+            {EXPLORE_CHIPS.map((ch) => {
+              const isActive = exploreFilter === ch.id;
+              return (
                 <Pressable
-                  style={s.heroBookBtn}
-                  onPress={() => setActiveView("explore")}
+                  key={ch.id}
+                  onPress={() => setExploreFilter(ch.id)}
+                  style={[
+                    s.exploreChip,
+                    isActive
+                      ? s.exploreChipActive
+                      : {
+                          backgroundColor: isDark ? "#161f2e" : "#ffffff",
+                          borderColor: colors.cardBorder,
+                        },
+                  ]}
                 >
-                  <Text style={s.heroBookText}>Book Now</Text>
-                  <Ionicons name="arrow-forward" size={14} color="#ffffff" />
+                  <Ionicons
+                    name={ch.icon}
+                    size={15}
+                    color={isActive ? "#ffffff" : colors.textSecondary}
+                  />
+                  <Text
+                    style={[
+                      s.exploreChipText,
+                      { color: isActive ? "#ffffff" : colors.textSecondary },
+                    ]}
+                  >
+                    {ch.label}
+                  </Text>
                 </Pressable>
-              </View>
+              );
+            })}
+          </ScrollView>
 
-              {/* Right Illustration: Cozy Sofa & Houseplant 3D graphic */}
-              <View style={s.heroIllustrationWrap}>
-                <View style={s.plantLeaf1} />
-                <View style={s.plantLeaf2} />
-                <View style={s.sofaBack}>
-                  <View style={s.sofaCushionLeft} />
-                  <View style={s.sofaCushionRight} />
-                  <View style={s.sofaPillow} />
-                </View>
-                <View style={s.sofaBase} />
-              </View>
-            </LinearGradient>
+          {/* ── 4. SERVICE CATEGORIES GRID ───────────────────────────── */}
+          <View style={s.sectionHeader}>
+            <Text style={[s.sectionTitle, { color: colors.text }]}>Service Categories</Text>
+            <Pressable style={s.seeAllBtn} onPress={() => setActiveView("explore")}>
+              <Text style={s.seeAllText}>See All</Text>
+              <Ionicons name="arrow-forward" size={14} color="#059669" />
+            </Pressable>
           </View>
 
-          {/* ── 5. Quick Actions Row (4 Circular Icon Cards) ─────────── */}
-          <View style={s.quickActionsRow}>
-            {/* My Bookings */}
+          <View style={s.exploreCatGrid}>
+            {/* 1. Home Cleaning */}
             <Pressable
-              style={s.quickActionCard}
-              onPress={() => navigation.navigate("MyBookings")}
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ebfbee" }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "cleaning" })}
             >
-              <View style={[s.quickActionCircle, { backgroundColor: "#e8f5e9" }]}>
+              <View style={s.exploreCatImageWrap}>
+                <Image source={SERVICE_LOCAL_IMAGES.cleaning} style={s.exploreCatImage} resizeMode="cover" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]}>Home Cleaning</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("cleaning")}</Text>
+            </Pressable>
+
+            {/* 2. RO Service */}
+            <Pressable
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#e0f2fe" }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "ro" })}
+            >
+              <View style={s.exploreCatImageWrap}>
+                <Image source={SERVICE_LOCAL_IMAGES.ro} style={s.exploreCatImage} resizeMode="cover" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]}>RO Service</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("ro")}</Text>
+            </Pressable>
+
+            {/* 3. Pest Control */}
+            <Pressable
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#fef3c7" }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "pest" })}
+            >
+              <View style={s.exploreCatImageWrap}>
+                <Image source={SERVICE_LOCAL_IMAGES.pest} style={s.exploreCatImage} resizeMode="cover" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]}>Pest Control</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("pest")}</Text>
+            </Pressable>
+
+            {/* 4. Pet Care */}
+            <Pressable
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffe4e6" }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "pet" })}
+            >
+              <View style={s.exploreCatImageWrap}>
+                <Image source={SERVICE_LOCAL_IMAGES.pet} style={s.exploreCatImage} resizeMode="cover" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]}>Pet Care</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("pet")}</Text>
+            </Pressable>
+
+            {/* 5. Horticulture */}
+            <Pressable
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ecfdf5" }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "hort" })}
+            >
+              <View style={s.exploreCatImageWrap}>
+                <Image source={SERVICE_LOCAL_IMAGES.horticulture} style={s.exploreCatImage} resizeMode="cover" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]}>Horticulture</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("hort")}</Text>
+            </Pressable>
+
+            {/* 6. Appliances */}
+            <Pressable
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#fff7ed" }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "appliance" })}
+            >
+              <View style={s.exploreCatImageWrap}>
+                <Image source={SERVICE_LOCAL_IMAGES.appliances} style={s.exploreCatImage} resizeMode="cover" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]}>Appliances</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("appliance")}</Text>
+            </Pressable>
+
+            {/* 7. Home Care */}
+            <Pressable
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#f0fdfa" }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "homecare" })}
+            >
+              <View style={s.exploreCatImageWrap}>
+                <Image source={SERVICE_LOCAL_IMAGES.homecare} style={s.exploreCatImage} resizeMode="cover" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]}>Home Care</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("homecare")}</Text>
+            </Pressable>
+
+            {/* 8. Emergency */}
+            <Pressable
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#fef2f2" }]}
+              onPress={() => navigation.navigate("EmergencyAssistance")}
+            >
+              <View style={s.exploreCatImageWrap}>
+                <Image source={SERVICE_LOCAL_IMAGES.emergency} style={s.exploreCatImage} resizeMode="cover" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]}>Emergency</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("emergency")}</Text>
+            </Pressable>
+          </View>
+
+          {/* ── 5. QUICK ACTIONS ROW ─────────────────────────────────── */}
+          <View style={s.quickActionsRow}>
+            <Pressable style={s.quickActionCard} onPress={() => navigation.navigate("MyBookings")}>
+              <View style={[s.quickActionCircle, { backgroundColor: "rgba(16,185,129,0.15)" }]}>
                 <Ionicons name="calendar" size={22} color="#10b981" />
               </View>
               <Text style={[s.quickActionTitle, { color: colors.text }]}>My Bookings</Text>
-              <Text style={[s.quickActionSub, { color: colors.textMuted }]}>View & manage</Text>
+              <Text style={[s.quickActionSub, { color: colors.textMuted }]}>View &amp; manage</Text>
             </Pressable>
-
-            {/* Track */}
-            <Pressable
-              style={s.quickActionCard}
-              onPress={() => navigation.navigate("LiveTracking")}
-            >
-              <View style={[s.quickActionCircle, { backgroundColor: "#f3e8ff" }]}>
+            <Pressable style={s.quickActionCard} onPress={() => navigation.navigate("LiveTracking")}>
+              <View style={[s.quickActionCircle, { backgroundColor: "rgba(139,92,246,0.15)" }]}>
                 <Ionicons name="location" size={22} color="#8b5cf6" />
               </View>
               <Text style={[s.quickActionTitle, { color: colors.text }]}>Track</Text>
               <Text style={[s.quickActionSub, { color: colors.textMuted }]}>Live tracking</Text>
             </Pressable>
-
-            {/* Offers */}
-            <Pressable
-              style={s.quickActionCard}
-              onPress={() => navigation.navigate("Offers")}
-            >
-              <View style={[s.quickActionCircle, { backgroundColor: "#fef3c7" }]}>
+            <Pressable style={s.quickActionCard} onPress={() => navigation.navigate("Offers")}>
+              <View style={[s.quickActionCircle, { backgroundColor: "rgba(245,158,11,0.15)" }]}>
                 <Ionicons name="gift" size={22} color="#f59e0b" />
               </View>
               <Text style={[s.quickActionTitle, { color: colors.text }]}>Offers</Text>
               <Text style={[s.quickActionSub, { color: colors.textMuted }]}>Save more</Text>
             </Pressable>
-
-            {/* Emergency */}
-            <Pressable
-              style={s.quickActionCard}
-              onPress={() => navigation.navigate("EmergencyAssistance")}
-            >
-              <View style={[s.quickActionCircle, { backgroundColor: "#fee2e2" }]}>
+            <Pressable style={s.quickActionCard} onPress={() => navigation.navigate("EmergencyAssistance")}>
+              <View style={[s.quickActionCircle, { backgroundColor: "rgba(239,68,68,0.15)" }]}>
                 <Text style={s.emergencyText}>SOS</Text>
               </View>
               <Text style={[s.quickActionTitle, { color: colors.text }]}>Emergency</Text>
@@ -258,195 +366,28 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
             </Pressable>
           </View>
 
-          {/* ── 6. Popular Services Section Header ───────────────────── */}
-          <View style={s.sectionHeader}>
-            <Text style={[s.sectionTitle, { color: colors.text }]}>Popular Services</Text>
-            <Pressable
-              style={s.seeAllBtn}
-              onPress={() => setActiveView("explore")}
-            >
-              <Text style={s.seeAllText}>See All</Text>
-              <Ionicons name="arrow-forward" size={14} color="#059669" />
-            </Pressable>
-          </View>
-
-          {/* ── 7. 2×2 Grid of Curved Illustrated Cards ──────────────── */}
-          <View style={s.servicesGrid}>
-            {/* 1. Home Cleaning */}
-            <Pressable
-              style={[s.serviceCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "cleaning" })}
-            >
-              <View style={s.cardWaveHeader}>
-                <Image
-                  source={SERVICE_LOCAL_IMAGES.cleaning}
-                  style={s.cardImage}
-                  resizeMode="cover"
-                />
-                <LinearGradient
-                  colors={["transparent", "rgba(5,150,105,0.7)"]}
-                  style={StyleSheet.absoluteFillObject}
-                />
-              </View>
-
-              <View style={s.cardBody}>
-                <View style={s.cardBadgeIcon}>
-                  <Ionicons name="sparkles" size={17} color="#059669" />
-                </View>
-                <Text style={[s.cardServiceName, { color: colors.text }]}>Home Cleaning</Text>
-                <Text style={[s.cardServiceTagline, { color: colors.textMuted }]}>
-                  Spotless home,{"\n"}happy life
-                </Text>
-                <View style={[s.cardPillBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#f0fdf4" }]}>
-                  <Text style={[s.cardPillBtnText, { color: "#059669" }]}>{getCategoryServiceCount("cleaning")}</Text>
-                  <Ionicons name="arrow-forward" size={12} color="#059669" />
-                </View>
-              </View>
-            </Pressable>
-
-            {/* 2. RO Service */}
-            <Pressable
-              style={[s.serviceCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "ro" })}
-            >
-              <View style={s.cardWaveHeader}>
-                <Image
-                  source={SERVICE_LOCAL_IMAGES.ro}
-                  style={s.cardImage}
-                  resizeMode="cover"
-                />
-                <LinearGradient
-                  colors={["transparent", "rgba(2,132,199,0.7)"]}
-                  style={StyleSheet.absoluteFillObject}
-                />
-              </View>
-
-              <View style={s.cardBody}>
-                <View style={s.cardBadgeIcon}>
-                  <Ionicons name="water" size={17} color="#0284c7" />
-                </View>
-                <Text style={[s.cardServiceName, { color: colors.text }]}>RO Service</Text>
-                <Text style={[s.cardServiceTagline, { color: colors.textMuted }]}>
-                  Pure water,{"\n"}every drop
-                </Text>
-                <View style={[s.cardPillBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#f0f9ff" }]}>
-                  <Text style={[s.cardPillBtnText, { color: "#0284c7" }]}>{getCategoryServiceCount("ro")}</Text>
-                  <Ionicons name="arrow-forward" size={12} color="#0284c7" />
-                </View>
-              </View>
-            </Pressable>
-
-            {/* 3. Pest Control */}
-            <Pressable
-              style={[s.serviceCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "pest" })}
-            >
-              <View style={s.cardWaveHeader}>
-                <Image
-                  source={SERVICE_LOCAL_IMAGES.pest}
-                  style={s.cardImage}
-                  resizeMode="cover"
-                />
-                <LinearGradient
-                  colors={["transparent", "rgba(217,119,6,0.7)"]}
-                  style={StyleSheet.absoluteFillObject}
-                />
-              </View>
-
-              <View style={s.cardBody}>
-                <View style={s.cardBadgeIcon}>
-                  <Ionicons name="shield-checkmark" size={17} color="#d97706" />
-                </View>
-                <Text style={[s.cardServiceName, { color: colors.text }]}>Pest Control</Text>
-                <Text style={[s.cardServiceTagline, { color: colors.textMuted }]}>
-                  Your home,{"\n"}pest-free
-                </Text>
-                <View style={[s.cardPillBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#fffbeb" }]}>
-                  <Text style={[s.cardPillBtnText, { color: "#d97706" }]}>{getCategoryServiceCount("pest")}</Text>
-                  <Ionicons name="arrow-forward" size={12} color="#d97706" />
-                </View>
-              </View>
-            </Pressable>
-
-            {/* 4. Pet Care */}
-            <Pressable
-              style={[s.serviceCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "pet" })}
-            >
-              <View style={s.cardWaveHeader}>
-                <Image
-                  source={SERVICE_LOCAL_IMAGES.pet}
-                  style={s.cardImage}
-                  resizeMode="cover"
-                />
-                <LinearGradient
-                  colors={["transparent", "rgba(225,29,72,0.7)"]}
-                  style={StyleSheet.absoluteFillObject}
-                />
-              </View>
-
-              <View style={s.cardBody}>
-                <View style={s.cardBadgeIcon}>
-                  <Ionicons name="paw" size={17} color="#e11d48" />
-                </View>
-                <Text style={[s.cardServiceName, { color: colors.text }]}>Pet Care</Text>
-                <Text style={[s.cardServiceTagline, { color: colors.textMuted }]}>
-                  Love them{"\n"}the right way
-                </Text>
-                <View style={[s.cardPillBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#fff1f2" }]}>
-                  <Text style={[s.cardPillBtnText, { color: "#e11d48" }]}>{getCategoryServiceCount("pet")}</Text>
-                  <Ionicons name="arrow-forward" size={12} color="#e11d48" />
-                </View>
-              </View>
-            </Pressable>
-          </View>
-
-          {/* ── 8. Purple "Get Premium Benefits" Banner ─────────────── */}
+          {/* ── 6. PROMOTIONAL OFFERS BANNER ─────────────────────────── */}
           <LinearGradient
-            colors={["#4338ca", "#5850ec", "#7c3aed"]}
+            colors={["#1e3a8a", "#1d4ed8", "#2563eb"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={s.premiumBanner}
+            style={s.offersPromoCard}
           >
-            <View style={s.crownIconBadge}>
-              <Ionicons name="ribbon" size={20} color="#fbbf24" />
+            <View style={s.offersPromoLeft}>
+              <Text style={s.offersPromoTitle}>Save More with{"\n"}Exclusive Offers</Text>
+              <Text style={s.offersPromoSub}>Get the best deals on your favourite services.</Text>
+              <Pressable style={s.offersPromoBtn} onPress={() => navigation.navigate("Offers")}>
+                <Text style={s.offersPromoBtnText}>View Offers</Text>
+              </Pressable>
             </View>
-            <View style={s.premiumTextWrap}>
-              <Text style={s.premiumTitle}>Get Premium Benefits</Text>
-              <Text style={s.premiumSub}>Exclusive deals • Priority booking • More</Text>
+            <View style={s.giftBoxWrap}>
+              <View style={s.giftBoxRibbonH} />
+              <View style={s.giftBoxRibbonV} />
+              <View style={s.giftBoxBow} />
+              <Ionicons name="sparkles" size={14} color="#fde047" style={s.giftSparkle1} />
+              <Ionicons name="sparkles" size={10} color="#67e8f9" style={s.giftSparkle2} />
             </View>
-            <Pressable
-              style={s.viewPlansBtn}
-              onPress={() => Alert.alert("Premium Membership", "Priority technician dispatch & 20% discount on all home care!")}
-            >
-              <Text style={s.viewPlansText}>View Plans</Text>
-              <Ionicons name="arrow-forward" size={12} color="#ffffff" />
-            </Pressable>
           </LinearGradient>
-
-          {/* ── 9. Trust Badges Row (4 Items) ────────────────────────── */}
-          <View style={[s.trustBadgesRow, { borderColor: colors.cardBorder }]}>
-            <View style={s.trustItem}>
-              <Ionicons name="shield-checkmark-outline" size={20} color="#2563eb" />
-              <Text style={[s.trustTitle, { color: colors.text }]}>Verified Pros</Text>
-              <Text style={[s.trustSub, { color: colors.textMuted }]}>Background checked</Text>
-            </View>
-            <View style={s.trustItem}>
-              <Ionicons name="flash-outline" size={20} color="#0284c7" />
-              <Text style={[s.trustTitle, { color: colors.text }]}>Same-Day Fix</Text>
-              <Text style={[s.trustSub, { color: colors.textMuted }]}>Fast & reliable</Text>
-            </View>
-            <View style={s.trustItem}>
-              <Ionicons name="ribbon-outline" size={20} color="#059669" />
-              <Text style={[s.trustTitle, { color: colors.text }]}>100% Guarantee</Text>
-              <Text style={[s.trustSub, { color: colors.textMuted }]}>Your satisfaction</Text>
-            </View>
-            <View style={s.trustItem}>
-              <Ionicons name="calendar-outline" size={20} color="#7c3aed" />
-              <Text style={[s.trustTitle, { color: colors.text }]}>30-Day Warranty</Text>
-              <Text style={[s.trustSub, { color: colors.textMuted }]}>Service assurance</Text>
-            </View>
-          </View>
 
           <View style={{ height: 110 }} />
         </ScrollView>
@@ -1035,7 +976,108 @@ const s = StyleSheet.create({
     paddingBottom: 20,
   },
 
-  // ── Top Bar (Main View) ──────────────────────────────────────────
+  // ── NEW MAIN HERO HEADER ─────────────────────────────────────────
+  mainHeroHeader: {
+    paddingTop: 48,
+    paddingHorizontal: 16,
+    paddingBottom: 28,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    marginBottom: 16,
+    overflow: "hidden",
+  },
+  heroTopBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  heroTopBarLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  heroTopBarIcons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  heroHamburgerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  heroIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  heroAvatarCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.5)",
+    overflow: "hidden",
+  },
+  heroBrandTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#ffffff",
+    letterSpacing: -0.3,
+  },
+  heroBrandSub: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.75)",
+    marginTop: 1,
+  },
+  heroContentRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  heroTextCol: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  heroMainTitle: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#ffffff",
+    lineHeight: 33,
+    marginBottom: 8,
+  },
+  heroMainSubtitle: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.85)",
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  heroExploreBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(0,0,0,0.25)",
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  heroExploreBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+
+  // ── Top Bar (Main View — kept for compatibility) ─────────────────
   topBar: {
     flexDirection: "row",
     justifyContent: "space-between",
