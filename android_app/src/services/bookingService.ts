@@ -37,6 +37,9 @@ export interface Booking {
   scheduledAt: string;
   price: number;
   priceLabel: string;
+  originalPrice?: number;
+  discountAmount?: number;
+  couponCode?: string | null;
   paymentStatus: "pending" | "paid" | "failed" | "refunded";
   safety: "normal" | "watch" | "alert";
   otp?: string;
@@ -52,6 +55,9 @@ export interface CreateBookingInput {
   scheduledAt:     string;
   price:           number;
   priceLabel:      string;
+  originalPrice?:  number;
+  discountAmount?: number;
+  couponCode?:     string | null;
   customerLat?:    number;   // GPS coords stored so vendor map + customer map can show both pins
   customerLng?:    number;
   paymentStatus?:  "pending" | "paid" | "failed" | "refunded";

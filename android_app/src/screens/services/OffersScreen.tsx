@@ -1,5 +1,5 @@
 import React from "react";
-import { ScrollView, Text, View, Pressable, StyleSheet, Image } from "react-native";
+import { ScrollView, Text, View, Pressable, StyleSheet, Image, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -9,74 +9,7 @@ import { colors } from "@/theme/colors";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Offers">;
 
-const OFFERS = [
-  {
-    id: "off-1",
-    title: "50% OFF on First Booking",
-    description: "Use code WELCOME50. Valid for all new users on any service.",
-    code: "WELCOME50",
-    discount: "50% OFF",
-    validTill: "Aug 31, 2026",
-    categoryId: null,
-    gradient: ["#7c3aed", "#a78bfa"] as [string, string],
-    icon: "gift-outline",
-  },
-  {
-    id: "off-2",
-    title: "RO Service Special",
-    description: "Get ₹100 off on Filter Change + Free TDS Checking.",
-    code: "RO100",
-    discount: "₹100 OFF",
-    validTill: "Sep 15, 2026",
-    categoryId: "ro",
-    gradient: ["#0284c7", "#38bdf8"] as [string, string],
-    icon: "water-outline",
-  },
-  {
-    id: "off-3",
-    title: "Home Cleaning Bundle",
-    description: "Book Full Home Cleaning + Kitchen Cleaning at ₹2,299 (save ₹399).",
-    code: "CLEAN2X",
-    discount: "Save ₹399",
-    validTill: "Sep 30, 2026",
-    categoryId: "cleaning",
-    gradient: ["#00bcd4", "#0097a7"] as [string, string],
-    icon: "sparkles-outline",
-  },
-  {
-    id: "off-4",
-    title: "Pet Care Weekend Deal",
-    description: "Saturday & Sunday — Get Grooming + Bathing at ₹799 (save ₹199).",
-    code: "PETWEEKEND",
-    discount: "Save ₹199",
-    validTill: "Every Weekend",
-    categoryId: "pet",
-    gradient: ["#db2777", "#f472b6"] as [string, string],
-    icon: "paw-outline",
-  },
-  {
-    id: "off-5",
-    title: "Refer & Earn",
-    description: "Refer a friend and both of you get ₹150 wallet credits after their first booking.",
-    code: "REFER150",
-    discount: "₹150 Credits",
-    validTill: "Ongoing",
-    categoryId: null,
-    gradient: ["#065f46", "#34d399"] as [string, string],
-    icon: "people-outline",
-  },
-  {
-    id: "off-6",
-    title: "Pest Control Season Offer",
-    description: "Monsoon special — Anti-Cockroach + Anti-Rodent combo at ₹999.",
-    code: "PEST999",
-    discount: "Combo ₹999",
-    validTill: "Sep 30, 2026",
-    categoryId: "pest",
-    gradient: ["#15803d", "#4ade80"] as [string, string],
-    icon: "bug-outline",
-  },
-];
+import { OFFERS, setStoredCoupon } from "@/services/offersService";
 
 export default function OffersScreen({ navigation }: Props) {
   const [copiedCode, setCopiedCode] = React.useState<string | null>(null);
@@ -130,7 +63,7 @@ export default function OffersScreen({ navigation }: Props) {
                 <View style={s.offerIconWrap}>
                   <Ionicons name={offer.icon as any} size={22} color="white" />
                 </View>
-                <Text style={s.discountBadge}>{offer.discount}</Text>
+                <Text style={s.discountBadge}>{offer.discountDisplay}</Text>
               </LinearGradient>
 
               {/* Content */}
@@ -161,21 +94,43 @@ export default function OffersScreen({ navigation }: Props) {
                 </View>
 
                 {/* CTA */}
-                <Pressable
-                  onPress={() => {
-                    if (offer.categoryId) {
-                      navigation.navigate("ServiceCategory", { categoryId: offer.categoryId });
-                    } else {
-                      navigation.navigate("ServicesDashboard");
-                    }
-                  }}
-                  style={[s.applyBtn, { backgroundColor: offer.gradient[0] + "22", borderColor: offer.gradient[0] + "55" }]}
-                >
-                  <Text style={[s.applyBtnText, { color: offer.gradient[0] }]}>
-                    {offer.categoryId ? "Book Now" : "Explore Services"}
-                  </Text>
-                  <Ionicons name="arrow-forward" size={14} color={offer.gradient[0]} />
-                </Pressable>
+                <View style={{ flexDirection: "row", gap: 12 }}>
+                  <Pressable
+                    onPress={async () => {
+                      if (new Date() > offer.validTillDate) {
+                        Alert.alert("Expired", "This coupon has expired and cannot be applied.");
+                        return;
+                      }
+                      await setStoredCoupon(offer.code);
+                      Alert.alert("Coupon Applied", `Code ${offer.code} has been applied to your session.`);
+                      if (offer.categoryId) {
+                        navigation.navigate("ServiceCategory", { categoryId: offer.categoryId });
+                      } else {
+                        navigation.navigate("ServicesDashboard");
+                      }
+                    }}
+                    style={[s.applyBtn, { backgroundColor: offer.gradient[0] + "22", borderColor: offer.gradient[0] + "55", flex: 1, justifyContent: "center" }]}
+                  >
+                    <Text style={[s.applyBtnText, { color: offer.gradient[0] }]}>
+                      Apply Coupon
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => {
+                      if (offer.categoryId) {
+                        navigation.navigate("ServiceCategory", { categoryId: offer.categoryId });
+                      } else {
+                        navigation.navigate("ServicesDashboard");
+                      }
+                    }}
+                    style={[s.applyBtn, { backgroundColor: offer.gradient[0], borderColor: offer.gradient[0], flex: 1, justifyContent: "center" }]}
+                  >
+                    <Text style={[s.applyBtnText, { color: "white" }]}>
+                      {offer.categoryId ? "Book Now" : "Explore"}
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
             </View>
           </Animated.View>
