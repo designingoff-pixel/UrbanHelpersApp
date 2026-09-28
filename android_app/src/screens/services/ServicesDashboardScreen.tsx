@@ -267,10 +267,6 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
           {/* ── 3. SERVICE CATEGORIES GRID ───────────────────────────── */}
           <View style={s.sectionHeader}>
             <Text style={[s.sectionTitle, { color: colors.text }]}>Service Categories</Text>
-            <Pressable style={s.seeAllBtn} onPress={() => setActiveView("explore")}>
-              <Text style={s.seeAllText}>See All</Text>
-              <Ionicons name="arrow-forward" size={14} color="#059669" />
-            </Pressable>
           </View>
 
           <View style={s.exploreCatGrid}>
@@ -394,6 +390,21 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
               <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("other")}</Text>
             </Pressable>
           </View>
+
+          {/* See All Button below service categories */}
+          <Pressable
+            style={[
+              s.seeAllBelowBtn,
+              {
+                backgroundColor: isDark ? "#161f2e" : "#ecfdf5",
+                borderColor: isDark ? "#1f2937" : "#a7f3d0",
+              },
+            ]}
+            onPress={() => setActiveView("explore")}
+          >
+            <Text style={[s.seeAllBelowText, { color: isDark ? "#34d399" : "#059669" }]}>View All Categories</Text>
+            <Ionicons name="arrow-forward" size={15} color={isDark ? "#34d399" : "#059669"} />
+          </Pressable>
 
           {/* ── 4. QUICK ACTIONS ROW ─────────────────────────────────── */}
           <View style={s.quickActionsRow}>
@@ -1889,6 +1900,21 @@ const s = StyleSheet.create({
   exploreCatSub: {
     fontSize: 11,
     textAlign: "center",
+  },
+  seeAllBelowBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 20,
+  },
+  seeAllBelowText: {
+    fontSize: 13.5,
+    fontWeight: "700",
   },
 
   // More Services List
