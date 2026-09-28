@@ -17,6 +17,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { db } from "@/services/firebase";
 import { useAuth } from "@/context/AuthContext";
+import { cancelBooking } from "@/services/bookingService";
 import { sendServiceCompletedNotification } from "@/services/notificationService";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
@@ -67,6 +68,7 @@ const STATUS_LABELS: Record<string, string> = {
   arrived:     "Professional\nArrived",
   in_progress: "Service\nIn Progress",
   completed:   "Service\nCompleted",
+  cancelled:   "Service\nCancelled",
 };
 
 const HERO_TITLES: Partial<Record<BookingStatus, string>> = {
@@ -77,6 +79,7 @@ const HERO_TITLES: Partial<Record<BookingStatus, string>> = {
   arrived:     "Professional\nArrived",
   in_progress: "Service\nIn Progress",
   completed:   "Service\nCompleted",
+  cancelled:   "Booking\nCancelled",
 };
 
 const STATUS_COLORS: Record<string, [string, string]> = {
@@ -87,6 +90,7 @@ const STATUS_COLORS: Record<string, [string, string]> = {
   arrived:     ["#f43f5e", "#e11d48"], // rose
   in_progress: ["#10b981", "#059669"], // emerald
   completed:   ["#047857", "#064e3b"], // dark green
+  cancelled:   ["#dc2626", "#991b1b"], // red
 };
 
 function buildSteps(status: BookingStatus, etaText: string) {
@@ -388,7 +392,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
           <MapView
             ref={mapRef}
             style={s.map}
-            provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
+            provider={PROVIDER_GOOGLE}
             region={mapRegion}
             showsUserLocation={false}
             showsTraffic={false}
@@ -558,10 +562,43 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
 
       {/* Bottom CTA */}
       <View style={s.cta}>
-        <Pressable style={s.ctaBtn} onPress={handleCall}>
-          <Ionicons name="call" size={20} color="white" />
-          <Text style={s.ctaBtnText}>Contact Professional</Text>
-        </Pressable>
+        <View style={s.ctaRow}>
+          <Pressable style={s.ctaBtn} onPress={handleCall}>
+            <Ionicons name="call" size={18} color="white" />
+            <Text style={s.ctaBtnText}>Contact Professional</Text>
+          </Pressable>
+
+          {booking && booking.status !== "completed" && booking.status !== "cancelled" && (
+            <Pressable
+              style={s.cancelBtn}
+              onPress={() => {
+                Alert.alert(
+                  "Cancel Booking?",
+                  "Are you sure you want to cancel this booking? This action cannot be undone.",
+                  [
+                    { text: "Keep Service", style: "cancel" },
+                    {
+                      text: "Yes, Cancel",
+                      style: "destructive",
+                      onPress: async () => {
+                        try {
+                          await cancelBooking(booking.id, user!.uid, "Service no longer required");
+                          Alert.alert("Booking Cancelled", "Your booking has been cancelled.");
+                          navigation.goBack();
+                        } catch (e: any) {
+                          Alert.alert("Cancellation Failed", e.message || "Failed to cancel booking.");
+                        }
+                      },
+                    },
+                  ]
+                );
+              }}
+            >
+              <Ionicons name="close-circle-outline" size={18} color="#ef4444" />
+              <Text style={s.cancelBtnText}>Cancel</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
     </View>
   );
@@ -710,14 +747,33 @@ const s = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.08)",
   },
+  ctaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   ctaBtn: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
+    gap: 8,
     backgroundColor: "#2563eb",
-    borderRadius: 22,
-    paddingVertical: 16,
+    borderRadius: 20,
+    paddingVertical: 14,
   },
-  ctaBtnText: { fontSize: 15, fontWeight: "700", color: "white" },
+  ctaBtnText: { fontSize: 14.5, fontWeight: "700", color: "white" },
+  cancelBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "rgba(239,68,68,0.12)",
+    borderWidth: 1.5,
+    borderColor: "#ef4444",
+    borderRadius: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  cancelBtnText: { fontSize: 14, fontWeight: "700", color: "#ef4444" },
 });

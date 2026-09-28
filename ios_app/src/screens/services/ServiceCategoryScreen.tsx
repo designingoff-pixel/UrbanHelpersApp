@@ -4,9 +4,9 @@
  * Shows sub-services as scrollable cards with price, duration, description.
  * Tapping any sub-service navigates to ServiceDetailScreen with exact pricing.
  */
-import React from "react";
+import React, { useState, useMemo } from "react";
 import {
-  ScrollView, Text, View, Pressable, StyleSheet, Dimensions, Image,
+  ScrollView, Text, View, Pressable, StyleSheet, Dimensions, Image, TextInput,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -15,8 +15,8 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 import { useServiceCategories } from "@/services/firestoreServices";
-import { getSubServiceImageSource } from "@/assets/serviceImages";
 import { SERVICE_CATEGORIES } from "./servicesData";
+import { getSubServiceImageSource } from "@/assets/serviceImages";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceCategory">;
 
@@ -29,7 +29,40 @@ function formatPrice(price: string): string {
 export default function ServiceCategoryScreen({ navigation, route }: Props) {
   const { categoryId } = route.params;
   const { categories } = useServiceCategories();
-  const category = categories.find((c) => c.id === categoryId) ?? SERVICE_CATEGORIES.find((c) => c.id === categoryId);
+  const staticCategory = SERVICE_CATEGORIES.find((c) => c.id === categoryId);
+  const firestoreCategory = categories.find((c) => c.id === categoryId);
+
+  const category = useMemo(() => {
+    if (!staticCategory && !firestoreCategory) return undefined;
+    if (!firestoreCategory) return staticCategory;
+    if (!staticCategory) return firestoreCategory;
+
+    // Merge subServices: ensure all 11 cleaning sub-services and full catalog are preserved
+    const existingIds = new Set((firestoreCategory.subServices ?? []).map((s) => s.id));
+    const mergedSubServices = [
+      ...(firestoreCategory.subServices ?? []),
+      ...staticCategory.subServices.filter((s) => !existingIds.has(s.id)),
+    ];
+
+    return {
+      ...staticCategory,
+      ...firestoreCategory,
+      subServices: mergedSubServices,
+    };
+  }, [staticCategory, firestoreCategory]);
+
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredSubServices = useMemo(() => {
+    if (!category) return [];
+    if (!searchQuery.trim()) return category.subServices;
+    const q = searchQuery.toLowerCase().trim();
+    return category.subServices.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.description.toLowerCase().includes(q)
+    );
+  }, [category, searchQuery]);
 
   if (!category) {
     return (
@@ -58,7 +91,7 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
             <Ionicons name="arrow-back" size={22} color="white" />
           </Pressable>
           <Text style={s.topBarTitle}>{category.name}</Text>
-          <View style={{ width: 38 }} />
+          <View style={s.topBarRight} />
         </View>
 
         {/* Hero section */}
@@ -78,9 +111,44 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
       </LinearGradient>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+        {/* ── Search bar (shown when category has 4+ sub-services) ─── */}
+        {category.subServices.length >= 4 && (
+          <View style={s.searchWrap}>
+            <Ionicons name="search-outline" size={17} color="rgba(255,255,255,0.4)" style={{ marginRight: 8 }} />
+            <TextInput
+              style={s.searchInput}
+              placeholder="Search for services..."
+              placeholderTextColor="rgba(255,255,255,0.35)"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+            />
+            {searchQuery.length > 0 && (
+              <Pressable onPress={() => setSearchQuery("")}>
+                <Ionicons name="close-circle" size={17} color="rgba(255,255,255,0.4)" />
+              </Pressable>
+            )}
+          </View>
+        )}
+
         {/* ── Sub-service cards ─────────────────────────────── */}
         <Text style={s.sectionTitle}>Choose a Service</Text>
-        {category.subServices.map((sub, i) => {
+        {filteredSubServices.length === 0 && searchQuery.trim() !== "" && (
+          <View style={s.emptyState}>
+            <Ionicons name="search-outline" size={36} color="rgba(255,255,255,0.2)" />
+            <Text style={s.emptyStateText}>No services found for "{searchQuery}"</Text>
+          </View>
+        )}
+
+        {filteredSubServices.length === 0 && searchQuery.trim() === "" && category.subServices.length === 0 && (
+          <View style={s.emptyState}>
+            <Ionicons name="calendar-outline" size={36} color="rgba(255,255,255,0.2)" />
+            <Text style={s.emptyStateText}>No other services available right now.</Text>
+          </View>
+        )}
+
+        {filteredSubServices.map((sub, i) => {
           const displayPrice = formatPrice(sub.price);
           return (
             <Animated.View
@@ -159,7 +227,6 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
             </Animated.View>
           );
         })}
-
         <View style={{ height: 60 }} />
       </ScrollView>
     </View>
@@ -248,6 +315,37 @@ const s = StyleSheet.create({
   heroBadgeText: { fontSize: 12, fontWeight: "700", color: "white" },
 
   scroll: { paddingHorizontal: 16, paddingTop: 20 },
+
+  // Search bar
+  searchWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 18,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: "#ffffff",
+  },
+
+  // Empty state
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 40,
+    gap: 10,
+  },
+  emptyStateText: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.4)",
+    textAlign: "center",
+    paddingHorizontal: 20,
+  },
 
   sectionTitle: {
     fontSize: 18,

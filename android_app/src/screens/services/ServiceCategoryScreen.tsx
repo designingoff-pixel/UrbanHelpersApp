@@ -29,9 +29,28 @@ function formatPrice(price: string): string {
 export default function ServiceCategoryScreen({ navigation, route }: Props) {
   const { categoryId } = route.params;
   const { categories } = useServiceCategories();
-  const category =
-    categories.find((c) => c.id === categoryId) ||
-    SERVICE_CATEGORIES.find((c) => c.id === categoryId);
+  const staticCategory = SERVICE_CATEGORIES.find((c) => c.id === categoryId);
+  const firestoreCategory = categories.find((c) => c.id === categoryId);
+
+  const category = useMemo(() => {
+    if (!staticCategory && !firestoreCategory) return undefined;
+    if (!firestoreCategory) return staticCategory;
+    if (!staticCategory) return firestoreCategory;
+
+    // Merge subServices: ensure all 11 cleaning sub-services and full catalog are preserved
+    const existingIds = new Set((firestoreCategory.subServices ?? []).map((s) => s.id));
+    const mergedSubServices = [
+      ...(firestoreCategory.subServices ?? []),
+      ...staticCategory.subServices.filter((s) => !existingIds.has(s.id)),
+    ];
+
+    return {
+      ...staticCategory,
+      ...firestoreCategory,
+      subServices: mergedSubServices,
+    };
+  }, [staticCategory, firestoreCategory]);
+
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredSubServices = useMemo(() => {

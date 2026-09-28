@@ -92,15 +92,28 @@ export function subscribeToUserBookings(
 ) {
   const q = query(
     collection(db, "bookings"),
-    where("customerId", "==", uid),
-    orderBy("scheduledAt", "desc")
+    where("customerId", "==", uid)
   );
 
-  return onSnapshot(q, (snapshot) => {
-    onChange(
-      snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Booking))
-    );
-  });
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const docs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Booking));
+      docs.sort((a, b) => {
+        const timeA = (a as any).createdAt?.toMillis
+          ? (a as any).createdAt.toMillis()
+          : (a.scheduledAt ? new Date(a.scheduledAt).getTime() : 0);
+        const timeB = (b as any).createdAt?.toMillis
+          ? (b as any).createdAt.toMillis()
+          : (b.scheduledAt ? new Date(b.scheduledAt).getTime() : 0);
+        return timeB - timeA;
+      });
+      onChange(docs);
+    },
+    (err) => {
+      console.warn("subscribeToUserBookings error:", err);
+    }
+  );
 }
 
 // ─── Cancellation ─────────────────────────────────────────────────────────────

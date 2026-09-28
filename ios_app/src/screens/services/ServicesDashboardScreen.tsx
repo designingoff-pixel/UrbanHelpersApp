@@ -31,7 +31,7 @@ import { useTheme } from "@/context/ThemeContext";
 import SamsungBottomNav from "@/components/SamsungBottomNav";
 import { SERVICE_LOCAL_IMAGES, getServiceLocalImage } from "@/assets/serviceImages";
 import { SERVICE_CATEGORIES } from "./servicesData";
-import { subscribeToUserBookings, Booking } from "@/services/bookingService";
+import { subscribeToUserBookings, cancelBooking, Booking } from "@/services/bookingService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServicesDashboard">;
 
@@ -97,10 +97,11 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
     if (!user?.uid) return;
     const unsub = subscribeToUserBookings(user.uid, (bookings) => {
       if (bookings && bookings.length > 0) {
+        // Only active bookings that are NOT completed and NOT cancelled
         const active = bookings.find(
-          (b) => b.status === "in_progress" || b.status === "confirmed" || b.status === "pending"
+          (b) => b.status !== "completed" && b.status !== "cancelled"
         );
-        setActiveBooking(active || bookings[0]);
+        setActiveBooking(active || null);
       } else {
         setActiveBooking(null);
       }
@@ -136,7 +137,7 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
       sub: "Step counter, calories burned, customized workouts & coach.",
       btnText: "Track Fitness",
       gradient: ["#4c1d95", "#6d28d9", "#8b5cf6"],
-      image: SERVICE_LOCAL_IMAGES.horticulture,
+      image: { uri: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&q=80" },
       action: () => navigation.navigate("FitnessDashboard"),
     },
     {
@@ -285,51 +286,52 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
                 onMomentumScrollEnd={(e) => {
-                  const slideW = W - 32;
-                  const idx = Math.round(e.nativeEvent.contentOffset.x / slideW);
+                  const idx = Math.round(e.nativeEvent.contentOffset.x / W);
                   if (idx >= 0 && idx < heroSlides.length) {
                     setActiveSlide(idx);
                   }
                 }}
                 getItemLayout={(_, index) => ({
-                  length: W - 32,
-                  offset: (W - 32) * index,
+                  length: W,
+                  offset: W * index,
                   index,
                 })}
                 renderItem={({ item }) => (
-                  <Pressable
-                    style={s.carouselSlideCard}
-                    onPress={item.action}
-                  >
-                    <LinearGradient
-                      colors={item.gradient}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={s.carouselSlideGradient}
+                  <View style={s.carouselSlidePage}>
+                    <Pressable
+                      style={s.carouselSlideCard}
+                      onPress={item.action}
                     >
-                      <View style={s.carouselSlideLeft}>
-                        <View style={s.carouselBadgePill}>
-                          <Text style={s.carouselBadgeText}>{item.badge}</Text>
+                      <LinearGradient
+                        colors={item.gradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={s.carouselSlideGradient}
+                      >
+                        <View style={s.carouselSlideLeft}>
+                          <View style={s.carouselBadgePill}>
+                            <Text style={s.carouselBadgeText}>{item.badge}</Text>
+                          </View>
+                          <Text style={s.carouselSlideTitle}>{item.title}</Text>
+                          <Text style={s.carouselSlideSub} numberOfLines={2}>
+                            {item.sub}
+                          </Text>
+                          <View style={s.carouselSlideBtn}>
+                            <Text style={s.carouselSlideBtnText}>{item.btnText}</Text>
+                            <Ionicons name="arrow-forward" size={13} color="#ffffff" />
+                          </View>
                         </View>
-                        <Text style={s.carouselSlideTitle}>{item.title}</Text>
-                        <Text style={s.carouselSlideSub} numberOfLines={2}>
-                          {item.sub}
-                        </Text>
-                        <View style={s.carouselSlideBtn}>
-                          <Text style={s.carouselSlideBtnText}>{item.btnText}</Text>
-                          <Ionicons name="arrow-forward" size={13} color="#ffffff" />
-                        </View>
-                      </View>
 
-                      <View style={s.carouselImageWrap}>
-                        <Image
-                          source={item.image}
-                          style={s.carouselImage}
-                          resizeMode="cover"
-                        />
-                      </View>
-                    </LinearGradient>
-                  </Pressable>
+                        <View style={s.carouselImageWrap}>
+                          <Image
+                            source={item.image}
+                            style={s.carouselImage}
+                            resizeMode="contain"
+                          />
+                        </View>
+                      </LinearGradient>
+                    </Pressable>
+                  </View>
                 )}
               />
 
@@ -425,9 +427,13 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                     <Text style={s.activeBookingStatusText}>
                       {activeBooking.status === "in_progress"
                         ? "SERVICE IN PROGRESS"
-                        : activeBooking.status === "confirmed"
+                        : activeBooking.status === "arrived"
+                        ? "PARTNER ARRIVED"
+                        : activeBooking.status === "en_route"
+                        ? "PARTNER ON THE WAY"
+                        : activeBooking.status === "confirmed" || activeBooking.status === "accepted" || activeBooking.status === "assigned"
                         ? "BOOKING CONFIRMED"
-                        : "SERVICE BOOKED"}
+                        : "SERVICE REQUESTED"}
                     </Text>
                   </View>
                   {activeBooking.otp ? (
@@ -442,14 +448,14 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                 <View style={s.activeBookingBodyRow}>
                   <View style={s.activeBookingThumbWrap}>
                     <Image
-                      source={getServiceLocalImage(activeBooking.category || "cleaning")}
+                      source={getServiceLocalImage(activeBooking.serviceCategory || "cleaning")}
                       style={s.activeBookingThumb}
                       resizeMode="cover"
                     />
                   </View>
                   <View style={s.activeBookingInfoCol}>
                     <Text style={[s.activeBookingServiceName, { color: colors.text }]} numberOfLines={1}>
-                      {activeBooking.serviceName || "Home Service"}
+                      {activeBooking.subServiceName || activeBooking.serviceCategory || "Home Service"}
                     </Text>
                     <Text style={[s.activeBookingSchedule, { color: colors.textSecondary }]}>
                       📅 {formatBookingDate(activeBooking.scheduledAt)}
@@ -460,15 +466,15 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                   </View>
                 </View>
 
-                {/* Action Buttons */}
+                {/* Action Buttons: Track Service, Cancel, View Bookings */}
                 <View style={s.activeBookingActionsRow}>
                   <Pressable
                     style={s.activeBookingTrackBtn}
                     onPress={() =>
                       navigation.navigate("LiveTracking", {
                         bookingId: activeBooking.id,
-                        categoryId: activeBooking.category,
-                        subServiceId: activeBooking.serviceId,
+                        categoryId: activeBooking.serviceCategory,
+                        subServiceId: activeBooking.subServiceName,
                       })
                     }
                   >
@@ -477,20 +483,53 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                   </Pressable>
 
                   <Pressable
+                    style={s.activeBookingCancelBtn}
+                    onPress={() => {
+                      Alert.alert(
+                        "Cancel Booking?",
+                        "Are you sure you want to cancel this booking? This action cannot be undone.",
+                        [
+                          { text: "Keep Booking", style: "cancel" },
+                          {
+                            text: "Yes, Cancel",
+                            style: "destructive",
+                            onPress: async () => {
+                              try {
+                                await cancelBooking(activeBooking.id, user!.uid, "Service no longer required");
+                                setActiveBooking(null);
+                                Alert.alert("Booking Cancelled", "Your booking has been cancelled.");
+                              } catch (e: any) {
+                                Alert.alert("Cancellation Failed", e.message || "Could not cancel booking.");
+                              }
+                            },
+                          },
+                        ]
+                      );
+                    }}
+                  >
+                    <Ionicons name="close-circle-outline" size={14} color="#ef4444" />
+                    <Text style={s.activeBookingCancelText}>Cancel</Text>
+                  </Pressable>
+
+                  <Pressable
                     style={[s.activeBookingViewAllBtn, { borderColor: colors.cardBorder }]}
                     onPress={() => navigation.navigate("MyBookings")}
                   >
-                    <Text style={[s.activeBookingViewAllText, { color: colors.textSecondary }]}>View Bookings</Text>
-                    <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} />
+                    <Text style={[s.activeBookingViewAllText, { color: colors.textSecondary }]}>All</Text>
+                    <Ionicons name="chevron-forward" size={13} color={colors.textSecondary} />
                   </Pressable>
                 </View>
               </View>
             </View>
           )}
 
-          {/* ── 3. SERVICE CATEGORIES GRID ───────────────────────────── */}
+          {/* ── 3. SERVICE CATEGORIES (Only Top 4 on Home) ─────────────── */}
           <View style={s.sectionHeader}>
             <Text style={[s.sectionTitle, { color: colors.text }]}>Service Categories</Text>
+            <Pressable style={s.seeAllBtn} onPress={() => setActiveView("explore")}>
+              <Text style={s.seeAllText}>See All</Text>
+              <Ionicons name="arrow-forward" size={14} color="#059669" />
+            </Pressable>
           </View>
 
           <View style={s.exploreCatGrid}>
@@ -541,81 +580,9 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
               <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Pet Care</Text>
               <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("pet")}</Text>
             </Pressable>
-
-            {/* 5. Horticulture */}
-            <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "hort" })}
-            >
-              <View style={s.exploreCatImageWrap}>
-                <Image source={SERVICE_LOCAL_IMAGES.horticulture} style={s.exploreCatImage} resizeMode="cover" />
-              </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Horticulture</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("hort")}</Text>
-            </Pressable>
-
-            {/* 6. Appliances */}
-            <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "appliance" })}
-            >
-              <View style={s.exploreCatImageWrap}>
-                <Image source={SERVICE_LOCAL_IMAGES.appliances} style={s.exploreCatImage} resizeMode="cover" />
-              </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Appliances</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("appliance")}</Text>
-            </Pressable>
-
-            {/* 7. Home Care */}
-            <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "homecare" })}
-            >
-              <View style={s.exploreCatImageWrap}>
-                <Image source={SERVICE_LOCAL_IMAGES.homecare} style={s.exploreCatImage} resizeMode="cover" />
-              </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Home Care</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("homecare")}</Text>
-            </Pressable>
-
-            {/* 8. Emergency */}
-            <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("EmergencyAssistance")}
-            >
-              <View style={s.exploreCatImageWrap}>
-                <Image source={SERVICE_LOCAL_IMAGES.emergency} style={s.exploreCatImage} resizeMode="cover" />
-              </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Emergency</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("emergency")}</Text>
-            </Pressable>
-
-            {/* 9. Insurance */}
-            <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "insurance" })}
-            >
-              <View style={s.exploreCatImageWrap}>
-                <Image source={SERVICE_LOCAL_IMAGES.insurance} style={s.exploreCatImage} resizeMode="cover" />
-              </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Insurance</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("insurance")}</Text>
-            </Pressable>
-
-            {/* 10. Other Services */}
-            <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "other" })}
-            >
-              <View style={s.exploreCatImageWrap}>
-                <Image source={SERVICE_LOCAL_IMAGES.other} style={s.exploreCatImage} resizeMode="cover" />
-              </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Other Services</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("other")}</Text>
-            </Pressable>
           </View>
 
-          {/* See All Button below service categories */}
+          {/* View All Categories Button opening Explore page */}
           <Pressable
             style={[
               s.seeAllBelowBtn,
@@ -626,7 +593,7 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
             ]}
             onPress={() => setActiveView("explore")}
           >
-            <Text style={[s.seeAllBelowText, { color: isDark ? "#34d399" : "#059669" }]}>View All Categories</Text>
+            <Text style={[s.seeAllBelowText, { color: isDark ? "#34d399" : "#059669" }]}>View All Categories ({SERVICE_CATEGORIES.length})</Text>
             <Ionicons name="arrow-forward" size={15} color={isDark ? "#34d399" : "#059669"} />
           </Pressable>
 
@@ -1149,7 +1116,7 @@ const s = StyleSheet.create({
   // ── NEW MAIN HERO HEADER ─────────────────────────────────────────
   mainHeroHeader: {
     paddingTop: 48,
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
     paddingBottom: 20,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
@@ -1161,6 +1128,7 @@ const s = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 16,
+    paddingHorizontal: 16,
   },
   heroTopBarLeft: {
     flexDirection: "row",
@@ -1238,6 +1206,11 @@ const s = StyleSheet.create({
     width: "100%",
     marginTop: 4,
   },
+  carouselSlidePage: {
+    width: W,
+    paddingHorizontal: 16,
+    alignItems: "center",
+  },
   carouselSlideCard: {
     width: W - 32,
     borderRadius: 22,
@@ -1257,7 +1230,7 @@ const s = StyleSheet.create({
   },
   carouselSlideLeft: {
     flex: 1,
-    paddingRight: 10,
+    paddingRight: 12,
     justifyContent: "center",
   },
   carouselBadgePill: {
@@ -1305,13 +1278,16 @@ const s = StyleSheet.create({
     color: "#ffffff",
   },
   carouselImageWrap: {
-    width: 105,
-    height: 105,
+    width: 104,
+    height: 104,
     borderRadius: 18,
     overflow: "hidden",
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.25)",
-    backgroundColor: "rgba(255,255,255,0.15)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.35)",
+    backgroundColor: "rgba(255,255,255,0.92)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 6,
   },
   carouselImage: {
     width: "100%",
@@ -1495,6 +1471,22 @@ const s = StyleSheet.create({
   activeBookingTrackBtnText: {
     color: "#ffffff",
     fontSize: 12.5,
+    fontWeight: "700",
+  },
+  activeBookingCancelBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(239,68,68,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(239,68,68,0.4)",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  activeBookingCancelText: {
+    color: "#ef4444",
+    fontSize: 12,
     fontWeight: "700",
   },
   activeBookingViewAllBtn: {
