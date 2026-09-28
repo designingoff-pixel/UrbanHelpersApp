@@ -1144,38 +1144,6 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             ═══════════════════════════════════════════════════════════════ */}
         {activePill === 0 && (
           <View>
-            {/* 1. Hero Promo Carousel */}
-            <Animated.View entering={FadeInDown.delay(0).duration(400).springify()}>
-              <View style={s.heroWrap}>
-                <FlatList
-                  ref={heroRef}
-                  data={HERO_SLIDES}
-                  keyExtractor={(item) => item.id}
-                  horizontal
-                  pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  onViewableItemsChanged={onViewableItemsChanged}
-                  viewabilityConfig={{ viewAreaCoveragePercentThreshold: 50 }}
-                  renderItem={({ item }) => (
-                    <LinearGradient
-                      colors={item.gradient as any}
-                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                      style={s.heroSlide}
-                    >
-                      <View style={s.heroInner}>
-                        <Text style={s.heroTitle}>{item.title}</Text>
-                        <Text style={s.heroSub}>{item.sub}</Text>
-                        <View style={s.dotsRow}>
-                          {HERO_SLIDES.map((_, idx) => (
-                            <View key={idx} style={[s.dot, idx === heroIndex && s.dotActive]} />
-                          ))}
-                        </View>
-                      </View>
-                    </LinearGradient>
-                  )}
-                />
-              </View>
-            </Animated.View>
 
             {/* 2. Sync Alert Banner */}
             {!syncDismissed && (

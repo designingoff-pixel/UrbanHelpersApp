@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   ScrollView,
   Text,
@@ -12,6 +12,7 @@ import {
   Alert,
   Image,
   BackHandler,
+  FlatList,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -28,8 +29,9 @@ import { RootStackParamList } from "@/navigation/types";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import SamsungBottomNav from "@/components/SamsungBottomNav";
-import { SERVICE_LOCAL_IMAGES } from "@/assets/serviceImages";
+import { SERVICE_LOCAL_IMAGES, getServiceLocalImage } from "@/assets/serviceImages";
 import { SERVICE_CATEGORIES } from "./servicesData";
+import { subscribeToUserBookings, Booking } from "@/services/bookingService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServicesDashboard">;
 
@@ -45,6 +47,36 @@ const EXPLORE_CHIPS = [
   { id: "more", label: "More", icon: "ellipsis-horizontal" as const },
 ];
 
+interface HeroSlide {
+  id: string;
+  badge: string;
+  title: string;
+  sub: string;
+  btnText: string;
+  gradient: [string, string, ...string[]];
+  image: any;
+  action: () => void;
+}
+
+function formatBookingDate(val: any): string {
+  if (!val) return "Scheduled";
+  if (typeof val === "string") return val;
+  if (val.toDate && typeof val.toDate === "function") {
+    try {
+      const d: Date = val.toDate();
+      return d.toLocaleDateString("en-IN", {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch (_) {
+      return "Scheduled";
+    }
+  }
+  return "Scheduled";
+}
+
 export default function ServicesDashboardScreen({ navigation }: Props) {
   const { user } = useAuth();
   const { theme, isDark, colors } = useTheme();
@@ -56,6 +88,92 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
   const [locationName, setLocationName] = useState("Coimbatore");
   const [locationModal, setLocationModal] = useState(false);
   const [sideMenuVisible, setSideMenuVisible] = useState(false);
+  const [activeSlide, setActiveSlide] = useState(0);
+  const slideRef = useRef<FlatList>(null);
+  const [activeBooking, setActiveBooking] = useState<Booking | null>(null);
+
+  // Subscribe to real-time user bookings for live home tracking card
+  useEffect(() => {
+    if (!user?.uid) return;
+    const unsub = subscribeToUserBookings(user.uid, (bookings) => {
+      if (bookings && bookings.length > 0) {
+        const active = bookings.find(
+          (b) => b.status === "in_progress" || b.status === "confirmed" || b.status === "pending"
+        );
+        setActiveBooking(active || bookings[0]);
+      } else {
+        setActiveBooking(null);
+      }
+    });
+    return () => unsub();
+  }, [user?.uid]);
+
+  const heroSlides: HeroSlide[] = [
+    {
+      id: "services",
+      badge: "⭐ EXPERT SERVICES",
+      title: "Spotless Home,\nExpert Repairs",
+      sub: "Home cleaning, RO, pest control & 10+ verified services.",
+      btnText: "Explore Services",
+      gradient: ["#064e3b", "#065f46", "#047857"],
+      image: SERVICE_LOCAL_IMAGES.cleaning,
+      action: () => setActiveView("explore"),
+    },
+    {
+      id: "health",
+      badge: "❤️ AI HEALTHCARE",
+      title: "Vitals, Doctors\n& Smart Alarms",
+      sub: "Track your health metrics, vitals score & medicine reminders.",
+      btnText: "Open Health",
+      gradient: ["#1e3a8a", "#1d4ed8", "#2563eb"],
+      image: SERVICE_LOCAL_IMAGES.homecare,
+      action: () => navigation.navigate("HomeDashboard"),
+    },
+    {
+      id: "fitness",
+      badge: "⚡ DAILY FITNESS",
+      title: "Crush Daily Steps\n& Workout Goals",
+      sub: "Step counter, calories burned, customized workouts & coach.",
+      btnText: "Track Fitness",
+      gradient: ["#4c1d95", "#6d28d9", "#8b5cf6"],
+      image: SERVICE_LOCAL_IMAGES.horticulture,
+      action: () => navigation.navigate("FitnessDashboard"),
+    },
+    {
+      id: "together",
+      badge: "🤝 FAMILY & COMMUNITY",
+      title: "Caring For Your\nLoved Ones",
+      sub: "Elder care, companion check-ins, pet care & emergency support.",
+      btnText: "Explore Together",
+      gradient: ["#831843", "#9d174d", "#be185d"],
+      image: SERVICE_LOCAL_IMAGES.pet,
+      action: () => navigation.navigate("FamilyDashboard"),
+    },
+    {
+      id: "offers",
+      badge: "🎁 LIMITED DISCOUNT",
+      title: "Save ₹200 On\nYour First Service",
+      sub: "Use code URBAN200 at checkout for instant savings.",
+      btnText: "View Offers",
+      gradient: ["#78350f", "#b45309", "#d97706"],
+      image: SERVICE_LOCAL_IMAGES.appliances,
+      action: () => navigation.navigate("Offers"),
+    },
+  ];
+
+  // Auto-slideshow effect: rotates slide every 4.2 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveSlide((prev) => {
+        const next = (prev + 1) % heroSlides.length;
+        try {
+          slideRef.current?.scrollToIndex({ index: next, animated: true });
+        } catch (_) {}
+        return next;
+      });
+    }, 4200);
+    return () => clearInterval(timer);
+  }, [heroSlides.length]);
 
 
 
@@ -113,37 +231,28 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
             end={{ x: 1, y: 1 }}
             style={s.mainHeroHeader}
           >
-            {/* Top Bar: Profile avatar on left, hamburger menu, brand, SOS and notifications on right */}
+            {/* Top Bar: Hamburger menu & brand on left; SOS + Notifications + Profile Avatar on top right */}
             <Animated.View style={[s.heroTopBar, headerStyle]}>
               <View style={s.heroTopBarLeft}>
-                <Pressable
-                  style={s.heroAvatarCircle}
-                  onPress={() => navigation.navigate("Profile")}
-                >
-                  <LinearGradient colors={["#00c6aa", "#0f9b8e"]} style={s.avatarInner}>
-                    <Text style={s.avatarInitial}>{firstName.charAt(0).toUpperCase()}</Text>
-                  </LinearGradient>
-                </Pressable>
-
                 <Pressable
                   style={s.heroHamburgerBtn}
                   onPress={() => setSideMenuVisible(true)}
                 >
-                  <Ionicons name="menu" size={22} color="#ffffff" />
+                  <Ionicons name="menu" size={23} color="#ffffff" />
                 </Pressable>
 
-                <View>
+                <View style={s.heroBrandWrap}>
                   <Text style={s.heroBrandTitle}>Urban Services</Text>
                   <Text style={s.heroBrandSub}>Home &amp; Living Solutions</Text>
                 </View>
               </View>
 
-              <View style={s.heroTopBarIcons}>
+              <View style={s.heroTopBarRight}>
                 <Pressable
                   style={s.heroSosBtn}
                   onPress={() => navigation.navigate("EmergencyAssistance")}
                 >
-                  <Ionicons name="warning" size={14} color="#ffffff" />
+                  <Ionicons name="warning" size={13} color="#ffffff" />
                   <Text style={s.heroSosBtnText}>SOS</Text>
                 </Pressable>
 
@@ -154,31 +263,87 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                   <Ionicons name="notifications-outline" size={20} color="#ffffff" />
                   <View style={s.notifDot} />
                 </Pressable>
+
+                <Pressable
+                  style={s.heroAvatarCircle}
+                  onPress={() => navigation.navigate("Profile")}
+                >
+                  <LinearGradient colors={["#00c6aa", "#0f9b8e"]} style={s.avatarInner}>
+                    <Text style={s.avatarInitial}>{firstName.charAt(0).toUpperCase()}</Text>
+                  </LinearGradient>
+                </Pressable>
               </View>
             </Animated.View>
 
-            {/* Hero Heading + Illustration */}
-            <View style={s.heroContentRow}>
-              <View style={s.heroTextCol}>
-                <Text style={s.heroMainTitle}>Make Your{"\n"}Home Better</Text>
-                <Text style={s.heroMainSubtitle}>
-                  Find the right service for your home, health and lifestyle.
-                </Text>
-                <Pressable style={s.heroExploreBtn} onPress={() => setActiveView("explore")}>
-                  <Text style={s.heroExploreBtnText}>Explore Services</Text>
-                  <Ionicons name="arrow-forward" size={13} color="#ffffff" />
-                </Pressable>
-              </View>
+            {/* ── Auto-Slideshow Carousel (Services, Health, Fitness, Together, Offers) ── */}
+            <View style={s.carouselContainer}>
+              <FlatList
+                ref={slideRef}
+                data={heroSlides}
+                keyExtractor={(item) => item.id}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={(e) => {
+                  const slideW = W - 32;
+                  const idx = Math.round(e.nativeEvent.contentOffset.x / slideW);
+                  if (idx >= 0 && idx < heroSlides.length) {
+                    setActiveSlide(idx);
+                  }
+                }}
+                getItemLayout={(_, index) => ({
+                  length: W - 32,
+                  offset: (W - 32) * index,
+                  index,
+                })}
+                renderItem={({ item }) => (
+                  <Pressable
+                    style={s.carouselSlideCard}
+                    onPress={item.action}
+                  >
+                    <LinearGradient
+                      colors={item.gradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={s.carouselSlideGradient}
+                    >
+                      <View style={s.carouselSlideLeft}>
+                        <View style={s.carouselBadgePill}>
+                          <Text style={s.carouselBadgeText}>{item.badge}</Text>
+                        </View>
+                        <Text style={s.carouselSlideTitle}>{item.title}</Text>
+                        <Text style={s.carouselSlideSub} numberOfLines={2}>
+                          {item.sub}
+                        </Text>
+                        <View style={s.carouselSlideBtn}>
+                          <Text style={s.carouselSlideBtnText}>{item.btnText}</Text>
+                          <Ionicons name="arrow-forward" size={13} color="#ffffff" />
+                        </View>
+                      </View>
 
-              {/* House illustration reused from explore view */}
-              <View style={s.houseIllustration}>
-                <View style={s.houseRoof} />
-                <View style={s.houseWalls}>
-                  <View style={s.houseDoor} />
-                  <View style={s.houseWindow} />
-                </View>
-                <View style={s.houseChimney} />
-                <View style={s.houseLawn} />
+                      <View style={s.carouselImageWrap}>
+                        <Image
+                          source={item.image}
+                          style={s.carouselImage}
+                          resizeMode="cover"
+                        />
+                      </View>
+                    </LinearGradient>
+                  </Pressable>
+                )}
+              />
+
+              {/* Carousel Pagination Dots */}
+              <View style={s.carouselDotsRow}>
+                {heroSlides.map((_, idx) => (
+                  <View
+                    key={idx}
+                    style={[
+                      s.carouselDot,
+                      idx === activeSlide && s.carouselDotActive,
+                    ]}
+                  />
+                ))}
               </View>
             </View>
           </LinearGradient>
@@ -212,57 +377,116 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
               </Pressable>
             </View>
 
-            {/* Sticky Submenu: Reminders, Points, Nearby Updates */}
-            <View style={s.submenuRow}>
+            {/* Submenu Grid: Reminders, Points, Nearby Updates */}
+            <View style={s.submenuGrid}>
               <Pressable
-                style={[
-                  s.submenuPill,
-                  {
-                    backgroundColor: isDark ? "#161f2e" : "#f0fdf4",
-                    borderColor: isDark ? "#1f2937" : "#bbf7d0",
-                  },
-                ]}
+                style={[s.submenuGridCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
                 onPress={() => navigation.navigate("SmartReminders")}
               >
-                <LinearGradient colors={["#059669", "#10b981"]} style={s.submenuIconWrap}>
-                  <Ionicons name="alarm" size={12} color="#ffffff" />
-                </LinearGradient>
-                <Text style={[s.submenuPillText, { color: isDark ? "#ffffff" : "#065f46" }]}>Reminders</Text>
+                <View style={[s.submenuIconCircle, { backgroundColor: isDark ? "rgba(16,185,129,0.2)" : "#d1fae5" }]}>
+                  <Ionicons name="alarm" size={17} color="#10b981" />
+                </View>
+                <Text style={[s.submenuGridTitle, { color: colors.text }]} numberOfLines={1}>Reminders</Text>
+                <Text style={[s.submenuGridSub, { color: colors.textMuted }]}>Tasks &amp; Meds</Text>
               </Pressable>
 
               <Pressable
-                style={[
-                  s.submenuPill,
-                  {
-                    backgroundColor: isDark ? "#161f2e" : "#fffbeb",
-                    borderColor: isDark ? "#1f2937" : "#fde68a",
-                  },
-                ]}
+                style={[s.submenuGridCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
                 onPress={() => navigation.navigate("Points")}
               >
-                <LinearGradient colors={["#d97706", "#f59e0b"]} style={s.submenuIconWrap}>
-                  <Ionicons name="trophy" size={12} color="#ffffff" />
-                </LinearGradient>
-                <Text style={[s.submenuPillText, { color: isDark ? "#ffffff" : "#92400e" }]}>Points</Text>
+                <View style={[s.submenuIconCircle, { backgroundColor: isDark ? "rgba(245,158,11,0.2)" : "#fef3c7" }]}>
+                  <Ionicons name="trophy" size={17} color="#f59e0b" />
+                </View>
+                <Text style={[s.submenuGridTitle, { color: colors.text }]} numberOfLines={1}>Points</Text>
+                <Text style={[s.submenuGridSub, { color: colors.textMuted }]}>Earn Rewards</Text>
               </Pressable>
 
               <Pressable
-                style={[
-                  s.submenuPill,
-                  {
-                    backgroundColor: isDark ? "#161f2e" : "#fef2f2",
-                    borderColor: isDark ? "#1f2937" : "#fecaca",
-                  },
-                ]}
+                style={[s.submenuGridCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
                 onPress={() => navigation.navigate("NearbyUpdates")}
               >
-                <LinearGradient colors={["#dc2626", "#ef4444"]} style={s.submenuIconWrap}>
-                  <Ionicons name="radio" size={12} color="#ffffff" />
-                </LinearGradient>
-                <Text style={[s.submenuPillText, { color: isDark ? "#ffffff" : "#991b1b" }]}>Nearby Updates</Text>
+                <View style={[s.submenuIconCircle, { backgroundColor: isDark ? "rgba(239,68,68,0.2)" : "#fee2e2" }]}>
+                  <Ionicons name="radio" size={17} color="#ef4444" />
+                </View>
+                <Text style={[s.submenuGridTitle, { color: colors.text }]} numberOfLines={1}>Nearby</Text>
+                <Text style={[s.submenuGridSub, { color: colors.textMuted }]}>Live Updates</Text>
               </Pressable>
             </View>
           </View>
+
+          {/* ── ACTIVE BOOKING LIVE TRACKER CARD ── */}
+          {activeBooking && (
+            <View style={s.activeBookingWrap}>
+              <View style={[s.activeBookingCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: isDark ? "#334155" : "#86efac" }]}>
+                {/* Header row */}
+                <View style={s.activeBookingHeaderRow}>
+                  <View style={s.activeBookingStatusPill}>
+                    <View style={s.activeBookingPulseDot} />
+                    <Text style={s.activeBookingStatusText}>
+                      {activeBooking.status === "in_progress"
+                        ? "SERVICE IN PROGRESS"
+                        : activeBooking.status === "confirmed"
+                        ? "BOOKING CONFIRMED"
+                        : "SERVICE BOOKED"}
+                    </Text>
+                  </View>
+                  {activeBooking.otp ? (
+                    <View style={s.activeBookingOtpBadge}>
+                      <Text style={s.activeBookingOtpLabel}>OTP: </Text>
+                      <Text style={s.activeBookingOtpValue}>{activeBooking.otp}</Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                {/* Service Details row */}
+                <View style={s.activeBookingBodyRow}>
+                  <View style={s.activeBookingThumbWrap}>
+                    <Image
+                      source={getServiceLocalImage(activeBooking.category || "cleaning")}
+                      style={s.activeBookingThumb}
+                      resizeMode="cover"
+                    />
+                  </View>
+                  <View style={s.activeBookingInfoCol}>
+                    <Text style={[s.activeBookingServiceName, { color: colors.text }]} numberOfLines={1}>
+                      {activeBooking.serviceName || "Home Service"}
+                    </Text>
+                    <Text style={[s.activeBookingSchedule, { color: colors.textSecondary }]}>
+                      📅 {formatBookingDate(activeBooking.scheduledAt)}
+                    </Text>
+                    <Text style={[s.activeBookingAddress, { color: colors.textMuted }]} numberOfLines={1}>
+                      📍 {activeBooking.address || "Your Service Location"}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Action Buttons */}
+                <View style={s.activeBookingActionsRow}>
+                  <Pressable
+                    style={s.activeBookingTrackBtn}
+                    onPress={() =>
+                      navigation.navigate("LiveTracking", {
+                        bookingId: activeBooking.id,
+                        categoryId: activeBooking.category,
+                        subServiceId: activeBooking.serviceId,
+                      })
+                    }
+                  >
+                    <Ionicons name="navigate" size={14} color="#ffffff" />
+                    <Text style={s.activeBookingTrackBtnText}>Track Service</Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={[s.activeBookingViewAllBtn, { borderColor: colors.cardBorder }]}
+                    onPress={() => navigation.navigate("MyBookings")}
+                  >
+                    <Text style={[s.activeBookingViewAllText, { color: colors.textSecondary }]}>View Bookings</Text>
+                    <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} />
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          )}
 
           {/* ── 3. SERVICE CATEGORIES GRID ───────────────────────────── */}
           <View style={s.sectionHeader}>
@@ -926,7 +1150,7 @@ const s = StyleSheet.create({
   mainHeroHeader: {
     paddingTop: 48,
     paddingHorizontal: 16,
-    paddingBottom: 28,
+    paddingBottom: 20,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
     marginBottom: 16,
@@ -936,33 +1160,15 @@ const s = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 16,
   },
   heroTopBarLeft: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
   },
-  heroTopBarIcons: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  heroSosBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#ef4444",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.4)",
-  },
-  heroSosBtnText: {
-    color: "#ffffff",
-    fontSize: 12,
-    fontWeight: "800",
+  heroBrandWrap: {
+    justifyContent: "center",
   },
   heroHamburgerBtn: {
     width: 40,
@@ -971,6 +1177,44 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.18)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  heroBrandTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#ffffff",
+    letterSpacing: -0.3,
+  },
+  heroBrandSub: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.75)",
+    marginTop: 1,
+  },
+  heroTopBarRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  heroSosBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "#ef4444",
+    height: 38,
+    paddingHorizontal: 12,
+    borderRadius: 19,
+    shadowColor: "#ef4444",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 5,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  heroSosBtnText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 0.5,
   },
   heroIconBtn: {
     width: 38,
@@ -984,59 +1228,286 @@ const s = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.5)",
+    borderWidth: 2,
+    borderColor: "#ffffff",
     overflow: "hidden",
   },
-  heroBrandTitle: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: "#ffffff",
-    letterSpacing: -0.3,
+
+  // ── Auto-Slideshow Carousel Styles ───────────────────────────
+  carouselContainer: {
+    width: "100%",
+    marginTop: 4,
   },
-  heroBrandSub: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.75)",
-    marginTop: 1,
+  carouselSlideCard: {
+    width: W - 32,
+    borderRadius: 22,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  heroContentRow: {
+  carouselSlideGradient: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    minHeight: 155,
   },
-  heroTextCol: {
+  carouselSlideLeft: {
     flex: 1,
     paddingRight: 10,
+    justifyContent: "center",
   },
-  heroMainTitle: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#ffffff",
-    lineHeight: 33,
+  carouselBadgePill: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.22)",
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 10,
     marginBottom: 8,
   },
-  heroMainSubtitle: {
-    fontSize: 13,
-    color: "rgba(255,255,255,0.85)",
-    lineHeight: 18,
-    marginBottom: 16,
+  carouselBadgeText: {
+    fontSize: 10.5,
+    fontWeight: "800",
+    color: "#ffffff",
+    letterSpacing: 0.5,
   },
-  heroExploreBtn: {
+  carouselSlideTitle: {
+    fontSize: 19,
+    fontWeight: "800",
+    color: "#ffffff",
+    lineHeight: 23,
+    marginBottom: 5,
+  },
+  carouselSlideSub: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.85)",
+    lineHeight: 16,
+    marginBottom: 12,
+  },
+  carouselSlideBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     alignSelf: "flex-start",
-    backgroundColor: "rgba(0,0,0,0.25)",
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.3)",
   },
-  heroExploreBtnText: {
-    fontSize: 13,
+  carouselSlideBtnText: {
+    fontSize: 12,
     fontWeight: "700",
     color: "#ffffff",
+  },
+  carouselImageWrap: {
+    width: 105,
+    height: 105,
+    borderRadius: 18,
+    overflow: "hidden",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.25)",
+    backgroundColor: "rgba(255,255,255,0.15)",
+  },
+  carouselImage: {
+    width: "100%",
+    height: "100%",
+  },
+  carouselDotsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 10,
+  },
+  carouselDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.35)",
+  },
+  carouselDotActive: {
+    width: 18,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#ffffff",
+  },
+
+  // ── Balanced Submenu Grid Styles ──────────────────────────────
+  submenuGrid: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 10,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  submenuGridCard: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  submenuIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  submenuGridTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 1,
+  },
+  submenuGridSub: {
+    fontSize: 9.5,
+    textAlign: "center",
+  },
+
+  // ── Active Booking Live Tracker Card Styles ───────────────────
+  activeBookingWrap: {
+    paddingHorizontal: 16,
+    marginBottom: 18,
+  },
+  activeBookingCard: {
+    borderRadius: 20,
+    borderWidth: 1.5,
+    padding: 14,
+    shadowColor: "#10b981",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  activeBookingHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  activeBookingStatusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(16, 185, 129, 0.14)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  activeBookingPulseDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: "#10b981",
+  },
+  activeBookingStatusText: {
+    fontSize: 10.5,
+    fontWeight: "800",
+    color: "#059669",
+    letterSpacing: 0.5,
+  },
+  activeBookingOtpBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(245, 158, 11, 0.15)",
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(245, 158, 11, 0.3)",
+  },
+  activeBookingOtpLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#b45309",
+  },
+  activeBookingOtpValue: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#d97706",
+    letterSpacing: 1,
+  },
+  activeBookingBodyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
+  },
+  activeBookingThumbWrap: {
+    width: 58,
+    height: 58,
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.06)",
+  },
+  activeBookingThumb: {
+    width: "100%",
+    height: "100%",
+  },
+  activeBookingInfoCol: {
+    flex: 1,
+  },
+  activeBookingServiceName: {
+    fontSize: 15,
+    fontWeight: "800",
+    marginBottom: 3,
+  },
+  activeBookingSchedule: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  activeBookingAddress: {
+    fontSize: 11,
+  },
+  activeBookingActionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.06)",
+    paddingTop: 10,
+  },
+  activeBookingTrackBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#059669",
+    paddingVertical: 9,
+    borderRadius: 12,
+  },
+  activeBookingTrackBtnText: {
+    color: "#ffffff",
+    fontSize: 12.5,
+    fontWeight: "700",
+  },
+  activeBookingViewAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  activeBookingViewAllText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
 
   // ── Top Bar (Main View — kept for compatibility) ─────────────────
