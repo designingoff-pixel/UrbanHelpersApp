@@ -52,6 +52,10 @@ import MoodCheckInScreen from "@/screens/health/MoodCheckInScreen";
 import BreathingExercisesScreen from "@/screens/health/BreathingExercisesScreen";
 import MeditationScreen from "@/screens/health/MeditationScreen";
 import StressScreen from "@/screens/health/StressScreen";
+import HearingScreen from "@/screens/health/HearingScreen";
+import ConnectWatchScreen from "@/screens/health/ConnectWatchScreen";
+import DeviceDetailsScreen from "@/screens/health/DeviceDetailsScreen";
+import BleDiagnosticsScreen from "@/screens/health/BleDiagnosticsScreen";
 
 // Module 3 — Medical Records
 import HealthDataAnalyticsScreen from "@/screens/medical/HealthDataAnalyticsScreen";
@@ -123,76 +127,66 @@ function GlobalBookingListener() {
   const isInitialMount = useRef<boolean>(true);
 
   useEffect(() => {
-    if (!user || !db) return;
-    try {
-      const q = query(
-        collection(db, "bookings"),
-        where("customerId", "==", user.uid),
-        where("status", "in", ["assigned", "accepted", "en_route", "arrived", "in_progress", "completed"])
-      );
-      const unsub = onSnapshot(
-        q,
-        (snap) => {
-          if (snap.empty) {
-            prevStatus.current = null;
-            activeBookingId.current = null;
-            isInitialMount.current = false;
-            return;
-          }
+    if (!user) return;
+    const q = query(
+      collection(db, "bookings"),
+      where("customerId", "==", user.uid),
+      where("status", "in", ["assigned", "accepted", "en_route", "arrived", "in_progress", "completed"])
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      if (snap.empty) {
+        prevStatus.current = null;
+        activeBookingId.current = null;
+        isInitialMount.current = false;
+        return;
+      }
 
-          // Prioritize actively ongoing bookings first
-          const activeDoc = snap.docs.find((d) =>
-            ["in_progress", "arrived", "en_route", "accepted", "assigned"].includes(d.data().status)
-          ) || snap.docs[0];
+      // Prioritize actively ongoing bookings first
+      const activeDoc = snap.docs.find((d) =>
+        ["in_progress", "arrived", "en_route", "accepted", "assigned"].includes(d.data().status)
+      ) || snap.docs[0];
 
-          const data = activeDoc.data();
-          const newStatus = data.status;
-          const currentId = activeDoc.id;
+      const data = activeDoc.data();
+      const newStatus = data.status;
+      const currentId = activeDoc.id;
 
-          // On initial load, record initial state without firing transition notifications
-          if (isInitialMount.current) {
-            isInitialMount.current = false;
-            activeBookingId.current = currentId;
-            prevStatus.current = newStatus;
-            return;
-          }
+      // On initial load, record initial state without firing transition notifications
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        activeBookingId.current = currentId;
+        prevStatus.current = newStatus;
+        return;
+      }
 
-          // If transition to arrived, fire notification!
-          if (
-            activeBookingId.current === currentId &&
-            prevStatus.current &&
-            prevStatus.current !== "arrived" &&
-            newStatus === "arrived"
-          ) {
-            if (data.otp) {
-              sendVendorArrivedOTPNotification(String(data.otp));
-            }
-          }
-
-          // ONLY when vendor explicitly completes the service in their app:
-          if (
-            activeBookingId.current === currentId &&
-            (prevStatus.current === "in_progress" || prevStatus.current === "arrived") &&
-            newStatus === "completed"
-          ) {
-            sendServiceCompletedNotification(data.serviceCategory ?? "Service").catch(console.log);
-            navigation.navigate("RatingFeedback", {
-              categoryId: data.serviceCategory,
-              subServiceId: data.subServiceName,
-            });
-          }
-
-          activeBookingId.current = currentId;
-          prevStatus.current = newStatus;
-        },
-        (error) => {
-          console.warn("[GlobalBookingListener] Snapshot error:", error);
+      // If transition to arrived, fire notification!
+      if (
+        activeBookingId.current === currentId &&
+        prevStatus.current &&
+        prevStatus.current !== "arrived" &&
+        newStatus === "arrived"
+      ) {
+        if (data.otp) {
+          sendVendorArrivedOTPNotification(String(data.otp));
         }
-      );
-      return () => unsub();
-    } catch (err) {
-      console.warn("[GlobalBookingListener] Setup error:", err);
-    }
+      }
+
+      // ONLY when vendor explicitly completes the service in their app:
+      if (
+        activeBookingId.current === currentId &&
+        (prevStatus.current === "in_progress" || prevStatus.current === "arrived") &&
+        newStatus === "completed"
+      ) {
+        sendServiceCompletedNotification(data.serviceCategory ?? "Service").catch(console.log);
+        navigation.navigate("RatingFeedback", {
+          categoryId: data.serviceCategory,
+          subServiceId: data.subServiceName,
+        });
+      }
+
+      activeBookingId.current = currentId;
+      prevStatus.current = newStatus;
+    });
+    return () => unsub();
   }, [user, navigation]);
 
   return null;
@@ -259,6 +253,10 @@ export function RootNavigator() {
       <Stack.Screen name="BreathingExercises" component={BreathingExercisesScreen} />
       <Stack.Screen name="Meditation" component={MeditationScreen} />
       <Stack.Screen name="Stress" component={StressScreen} />
+      <Stack.Screen name="Hearing" component={HearingScreen} />
+      <Stack.Screen name="ConnectWatch" component={ConnectWatchScreen} />
+      <Stack.Screen name="DeviceDetails" component={DeviceDetailsScreen} />
+      <Stack.Screen name="BleDiagnostics" component={BleDiagnosticsScreen} />
 
       {/* Module 3 */}
       <Stack.Screen name="HealthDataAnalytics" component={HealthDataAnalyticsScreen} />

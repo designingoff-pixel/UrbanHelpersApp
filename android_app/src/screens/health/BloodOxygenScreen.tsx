@@ -24,6 +24,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
+import WatchStatusBanner from "@/components/WatchStatusBanner";
+import { BleManager } from "@/services/ble/BleManager";
+import { WearableHealthData, ConnectionState } from "@/services/ble/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BloodOxygen">;
 
@@ -33,6 +36,17 @@ export default function BloodOxygenScreen({ navigation }: Props) {
   const [activeTab, setActiveTab] = useState<"Hours" | "Days" | "Weeks" | "Months">("Hours");
   const [showTrackModal, setShowTrackModal] = useState(false);
   const [selectedPeriodOffset, setSelectedPeriodOffset] = useState(0);
+
+  const [wearableData, setWearableData] = useState<WearableHealthData>(BleManager.getHealthData());
+  const [connState, setConnState] = useState<ConnectionState>(BleManager.getConnectionState());
+
+  React.useEffect(() => {
+    const unsub = BleManager.subscribeRepository(() => {
+      setWearableData(BleManager.getHealthData());
+      setConnState(BleManager.getConnectionState());
+    });
+    return unsub;
+  }, []);
 
   // Blood Oxygen Cellular Artwork
   const renderBloodIllustration = () => (
@@ -271,18 +285,42 @@ export default function BloodOxygenScreen({ navigation }: Props) {
           </Pressable>
         </View>
 
+        {/* Smartwatch Status Banner */}
+        <WatchStatusBanner style={{ marginHorizontal: 0, marginBottom: 14 }} />
+
         {/* Big Hero Card */}
         <Animated.View entering={FadeInDown.duration(400)} style={s.statHeroCard}>
           <View style={s.statHeroLeft}>
-            <View style={s.o2Row}>
-              <Text style={s.heroValue}>98</Text>
-              <Text style={s.heroUnit}>%</Text>
-            </View>
-            <Text style={s.heroSub}>Optimal saturation</Text>
-            <View style={s.statusPill}>
-              <Ionicons name="checkmark-circle" size={14} color="#38bdf8" />
-              <Text style={s.statusPillText}>Normal (95% - 100%)</Text>
-            </View>
+            {connState === "connected" && wearableData.spo2.availability === "NOT_SUPPORTED" ? (
+              <View>
+                <Text style={[s.heroValue, { fontSize: 18, lineHeight: 24, color: "#f87171" }]}>
+                  Not available from this device
+                </Text>
+                <Text style={[s.heroSub, { marginTop: 6 }]}>
+                  ColorFit Pulse does not expose standard SpO2 GATT characteristic
+                </Text>
+              </View>
+            ) : (
+              <>
+                <View style={s.o2Row}>
+                  <Text style={s.heroValue}>
+                    {wearableData.spo2.availability === "SUPPORTED" && wearableData.spo2.value != null
+                      ? wearableData.spo2.value
+                      : "98"}
+                  </Text>
+                  <Text style={s.heroUnit}>%</Text>
+                </View>
+                <Text style={s.heroSub}>
+                  {connState === "connected" && wearableData.spo2.availability === "SUPPORTED"
+                    ? `Live from ${wearableData.spo2.source || "ColorFit Pulse"}`
+                    : "Optimal saturation"}
+                </Text>
+                <View style={s.statusPill}>
+                  <Ionicons name="checkmark-circle" size={14} color="#38bdf8" />
+                  <Text style={s.statusPillText}>Normal (95% - 100%)</Text>
+                </View>
+              </>
+            )}
           </View>
           <View style={s.statHeroRight}>{renderBloodIllustration()}</View>
         </Animated.View>

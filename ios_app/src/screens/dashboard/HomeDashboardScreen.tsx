@@ -40,6 +40,9 @@ import Animated, {
 
 import { RootStackParamList } from "@/navigation/types";
 import SamsungBottomNav from "@/components/SamsungBottomNav";
+import MyDevicesCard from "@/components/MyDevicesCard";
+import { BleManager } from "@/services/ble/BleManager";
+import { WearableHealthData } from "@/services/ble/types";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import {
@@ -212,6 +215,18 @@ export default function HomeDashboardScreen({ navigation }: Props) {
   const [liveStepGoal, setLiveStepGoal] = useState(6000);
   const [weeklySteps, setWeeklySteps] = useState<WeeklyStepData | null>(null);
   const [healthDocCount, setHealthDocCount] = useState(0);
+
+  // Real BLE Wearable state
+  const [wearableData, setWearableData] = useState<WearableHealthData>(BleManager.getHealthData());
+  const [wearableConnState, setWearableConnState] = useState(BleManager.getConnectionState());
+
+  useEffect(() => {
+    const unsubBle = BleManager.subscribeRepository(() => {
+      setWearableData(BleManager.getHealthData());
+      setWearableConnState(BleManager.getConnectionState());
+    });
+    return unsubBle;
+  }, []);
 
   const todayKey = getTodayKey();
 
@@ -1144,6 +1159,8 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             ═══════════════════════════════════════════════════════════════ */}
         {activePill === 0 && (
           <View>
+            {/* My Devices Smartwatch Connection Card */}
+            <MyDevicesCard />
 
             {/* 2. Sync Alert Banner */}
             {!syncDismissed && (
@@ -1820,7 +1837,11 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 </View>
 
                 <View style={{ flex: 1 }} />
-                <Text style={s.vitalsCardDesc}>Keep track of your heart rate.</Text>
+                <Text style={s.vitalsCardDesc}>
+                  {wearableConnState === "connected" && wearableData.heartRate.availability === "SUPPORTED" && wearableData.heartRate.value != null
+                    ? `Live: ${wearableData.heartRate.value} BPM • ${wearableData.heartRate.source || "ColorFit Pulse"}`
+                    : "Keep track of your heart rate."}
+                </Text>
               </LinearGradient>
             </PressCard>
 

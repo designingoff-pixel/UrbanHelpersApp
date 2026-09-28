@@ -32,7 +32,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import WatchStatusBanner from "@/components/WatchStatusBanner";
-
+import { BleManager } from "@/services/ble/BleManager";
+import { WearableHealthData, ConnectionState } from "@/services/ble/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "HeartRate">;
 
@@ -42,6 +43,17 @@ export default function HeartRateScreen({ navigation }: Props) {
   const [activeTab, setActiveTab] = useState<"Hours" | "Days" | "Weeks" | "Months">("Hours");
   const [showTrackModal, setShowTrackModal] = useState(false);
   const [selectedPeriodOffset, setSelectedPeriodOffset] = useState(0);
+
+  const [wearableData, setWearableData] = useState<WearableHealthData>(BleManager.getHealthData());
+  const [connState, setConnState] = useState<ConnectionState>(BleManager.getConnectionState());
+
+  React.useEffect(() => {
+    const unsub = BleManager.subscribeRepository(() => {
+      setWearableData(BleManager.getHealthData());
+      setConnState(BleManager.getConnectionState());
+    });
+    return unsub;
+  }, []);
 
   // Anatomical Heart SVG Graphic
   const renderHeartIllustration = () => (
@@ -323,13 +335,25 @@ export default function HeartRateScreen({ navigation }: Props) {
         <Animated.View entering={FadeInDown.duration(400)} style={s.statHeroCard}>
           <View style={s.statHeroLeft}>
             <View style={s.bpmRow}>
-              <Text style={s.heroValue}>72</Text>
+              <Text style={s.heroValue}>
+                {wearableData.heartRate.availability === "SUPPORTED" && wearableData.heartRate.value != null
+                  ? wearableData.heartRate.value
+                  : "72"}
+              </Text>
               <Text style={s.heroUnit}>bpm</Text>
             </View>
-            <Text style={s.heroSub}>Latest measurement</Text>
+            <Text style={s.heroSub}>
+              {connState === "connected" && wearableData.heartRate.availability === "SUPPORTED" && wearableData.heartRate.value != null
+                ? `Live from ${wearableData.heartRate.source || "ColorFit Pulse"}`
+                : "Latest measurement"}
+            </Text>
             <View style={s.restingPill}>
               <Ionicons name="heart" size={14} color="#f43f5e" />
-              <Text style={s.restingPillText}>Resting: 64 bpm</Text>
+              <Text style={s.restingPillText}>
+                {connState === "connected" && wearableData.heartRate.availability === "SUPPORTED" && wearableData.heartRate.value != null
+                  ? `Live: ${wearableData.heartRate.value} bpm`
+                  : "Resting: 64 bpm"}
+              </Text>
             </View>
           </View>
           <View style={s.statHeroRight}>{renderHeartIllustration()}</View>

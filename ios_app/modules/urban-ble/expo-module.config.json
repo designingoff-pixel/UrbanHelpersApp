@@ -1,0 +1,7 @@
+{
+  "name": "urban-ble",
+  "platforms": ["android"],
+  "android": {
+    "modules": ["expo.modules.urbanble.UrbanBleModule"]
+  }
+}

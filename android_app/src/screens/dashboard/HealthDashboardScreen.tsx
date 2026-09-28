@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { ScrollView, Text, View, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -6,18 +6,37 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 import SamsungBottomNav from "@/components/SamsungBottomNav";
+import MyDevicesCard from "@/components/MyDevicesCard";
+import { BleManager } from "@/services/ble/BleManager";
+import { WearableHealthData } from "@/services/ble/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "HealthDashboard">;
 
-const VITALS = [
-  { label: "HEART RATE", value: "72", unit: "BPM", status: "Normal", gradient: ["#be185d", "#7e22ce"] as (string[]), icon: "heart" },
-  { label: "OXYGEN", value: "98%", unit: "", status: "Healthy", gradient: ["#0284c7", "#0d9488"] as (string[]), icon: "water" },
-  { label: "PRESSURE", value: "120/80", unit: "", status: "Normal", gradient: ["#1e3a8a", "#4338ca"] as (string[]), icon: "pulse" },
-];
-
-// No NAV needed here anymore
-
 export default function HealthDashboardScreen({ navigation }: Props) {
+  const [wearableData, setWearableData] = useState<WearableHealthData>(BleManager.getHealthData());
+  const [connState, setConnState] = useState(BleManager.getConnectionState());
+
+  useEffect(() => {
+    const unsub = BleManager.subscribeRepository(() => {
+      setWearableData(BleManager.getHealthData());
+      setConnState(BleManager.getConnectionState());
+    });
+    return unsub;
+  }, []);
+
+  const isWatchConnected = connState === "connected";
+  const hrVal = wearableData.heartRate.availability === "SUPPORTED" && wearableData.heartRate.value != null
+    ? String(wearableData.heartRate.value)
+    : "72";
+  const hrStatus = isWatchConnected && wearableData.heartRate.availability === "SUPPORTED"
+    ? `${wearableData.heartRate.source || "Watch"} Live`
+    : "Normal";
+
+  const vitals = [
+    { label: "HEART RATE", value: hrVal, unit: "BPM", status: hrStatus, gradient: ["#be185d", "#7e22ce"] as string[], icon: "heart" },
+    { label: "OXYGEN", value: "98%", unit: "", status: "Healthy", gradient: ["#0284c7", "#0d9488"] as string[], icon: "water" },
+    { label: "PRESSURE", value: "120/80", unit: "", status: "Normal", gradient: ["#1e3a8a", "#4338ca"] as string[], icon: "pulse" },
+  ];
   return (
     <View style={s.root}>
       {/* Header */}
@@ -45,6 +64,11 @@ export default function HealthDashboardScreen({ navigation }: Props) {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+        {/* My Devices Smartwatch Integration */}
+        <View style={{ marginHorizontal: -16, marginTop: 4 }}>
+          <MyDevicesCard />
+        </View>
+
         {/* Hero */}
         <LinearGradient colors={["#0C4A6E", "#4C1D95"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.hero}>
           <Text style={s.heroTitle}>Your Health Journey</Text>
@@ -58,7 +82,7 @@ export default function HealthDashboardScreen({ navigation }: Props) {
         {/* Today's Vitals */}
         <Text style={s.sectionTitle}>Today's Vitals</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.vitalsRow}>
-          {VITALS.map((v) => (
+          {vitals.map((v) => (
             <LinearGradient key={v.label} colors={v.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.vitalCard}>
               <View style={s.vitalTop}>
                 <View style={s.vitalIconWrap}>

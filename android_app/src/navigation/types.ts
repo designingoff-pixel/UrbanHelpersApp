@@ -46,6 +46,11 @@ export type RootStackParamList = {
   VascularLoad: undefined;
   Hearing: undefined;
 
+  // Direct BLE Smartwatch & Wearables
+  ConnectWatch: undefined;
+  DeviceDetails: undefined;
+  BleDiagnostics: undefined;
+
   // Samsung Health Mindfulness & Stress Suite
   Mindfulness: undefined;
   MoodCheckIn: undefined;
