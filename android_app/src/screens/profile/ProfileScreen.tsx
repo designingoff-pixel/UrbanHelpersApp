@@ -10,10 +10,14 @@ import {
   Alert,
   StatusBar,
   Dimensions,
+  Image,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "@/services/firebase";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import { useAuth } from "@/context/AuthContext";
@@ -27,12 +31,16 @@ const PROFILE_STORAGE_KEY = "@urban_health_user_profile_v2";
 
 interface UserProfileData {
   username: string;
+  email: string;
+  phone: string;
+  age: string;
   gender: string;
   height: string;
   weight: string;
   dob: string;
   activityLevel: number; // 1 to 4
   avatarIndex: number;
+  avatarUri?: string | null;
 }
 
 const AVATAR_PRESETS = [
@@ -74,26 +82,37 @@ export default function ProfileScreen({ navigation }: Props) {
   };
 
   // Profile data
-  const defaultUsername = user?.email ? user.email.split("@")[0] : "vichuvisweswaran82";
+  const defaultUsername = user?.displayName || (user?.email ? user.email.split("@")[0] : "vichuvisweswaran82");
+  const defaultEmail = user?.email || "";
+  const defaultPhone = user?.phoneNumber || "";
+
   const [profile, setProfile] = useState<UserProfileData>({
     username: defaultUsername,
+    email: defaultEmail,
+    phone: defaultPhone,
+    age: "24",
     gender: "Male",
     height: "174 cm",
     weight: "68 kg",
     dob: "28 Jan 2001",
     activityLevel: 2,
     avatarIndex: 0,
+    avatarUri: null,
   });
 
   // Edit Modal State
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editUsername, setEditUsername] = useState(defaultUsername);
+  const [editEmail, setEditEmail] = useState(defaultEmail);
+  const [editPhone, setEditPhone] = useState(defaultPhone);
+  const [editAge, setEditAge] = useState("24");
   const [editGender, setEditGender] = useState("Male");
   const [editHeight, setEditHeight] = useState("174 cm");
   const [editWeight, setEditWeight] = useState("68 kg");
   const [editDob, setEditDob] = useState("28 Jan 2001");
   const [editLevel, setEditLevel] = useState(2);
   const [editAvatarIdx, setEditAvatarIdx] = useState(0);
+  const [editAvatarUri, setEditAvatarUri] = useState<string | null>(null);
 
   // Dynamic activity stats
   const [todaySteps, setTodaySteps] = useState(58);
@@ -102,18 +121,48 @@ export default function ProfileScreen({ navigation }: Props) {
   useEffect(() => {
     (async () => {
       try {
+        let merged = { ...profile };
+
+        // 1. Try local storage
         const raw = await AsyncStorage.getItem(PROFILE_STORAGE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
-          setProfile(parsed);
-          setEditUsername(parsed.username || defaultUsername);
-          setEditGender(parsed.gender || "Male");
-          setEditHeight(parsed.height || "174 cm");
-          setEditWeight(parsed.weight || "68 kg");
-          setEditDob(parsed.dob || "28 Jan 2001");
-          setEditLevel(parsed.activityLevel || 2);
-          setEditAvatarIdx(parsed.avatarIndex || 0);
+          merged = { ...merged, ...parsed };
         }
+
+        // 2. Try Firestore if user is authenticated
+        if (user?.uid) {
+          try {
+            const userSnap = await getDoc(doc(db, "users", user.uid));
+            if (userSnap.exists()) {
+              const uData = userSnap.data();
+              if (uData.displayName || uData.name) merged.username = uData.displayName || uData.name;
+              if (uData.email) merged.email = uData.email;
+              if (uData.phone || uData.mobile) merged.phone = uData.phone || uData.mobile;
+              if (uData.age) merged.age = String(uData.age);
+              if (uData.avatarUri) merged.avatarUri = uData.avatarUri;
+              if (uData.gender) merged.gender = uData.gender;
+              if (uData.height) merged.height = uData.height;
+              if (uData.weight) merged.weight = uData.weight;
+              if (uData.dob) merged.dob = uData.dob;
+            }
+          } catch (err) {
+            console.warn("[ProfileScreen] Firestore load error:", err);
+          }
+        }
+
+        setProfile(merged);
+        setEditUsername(merged.username || defaultUsername);
+        setEditEmail(merged.email || defaultEmail);
+        setEditPhone(merged.phone || defaultPhone);
+        setEditAge(merged.age || "24");
+        setEditGender(merged.gender || "Male");
+        setEditHeight(merged.height || "174 cm");
+        setEditWeight(merged.weight || "68 kg");
+        setEditDob(merged.dob || "28 Jan 2001");
+        setEditLevel(merged.activityLevel || 2);
+        setEditAvatarIdx(merged.avatarIndex || 0);
+        setEditAvatarUri(merged.avatarUri || null);
 
         const act = await getDailyActivityTotals();
         if (act.count > 0) {
@@ -124,35 +173,106 @@ export default function ProfileScreen({ navigation }: Props) {
         console.error("Error loading profile:", e);
       }
     })();
-  }, []);
+  }, [user]);
+
+  const handlePickFromGallery = async () => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert("Permission needed", "Please grant photo library access to upload a picture.");
+        return;
+      }
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        setEditAvatarUri(res.assets[0].uri);
+      }
+    } catch (e) {
+      console.warn("Image picker error:", e);
+    }
+  };
+
+  const handlePickFromCamera = async () => {
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert("Permission needed", "Please grant camera access to take a picture.");
+        return;
+      }
+      const res = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        setEditAvatarUri(res.assets[0].uri);
+      }
+    } catch (e) {
+      console.warn("Camera error:", e);
+    }
+  };
 
   const handleOpenEdit = () => {
     setEditUsername(profile.username);
+    setEditEmail(profile.email || defaultEmail);
+    setEditPhone(profile.phone || defaultPhone);
+    setEditAge(profile.age || "24");
     setEditGender(profile.gender);
     setEditHeight(profile.height);
     setEditWeight(profile.weight);
     setEditDob(profile.dob);
     setEditLevel(profile.activityLevel);
     setEditAvatarIdx(profile.avatarIndex);
+    setEditAvatarUri(profile.avatarUri || null);
     setEditModalVisible(true);
   };
 
   const handleSaveEdit = async () => {
     const updated: UserProfileData = {
       username: editUsername.trim() || defaultUsername,
+      email: editEmail.trim(),
+      phone: editPhone.trim(),
+      age: editAge.trim() || "24",
       gender: editGender.trim() || "Not specified",
       height: editHeight.trim() || "174 cm",
       weight: editWeight.trim() || "68 kg",
       dob: editDob.trim() || "28 Jan 2001",
       activityLevel: editLevel,
       avatarIndex: editAvatarIdx,
+      avatarUri: editAvatarUri,
     };
     setProfile(updated);
     setEditModalVisible(false);
     try {
       await AsyncStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(updated));
+      if (user?.uid) {
+        await setDoc(
+          doc(db, "users", user.uid),
+          {
+            displayName: updated.username,
+            name: updated.username,
+            email: updated.email,
+            phone: updated.phone,
+            mobile: updated.phone,
+            age: updated.age,
+            gender: updated.gender,
+            height: updated.height,
+            weight: updated.weight,
+            dob: updated.dob,
+            avatarUri: updated.avatarUri ?? null,
+            updatedAt: new Date().toISOString(),
+          },
+          { merge: true }
+        );
+      }
+      Alert.alert("Success", "Profile updated successfully!");
     } catch (e) {
       console.error("Error saving profile:", e);
+      Alert.alert("Notice", "Profile saved locally.");
     }
   };
 
@@ -178,16 +298,42 @@ export default function ProfileScreen({ navigation }: Props) {
 
           {/* Large Avatar */}
           <View style={s.avatarWrap}>
-            <LinearGradient
-              colors={["#7fd3be", "#5cbda6"]}
-              style={s.avatarCircle}
-            >
-              <Ionicons name="person" size={54} color="rgba(255,255,255,0.9)" />
-            </LinearGradient>
+            {profile.avatarUri ? (
+              <Image source={{ uri: profile.avatarUri }} style={s.avatarImageCircle} />
+            ) : (
+              <LinearGradient
+                colors={["#7fd3be", "#5cbda6"]}
+                style={s.avatarCircle}
+              >
+                <Ionicons name="person" size={54} color="rgba(255,255,255,0.9)" />
+              </LinearGradient>
+            )}
           </View>
 
           {/* Username */}
           <Text style={s.usernameText}>{profile.username}</Text>
+
+          {/* Contact & Personal details */}
+          <View style={s.profileMetaRow}>
+            {profile.email ? (
+              <View style={s.profileMetaItem}>
+                <Ionicons name="mail-outline" size={13} color="#94a3b8" />
+                <Text style={s.profileMetaText}>{profile.email}</Text>
+              </View>
+            ) : null}
+            {profile.phone ? (
+              <View style={s.profileMetaItem}>
+                <Ionicons name="call-outline" size={13} color="#94a3b8" />
+                <Text style={s.profileMetaText}>{profile.phone}</Text>
+              </View>
+            ) : null}
+            {profile.age ? (
+              <View style={s.profileMetaItem}>
+                <Ionicons name="calendar-outline" size={13} color="#94a3b8" />
+                <Text style={s.profileMetaText}>{profile.age} yrs</Text>
+              </View>
+            ) : null}
+          </View>
 
           {/* Friends & QR Code Action Buttons */}
           <View style={s.profileActionRow}>
@@ -199,7 +345,7 @@ export default function ProfileScreen({ navigation }: Props) {
             </Pressable>
             <Pressable
               style={s.profileActionBtn}
-              onPress={() => Alert.alert("My QR code", `Your Health ID QR:\n${profile.username}`)}
+              onPress={() => Alert.alert("My QR code", `Your Health ID QR:\n${profile.username}\n${profile.phone}`)}
             >
               <Text style={s.profileActionBtnText}>My QR code</Text>
             </Pressable>
@@ -404,25 +550,35 @@ export default function ProfileScreen({ navigation }: Props) {
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.editScroll}>
               {/* Squircle Profile Picture Card */}
               <View style={s.editAvatarCard}>
-                <LinearGradient
-                  colors={["#7fd3be", "#5ebda6"]}
-                  style={s.editAvatarSquircle}
-                >
-                  <View style={s.thinWhiteCircle}>
-                    <Text style={s.addPicText}>Add a profile picture</Text>
-                  </View>
-                </LinearGradient>
+                <Pressable onPress={handlePickFromGallery}>
+                  {editAvatarUri ? (
+                    <Image source={{ uri: editAvatarUri }} style={s.editAvatarSquircle} />
+                  ) : (
+                    <LinearGradient
+                      colors={["#7fd3be", "#5ebda6"]}
+                      style={s.editAvatarSquircle}
+                    >
+                      <View style={s.thinWhiteCircle}>
+                        <Ionicons name="camera-outline" size={26} color="#ffffff" style={{ marginBottom: 4 }} />
+                        <Text style={s.addPicText}>Add / Change picture</Text>
+                      </View>
+                    </LinearGradient>
+                  )}
+                </Pressable>
 
                 {/* 5 Avatar Presets Row */}
                 <View style={s.avatarPresetsRow}>
                   {AVATAR_PRESETS.map((av) => (
                     <Pressable
                       key={av.id}
-                      onPress={() => setEditAvatarIdx(av.id)}
+                      onPress={() => {
+                        setEditAvatarIdx(av.id);
+                        setEditAvatarUri(null);
+                      }}
                       style={[
                         s.avatarPresetCircle,
                         { backgroundColor: av.bg },
-                        editAvatarIdx === av.id && s.avatarPresetCircleActive,
+                        !editAvatarUri && editAvatarIdx === av.id && s.avatarPresetCircleActive,
                       ]}
                     >
                       <FontAwesome5 name={av.icon as any} size={18} color={av.color} />
@@ -431,9 +587,9 @@ export default function ProfileScreen({ navigation }: Props) {
                   {/* Plus button preset */}
                   <Pressable
                     style={s.avatarPresetPlus}
-                    onPress={() => Alert.alert("Upload Photo", "Choose photo from Gallery or take with Camera.")}
+                    onPress={handlePickFromGallery}
                   >
-                    <Ionicons name="add" size={20} color="#ffffff" />
+                    <Ionicons name="image-outline" size={20} color="#ffffff" />
                   </Pressable>
                 </View>
 
@@ -441,28 +597,76 @@ export default function ProfileScreen({ navigation }: Props) {
                 <View style={s.photoSourceRow}>
                   <Pressable
                     style={s.photoSourceBtn}
-                    onPress={() => Alert.alert("Gallery", "Opening device photo gallery...")}
+                    onPress={handlePickFromGallery}
                   >
+                    <Ionicons name="images-outline" size={16} color="#ffffff" style={{ marginRight: 6 }} />
                     <Text style={s.photoSourceBtnText}>Gallery</Text>
                   </Pressable>
                   <Pressable
                     style={s.photoSourceBtn}
-                    onPress={() => Alert.alert("Camera", "Opening camera...")}
+                    onPress={handlePickFromCamera}
                   >
+                    <Ionicons name="camera-outline" size={16} color="#ffffff" style={{ marginRight: 6 }} />
                     <Text style={s.photoSourceBtnText}>Camera</Text>
                   </Pressable>
                 </View>
               </View>
 
-              {/* Username Input Card */}
+              {/* Username / Full Name Input Card */}
               <View style={s.editFieldCardSingle}>
+                <Text style={s.editFieldLabel}>Full Name</Text>
                 <TextInput
                   style={s.editInputUsername}
                   value={editUsername}
                   onChangeText={setEditUsername}
-                  placeholder="Username"
+                  placeholder="Your full name"
                   placeholderTextColor="rgba(255,255,255,0.3)"
                 />
+              </View>
+
+              {/* Contact Details Card */}
+              <View style={[s.editDetailsCard, { marginBottom: 14 }]}>
+                {/* Email */}
+                <View style={s.detailRow}>
+                  <Ionicons name="mail-outline" size={20} color="rgba(255,255,255,0.7)" style={s.detailIcon} />
+                  <TextInput
+                    style={s.detailInput}
+                    value={editEmail}
+                    onChangeText={setEditEmail}
+                    placeholder="Email address"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </View>
+                <View style={s.detailSeparator} />
+
+                {/* Phone */}
+                <View style={s.detailRow}>
+                  <Ionicons name="call-outline" size={20} color="rgba(255,255,255,0.7)" style={s.detailIcon} />
+                  <TextInput
+                    style={s.detailInput}
+                    value={editPhone}
+                    onChangeText={setEditPhone}
+                    placeholder="Mobile / Contact number"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    keyboardType="phone-pad"
+                  />
+                </View>
+                <View style={s.detailSeparator} />
+
+                {/* Age */}
+                <View style={s.detailRow}>
+                  <Ionicons name="hourglass-outline" size={20} color="rgba(255,255,255,0.7)" style={s.detailIcon} />
+                  <TextInput
+                    style={s.detailInput}
+                    value={editAge}
+                    onChangeText={setEditAge}
+                    placeholder="Age (e.g. 24)"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    keyboardType="numeric"
+                  />
+                </View>
               </View>
 
               {/* Personal Details Card */}
@@ -665,12 +869,49 @@ const s = StyleSheet.create({
     borderWidth: 3,
     borderColor: "rgba(255,255,255,0.15)",
   },
+  avatarImageCircle: {
+    width: 106,
+    height: 106,
+    borderRadius: 53,
+    borderWidth: 3,
+    borderColor: "#059669",
+  },
   usernameText: {
     fontSize: 22,
     fontWeight: "700",
     color: "#ffffff",
-    marginBottom: 20,
+    marginBottom: 8,
     letterSpacing: 0.3,
+  },
+  profileMetaRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 18,
+    paddingHorizontal: 10,
+  },
+  profileMetaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  profileMetaText: {
+    fontSize: 12,
+    color: "#cbd5e1",
+    fontWeight: "500",
+  },
+  editFieldLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.6)",
+    marginBottom: 4,
+    paddingHorizontal: 4,
   },
   profileActionRow: {
     flexDirection: "row",

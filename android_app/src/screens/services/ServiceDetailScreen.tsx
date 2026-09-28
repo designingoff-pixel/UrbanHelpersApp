@@ -22,6 +22,9 @@ import { SERVICE_CATEGORIES } from "./servicesData";
 import { getSubServiceImageSource } from "@/assets/serviceImages";
 import { useAuth } from "@/context/AuthContext";
 import { createBooking } from "@/services/bookingService";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/services/firebase";
 import {
   getSavedAddresses, saveAddress, SavedAddress
 } from "@/services/addressStorage";
@@ -154,9 +157,33 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   });
   const [pinCoords, setPinCoords] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Load saved addresses on mount or auto-detect current GPS location
+  // Load saved addresses and profile contact number on mount
   useEffect(() => {
     (async () => {
+      // 1. Load user profile phone number as default
+      try {
+        const rawProfile = await AsyncStorage.getItem("@urban_health_user_profile_v2");
+        if (rawProfile) {
+          const parsed = JSON.parse(rawProfile);
+          if (parsed.phone) {
+            setCustomerPhone(parsed.phone);
+          }
+        }
+        if (user?.uid) {
+          const uSnap = await getDoc(doc(db, "users", user.uid));
+          if (uSnap.exists()) {
+            const uData = uSnap.data();
+            const phone = uData.phone || uData.mobile || user.phoneNumber;
+            if (phone) {
+              setCustomerPhone(phone);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("[ServiceDetailScreen] Error loading profile phone:", err);
+      }
+
+      // 2. Load saved addresses or auto-detect GPS
       const addrs = await getSavedAddresses();
       setSavedAddresses(addrs);
       if (addrs.length > 0) {
@@ -215,7 +242,39 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         console.warn("GPS Auto-detect error:", e);
       }
     })();
-  }, []);
+  }, [user]);
+
+  const handlePickCurrentLocation = async () => {
+    try {
+      setSearchingAddress(true);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission required", "Please allow location access to auto-detect your address.");
+        setSearchingAddress(false);
+        return;
+      }
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      if (loc) {
+        const lat = loc.coords.latitude;
+        const lng = loc.coords.longitude;
+        setCustomerLat(lat);
+        setCustomerLng(lng);
+        const geocode = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+        if (geocode && geocode.length > 0) {
+          const place = geocode[0];
+          const parts = [place.name, place.street, place.subregion, place.city, place.region].filter(Boolean);
+          const detectedAddr = parts.join(", ");
+          if (detectedAddr) {
+            setAddressText(detectedAddr);
+          }
+        }
+      }
+    } catch (e) {
+      Alert.alert("Location Error", "Could not detect location. Please type your address.");
+    } finally {
+      setSearchingAddress(false);
+    }
+  };
 
   // ── Address Autocomplete Debounce ─────────────────────────────────────────
   useEffect(() => {
@@ -422,13 +481,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         } catch (_) {}
       }
 
-      const fullAddress = [
-        flatNo ? `Flat/Door: ${flatNo}` : "",
-        addressText.trim(),
-        landmark ? `Landmark: ${landmark}` : "",
-      ]
-        .filter(Boolean)
-        .join(", ");
+      const fullAddress = addressText.trim();
 
       const { bookingId, otp } = await createBooking({
         customerId: user.uid,
@@ -564,88 +617,37 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
           </View>
         </Animated.View>
 
-        {/* ── Service Address Section with Home/Office/Add Cards ── */}
+        {/* ── Service Address Section (2 Options Only: Current Location & Type Address) ── */}
         <Animated.View entering={FadeInDown.delay(130).duration(380)}>
           <View style={s.section}>
-            <View style={s.sectionHeaderRow}>
-              <Text style={s.sectionTitle}>Service Address</Text>
-              <Pressable onPress={() => setShowAddModal(true)} style={s.addAddressHeaderBtn}>
-                <Ionicons name="add-circle" size={16} color={category.accent} />
-                <Text style={[s.addAddressHeaderText, { color: category.accent }]}>+ Add New</Text>
-              </Pressable>
-            </View>
+            <Text style={s.sectionTitle}>Service Address</Text>
 
-            {/* Saved Address Cards Grid */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.addressCardsScroll}>
-              {savedAddresses.map((addr) => {
-                const isSelected = selectedAddressId === addr.id;
-                return (
-                  <Pressable
-                    key={addr.id}
-                    onPress={() => handleSelectAddressCard(addr)}
-                    style={[
-                      s.addressCard,
-                      isSelected && [s.addressCardActive, { borderColor: category.accent }],
-                    ]}
-                  >
-                    <View style={s.addressCardHeader}>
-                      <Ionicons
-                        name={
-                          addr.label === "Home"
-                            ? "home"
-                            : addr.label === "Office"
-                            ? "briefcase"
-                            : "location"
-                        }
-                        size={16}
-                        color={isSelected ? category.accent : colors.text.secondary}
-                      />
-                      <Text style={[s.addressCardLabel, isSelected && { color: category.accent }]}>
-                        {addr.label}
-                      </Text>
-                      {isSelected && (
-                        <Ionicons name="checkmark-circle" size={16} color={category.accent} style={{ marginLeft: "auto" }} />
-                      )}
-                    </View>
-                    <Text style={s.addressCardText} numberOfLines={2}>
-                      {addr.addressText}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-
-              {/* + Add New Card */}
-              <Pressable
-                onPress={() => setShowAddModal(true)}
-                style={[s.addressCard, s.addNewCard]}
-              >
-                <Ionicons name="add-circle-outline" size={24} color={category.accent} />
-                <Text style={[s.addNewCardText, { color: category.accent }]}>Add Address</Text>
-              </Pressable>
-            </ScrollView>
-
-            {/* Map auto-fill button */}
-            <Pressable style={s.mapBtn} onPress={() => handleOpenMap(false)}>
-              <Ionicons name="navigate" size={16} color="white" />
-              <Text style={s.mapBtnText}>Locate on Map / Change Pin</Text>
+            {/* 1. Pick Current Location Button */}
+            <Pressable
+              style={s.currentLocationBtn}
+              onPress={handlePickCurrentLocation}
+              disabled={searchingAddress}
+            >
+              <Ionicons name="navigate" size={17} color="#10b981" />
+              <Text style={s.currentLocationBtnText}>
+                {searchingAddress ? "Detecting current location..." : "Use Current Location (GPS)"}
+              </Text>
+              {searchingAddress && <ActivityIndicator size="small" color="#10b981" style={{ marginLeft: "auto" }} />}
             </Pressable>
 
-            {/* Address input with live search */}
-            <View style={s.addressInputWrap}>
+            {/* 2. Type Address Input */}
+            <View style={[s.addressInputWrap, { marginTop: 12 }]}>
               <TextInput
                 style={[s.addressInput, s.addressInputWithIcon]}
-                placeholder="Type location (e.g. Chennai, Chennimalai, Anna Nagar)"
+                placeholder="Type your service address, area, city..."
                 placeholderTextColor={colors.text.muted}
                 value={addressText}
                 onChangeText={(text) => {
                   setAddressText(text);
-                  setSelectedAddressId("");
                 }}
                 returnKeyType="search"
               />
-              {searchingAddress ? (
-                <ActivityIndicator size="small" color="#60a5fa" style={s.addressInputStatusIcon} />
-              ) : addressText.trim().length >= 2 ? (
+              {addressText.trim().length >= 2 ? (
                 <Ionicons name="search-outline" size={18} color={colors.text.muted} style={s.addressInputStatusIcon} />
               ) : null}
             </View>
@@ -672,24 +674,6 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                 ))}
               </View>
             )}
-
-            {/* Flat / Door & Landmark Inputs */}
-            <View style={s.flatLandmarkRow}>
-              <TextInput
-                style={[s.addressInput, { flex: 1 }]}
-                placeholder="House / Flat No."
-                placeholderTextColor={colors.text.muted}
-                value={flatNo}
-                onChangeText={setFlatNo}
-              />
-              <TextInput
-                style={[s.addressInput, { flex: 1.2 }]}
-                placeholder="Landmark (Optional)"
-                placeholderTextColor={colors.text.muted}
-                value={landmark}
-                onChangeText={setLandmark}
-              />
-            </View>
           </View>
         </Animated.View>
 
@@ -1096,6 +1080,25 @@ const s = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.25)",
   },
   addNewCardText: { fontSize: 12, fontWeight: "700", marginTop: 4 },
+
+  currentLocationBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "rgba(16,185,129,0.12)",
+    borderWidth: 1.5,
+    borderColor: "#10b981",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    marginBottom: 4,
+  },
+  currentLocationBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#10b981",
+  },
 
   mapBtn: {
     flexDirection: "row",

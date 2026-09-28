@@ -15,6 +15,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 import { useServiceCategories } from "@/services/firestoreServices";
+import { SERVICE_CATEGORIES } from "./servicesData";
 import { getSubServiceImageSource } from "@/assets/serviceImages";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceCategory">;
@@ -28,7 +29,9 @@ function formatPrice(price: string): string {
 export default function ServiceCategoryScreen({ navigation, route }: Props) {
   const { categoryId } = route.params;
   const { categories } = useServiceCategories();
-  const category = categories.find((c) => c.id === categoryId);
+  const category =
+    categories.find((c) => c.id === categoryId) ||
+    SERVICE_CATEGORIES.find((c) => c.id === categoryId);
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredSubServices = useMemo(() => {
@@ -69,14 +72,7 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
             <Ionicons name="arrow-back" size={22} color="white" />
           </Pressable>
           <Text style={s.topBarTitle}>{category.name}</Text>
-          <View style={s.topBarRight}>
-            <Pressable style={s.iconBtn}>
-              <Ionicons name="heart-outline" size={20} color="white" />
-            </Pressable>
-            <Pressable style={s.iconBtn}>
-              <Ionicons name="share-outline" size={20} color="white" />
-            </Pressable>
-          </View>
+          <View style={s.topBarRight} />
         </View>
 
         {/* Hero section */}

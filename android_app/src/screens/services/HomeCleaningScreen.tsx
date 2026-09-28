@@ -39,14 +39,7 @@ export default function HomeCleaningScreen({ navigation }: Props) {
           <Ionicons name="arrow-back" size={22} color="white" />
         </Pressable>
         <Text style={s.headerTitle}>Home Cleaning</Text>
-        <View style={s.headerRight}>
-          <Pressable style={s.iconBtn}>
-            <Ionicons name="heart-outline" size={20} color="white" />
-          </Pressable>
-          <Pressable style={s.iconBtn}>
-            <Ionicons name="share-outline" size={20} color="white" />
-          </Pressable>
-        </View>
+        <View style={s.headerRight} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>

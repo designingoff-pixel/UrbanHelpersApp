@@ -11,6 +11,7 @@ import {
   Modal,
   Alert,
   Image,
+  BackHandler,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -56,13 +57,7 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
   const [locationModal, setLocationModal] = useState(false);
   const [sideMenuVisible, setSideMenuVisible] = useState(false);
 
-  const getRealtimeGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour >= 4 && hour < 12) return "Good Morning 👋";
-    if (hour >= 12 && hour < 17) return "Good Afternoon ☀️";
-    if (hour >= 17 && hour < 22) return "Good Evening 🌆";
-    return "Good Night 🌙";
-  };
+
 
   const getCategoryServiceCount = (catId: string) => {
     const found = SERVICE_CATEGORIES.find((c) => c.id === catId);
@@ -75,6 +70,16 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
   useEffect(() => {
     headerOp.value = withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) });
     headerY.value = withSpring(0, { damping: 18, stiffness: 200 });
+  }, [activeView]);
+
+  useEffect(() => {
+    if (activeView === "explore") {
+      const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+        setActiveView("main");
+        return true;
+      });
+      return () => sub.remove();
+    }
   }, [activeView]);
 
   const headerStyle = useAnimatedStyle(() => ({
@@ -93,177 +98,328 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
       />
 
       {/* ═════════════════════════════════════════════════════════════════════════
-          VIEW 1: MAIN HOME SERVICES (Matching Left Screenshot)
+          VIEW 1: MAIN HOME (Reference Screenshot Style)
           ═════════════════════════════════════════════════════════════════════════ */}
       {activeView === "main" ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={s.scrollContent}
+          stickyHeaderIndices={[1]}
         >
-          {/* ── 1. Top Three-Line Menu & Brand Bar ────────────────────────── */}
-          <Animated.View style={[s.topBar, headerStyle]}>
-            <View style={s.topBarLeftRow}>
-              <Pressable
-                style={[s.menuHamburgerBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#f1f5f9" }]}
-                onPress={() => setSideMenuVisible(true)}
-              >
-                <Ionicons name="menu" size={24} color={colors.text} />
-              </Pressable>
-              <View style={s.brandCol}>
-                <Text style={[s.brandTitleText, { color: colors.text }]}>Urban Services</Text>
-                <Text style={[s.brandSubtitleText, { color: colors.textMuted }]}>
-                  Home & Living Solutions
-                </Text>
-              </View>
-            </View>
-
-            <View style={s.topBarIcons}>
-              {/* Notification bell */}
-              <Pressable
-                style={[s.iconBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#f1f5f9" }]}
-                onPress={() => navigation.navigate("Notifications")}
-              >
-                <Ionicons name="notifications-outline" size={20} color={colors.text} />
-                <View style={s.notifDot} />
-              </Pressable>
-
-              {/* Avatar circle */}
-              <Pressable
-                style={[s.avatarCircle, { borderColor: colors.primary }]}
-                onPress={() => navigation.navigate("Profile")}
-              >
-                <LinearGradient colors={["#00c6aa", "#0f9b8e"]} style={s.avatarInner}>
-                  <Text style={s.avatarInitial}>{firstName.charAt(0).toUpperCase()}</Text>
-                </LinearGradient>
-              </Pressable>
-            </View>
-          </Animated.View>
-
-          {/* ── 2. Greeting Header ───────────────────────────────────── */}
-          <View style={s.greetingSection}>
-            <Text style={[s.greetingText, { color: colors.text }]}>{getRealtimeGreeting()}</Text>
-            <Text style={[s.greetingSubText, { color: colors.textSecondary }]}>
-              Make your home, life and health easier today.
-            </Text>
-          </View>
-
-          {/* ── 3. Search Bar with Mic ───────────────────────────────── */}
-          <View
-            style={[
-              s.searchContainer,
-              {
-                backgroundColor: isDark ? "#161f2e" : "#ffffff",
-                borderColor: colors.cardBorder,
-              },
-            ]}
+          {/* ── 1. HERO HEADER — deep green gradient, full-width ──────── */}
+          <LinearGradient
+            colors={["#064e3b", "#065f46", "#047857"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.mainHeroHeader}
           >
-            <Ionicons name="search-outline" size={20} color={colors.textMuted} style={s.searchIcon} />
-            <TextInput
-              style={[s.searchInput, { color: colors.text }]}
-              placeholder="Search services, e.g. cleaning, RO, doctor..."
-              placeholderTextColor={colors.textMuted}
-              value={searchText}
-              onChangeText={setSearchText}
-              returnKeyType="search"
-            />
-            <Pressable
-              onPress={() => Alert.alert("Voice Search", "Listening for your voice request...")}
-              style={s.micBtn}
-            >
-              <Ionicons name="mic-outline" size={20} color={colors.textSecondary} />
-            </Pressable>
-          </View>
-
-          {/* ── 4. Hero Banner ("A Cleaner Home, A Healthier You") ───── */}
-          <View style={s.heroCardWrapper}>
-            <LinearGradient
-              colors={isDark ? ["#064e3b", "#065f46", "#047857"] : ["#ebfbee", "#d3f9d8", "#c3fae8"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={s.heroCard}
-            >
-              {/* Left Content */}
-              <View style={s.heroLeftCol}>
-                <View style={s.heroPill}>
-                  <Ionicons name="sparkles" size={12} color="#f59e0b" />
-                  <Text style={s.heroPillText}>Premium Care</Text>
-                </View>
-
-                <Text style={[s.heroHeading, { color: isDark ? "#ffffff" : "#134e4a" }]}>
-                  A Cleaner Home,{"\n"}A Healthier You
-                </Text>
-
-                <Text style={[s.heroTagline, { color: isDark ? "rgba(255,255,255,0.85)" : "#2d3748" }]}>
-                  Trusted professionals.{"\n"}Quality service. Guaranteed.
-                </Text>
+            {/* Top Bar: Profile avatar on left, hamburger menu, brand, SOS and notifications on right */}
+            <Animated.View style={[s.heroTopBar, headerStyle]}>
+              <View style={s.heroTopBarLeft}>
+                <Pressable
+                  style={s.heroAvatarCircle}
+                  onPress={() => navigation.navigate("Profile")}
+                >
+                  <LinearGradient colors={["#00c6aa", "#0f9b8e"]} style={s.avatarInner}>
+                    <Text style={s.avatarInitial}>{firstName.charAt(0).toUpperCase()}</Text>
+                  </LinearGradient>
+                </Pressable>
 
                 <Pressable
-                  style={s.heroBookBtn}
-                  onPress={() => setActiveView("explore")}
+                  style={s.heroHamburgerBtn}
+                  onPress={() => setSideMenuVisible(true)}
                 >
-                  <Text style={s.heroBookText}>Book Now</Text>
-                  <Ionicons name="arrow-forward" size={14} color="#ffffff" />
+                  <Ionicons name="menu" size={22} color="#ffffff" />
+                </Pressable>
+
+                <View>
+                  <Text style={s.heroBrandTitle}>Urban Services</Text>
+                  <Text style={s.heroBrandSub}>Home &amp; Living Solutions</Text>
+                </View>
+              </View>
+
+              <View style={s.heroTopBarIcons}>
+                <Pressable
+                  style={s.heroSosBtn}
+                  onPress={() => navigation.navigate("EmergencyAssistance")}
+                >
+                  <Ionicons name="warning" size={14} color="#ffffff" />
+                  <Text style={s.heroSosBtnText}>SOS</Text>
+                </Pressable>
+
+                <Pressable
+                  style={s.heroIconBtn}
+                  onPress={() => navigation.navigate("Notifications")}
+                >
+                  <Ionicons name="notifications-outline" size={20} color="#ffffff" />
+                  <View style={s.notifDot} />
+                </Pressable>
+              </View>
+            </Animated.View>
+
+            {/* Hero Heading + Illustration */}
+            <View style={s.heroContentRow}>
+              <View style={s.heroTextCol}>
+                <Text style={s.heroMainTitle}>Make Your{"\n"}Home Better</Text>
+                <Text style={s.heroMainSubtitle}>
+                  Find the right service for your home, health and lifestyle.
+                </Text>
+                <Pressable style={s.heroExploreBtn} onPress={() => setActiveView("explore")}>
+                  <Text style={s.heroExploreBtnText}>Explore Services</Text>
+                  <Ionicons name="arrow-forward" size={13} color="#ffffff" />
                 </Pressable>
               </View>
 
-              {/* Right Illustration: Cozy Sofa & Houseplant 3D graphic */}
-              <View style={s.heroIllustrationWrap}>
-                <View style={s.plantLeaf1} />
-                <View style={s.plantLeaf2} />
-                <View style={s.sofaBack}>
-                  <View style={s.sofaCushionLeft} />
-                  <View style={s.sofaCushionRight} />
-                  <View style={s.sofaPillow} />
+              {/* House illustration reused from explore view */}
+              <View style={s.houseIllustration}>
+                <View style={s.houseRoof} />
+                <View style={s.houseWalls}>
+                  <View style={s.houseDoor} />
+                  <View style={s.houseWindow} />
                 </View>
-                <View style={s.sofaBase} />
+                <View style={s.houseChimney} />
+                <View style={s.houseLawn} />
               </View>
-            </LinearGradient>
+            </View>
+          </LinearGradient>
+
+          {/* ── 2. STICKY HEADER (Search Bar + Submenu: Reminders, Points, Nearby Updates) ── */}
+          <View style={[s.stickyHeaderWrap, { backgroundColor: colors.background }]}>
+            {/* Search Bar */}
+            <View
+              style={[
+                s.searchContainer,
+                {
+                  backgroundColor: isDark ? "#161f2e" : "#ffffff",
+                  borderColor: colors.cardBorder,
+                },
+              ]}
+            >
+              <Ionicons name="search-outline" size={20} color={colors.textMuted} style={s.searchIcon} />
+              <TextInput
+                style={[s.searchInput, { color: colors.text }]}
+                placeholder="Search services, e.g. cleaning, RO..."
+                placeholderTextColor={colors.textMuted}
+                value={searchText}
+                onChangeText={setSearchText}
+                returnKeyType="search"
+              />
+              <Pressable
+                onPress={() => Alert.alert("Voice Search", "Listening for your voice request...")}
+                style={s.micBtn}
+              >
+                <Ionicons name="mic-outline" size={20} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+
+            {/* Sticky Submenu: Reminders, Points, Nearby Updates */}
+            <View style={s.submenuRow}>
+              <Pressable
+                style={[
+                  s.submenuPill,
+                  {
+                    backgroundColor: isDark ? "#161f2e" : "#f0fdf4",
+                    borderColor: isDark ? "#1f2937" : "#bbf7d0",
+                  },
+                ]}
+                onPress={() => navigation.navigate("SmartReminders")}
+              >
+                <LinearGradient colors={["#059669", "#10b981"]} style={s.submenuIconWrap}>
+                  <Ionicons name="alarm" size={12} color="#ffffff" />
+                </LinearGradient>
+                <Text style={[s.submenuPillText, { color: isDark ? "#ffffff" : "#065f46" }]}>Reminders</Text>
+              </Pressable>
+
+              <Pressable
+                style={[
+                  s.submenuPill,
+                  {
+                    backgroundColor: isDark ? "#161f2e" : "#fffbeb",
+                    borderColor: isDark ? "#1f2937" : "#fde68a",
+                  },
+                ]}
+                onPress={() => navigation.navigate("Points")}
+              >
+                <LinearGradient colors={["#d97706", "#f59e0b"]} style={s.submenuIconWrap}>
+                  <Ionicons name="trophy" size={12} color="#ffffff" />
+                </LinearGradient>
+                <Text style={[s.submenuPillText, { color: isDark ? "#ffffff" : "#92400e" }]}>Points</Text>
+              </Pressable>
+
+              <Pressable
+                style={[
+                  s.submenuPill,
+                  {
+                    backgroundColor: isDark ? "#161f2e" : "#fef2f2",
+                    borderColor: isDark ? "#1f2937" : "#fecaca",
+                  },
+                ]}
+                onPress={() => navigation.navigate("NearbyUpdates")}
+              >
+                <LinearGradient colors={["#dc2626", "#ef4444"]} style={s.submenuIconWrap}>
+                  <Ionicons name="radio" size={12} color="#ffffff" />
+                </LinearGradient>
+                <Text style={[s.submenuPillText, { color: isDark ? "#ffffff" : "#991b1b" }]}>Nearby Updates</Text>
+              </Pressable>
+            </View>
           </View>
 
-          {/* ── 5. Quick Actions Row (4 Circular Icon Cards) ─────────── */}
-          <View style={s.quickActionsRow}>
-            {/* My Bookings */}
+          {/* ── 3. SERVICE CATEGORIES GRID ───────────────────────────── */}
+          <View style={s.sectionHeader}>
+            <Text style={[s.sectionTitle, { color: colors.text }]}>Service Categories</Text>
+            <Pressable style={s.seeAllBtn} onPress={() => setActiveView("explore")}>
+              <Text style={s.seeAllText}>See All</Text>
+              <Ionicons name="arrow-forward" size={14} color="#059669" />
+            </Pressable>
+          </View>
+
+          <View style={s.exploreCatGrid}>
+            {/* 1. Home Cleaning */}
             <Pressable
-              style={s.quickActionCard}
-              onPress={() => navigation.navigate("MyBookings")}
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "cleaning" })}
             >
-              <View style={[s.quickActionCircle, { backgroundColor: "#e8f5e9" }]}>
+              <View style={s.exploreCatImageWrap}>
+                <Image source={SERVICE_LOCAL_IMAGES.cleaning} style={s.exploreCatImage} resizeMode="cover" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Home Cleaning</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("cleaning")}</Text>
+            </Pressable>
+
+            {/* 2. RO Service */}
+            <Pressable
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "ro" })}
+            >
+              <View style={s.exploreCatImageWrap}>
+                <Image source={SERVICE_LOCAL_IMAGES.ro} style={s.exploreCatImage} resizeMode="cover" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>RO Service</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("ro")}</Text>
+            </Pressable>
+
+            {/* 3. Pest Control */}
+            <Pressable
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "pest" })}
+            >
+              <View style={s.exploreCatImageWrap}>
+                <Image source={SERVICE_LOCAL_IMAGES.pest} style={s.exploreCatImage} resizeMode="cover" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Pest Control</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("pest")}</Text>
+            </Pressable>
+
+            {/* 4. Pet Care */}
+            <Pressable
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "pet" })}
+            >
+              <View style={s.exploreCatImageWrap}>
+                <Image source={SERVICE_LOCAL_IMAGES.pet} style={s.exploreCatImage} resizeMode="cover" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Pet Care</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("pet")}</Text>
+            </Pressable>
+
+            {/* 5. Horticulture */}
+            <Pressable
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "hort" })}
+            >
+              <View style={s.exploreCatImageWrap}>
+                <Image source={SERVICE_LOCAL_IMAGES.horticulture} style={s.exploreCatImage} resizeMode="cover" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Horticulture</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("hort")}</Text>
+            </Pressable>
+
+            {/* 6. Appliances */}
+            <Pressable
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "appliance" })}
+            >
+              <View style={s.exploreCatImageWrap}>
+                <Image source={SERVICE_LOCAL_IMAGES.appliances} style={s.exploreCatImage} resizeMode="cover" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Appliances</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("appliance")}</Text>
+            </Pressable>
+
+            {/* 7. Home Care */}
+            <Pressable
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "homecare" })}
+            >
+              <View style={s.exploreCatImageWrap}>
+                <Image source={SERVICE_LOCAL_IMAGES.homecare} style={s.exploreCatImage} resizeMode="cover" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Home Care</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("homecare")}</Text>
+            </Pressable>
+
+            {/* 8. Emergency */}
+            <Pressable
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
+              onPress={() => navigation.navigate("EmergencyAssistance")}
+            >
+              <View style={s.exploreCatImageWrap}>
+                <Image source={SERVICE_LOCAL_IMAGES.emergency} style={s.exploreCatImage} resizeMode="cover" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Emergency</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("emergency")}</Text>
+            </Pressable>
+
+            {/* 9. Insurance */}
+            <Pressable
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "insurance" })}
+            >
+              <View style={s.exploreCatImageWrap}>
+                <Image source={SERVICE_LOCAL_IMAGES.insurance} style={s.exploreCatImage} resizeMode="cover" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Insurance</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("insurance")}</Text>
+            </Pressable>
+
+            {/* 10. Other Services */}
+            <Pressable
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "other" })}
+            >
+              <View style={s.exploreCatImageWrap}>
+                <Image source={SERVICE_LOCAL_IMAGES.other} style={s.exploreCatImage} resizeMode="cover" />
+              </View>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Other Services</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("other")}</Text>
+            </Pressable>
+          </View>
+
+          {/* ── 4. QUICK ACTIONS ROW ─────────────────────────────────── */}
+          <View style={s.quickActionsRow}>
+            <Pressable style={s.quickActionCard} onPress={() => navigation.navigate("MyBookings")}>
+              <View style={[s.quickActionCircle, { backgroundColor: "rgba(16,185,129,0.15)" }]}>
                 <Ionicons name="calendar" size={22} color="#10b981" />
               </View>
               <Text style={[s.quickActionTitle, { color: colors.text }]}>My Bookings</Text>
-              <Text style={[s.quickActionSub, { color: colors.textMuted }]}>View & manage</Text>
+              <Text style={[s.quickActionSub, { color: colors.textMuted }]}>View &amp; manage</Text>
             </Pressable>
-
-            {/* Track */}
-            <Pressable
-              style={s.quickActionCard}
-              onPress={() => navigation.navigate("LiveTracking")}
-            >
-              <View style={[s.quickActionCircle, { backgroundColor: "#f3e8ff" }]}>
+            <Pressable style={s.quickActionCard} onPress={() => navigation.navigate("LiveTracking")}>
+              <View style={[s.quickActionCircle, { backgroundColor: "rgba(139,92,246,0.15)" }]}>
                 <Ionicons name="location" size={22} color="#8b5cf6" />
               </View>
               <Text style={[s.quickActionTitle, { color: colors.text }]}>Track</Text>
               <Text style={[s.quickActionSub, { color: colors.textMuted }]}>Live tracking</Text>
             </Pressable>
-
-            {/* Offers */}
-            <Pressable
-              style={s.quickActionCard}
-              onPress={() => navigation.navigate("Offers")}
-            >
-              <View style={[s.quickActionCircle, { backgroundColor: "#fef3c7" }]}>
+            <Pressable style={s.quickActionCard} onPress={() => navigation.navigate("Offers")}>
+              <View style={[s.quickActionCircle, { backgroundColor: "rgba(245,158,11,0.15)" }]}>
                 <Ionicons name="gift" size={22} color="#f59e0b" />
               </View>
               <Text style={[s.quickActionTitle, { color: colors.text }]}>Offers</Text>
               <Text style={[s.quickActionSub, { color: colors.textMuted }]}>Save more</Text>
             </Pressable>
-
-            {/* Emergency */}
-            <Pressable
-              style={s.quickActionCard}
-              onPress={() => navigation.navigate("EmergencyAssistance")}
-            >
-              <View style={[s.quickActionCircle, { backgroundColor: "#fee2e2" }]}>
+            <Pressable style={s.quickActionCard} onPress={() => navigation.navigate("EmergencyAssistance")}>
+              <View style={[s.quickActionCircle, { backgroundColor: "rgba(239,68,68,0.15)" }]}>
                 <Text style={s.emergencyText}>SOS</Text>
               </View>
               <Text style={[s.quickActionTitle, { color: colors.text }]}>Emergency</Text>
@@ -271,195 +427,28 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
             </Pressable>
           </View>
 
-          {/* ── 6. Popular Services Section Header ───────────────────── */}
-          <View style={s.sectionHeader}>
-            <Text style={[s.sectionTitle, { color: colors.text }]}>Popular Services</Text>
-            <Pressable
-              style={s.seeAllBtn}
-              onPress={() => setActiveView("explore")}
-            >
-              <Text style={s.seeAllText}>See All</Text>
-              <Ionicons name="arrow-forward" size={14} color="#059669" />
-            </Pressable>
-          </View>
-
-          {/* ── 7. 2×2 Grid of Curved Illustrated Cards ──────────────── */}
-          <View style={s.servicesGrid}>
-            {/* 1. Home Cleaning */}
-            <Pressable
-              style={[s.serviceCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "cleaning" })}
-            >
-              <View style={s.cardWaveHeader}>
-                <Image
-                  source={SERVICE_LOCAL_IMAGES.cleaning}
-                  style={s.cardImage}
-                  resizeMode="cover"
-                />
-                <LinearGradient
-                  colors={["transparent", "rgba(5,150,105,0.7)"]}
-                  style={StyleSheet.absoluteFillObject}
-                />
-              </View>
-
-              <View style={s.cardBody}>
-                <View style={s.cardBadgeIcon}>
-                  <Ionicons name="sparkles" size={17} color="#059669" />
-                </View>
-                <Text style={[s.cardServiceName, { color: colors.text }]}>Home Cleaning</Text>
-                <Text style={[s.cardServiceTagline, { color: colors.textMuted }]}>
-                  Spotless home,{"\n"}happy life
-                </Text>
-                <View style={[s.cardPillBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#f0fdf4" }]}>
-                  <Text style={[s.cardPillBtnText, { color: "#059669" }]}>{getCategoryServiceCount("cleaning")}</Text>
-                  <Ionicons name="arrow-forward" size={12} color="#059669" />
-                </View>
-              </View>
-            </Pressable>
-
-            {/* 2. RO Service */}
-            <Pressable
-              style={[s.serviceCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "ro" })}
-            >
-              <View style={s.cardWaveHeader}>
-                <Image
-                  source={SERVICE_LOCAL_IMAGES.ro}
-                  style={s.cardImage}
-                  resizeMode="cover"
-                />
-                <LinearGradient
-                  colors={["transparent", "rgba(2,132,199,0.7)"]}
-                  style={StyleSheet.absoluteFillObject}
-                />
-              </View>
-
-              <View style={s.cardBody}>
-                <View style={s.cardBadgeIcon}>
-                  <Ionicons name="water" size={17} color="#0284c7" />
-                </View>
-                <Text style={[s.cardServiceName, { color: colors.text }]}>RO Service</Text>
-                <Text style={[s.cardServiceTagline, { color: colors.textMuted }]}>
-                  Pure water,{"\n"}every drop
-                </Text>
-                <View style={[s.cardPillBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#f0f9ff" }]}>
-                  <Text style={[s.cardPillBtnText, { color: "#0284c7" }]}>{getCategoryServiceCount("ro")}</Text>
-                  <Ionicons name="arrow-forward" size={12} color="#0284c7" />
-                </View>
-              </View>
-            </Pressable>
-
-            {/* 3. Pest Control */}
-            <Pressable
-              style={[s.serviceCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "pest" })}
-            >
-              <View style={s.cardWaveHeader}>
-                <Image
-                  source={SERVICE_LOCAL_IMAGES.pest}
-                  style={s.cardImage}
-                  resizeMode="cover"
-                />
-                <LinearGradient
-                  colors={["transparent", "rgba(217,119,6,0.7)"]}
-                  style={StyleSheet.absoluteFillObject}
-                />
-              </View>
-
-              <View style={s.cardBody}>
-                <View style={s.cardBadgeIcon}>
-                  <Ionicons name="shield-checkmark" size={17} color="#d97706" />
-                </View>
-                <Text style={[s.cardServiceName, { color: colors.text }]}>Pest Control</Text>
-                <Text style={[s.cardServiceTagline, { color: colors.textMuted }]}>
-                  Your home,{"\n"}pest-free
-                </Text>
-                <View style={[s.cardPillBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#fffbeb" }]}>
-                  <Text style={[s.cardPillBtnText, { color: "#d97706" }]}>{getCategoryServiceCount("pest")}</Text>
-                  <Ionicons name="arrow-forward" size={12} color="#d97706" />
-                </View>
-              </View>
-            </Pressable>
-
-            {/* 4. Pet Care */}
-            <Pressable
-              style={[s.serviceCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "pet" })}
-            >
-              <View style={s.cardWaveHeader}>
-                <Image
-                  source={SERVICE_LOCAL_IMAGES.pet}
-                  style={s.cardImage}
-                  resizeMode="cover"
-                />
-                <LinearGradient
-                  colors={["transparent", "rgba(225,29,72,0.7)"]}
-                  style={StyleSheet.absoluteFillObject}
-                />
-              </View>
-
-              <View style={s.cardBody}>
-                <View style={s.cardBadgeIcon}>
-                  <Ionicons name="paw" size={17} color="#e11d48" />
-                </View>
-                <Text style={[s.cardServiceName, { color: colors.text }]}>Pet Care</Text>
-                <Text style={[s.cardServiceTagline, { color: colors.textMuted }]}>
-                  Love them{"\n"}the right way
-                </Text>
-                <View style={[s.cardPillBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#fff1f2" }]}>
-                  <Text style={[s.cardPillBtnText, { color: "#e11d48" }]}>{getCategoryServiceCount("pet")}</Text>
-                  <Ionicons name="arrow-forward" size={12} color="#e11d48" />
-                </View>
-              </View>
-            </Pressable>
-          </View>
-
-          {/* ── 8. Purple "Get Premium Benefits" Banner ─────────────── */}
+          {/* ── 5. PROMOTIONAL OFFERS BANNER ─────────────────────────── */}
           <LinearGradient
-            colors={["#4338ca", "#5850ec", "#7c3aed"]}
+            colors={["#1e3a8a", "#1d4ed8", "#2563eb"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={s.premiumBanner}
+            style={s.offersPromoCard}
           >
-            <View style={s.crownIconBadge}>
-              <Ionicons name="ribbon" size={20} color="#fbbf24" />
+            <View style={s.offersPromoLeft}>
+              <Text style={s.offersPromoTitle}>Save More with{"\n"}Exclusive Offers</Text>
+              <Text style={s.offersPromoSub}>Get the best deals on your favourite services.</Text>
+              <Pressable style={s.offersPromoBtn} onPress={() => navigation.navigate("Offers")}>
+                <Text style={s.offersPromoBtnText}>View Offers</Text>
+              </Pressable>
             </View>
-            <View style={s.premiumTextWrap}>
-              <Text style={s.premiumTitle}>Get Premium Benefits</Text>
-              <Text style={s.premiumSub}>Exclusive deals • Priority booking • More</Text>
+            <View style={s.giftBoxWrap}>
+              <View style={s.giftBoxRibbonH} />
+              <View style={s.giftBoxRibbonV} />
+              <View style={s.giftBoxBow} />
+              <Ionicons name="sparkles" size={14} color="#fde047" style={s.giftSparkle1} />
+              <Ionicons name="sparkles" size={10} color="#67e8f9" style={s.giftSparkle2} />
             </View>
-            <Pressable
-              style={s.viewPlansBtn}
-              onPress={() => Alert.alert("Premium Membership", "Priority technician dispatch & 20% discount on all home care!")}
-            >
-              <Text style={s.viewPlansText}>View Plans</Text>
-              <Ionicons name="arrow-forward" size={12} color="#ffffff" />
-            </Pressable>
           </LinearGradient>
-
-          {/* ── 9. Trust Badges Row (4 Items) ────────────────────────── */}
-          <View style={[s.trustBadgesRow, { borderColor: colors.cardBorder }]}>
-            <View style={s.trustItem}>
-              <Ionicons name="shield-checkmark-outline" size={20} color="#2563eb" />
-              <Text style={[s.trustTitle, { color: colors.text }]}>Verified Pros</Text>
-              <Text style={[s.trustSub, { color: colors.textMuted }]}>Background checked</Text>
-            </View>
-            <View style={s.trustItem}>
-              <Ionicons name="flash-outline" size={20} color="#0284c7" />
-              <Text style={[s.trustTitle, { color: colors.text }]}>Same-Day Fix</Text>
-              <Text style={[s.trustSub, { color: colors.textMuted }]}>Fast & reliable</Text>
-            </View>
-            <View style={s.trustItem}>
-              <Ionicons name="ribbon-outline" size={20} color="#059669" />
-              <Text style={[s.trustTitle, { color: colors.text }]}>100% Guarantee</Text>
-              <Text style={[s.trustSub, { color: colors.textMuted }]}>Your satisfaction</Text>
-            </View>
-            <View style={s.trustItem}>
-              <Ionicons name="calendar-outline" size={20} color="#7c3aed" />
-              <Text style={[s.trustTitle, { color: colors.text }]}>30-Day Warranty</Text>
-              <Text style={[s.trustSub, { color: colors.textMuted }]}>Service assurance</Text>
-            </View>
-          </View>
 
           <View style={{ height: 110 }} />
         </ScrollView>
@@ -470,6 +459,7 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={s.scrollContent}
+          stickyHeaderIndices={[1]}
         >
           {/* ── 1. Curved Emerald Wave Header with 3D House ──────────── */}
           <LinearGradient
@@ -478,19 +468,31 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
             end={{ x: 1, y: 1 }}
             style={s.exploreWaveHeader}
           >
-            {/* Back button */}
-            <Pressable
-              style={s.exploreBackBtn}
-              onPress={() => setActiveView("main")}
-            >
-              <Ionicons name="arrow-back" size={22} color="#ffffff" />
-            </Pressable>
+            {/* Top Bar in Explore: Back button + Title + SOS Button */}
+            <View style={s.exploreTopRow}>
+              <Pressable
+                style={s.exploreBackBtn}
+                onPress={() => setActiveView("main")}
+              >
+                <Ionicons name="arrow-back" size={22} color="#ffffff" />
+              </Pressable>
+
+              <Text style={s.exploreTopTitle}>Explore Services</Text>
+
+              <Pressable
+                style={s.heroSosBtn}
+                onPress={() => navigation.navigate("EmergencyAssistance")}
+              >
+                <Ionicons name="warning" size={14} color="#ffffff" />
+                <Text style={s.heroSosBtnText}>SOS</Text>
+              </Pressable>
+            </View>
 
             <View style={s.exploreHeaderContent}>
               <View style={s.exploreHeaderText}>
-                <Text style={s.exploreTitle}>Explore Our{"\n"}Services</Text>
+                <Text style={s.exploreTitle}>All Service{"\n"}Categories</Text>
                 <Text style={s.exploreSubtitle}>
-                  Find the right service for your home, health and lifestyle.
+                  Choose from our verified local services and lifestyle care.
                 </Text>
               </View>
 
@@ -507,96 +509,96 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
             </View>
           </LinearGradient>
 
-          {/* ── 2. Search & Filter Bar ───────────────────────────────── */}
-          <View style={s.exploreSearchRow}>
+          {/* ── 2. STICKY HEADER (Search Bar + Submenu: Reminders, Points, Nearby Updates) ── */}
+          <View style={[s.stickyHeaderWrap, { backgroundColor: colors.background }]}>
+            {/* Search Bar */}
             <View
               style={[
-                s.exploreSearchBox,
+                s.searchContainer,
                 {
                   backgroundColor: isDark ? "#161f2e" : "#ffffff",
                   borderColor: colors.cardBorder,
                 },
               ]}
             >
-              <Ionicons name="search-outline" size={19} color={colors.textMuted} />
+              <Ionicons name="search-outline" size={20} color={colors.textMuted} style={s.searchIcon} />
               <TextInput
-                style={[s.exploreSearchInput, { color: colors.text }]}
-                placeholder="Search for services..."
+                style={[s.searchInput, { color: colors.text }]}
+                placeholder="Search services, e.g. cleaning, RO..."
                 placeholderTextColor={colors.textMuted}
                 value={searchText}
                 onChangeText={setSearchText}
+                returnKeyType="search"
               />
+              <Pressable
+                onPress={() => Alert.alert("Voice Search", "Listening for your voice request...")}
+                style={s.micBtn}
+              >
+                <Ionicons name="mic-outline" size={20} color={colors.textSecondary} />
+              </Pressable>
             </View>
-            <Pressable
-              style={[
-                s.exploreFilterBtn,
-                {
-                  backgroundColor: isDark ? "#161f2e" : "#ffffff",
-                  borderColor: colors.cardBorder,
-                },
-              ]}
-              onPress={() => Alert.alert("Filter Services", "Sort by: Price, Popularity, Ratings")}
-            >
-              <Ionicons name="options-outline" size={20} color={colors.text} />
-            </Pressable>
+
+            {/* Sticky Submenu: Reminders, Points, Nearby Updates */}
+            <View style={s.submenuRow}>
+              <Pressable
+                style={[
+                  s.submenuPill,
+                  {
+                    backgroundColor: isDark ? "#161f2e" : "#f0fdf4",
+                    borderColor: isDark ? "#1f2937" : "#bbf7d0",
+                  },
+                ]}
+                onPress={() => navigation.navigate("SmartReminders")}
+              >
+                <LinearGradient colors={["#059669", "#10b981"]} style={s.submenuIconWrap}>
+                  <Ionicons name="alarm" size={12} color="#ffffff" />
+                </LinearGradient>
+                <Text style={[s.submenuPillText, { color: isDark ? "#ffffff" : "#065f46" }]}>Reminders</Text>
+              </Pressable>
+
+              <Pressable
+                style={[
+                  s.submenuPill,
+                  {
+                    backgroundColor: isDark ? "#161f2e" : "#fffbeb",
+                    borderColor: isDark ? "#1f2937" : "#fde68a",
+                  },
+                ]}
+                onPress={() => navigation.navigate("Points")}
+              >
+                <LinearGradient colors={["#d97706", "#f59e0b"]} style={s.submenuIconWrap}>
+                  <Ionicons name="trophy" size={12} color="#ffffff" />
+                </LinearGradient>
+                <Text style={[s.submenuPillText, { color: isDark ? "#ffffff" : "#92400e" }]}>Points</Text>
+              </Pressable>
+
+              <Pressable
+                style={[
+                  s.submenuPill,
+                  {
+                    backgroundColor: isDark ? "#161f2e" : "#fef2f2",
+                    borderColor: isDark ? "#1f2937" : "#fecaca",
+                  },
+                ]}
+                onPress={() => navigation.navigate("NearbyUpdates")}
+              >
+                <LinearGradient colors={["#dc2626", "#ef4444"]} style={s.submenuIconWrap}>
+                  <Ionicons name="radio" size={12} color="#ffffff" />
+                </LinearGradient>
+                <Text style={[s.submenuPillText, { color: isDark ? "#ffffff" : "#991b1b" }]}>Nearby Updates</Text>
+              </Pressable>
+            </View>
           </View>
 
-          {/* ── 3. Category Filter Chips ─────────────────────────────── */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.exploreChipsRow}
-          >
-            {EXPLORE_CHIPS.map((ch) => {
-              const isActive = exploreFilter === ch.id;
-              return (
-                <Pressable
-                  key={ch.id}
-                  onPress={() => setExploreFilter(ch.id)}
-                  style={[
-                    s.exploreChip,
-                    isActive
-                      ? s.exploreChipActive
-                      : {
-                          backgroundColor: isDark ? "#161f2e" : "#ffffff",
-                          borderColor: colors.cardBorder,
-                        },
-                  ]}
-                >
-                  <Ionicons
-                    name={ch.icon}
-                    size={15}
-                    color={isActive ? "#ffffff" : colors.textSecondary}
-                  />
-                  <Text
-                    style={[
-                      s.exploreChipText,
-                      { color: isActive ? "#ffffff" : colors.textSecondary },
-                    ]}
-                  >
-                    {ch.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-
-          {/* ── 4. Service Categories 6-Card Grid ────────────────────── */}
+          {/* ── 3. Service Categories 10-Card Grid ────────────────────── */}
           <View style={s.sectionHeader}>
             <Text style={[s.sectionTitle, { color: colors.text }]}>Service Categories</Text>
-            <Pressable
-              style={s.seeAllBtn}
-              onPress={() => Alert.alert("All Categories", "Browse all 10 curated home care categories.")}
-            >
-              <Text style={s.seeAllText}>See All</Text>
-              <Ionicons name="arrow-forward" size={14} color="#059669" />
-            </Pressable>
           </View>
 
           <View style={s.exploreCatGrid}>
             {/* 1. Home Cleaning */}
             <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ebfbee" }]}
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
               onPress={() => navigation.navigate("ServiceCategory", { categoryId: "cleaning" })}
             >
               <View style={s.exploreCatImageWrap}>
@@ -606,13 +608,13 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                   resizeMode="cover"
                 />
               </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]}>Home Cleaning</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>11 services</Text>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Home Cleaning</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("cleaning")}</Text>
             </Pressable>
 
             {/* 2. RO Service */}
             <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#e0f2fe" }]}
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
               onPress={() => navigation.navigate("ServiceCategory", { categoryId: "ro" })}
             >
               <View style={s.exploreCatImageWrap}>
@@ -622,13 +624,13 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                   resizeMode="cover"
                 />
               </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]}>RO Service</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>7 services</Text>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>RO Service</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("ro")}</Text>
             </Pressable>
 
             {/* 3. Pest Control */}
             <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#fef3c7" }]}
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
               onPress={() => navigation.navigate("ServiceCategory", { categoryId: "pest" })}
             >
               <View style={s.exploreCatImageWrap}>
@@ -638,13 +640,13 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                   resizeMode="cover"
                 />
               </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]}>Pest Control</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>6 services</Text>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Pest Control</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("pest")}</Text>
             </Pressable>
 
             {/* 4. Pet Care */}
             <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffe4e6" }]}
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
               onPress={() => navigation.navigate("ServiceCategory", { categoryId: "pet" })}
             >
               <View style={s.exploreCatImageWrap}>
@@ -654,13 +656,13 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                   resizeMode="cover"
                 />
               </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]}>Pet Care</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>7 services</Text>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Pet Care</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("pet")}</Text>
             </Pressable>
 
             {/* 5. Horticulture */}
             <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ecfdf5" }]}
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
               onPress={() => navigation.navigate("ServiceCategory", { categoryId: "hort" })}
             >
               <View style={s.exploreCatImageWrap}>
@@ -670,13 +672,13 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                   resizeMode="cover"
                 />
               </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]}>Horticulture</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>7 services</Text>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Horticulture</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("hort")}</Text>
             </Pressable>
 
             {/* 6. Appliance Cleaning */}
             <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#fff7ed" }]}
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
               onPress={() => navigation.navigate("ServiceCategory", { categoryId: "appliance" })}
             >
               <View style={s.exploreCatImageWrap}>
@@ -686,13 +688,13 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                   resizeMode="cover"
                 />
               </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]}>Appliances</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>11 services</Text>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Appliances</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("appliance")}</Text>
             </Pressable>
 
             {/* 7. Home Care */}
             <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#f0fdfa" }]}
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
               onPress={() => navigation.navigate("ServiceCategory", { categoryId: "homecare" })}
             >
               <View style={s.exploreCatImageWrap}>
@@ -702,13 +704,13 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                   resizeMode="cover"
                 />
               </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]}>Home Care</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>4 services</Text>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Home Care</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("homecare")}</Text>
             </Pressable>
 
             {/* 8. Emergency Assistance */}
             <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#fef2f2" }]}
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
               onPress={() => navigation.navigate("EmergencyAssistance")}
             >
               <View style={s.exploreCatImageWrap}>
@@ -718,13 +720,13 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                   resizeMode="cover"
                 />
               </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]}>Emergency</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>5 services</Text>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Emergency</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("emergency")}</Text>
             </Pressable>
 
             {/* 9. Insurance Services */}
             <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#eff6ff" }]}
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
               onPress={() => navigation.navigate("ServiceCategory", { categoryId: "insurance" })}
             >
               <View style={s.exploreCatImageWrap}>
@@ -734,167 +736,28 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                   resizeMode="cover"
                 />
               </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]}>Insurance</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>4 services</Text>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Insurance</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("insurance")}</Text>
             </Pressable>
 
-            {/* 10. Delivery Services */}
+            {/* 10. Other Services */}
             <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#f5f3ff" }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "delivery" })}
+              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
+              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "other" })}
             >
-              <View style={[s.exploreCatImageWrap, { justifyContent: "center", alignItems: "center", backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#ede9fe" }]}>
-                <Ionicons name="bicycle" size={38} color="#7c3aed" />
+              <View style={s.exploreCatImageWrap}>
+                <Image
+                  source={SERVICE_LOCAL_IMAGES.other}
+                  style={s.exploreCatImage}
+                  resizeMode="cover"
+                />
               </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]}>Delivery</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>6 services</Text>
+              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Other Services</Text>
+              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("other")}</Text>
             </Pressable>
           </View>
 
-          {/* ── 5. More Services (Vertical List) ─────────────────────── */}
-          <View style={s.sectionHeader}>
-            <Text style={[s.sectionTitle, { color: colors.text }]}>More Services</Text>
-          </View>
-
-          <View style={[s.moreServicesList, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-            {/* Electrical */}
-            <Pressable
-              style={[s.moreServiceRow, { borderBottomColor: colors.divider }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "electrical" })}
-            >
-              <View style={[s.moreServiceIcon, { backgroundColor: "#fef3c7" }]}>
-                <Ionicons name="flash" size={18} color="#f59e0b" />
-              </View>
-              <View style={s.moreServiceTextWrap}>
-                <Text style={[s.moreServiceName, { color: colors.text }]}>Electrical</Text>
-                <Text style={[s.moreServiceDesc, { color: colors.textMuted }]}>Repairs, fittings, installations</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-            </Pressable>
-
-            {/* Plumbing */}
-            <Pressable
-              style={[s.moreServiceRow, { borderBottomColor: colors.divider }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "plumbing" })}
-            >
-              <View style={[s.moreServiceIcon, { backgroundColor: "#e0f2fe" }]}>
-                <Ionicons name="water" size={18} color="#0284c7" />
-              </View>
-              <View style={s.moreServiceTextWrap}>
-                <Text style={[s.moreServiceName, { color: colors.text }]}>Plumbing</Text>
-                <Text style={[s.moreServiceDesc, { color: colors.textMuted }]}>Leak repair, fittings, maintenance</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-            </Pressable>
-
-            {/* Appliance Repair */}
-            <Pressable
-              style={[s.moreServiceRow, { borderBottomColor: colors.divider }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "appliances" })}
-            >
-              <View style={s.moreServiceImageWrap}>
-                <Image
-                  source={SERVICE_LOCAL_IMAGES.appliances}
-                  style={s.moreServiceImage}
-                  resizeMode="cover"
-                />
-              </View>
-              <View style={s.moreServiceTextWrap}>
-                <Text style={[s.moreServiceName, { color: colors.text }]}>Appliance Cleaning</Text>
-                <Text style={[s.moreServiceDesc, { color: colors.textMuted }]}>AC, fridge, washing machine & more</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-            </Pressable>
-
-            {/* Carpentry */}
-            <Pressable
-              style={[s.moreServiceRow, { borderBottomColor: colors.divider }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "carpentry" })}
-            >
-              <View style={[s.moreServiceIcon, { backgroundColor: "#dcfce7" }]}>
-                <Ionicons name="hammer" size={18} color="#16a34a" />
-              </View>
-              <View style={s.moreServiceTextWrap}>
-                <Text style={[s.moreServiceName, { color: colors.text }]}>Carpentry</Text>
-                <Text style={[s.moreServiceDesc, { color: colors.textMuted }]}>Furniture, woodwork, repairs</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-            </Pressable>
-
-            {/* Home Care */}
-            <Pressable
-              style={[s.moreServiceRow, { borderBottomColor: colors.divider }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "home" })}
-            >
-              <View style={s.moreServiceImageWrap}>
-                <Image
-                  source={SERVICE_LOCAL_IMAGES.homecare}
-                  style={s.moreServiceImage}
-                  resizeMode="cover"
-                />
-              </View>
-              <View style={s.moreServiceTextWrap}>
-                <Text style={[s.moreServiceName, { color: colors.text }]}>Home Care</Text>
-                <Text style={[s.moreServiceDesc, { color: colors.textMuted }]}>Elder care, patient care, assistance</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-            </Pressable>
-
-            {/* Horticulture */}
-            <Pressable
-              style={[s.moreServiceRow, { borderBottomColor: colors.divider }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "hort" })}
-            >
-              <View style={s.moreServiceImageWrap}>
-                <Image
-                  source={SERVICE_LOCAL_IMAGES.horticulture}
-                  style={s.moreServiceImage}
-                  resizeMode="cover"
-                />
-              </View>
-              <View style={s.moreServiceTextWrap}>
-                <Text style={[s.moreServiceName, { color: colors.text }]}>Horticulture</Text>
-                <Text style={[s.moreServiceDesc, { color: colors.textMuted }]}>Terrace gardens, plants, plantation</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-            </Pressable>
-
-            {/* Insurance */}
-            <Pressable
-              style={[s.moreServiceRow, { borderBottomColor: colors.divider }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "insurance" })}
-            >
-              <View style={s.moreServiceImageWrap}>
-                <Image
-                  source={SERVICE_LOCAL_IMAGES.insurance}
-                  style={s.moreServiceImage}
-                  resizeMode="cover"
-                />
-              </View>
-              <View style={s.moreServiceTextWrap}>
-                <Text style={[s.moreServiceName, { color: colors.text }]}>Insurance</Text>
-                <Text style={[s.moreServiceDesc, { color: colors.textMuted }]}>Health, life, vehicle & general</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-            </Pressable>
-
-            {/* Other Services */}
-            <Pressable
-              style={s.moreServiceRow}
-              onPress={() => Alert.alert("Other Services", "Gardening, painting, sanitation, and deep sanitation.")}
-            >
-              <View style={[s.moreServiceIcon, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#f1f5f9" }]}>
-                <Ionicons name="ellipsis-horizontal" size={18} color={colors.textSecondary} />
-              </View>
-              <View style={s.moreServiceTextWrap}>
-                <Text style={[s.moreServiceName, { color: colors.text }]}>Other Services</Text>
-                <Text style={[s.moreServiceDesc, { color: colors.textMuted }]}>And many more...</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-            </Pressable>
-          </View>
-
-          {/* ── 6. Bottom Blue Exclusive Offers Promo Card ───────────── */}
+          {/* ── 4. Bottom Blue Exclusive Offers Promo Card ───────────── */}
           <LinearGradient
             colors={["#1e3a8a", "#1d4ed8", "#2563eb"]}
             start={{ x: 0, y: 0 }}
@@ -909,7 +772,7 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                 onPress={() => navigation.navigate("Offers")}
               >
                 <Text style={s.offersPromoBtnText}>View Offers</Text>
-                <Ionicons name="arrow-forward" size={13} color="#1e3a8a" />
+                <Ionicons name="arrow-forward" size={13} color="#ffffff" />
               </Pressable>
             </View>
 
@@ -1048,7 +911,124 @@ const s = StyleSheet.create({
     paddingBottom: 20,
   },
 
-  // ── Top Bar (Main View) ──────────────────────────────────────────
+  // ── NEW MAIN HERO HEADER ─────────────────────────────────────────
+  mainHeroHeader: {
+    paddingTop: 48,
+    paddingHorizontal: 16,
+    paddingBottom: 28,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    marginBottom: 16,
+    overflow: "hidden",
+  },
+  heroTopBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  heroTopBarLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  heroTopBarIcons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  heroSosBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#ef4444",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.4)",
+  },
+  heroSosBtnText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  heroHamburgerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  heroIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  heroAvatarCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.5)",
+    overflow: "hidden",
+  },
+  heroBrandTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#ffffff",
+    letterSpacing: -0.3,
+  },
+  heroBrandSub: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.75)",
+    marginTop: 1,
+  },
+  heroContentRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  heroTextCol: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  heroMainTitle: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#ffffff",
+    lineHeight: 33,
+    marginBottom: 8,
+  },
+  heroMainSubtitle: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.85)",
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  heroExploreBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(0,0,0,0.25)",
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  heroExploreBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+
+  // ── Top Bar (Main View — kept for compatibility) ─────────────────
   topBar: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1198,22 +1178,6 @@ const s = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // ── Greeting ───────────────────────────────────────────────────
-  greetingSection: {
-    paddingHorizontal: 16,
-    marginTop: 10,
-    marginBottom: 12,
-  },
-  greetingText: {
-    fontSize: 27,
-    fontWeight: "800",
-    letterSpacing: -0.3,
-  },
-  greetingSubText: {
-    fontSize: 14,
-    marginTop: 3,
-    lineHeight: 20,
-  },
 
   // ── Search Bar ─────────────────────────────────────────────────
   searchContainer: {
@@ -1769,6 +1733,56 @@ const s = StyleSheet.create({
     marginTop: -2,
   },
 
+  // Explore Top Row
+  exploreTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  exploreTopTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#ffffff",
+  },
+
+  // Sticky Header Wrap (Search + Submenu)
+  stickyHeaderWrap: {
+    paddingTop: 8,
+    paddingBottom: 6,
+    zIndex: 100,
+  },
+  submenuRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    gap: 8,
+    marginBottom: 8,
+  },
+  submenuPill: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  submenuIconWrap: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  submenuPillText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+  },
+
   // Explore Search Row
   exploreSearchRow: {
     flexDirection: "row",
@@ -1824,20 +1838,27 @@ const s = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // 6-Card Category Grid
+  // 10-Card Category Grid with full-width aligned image covers
   exploreCatGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    gap: 12,
-    marginBottom: 24,
+    gap: 10,
+    marginBottom: 20,
   },
   exploreCatCard: {
-    width: (W - 32 - 12) / 2,
-    borderRadius: 20,
-    padding: 16,
+    width: (W - 32 - 10) / 2,
+    borderRadius: 18,
+    padding: 10,
     alignItems: "center",
+    borderWidth: 1,
+    marginBottom: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   exploreCatIconCircle: {
     width: 48,
@@ -1848,24 +1869,25 @@ const s = StyleSheet.create({
     marginBottom: 8,
   },
   exploreCatImageWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 16,
+    width: "100%",
+    height: 98,
+    borderRadius: 12,
     overflow: "hidden",
-    marginBottom: 10,
+    marginBottom: 8,
+    backgroundColor: "rgba(0,0,0,0.03)",
   },
   exploreCatImage: {
     width: "100%",
     height: "100%",
   },
   exploreCatTitle: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: "700",
     textAlign: "center",
     marginBottom: 2,
   },
   exploreCatSub: {
-    fontSize: 11.5,
+    fontSize: 11,
     textAlign: "center",
   },
 

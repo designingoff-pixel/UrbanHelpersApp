@@ -22,6 +22,7 @@ export const SERVICE_LOCAL_IMAGES: Record<string, any> = {
   home_care: require("@/assets/services/home_care.png"),
   emergency: require("@/assets/services/emergency.png"),
   insurance: require("@/assets/services/insurance.png"),
+  other: require("@/assets/services/home_care.png"),
 };
 
 /**
