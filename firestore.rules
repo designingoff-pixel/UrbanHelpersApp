@@ -1,0 +1,104 @@
+﻿rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Urban Helpers — Firestore Security Rules
+//
+// ROOT CAUSE FIX: The bookings collection had no rule allowing authenticated
+// customers to update their own booking. This blocked the cancelBooking()
+// function in bookingService.ts which calls updateDoc() with:
+//   { status: "cancelled", cancellationReason, cancelledAt, cancelledBy }
+//
+// ACCESS MODEL FOR bookings:
+//   • Public (unauthenticated) READ   — admin web needs this
+//   • Authenticated CREATE            — customerId must equal caller uid
+//   • Authenticated UPDATE            — cancellation ONLY (see isValidCancellationUpdate)
+//   • DELETE                          — denied (client SDK)
+// ─────────────────────────────────────────────────────────────────────────────
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper functions ──────────────────────────────────────────────────────
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Ownership check uses resource.data (server-side) so the frontend
+    // cannot spoof the customerId field.
+    function isBookingOwner() {
+      return isSignedIn() && resource.data.customerId == request.auth.uid;
+    }
+
+    // Valid cancellation update:
+    //   (a) New status must be exactly "cancelled"
+    //   (b) Current status must not already be "cancelled" or "completed"
+    //   (c) Only the four cancellation fields may be changed — no other
+    //       booking field (price, otp, address, paymentStatus, etc.) may differ
+    function isValidCancellationUpdate() {
+      let allowedFields = ['status', 'cancellationReason', 'cancelledAt', 'cancelledBy'];
+      let changedKeys   = request.resource.data.diff(resource.data).affectedKeys();
+      return
+        request.resource.data.status == 'cancelled'
+        && resource.data.status != 'cancelled'
+        && resource.data.status != 'completed'
+        && changedKeys.hasOnly(allowedFields);
+    }
+
+    // ── bookings ──────────────────────────────────────────────────────────────
+    match /bookings/{bookingId} {
+      // Public READ required for admin web (unauthenticated client access)
+      allow read: if true;
+
+      // Customer creates booking — uid must match customerId
+      allow create: if isSignedIn()
+                    && request.resource.data.customerId == request.auth.uid;
+
+      // Customer cancels own booking — restricted to cancellation fields only
+      allow update: if isBookingOwner() && isValidCancellationUpdate();
+
+      // No client-side deletes
+      allow delete: if false;
+    }
+
+    // ── users ─────────────────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // ── serviceCategories ─────────────────────────────────────────────────────
+    match /serviceCategories/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ── shop_products ─────────────────────────────────────────────────────────
+    // Admin web uses unauthenticated client writes
+    match /shop_products/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // ── shop_orders ───────────────────────────────────────────────────────────
+    // Admin web updates order status without authentication
+    match /shop_orders/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // ── health_logs ───────────────────────────────────────────────────────────
+    match /health_logs/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // ── health_records ────────────────────────────────────────────────────────
+    match /health_records/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // ── Catch-all: deny everything not explicitly listed ──────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

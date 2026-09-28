@@ -97,6 +97,7 @@ export default function MyBookingsScreen({ navigation }: Props) {
   const [cancelReason, setCancelReason] = useState<CancellationReason>("Changed my mind");
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
 
   const openCancelModal = (booking: Booking) => {
     setCancelTarget(booking);
@@ -110,6 +111,38 @@ export default function MyBookingsScreen({ navigation }: Props) {
     setCancelError(null);
   };
 
+  /** Translates technical Firebase/Firestore error messages into user-facing text. */
+  const friendlyError = (err: any): string => {
+    const raw: string = err?.message ?? "";
+    // Log the actual error for debugging without exposing it to the user.
+    console.error("[cancelBooking] error:", raw);
+    if (
+      raw.includes("Missing or insufficient permissions") ||
+      raw.includes("permission-denied") ||
+      raw.includes("PERMISSION_DENIED")
+    ) {
+      return "Unable to cancel this booking. Please try again.";
+    }
+    if (raw.includes("not found") || raw.includes("NOT_FOUND")) {
+      return "Booking not found. It may have already been removed.";
+    }
+    if (raw.includes("already been cancelled") || raw.includes("already cancelled")) {
+      return "This booking has already been cancelled.";
+    }
+    if (raw.includes("cannot be cancelled") || raw.includes("completed")) {
+      return "This booking can no longer be cancelled.";
+    }
+    if (raw.includes("not authorised") || raw.includes("not authorized")) {
+      return "You are not authorised to cancel this booking.";
+    }
+    if (raw.includes("network") || raw.includes("unavailable") || raw.includes("offline")) {
+      return "Network error. Please check your connection and try again.";
+    }
+    // Return descriptive messages from our own business-logic checks as-is.
+    if (raw.length > 0) return raw;
+    return "Unable to cancel this booking. Please try again.";
+  };
+
   const confirmCancellation = async () => {
     if (!cancelTarget || !user) return;
     setCancelLoading(true);
@@ -118,10 +151,11 @@ export default function MyBookingsScreen({ navigation }: Props) {
       await cancelBooking(cancelTarget.id, user.uid, cancelReason);
       // The live onSnapshot subscription will automatically refresh the list.
       setCancelTarget(null);
+      // Show success toast.
+      setSuccessToast("Booking cancelled successfully.");
+      setTimeout(() => setSuccessToast(null), 3500);
     } catch (err: any) {
-      const message: string =
-        err?.message ?? "Unable to cancel the booking. Please try again.";
-      setCancelError(message);
+      setCancelError(friendlyError(err));
     } finally {
       setCancelLoading(false);
     }
@@ -351,6 +385,17 @@ export default function MyBookingsScreen({ navigation }: Props) {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* ── Success Toast ──────────────────────────────────────────────────── */}
+      {successToast && (
+        <Animated.View
+          entering={FadeInDown.duration(250)}
+          style={s.successToast}
+        >
+          <Ionicons name="checkmark-circle" size={18} color="#4ade80" />
+          <Text style={s.successToastText}>{successToast}</Text>
+        </Animated.View>
+      )}
 
       {/* ── Cancel Booking Confirmation Modal ──────────────────────────────── */}
       <Modal
@@ -888,6 +933,29 @@ const s = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     color: "#ffffff",
+  },
+  successToast: {
+    position: "absolute",
+    bottom: 30,
+    left: 20,
+    right: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#0e2d1c",
+    borderWidth: 1,
+    borderColor: "rgba(74, 222, 128, 0.35)",
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    elevation: 12,
+    zIndex: 999,
+  },
+  successToastText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#4ade80",
+    flex: 1,
   },
   emptyHint: { alignItems: "center", gap: 8, marginTop: 16, paddingVertical: 24 },
   emptyHintText: { fontSize: 13, color: "rgba(255,255,255,0.4)", textAlign: "center", paddingHorizontal: 24 },
