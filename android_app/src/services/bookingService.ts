@@ -27,6 +27,7 @@ export interface Booking {
   customerId: string;
   customerName: string;
   customerPhone?: string;
+  vendorId?: string | null;
   vendorName: string;
   vendorPhone?: string;
   vendorImage?: string; // ← added
@@ -43,6 +44,12 @@ export interface Booking {
   paymentStatus: "pending" | "paid" | "failed" | "refunded";
   safety: "normal" | "watch" | "alert";
   otp?: string;
+  rating?: number;
+  review?: string;
+  reviewTags?: string[];
+  tip?: string | null;
+  rated?: boolean;
+  ratedAt?: any;
 }
 
 export interface CreateBookingInput {
@@ -185,4 +192,43 @@ export async function cancelBooking(
     cancelledAt: serverTimestamp(),
     cancelledBy: "customer",
   });
+}
+
+/** Submits rating & review for a completed booking and updates vendor profile rating */
+export async function submitBookingRating(params: {
+  bookingId: string;
+  rating: number;
+  review?: string;
+  tags?: string[];
+  tip?: string | null;
+  vendorId?: string | null;
+}): Promise<void> {
+  const { bookingId, rating, review, tags, tip, vendorId } = params;
+  await updateDoc(doc(db, "bookings", bookingId), {
+    rating,
+    review: review || "",
+    reviewTags: tags || [],
+    tip: tip || null,
+    rated: true,
+    ratedAt: serverTimestamp(),
+  });
+
+  if (vendorId) {
+    try {
+      const vRef = doc(db, "vendors", vendorId);
+      const vSnap = await getDoc(vRef);
+      if (vSnap.exists()) {
+        const vData = vSnap.data();
+        const currRating = vData.rating || 5.0;
+        const count = (vData.ratingCount || 8) + 1;
+        const newRating = Number(((currRating * (count - 1) + rating) / count).toFixed(1));
+        await updateDoc(vRef, {
+          rating: newRating,
+          ratingCount: count,
+        });
+      }
+    } catch (e) {
+      console.warn("[submitBookingRating] Could not update vendor rating:", e);
+    }
+  }
 }

@@ -562,43 +562,82 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
 
       {/* Bottom CTA */}
       <View style={s.cta}>
-        <View style={s.ctaRow}>
-          <Pressable style={s.ctaBtn} onPress={handleCall}>
-            <Ionicons name="call" size={18} color="white" />
-            <Text style={s.ctaBtnText}>Contact Professional</Text>
-          </Pressable>
-
-          {booking && booking.status !== "completed" && booking.status !== "cancelled" && (
+        {booking?.status === "completed" ? (
+          <View style={{ gap: 10 }}>
+            {!booking?.rated ? (
+              <Pressable
+                style={[s.ctaBtn, { backgroundColor: "#f59e0b" }]}
+                onPress={() =>
+                  navigation.navigate("RatingFeedback", {
+                    bookingId: booking.id,
+                    vendorName: booking.vendorName,
+                    serviceCategory: booking.serviceCategory,
+                    subServiceName: booking.subServiceName,
+                  })
+                }
+              >
+                <Ionicons name="star" size={18} color="#081826" />
+                <Text style={[s.ctaBtnText, { color: "#081826", fontWeight: "700" }]}>Rate Captain & View Bill</Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                style={[s.ctaBtn, { backgroundColor: "#00bcd4" }]}
+                onPress={() =>
+                  navigation.navigate("ServiceCompleted", {
+                    bookingId: booking.id,
+                  })
+                }
+              >
+                <Ionicons name="receipt-outline" size={18} color="#081826" />
+                <Text style={[s.ctaBtnText, { color: "#081826", fontWeight: "700" }]}>View Bill & Tax Invoice</Text>
+              </Pressable>
+            )}
             <Pressable
-              style={s.cancelBtn}
-              onPress={() => {
-                Alert.alert(
-                  "Cancel Booking?",
-                  "Are you sure you want to cancel this booking? This action cannot be undone.",
-                  [
-                    { text: "Keep Service", style: "cancel" },
-                    {
-                      text: "Yes, Cancel",
-                      style: "destructive",
-                      onPress: async () => {
-                        try {
-                          await cancelBooking(booking.id, user!.uid, "Service no longer required");
-                          Alert.alert("Booking Cancelled", "Your booking has been cancelled.");
-                          navigation.goBack();
-                        } catch (e: any) {
-                          Alert.alert("Cancellation Failed", e.message || "Failed to cancel booking.");
-                        }
-                      },
-                    },
-                  ]
-                );
-              }}
+              style={[s.ctaBtn, { backgroundColor: "rgba(255,255,255,0.08)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" }]}
+              onPress={() => navigation.navigate("HomeDashboard")}
             >
-              <Ionicons name="close-circle-outline" size={18} color="#ef4444" />
-              <Text style={s.cancelBtnText}>Cancel</Text>
+              <Text style={s.ctaBtnText}>Back to Home</Text>
             </Pressable>
-          )}
-        </View>
+          </View>
+        ) : (
+          <View style={s.ctaRow}>
+            <Pressable style={s.ctaBtn} onPress={handleCall}>
+              <Ionicons name="call" size={18} color="white" />
+              <Text style={s.ctaBtnText}>Contact Professional</Text>
+            </Pressable>
+
+            {booking && booking.status !== "completed" && booking.status !== "cancelled" && (
+              <Pressable
+                style={s.cancelBtn}
+                onPress={() => {
+                  Alert.alert(
+                    "Cancel Booking?",
+                    "Are you sure you want to cancel this booking? This action cannot be undone.",
+                    [
+                      { text: "Keep Service", style: "cancel" },
+                      {
+                        text: "Yes, Cancel",
+                        style: "destructive",
+                        onPress: async () => {
+                          try {
+                            await cancelBooking(booking.id, user!.uid, "Service no longer required");
+                            Alert.alert("Booking Cancelled", "Your booking has been cancelled.");
+                            navigation.goBack();
+                          } catch (e: any) {
+                            Alert.alert("Cancellation Failed", e.message || "Failed to cancel booking.");
+                          }
+                        },
+                      },
+                    ]
+                  );
+                }}
+              >
+                <Ionicons name="close-circle-outline" size={18} color="#ef4444" />
+                <Text style={s.cancelBtnText}>Cancel</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
       </View>
     </View>
   );

@@ -361,9 +361,29 @@ export default function MyBookingsScreen({ navigation }: Props) {
                           <Text style={s.cancelBtnText}>Cancel</Text>
                         </Pressable>
                       )}
+                      {booking.status === "completed" && !booking.rated && (
+                        <Pressable
+                          style={[s.billBtn, { backgroundColor: "rgba(245,158,11,0.18)", borderColor: "#f59e0b", borderWidth: 1 }]}
+                          onPress={() =>
+                            navigation.navigate("RatingFeedback", {
+                              bookingId: booking.id,
+                              vendorName: booking.vendorName,
+                              serviceCategory: booking.serviceCategory,
+                              subServiceName: booking.subServiceName,
+                            })
+                          }
+                        >
+                          <Ionicons name="star" size={13} color="#f59e0b" />
+                          <Text style={[s.billBtnText, { color: "#f59e0b" }]}>Rate</Text>
+                        </Pressable>
+                      )}
                       <Pressable
                         style={s.billBtn}
-                        onPress={() => setSelectedInvoiceBooking(booking)}
+                        onPress={() =>
+                          navigation.navigate("ServiceCompleted", {
+                            bookingId: booking.id,
+                          })
+                        }
                       >
                         <Ionicons name="document-text-outline" size={13} color="#ffffff" />
                         <Text style={s.billBtnText}>View Bill</Text>

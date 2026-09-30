@@ -178,8 +178,11 @@ function GlobalBookingListener() {
       ) {
         sendServiceCompletedNotification(data.serviceCategory ?? "Service").catch(console.log);
         navigation.navigate("RatingFeedback", {
+          bookingId: currentId,
           categoryId: data.serviceCategory,
           subServiceId: data.subServiceName,
+          vendorName: data.vendorName,
+          serviceCategory: data.serviceCategory,
         });
       }
 

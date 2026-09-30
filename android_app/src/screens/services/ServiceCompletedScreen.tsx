@@ -1,143 +1,304 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   ScrollView,
   Text,
   View,
   Pressable,
   StyleSheet,
-  Image,
+  ActivityIndicator,
+  Share,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/services/firebase";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceCompleted">;
 
-const CHECKLIST = [
-  { icon: "checkmark-circle", label: "Helper Verified" },
-  { icon: "checkmark-circle", label: "Service Completed" },
-  { icon: "checkmark-circle", label: "Recording Saved" },
-];
-
 export default function ServiceCompletedScreen({ navigation, route }: Props) {
-  // bookingId/vendorId available if coming from recording flow; fallback gracefully
-  const bookingId = (route.params as any)?.bookingId ?? "UH-00000";
-  const vendorId = (route.params as any)?.vendorId ?? "vendor-001";
+  const bookingId = (route.params as any)?.bookingId ?? "";
+
+  const [booking, setBooking] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!bookingId || bookingId === "UH-SAMPLE") {
+      setBooking({
+        id: "UH-DEMO982",
+        serviceCategory: "Home Cleaning",
+        subServiceName: "Full Home Deep Cleaning",
+        vendorName: "Rahul Kumar",
+        customerName: "Customer",
+        address: "14B Green Avenue, Bangalore",
+        price: 599,
+        priceLabel: "₹599",
+        paymentStatus: "paid",
+        rating: 5,
+        reviewTags: ["On-time arrival ⏰", "Super polite 👔"],
+        scheduledAt: new Date().toISOString(),
+      });
+      setLoading(false);
+      return;
+    }
+
+    const unsub = onSnapshot(
+      doc(db, "bookings", bookingId),
+      (snap) => {
+        if (snap.exists()) {
+          setBooking({ id: snap.id, ...snap.data() });
+        }
+        setLoading(false);
+      },
+      (err) => {
+        console.warn("[ServiceCompleted] Error fetching booking:", err);
+        setLoading(false);
+      }
+    );
+
+    return () => unsub();
+  }, [bookingId]);
+
+  // Invoice calculations
+  const total = booking?.price || 599;
+  const platformFee = 29;
+  const discount = booking?.discountAmount || 0;
+  const taxablePortion = Math.max(0, total - platformFee + discount);
+  const gst = Math.round(taxablePortion * 0.18 / 1.18);
+  const baseServiceFee = Math.max(0, taxablePortion - gst);
+  const invoiceNo = `INV-UH-${(booking?.id || "99999").slice(-8).toUpperCase()}`;
+
+  const formattedDate = booking?.scheduledAt
+    ? new Date(booking.scheduledAt).toLocaleString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "Just now";
+
+  const handleShareInvoice = async () => {
+    try {
+      const summary = `📄 URBAN HELPERS OFFICIAL TAX INVOICE\n` +
+        `----------------------------------------\n` +
+        `Invoice No : ${invoiceNo}\n` +
+        `Service    : ${booking?.subServiceName || booking?.serviceCategory}\n` +
+        `Partner    : ${booking?.vendorName || "Verified Specialist"}\n` +
+        `Date       : ${formattedDate}\n` +
+        `Address    : ${booking?.address || "On file"}\n` +
+        `----------------------------------------\n` +
+        `Base Service Fee : ₹${baseServiceFee}\n` +
+        `Safety & Platform: ₹${platformFee}\n` +
+        `Taxes & GST (18%): ₹${gst}\n` +
+        (discount > 0 ? `Promo Discount   : -₹${discount}\n` : "") +
+        `----------------------------------------\n` +
+        `GRAND TOTAL PAID : ₹${total}\n` +
+        `Payment Status   : PAID ONLINE (Verified)\n` +
+        `----------------------------------------\n` +
+        `Thank you for trusting Urban Helpers!`;
+
+      await Share.share({
+        title: `Urban Helpers Invoice ${invoiceNo}`,
+        message: summary,
+      });
+    } catch (e) {
+      console.log("[ShareInvoice] error:", e);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={[s.root, s.center]}>
+        <ActivityIndicator size="large" color="#00bcd4" />
+        <Text style={s.loadingText}>Generating Digital Invoice…</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={s.root}>
+      {/* Top Header */}
       <View style={s.header}>
-        <Pressable onPress={() => navigation.goBack()} style={s.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+        <Pressable onPress={() => navigation.navigate("HomeDashboard")} style={s.iconBtn}>
+          <Ionicons name="close" size={22} color="white" />
         </Pressable>
-        <Text style={s.headerTitle}>Service Summary</Text>
-        <Pressable style={s.moreBtn}>
-          <Ionicons name="ellipsis-vertical" size={24} color={colors.text.primary} />
+        <Text style={s.headerTitle}>Invoice & Receipt</Text>
+        <Pressable onPress={handleShareInvoice} style={s.iconBtn}>
+          <Ionicons name="share-social-outline" size={20} color="white" />
         </Pressable>
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={s.scroll}
-      >
-        {/* Checklist */}
-        <Animated.View entering={FadeInDown.duration(350)} style={s.checklistSection}>
-          <View style={s.checklistCard}>
-            {CHECKLIST.map((item, idx) => (
-              <View key={idx} style={s.checklistItem}>
-                <Ionicons name={item.icon as any} size={20} color="#cfbcff" />
-                <Text style={s.checklistText}>{item.label}</Text>
-              </View>
-            ))}
-          </View>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+        {/* Success Completion Banner */}
+        <Animated.View entering={FadeInDown.duration(350)}>
+          <LinearGradient
+            colors={["#064e3b", "#065f46", "#047857"]}
+            style={s.heroBanner}
+          >
+            <View style={s.successIconWrap}>
+              <Ionicons name="checkmark-done" size={32} color="#10b981" />
+            </View>
+            <Text style={s.heroTitle}>Service Completed Successfully!</Text>
+            <Text style={s.heroSub}>
+              Your job has been verified and settled. Here is your official tax invoice.
+            </Text>
+          </LinearGradient>
         </Animated.View>
 
-        {/* Service Details */}
-        <Animated.View entering={FadeInDown.delay(100).duration(380)} style={s.detailsSection}>
-          <View style={s.detailsCard}>
-            <Image
-              source={{ uri: "https://via.placeholder.com/80" }}
-              style={s.avatar}
-            />
-            <View style={s.detailsInfo}>
-              <Text style={s.serviceName}>Home Cleaning</Text>
-              <Text style={s.vendorName}>Rahul Kumar</Text>
-              <View style={s.metaRow}>
-                <Ionicons name="calendar" size={14} color={colors.text.secondary} />
-                <Text style={s.metaText}>Today • 4:30 PM</Text>
-                <Text style={s.duration}>42 minutes</Text>
-              </View>
+        {/* Official Tax Invoice Container */}
+        <Animated.View entering={FadeInDown.delay(100).duration(380)} style={s.invoiceCard}>
+          {/* Invoice Header */}
+          <View style={s.invoiceTop}>
+            <View>
+              <Text style={s.brandTitle}>URBAN HELPERS</Text>
+              <Text style={s.brandSub}>TAX INVOICE / RECEIPT</Text>
+            </View>
+            <View style={s.paidBadge}>
+              <Ionicons name="shield-checkmark" size={14} color="#10b981" />
+              <Text style={s.paidBadgeText}>PAID ONLINE</Text>
             </View>
           </View>
-        </Animated.View>
 
-        {/* Recording Section */}
-        <Animated.View entering={FadeInDown.delay(160).duration(380)} style={s.recordingSection}>
-          <View style={s.recordingCard}>
-            <View style={s.recordingHeader}>
-              <Ionicons name="videocam" size={20} color="#cfbcff" />
-              <Text style={s.recordingTitle}>Service Recording</Text>
-              <Text style={s.recordingDuration}>42 min recording</Text>
+          <View style={s.dashDivider} />
+
+          {/* Invoice Meta */}
+          <View style={s.metaGrid}>
+            <View style={s.metaCol}>
+              <Text style={s.metaLabel}>INVOICE NO.</Text>
+              <Text style={s.metaValBold}>{invoiceNo}</Text>
             </View>
-            <View style={s.recordingActions}>
-              <Pressable
-                onPress={() => navigation.navigate("RatingFeedback", {})}
-                style={s.playBtn}
-              >
-                <Ionicons name="play-circle" size={18} color={colors.text.primary} />
-                <Text style={s.playBtnText}>View Recording</Text>
-              </Pressable>
-              <Pressable style={s.reportBtn}>
-                <Ionicons name="flag" size={18} color={colors.text.secondary} />
-                <Text style={s.reportBtnText}>Report an Issue</Text>
-              </Pressable>
+            <View style={[s.metaCol, { alignItems: "flex-end" }]}>
+              <Text style={s.metaLabel}>DATE & TIME</Text>
+              <Text style={s.metaVal}>{formattedDate}</Text>
             </View>
           </View>
-        </Animated.View>
 
-        {/* Payment Section */}
-        <Animated.View entering={FadeInDown.delay(200).duration(380)} style={s.paymentSection}>
-          <View style={s.paymentCard}>
-            <Text style={s.paymentLabel}>Total Payment</Text>
-            <View style={s.paymentRow}>
-              <Text style={s.paymentAmount}>₹1,299</Text>
-              <View style={s.paidBadge}>
-                <Text style={s.paidText}>Paid</Text>
-              </View>
+          <View style={s.metaGrid}>
+            <View style={s.metaCol}>
+              <Text style={s.metaLabel}>SERVICE PARTNER</Text>
+              <Text style={s.metaValBold}>{booking?.vendorName || "Verified Specialist"}</Text>
+            </View>
+            <View style={[s.metaCol, { alignItems: "flex-end" }]}>
+              <Text style={s.metaLabel}>SERVICE CATEGORY</Text>
+              <Text style={s.metaVal}>{booking?.serviceCategory || "Home Care"}</Text>
             </View>
           </View>
-        </Animated.View>
 
-        {/* Rating Section */}
-        <Animated.View entering={FadeInDown.delay(240).duration(380)} style={s.ratingSection}>
-          <View style={s.ratingCard}>
-            <Text style={s.ratingTitle}>How was your experience?</Text>
-            <View style={s.starRow}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Pressable key={star} style={s.starBtn}>
+          {/* Customer Address */}
+          {booking?.address && (
+            <View style={{ marginTop: 10 }}>
+              <Text style={s.metaLabel}>SERVICE LOCATION</Text>
+              <Text style={s.metaVal} numberOfLines={2}>{booking.address}</Text>
+            </View>
+          )}
+
+          {/* Rating Given Badge if already rated */}
+          {booking?.rated && (
+            <View style={s.ratingBadgeWrap}>
+              <View style={s.ratingStarsRow}>
+                {[1, 2, 3, 4, 5].map((st) => (
                   <Ionicons
+                    key={st}
                     name="star"
-                    size={36}
-                    color={star <= 4 ? "#e7c365" : "rgba(148, 142, 156, 1)"}
+                    size={16}
+                    color={st <= (booking.rating || 5) ? "#f59e0b" : "rgba(255,255,255,0.2)"}
                   />
-                </Pressable>
-              ))}
+                ))}
+                <Text style={s.ratingScoreText}>{booking.rating || 5}.0 Rated</Text>
+              </View>
+              {booking.review ? (
+                <Text style={s.ratingReviewSnippet}>"{booking.review}"</Text>
+              ) : null}
             </View>
+          )}
+
+          <View style={s.solidDivider} />
+
+          {/* Itemized Table */}
+          <View style={s.tableWrap}>
+            <View style={s.tableHeaderRow}>
+              <Text style={s.tableHeadText}>ITEM DESCRIPTION</Text>
+              <Text style={s.tableHeadTextRight}>AMOUNT</Text>
+            </View>
+
+            <View style={s.tableItemRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.itemTitle}>{booking?.subServiceName || booking?.serviceCategory || "Service"}</Text>
+                <Text style={s.itemSub}>Includes professional labor & equipment</Text>
+              </View>
+              <Text style={s.itemPrice}>₹{baseServiceFee}</Text>
+            </View>
+
+            <View style={s.tableItemRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.itemTitle}>Safety & Platform Fee</Text>
+                <Text style={s.itemSub}>Insurance & secure dispatch coverage</Text>
+              </View>
+              <Text style={s.itemPrice}>₹{platformFee}</Text>
+            </View>
+
+            <View style={s.tableItemRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.itemTitle}>Taxes & GST (18%)</Text>
+                <Text style={s.itemSub}>CGST 9% + SGST 9%</Text>
+              </View>
+              <Text style={s.itemPrice}>₹{gst}</Text>
+            </View>
+
+            {discount > 0 && (
+              <View style={s.tableItemRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.itemTitle, { color: "#10b981" }]}>Coupon Discount</Text>
+                  <Text style={s.itemSub}>{booking?.couponCode || "Special Offer"}</Text>
+                </View>
+                <Text style={[s.itemPrice, { color: "#10b981" }]}>-₹{discount}</Text>
+              </View>
+            )}
+
+            {booking?.tip && (
+              <View style={s.tableItemRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.itemTitle}>Captain Tip</Text>
+                  <Text style={s.itemSub}>100% forwarded to partner</Text>
+                </View>
+                <Text style={s.itemPrice}>{booking.tip}</Text>
+              </View>
+            )}
+
+            <View style={s.totalRow}>
+              <Text style={s.totalLabel}>Grand Total Paid</Text>
+              <Text style={s.totalAmount}>₹{total}</Text>
+            </View>
+          </View>
+
+          {/* Statutory Footer */}
+          <View style={s.invoiceFooter}>
+            <Ionicons name="receipt-outline" size={14} color="rgba(255,255,255,0.4)" />
+            <Text style={s.footerNote}>
+              HSN/SAC: 998721 • GSTIN: 33AAECU1234F1Z5 • Computer-generated digital invoice.
+            </Text>
           </View>
         </Animated.View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 140 }} />
       </ScrollView>
 
-      {/* Bottom CTA */}
-      <View style={s.bottomCta}>
+      {/* Bottom Floating Actions */}
+      <View style={s.ctaWrap}>
+        <Pressable style={s.shareBtn} onPress={handleShareInvoice}>
+          <Ionicons name="download-outline" size={18} color="#00bcd4" />
+          <Text style={s.shareBtnText}>Share / Download Invoice</Text>
+        </Pressable>
+
         <Pressable
-          onPress={() => navigation.navigate("RatingFeedback", {})}
-          style={s.submitBtn}
+          style={s.homeBtn}
+          onPress={() => navigation.navigate("HomeDashboard")}
         >
-          <Text style={s.submitBtnText}>Submit Review</Text>
+          <Text style={s.homeBtnText}>Done • Back to Home</Text>
         </Pressable>
       </View>
     </View>
@@ -145,256 +306,202 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
 }
 
 const s = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: "#0e0d15",
-  },
+  root: { flex: 1, backgroundColor: "#081826" },
+  center: { justifyContent: "center", alignItems: "center" },
+  loadingText: { color: "white", marginTop: 14, fontSize: 15, fontWeight: "600" },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
-    backgroundColor: "rgba(20, 18, 24, 0.9)",
+    paddingTop: 52,
+    paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.05)",
+    borderBottomColor: "rgba(255,255,255,0.06)",
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(29, 27, 32, 1)",
+  headerTitle: { fontSize: 17, fontWeight: "700", color: "white" },
+  iconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.08)",
     justifyContent: "center",
     alignItems: "center",
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#cfbcff",
+  scroll: { paddingHorizontal: 16, paddingTop: 16 },
+
+  // Hero Banner
+  heroBanner: {
+    borderRadius: 22,
+    padding: 20,
+    alignItems: "center",
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "rgba(16,185,129,0.3)",
   },
-  moreBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(29, 27, 32, 1)",
+  successIconWrap: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "rgba(16,185,129,0.18)",
+    borderWidth: 2,
+    borderColor: "#10b981",
     justifyContent: "center",
     alignItems: "center",
-  },
-  scroll: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-  },
-  checklistSection: {
-    marginBottom: 16,
-  },
-  checklistCard: {
-    backgroundColor: "rgba(33, 31, 36, 1)",
-    borderRadius: 12,
-    padding: 16,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
-  },
-  checklistItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  checklistText: {
-    fontSize: 14,
-    color: colors.text.primary,
-  },
-  detailsSection: {
-    marginBottom: 16,
-  },
-  detailsCard: {
-    flexDirection: "row",
-    gap: 12,
-    backgroundColor: "rgba(33, 31, 36, 1)",
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
-    alignItems: "center",
-  },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-  },
-  detailsInfo: {
-    flex: 1,
-  },
-  serviceName: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.text.primary,
-  },
-  vendorName: {
-    fontSize: 14,
-    color: colors.text.secondary,
-    marginBottom: 6,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  metaText: {
-    fontSize: 12,
-    color: "#cfbcff",
-    fontWeight: "500",
-  },
-  duration: {
-    fontSize: 12,
-    color: colors.text.secondary,
-    backgroundColor: "rgba(43, 41, 47, 1)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginLeft: "auto",
-  },
-  recordingSection: {
-    marginBottom: 16,
-  },
-  recordingCard: {
-    backgroundColor: "rgba(33, 31, 36, 1)",
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
-  },
-  recordingHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
     marginBottom: 12,
   },
-  recordingTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.text.primary,
-    flex: 1,
+  heroTitle: { fontSize: 18, fontWeight: "800", color: "white", textAlign: "center" },
+  heroSub: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.8)",
+    textAlign: "center",
+    marginTop: 6,
+    lineHeight: 18,
   },
-  recordingDuration: {
-    fontSize: 12,
-    color: colors.text.secondary,
-  },
-  recordingActions: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  playBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    backgroundColor: "rgba(43, 41, 47, 1)",
-    borderRadius: 10,
-    paddingVertical: 10,
-  },
-  playBtnText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.text.primary,
-  },
-  reportBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    backgroundColor: "rgba(43, 41, 47, 1)",
-    borderRadius: 10,
-    paddingVertical: 10,
+
+  // Invoice Card
+  invoiceCard: {
+    backgroundColor: "#102336",
+    borderRadius: 22,
+    padding: 20,
     borderWidth: 1,
-    borderColor: colors.glass.border,
-  },
-  reportBtnText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.text.secondary,
-  },
-  paymentSection: {
+    borderColor: "rgba(255,255,255,0.08)",
     marginBottom: 16,
   },
-  paymentCard: {
+  invoiceTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "rgba(33, 31, 36, 1)",
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
   },
-  paymentLabel: {
-    fontSize: 14,
-    color: colors.text.secondary,
-  },
-  paymentRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  paymentAmount: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: colors.text.primary,
-  },
+  brandTitle: { fontSize: 17, fontWeight: "900", color: "#00e5ff", letterSpacing: 0.5 },
+  brandSub: { fontSize: 11, fontWeight: "600", color: "rgba(255,255,255,0.5)", marginTop: 2 },
   paidBadge: {
-    backgroundColor: "#cfbcff",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  paidText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#381e72",
-  },
-  ratingSection: {
-    marginBottom: 24,
-  },
-  ratingCard: {
-    backgroundColor: "rgba(33, 31, 36, 1)",
-    borderRadius: 12,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
-    alignItems: "center",
-  },
-  ratingTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.text.primary,
-    marginBottom: 12,
-  },
-  starRow: {
     flexDirection: "row",
-    gap: 8,
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(16,185,129,0.15)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(16,185,129,0.3)",
   },
-  starBtn: {
-    padding: 4,
+  paidBadgeText: { fontSize: 11, fontWeight: "800", color: "#10b981", letterSpacing: 0.5 },
+
+  dashDivider: {
+    height: 1,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    borderStyle: "dashed",
+    marginVertical: 16,
   },
-  bottomCta: {
+  solidDivider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    marginVertical: 14,
+  },
+
+  metaGrid: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  metaCol: { flex: 1 },
+  metaLabel: { fontSize: 10, fontWeight: "700", color: "rgba(255,255,255,0.45)", letterSpacing: 0.5 },
+  metaValBold: { fontSize: 13, fontWeight: "700", color: "white", marginTop: 3 },
+  metaVal: { fontSize: 12, color: "rgba(255,255,255,0.75)", marginTop: 3 },
+
+  ratingBadgeWrap: {
+    backgroundColor: "rgba(245,158,11,0.1)",
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: "rgba(245,158,11,0.25)",
+  },
+  ratingStarsRow: { flexDirection: "row", alignItems: "center", gap: 3 },
+  ratingScoreText: { fontSize: 13, fontWeight: "700", color: "#f59e0b", marginLeft: 6 },
+  ratingReviewSnippet: {
+    fontSize: 12,
+    fontStyle: "italic",
+    color: "rgba(255,255,255,0.8)",
+    marginTop: 6,
+  },
+
+  // Table
+  tableWrap: { marginTop: 4 },
+  tableHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.08)",
+  },
+  tableHeadText: { fontSize: 11, fontWeight: "700", color: "rgba(255,255,255,0.45)" },
+  tableHeadTextRight: { fontSize: 11, fontWeight: "700", color: "rgba(255,255,255,0.45)", textAlign: "right" },
+  tableItemRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.05)",
+  },
+  itemTitle: { fontSize: 13, fontWeight: "600", color: "white" },
+  itemSub: { fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 2 },
+  itemPrice: { fontSize: 13, fontWeight: "700", color: "white" },
+
+  totalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 14,
+    marginTop: 6,
+  },
+  totalLabel: { fontSize: 16, fontWeight: "800", color: "white" },
+  totalAmount: { fontSize: 20, fontWeight: "900", color: "#00e5ff" },
+
+  invoiceFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 18,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.06)",
+  },
+  footerNote: { flex: 1, fontSize: 10, color: "rgba(255,255,255,0.4)", lineHeight: 14 },
+
+  // Bottom Floating CTA
+  ctaWrap: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingBottom: 32,
+    paddingTop: 12,
+    backgroundColor: "rgba(8,24,38,0.97)",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.08)",
+    gap: 10,
   },
-  submitBtn: {
-    backgroundColor: "#6750a4",
-    borderRadius: 24,
-    paddingVertical: 14,
+  shareBtn: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 8,
+    backgroundColor: "rgba(0,188,212,0.12)",
+    borderRadius: 22,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: "rgba(0,188,212,0.3)",
   },
-  submitBtnText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "white",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+  shareBtnText: { fontSize: 14, fontWeight: "700", color: "#00e5ff" },
+  homeBtn: {
+    backgroundColor: "#00bcd4",
+    borderRadius: 22,
+    paddingVertical: 15,
+    alignItems: "center",
   },
+  homeBtnText: { fontSize: 15, fontWeight: "800", color: "#081826" },
 });

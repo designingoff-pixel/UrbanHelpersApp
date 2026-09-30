@@ -1,169 +1,239 @@
-import React, { useState } from "react";
-import { ScrollView, Text, View, Pressable, StyleSheet, TextInput } from "react-native";
+import React, { useState, useEffect } from "react";
+import {
+  ScrollView,
+  Text,
+  View,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  ActivityIndicator,
+  Alert,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/services/firebase";
+import { submitBookingRating } from "@/services/bookingService";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 
 type Props = NativeStackScreenProps<RootStackParamList, "RatingFeedback">;
 
-const EMOJIS = ["😍", "😀", "😐", "😕"];
-const TIPS = ["₹50", "₹100", "₹200", "Custom"];
-const SUGGESTED = [
-  { label: "Appliance Repair", icon: "construct-outline" as const,   color: "#2563eb" },
-  { label: "Pest Control",     icon: "bug-outline" as const,         color: "#15803d" },
-  { label: "Plumbing",         icon: "water-outline" as const,       color: "#0284c7" },
-  { label: "Electrical",       icon: "flash-outline" as const,       color: "#d97706" },
+const STAR_LABELS = ["", "Disappointing 😞", "Could be better 😐", "Good service 🙂", "Very good! 😊", "Outstanding! 🌟"];
+
+const COMPLIMENT_TAGS = [
+  "On-time arrival ⏰",
+  "Super polite & courteous 👔",
+  "Clean & hygienic 🧼",
+  "Expert craftsmanship 🛠️",
+  "Great value for money 💎",
+  "Clear communication 💬",
 ];
 
-export default function RatingFeedbackScreen({ navigation }: Props) {
-  const [stars, setStars] = useState(0);
-  const [activeEmoji, setActiveEmoji] = useState(-1);
-  const [activeTip, setActiveTip] = useState(-1);
+const TIPS = ["No Tip", "₹50", "₹100", "₹200"];
+
+export default function RatingFeedbackScreen({ navigation, route }: Props) {
+  const bookingId = route.params?.bookingId;
+  const initialVendorName = route.params?.vendorName || "Service Partner";
+  const initialCategory = route.params?.serviceCategory || route.params?.categoryId || "Home Service";
+
+  const [bookingData, setBookingData] = useState<any>(null);
+  const [stars, setStars] = useState(5);
+  const [selectedTags, setSelectedTags] = useState<string[]>([COMPLIMENT_TAGS[0], COMPLIMENT_TAGS[1]]);
+  const [activeTip, setActiveTip] = useState(0);
   const [review, setReview] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!bookingId) return;
+    getDoc(doc(db, "bookings", bookingId))
+      .then((snap) => {
+        if (snap.exists()) {
+          setBookingData(snap.data());
+        }
+      })
+      .catch((e) => console.log("[RatingFeedback] error fetching booking:", e));
+  }, [bookingId]);
+
+  const vendorName = bookingData?.vendorName || initialVendorName;
+  const serviceName = bookingData?.subServiceName || bookingData?.serviceCategory || initialCategory;
+  const vendorId = bookingData?.vendorId || null;
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
+
+  const handleSubmitRating = async () => {
+    if (!bookingId) {
+      navigation.replace("ServiceCompleted", { bookingId: "UH-SAMPLE" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const tipVal = activeTip > 0 ? TIPS[activeTip] : null;
+      await submitBookingRating({
+        bookingId,
+        rating: stars,
+        review,
+        tags: selectedTags,
+        tip: tipVal,
+        vendorId,
+      });
+      // Navigate to the final digital bill / invoice
+      navigation.replace("ServiceCompleted", { bookingId });
+    } catch (e: any) {
+      console.error("[RatingFeedback] Failed to submit:", e);
+      Alert.alert(
+        "Notice",
+        "Could not save rating at this moment, but your bill is ready.",
+        [
+          {
+            text: "View Bill",
+            onPress: () => navigation.replace("ServiceCompleted", { bookingId }),
+          },
+        ]
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSkip = () => {
+    navigation.replace("ServiceCompleted", { bookingId: bookingId || "UH-SAMPLE" });
+  };
 
   return (
     <View style={s.root}>
       {/* Header */}
       <View style={s.header}>
         <Pressable onPress={() => navigation.goBack()} style={s.iconBtn}>
-          <Ionicons name="arrow-back" size={22} color="white" />
+          <Ionicons name="close" size={22} color="white" />
         </Pressable>
-        <Text style={s.headerTitle}>Thank You ❤️</Text>
-        <View style={{ width: 40 }} />
+        <Text style={s.headerTitle}>Rate Your Experience</Text>
+        <Pressable onPress={handleSkip} style={s.skipHeaderBtn}>
+          <Text style={s.skipHeaderText}>Skip</Text>
+        </Pressable>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-
-        {/* ── Hero ────────────────────────────────────────── */}
+        {/* ── Captain Hero ────────────────────────────────── */}
         <Animated.View entering={FadeInDown.duration(350)}>
-          <LinearGradient colors={["#f97316", "#fdba74"]} style={s.hero}>
-            <Text style={s.heroTitle}>How was your experience?</Text>
-            <Text style={s.heroSub}>Your feedback helps us improve.</Text>
+          <LinearGradient colors={["#1e293b", "#0f172a"]} style={s.hero}>
+            <View style={s.avatarWrap}>
+              <Ionicons name="person" size={32} color="#00bcd4" />
+            </View>
+            <View style={s.heroTextWrap}>
+              <View style={s.verifiedRow}>
+                <Ionicons name="shield-checkmark" size={14} color="#10b981" />
+                <Text style={s.verifiedText}>Verified Professional</Text>
+              </View>
+              <Text style={s.vendorName}>{vendorName}</Text>
+              <Text style={s.serviceSub}>{serviceName}</Text>
+            </View>
           </LinearGradient>
         </Animated.View>
 
-        {/* ── Star + Emoji Rating ──────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(80).duration(380)} style={s.ratingCard}>
-          {/* Stars */}
+        {/* ── Star Rating ──────────────────────────────────── */}
+        <Animated.View entering={FadeInDown.delay(80).duration(380)} style={s.card}>
+          <Text style={s.cardTitle}>How would you rate the service?</Text>
           <View style={s.starsRow}>
             {[1, 2, 3, 4, 5].map((star) => (
-              <Pressable key={star} onPress={() => setStars(star)}>
+              <Pressable
+                key={star}
+                onPress={() => setStars(star)}
+                hitSlop={8}
+                style={s.starTouch}
+              >
                 <Ionicons
                   name={star <= stars ? "star" : "star-outline"}
-                  size={40}
-                  color={star <= stars ? "#eab308" : colors.text.muted}
+                  size={42}
+                  color={star <= stars ? "#f59e0b" : "rgba(255,255,255,0.2)"}
                 />
               </Pressable>
             ))}
           </View>
-          {/* Emoji row */}
-          <View style={s.emojiRow}>
-            {EMOJIS.map((emoji, i) => (
-              <Pressable
-                key={i}
-                onPress={() => setActiveEmoji(i)}
-                style={[s.emojiBtn, activeEmoji === i && s.emojiBtnActive]}
-              >
-                <Text style={[s.emojiText, activeEmoji !== i && s.emojiGray]}>{emoji}</Text>
-              </Pressable>
-            ))}
+          <Text style={s.starSentiment}>{STAR_LABELS[stars]}</Text>
+        </Animated.View>
+
+        {/* ── Compliments / Tags ───────────────────────────── */}
+        <Animated.View entering={FadeInDown.delay(120).duration(380)} style={s.card}>
+          <Text style={s.cardTitle}>What did you like the most?</Text>
+          <View style={s.tagsGrid}>
+            {COMPLIMENT_TAGS.map((tag) => {
+              const active = selectedTags.includes(tag);
+              return (
+                <Pressable
+                  key={tag}
+                  onPress={() => toggleTag(tag)}
+                  style={[s.tagChip, active && s.tagChipActive]}
+                >
+                  <Text style={[s.tagText, active && s.tagTextActive]}>{tag}</Text>
+                </Pressable>
+              );
+            })}
           </View>
         </Animated.View>
 
         {/* ── Write Review ─────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(130).duration(380)} style={s.reviewCard}>
-          <Text style={s.sectionTitle}>Write a review</Text>
+        <Animated.View entering={FadeInDown.delay(160).duration(380)} style={s.card}>
+          <Text style={s.cardTitle}>Share your thoughts (Optional)</Text>
           <TextInput
             style={s.reviewInput}
-            placeholder="Tell us about your experience..."
-            placeholderTextColor={colors.text.muted}
+            placeholder="Tell us about the service quality, cleanliness, or recommendations..."
+            placeholderTextColor="rgba(255,255,255,0.3)"
             multiline
             value={review}
             onChangeText={setReview}
           />
         </Animated.View>
 
-        {/* ── Photo Upload ─────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(170).duration(380)}>
-          <Text style={s.sectionLabel}>Add Photos</Text>
-          <View style={s.photoRow}>
-            {["Before", "After"].map((label) => (
-              <Pressable key={label} style={s.photoBox}>
-                <Ionicons name="camera-outline" size={28} color={colors.text.muted} />
-                <Text style={s.photoLabel}>{label}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </Animated.View>
-
-        {/* ── Tip Professional ─────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(210).duration(380)} style={s.tipCard}>
+        {/* ── Tip Captain ──────────────────────────────────── */}
+        <Animated.View entering={FadeInDown.delay(200).duration(380)} style={s.card}>
           <View style={s.tipHeader}>
-            <Text style={s.sectionTitle}>Tip the Professional</Text>
-            <Ionicons name="heart" size={18} color="#f97316" />
+            <View>
+              <Text style={s.cardTitle}>Tip {vendorName}</Text>
+              <Text style={s.tipSub}>100% of the tip goes directly to your professional</Text>
+            </View>
+            <Ionicons name="heart" size={20} color="#ec4899" />
           </View>
           <View style={s.tipGrid}>
-            {TIPS.map((tip, i) => (
-              <Pressable
-                key={tip}
-                onPress={() => setActiveTip(i)}
-                style={[s.tipBtn, activeTip === i && s.tipBtnActive]}
-              >
-                <Text style={[s.tipText, activeTip === i && s.tipTextActive]}>{tip}</Text>
-              </Pressable>
-            ))}
+            {TIPS.map((tip, i) => {
+              const active = activeTip === i;
+              return (
+                <Pressable
+                  key={tip}
+                  onPress={() => setActiveTip(i)}
+                  style={[s.tipBtn, active && s.tipBtnActive]}
+                >
+                  <Text style={[s.tipText, active && s.tipTextActive]}>{tip}</Text>
+                </Pressable>
+              );
+            })}
           </View>
         </Animated.View>
 
-        {/* ── Referral Banner ──────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(250).duration(380)}>
-          <LinearGradient colors={["#4361ee", "#4cc9f0"]} style={s.referralCard}>
-            <View style={s.referralLeft}>
-              <Text style={s.referralTitle}>Recommend to Friends</Text>
-              <Text style={s.referralSub}>Get ₹500 off your next service</Text>
-            </View>
-            <Pressable style={s.inviteBtn}>
-              <Text style={s.inviteBtnText}>Invite & Earn</Text>
-            </Pressable>
-          </LinearGradient>
-        </Animated.View>
-
-        {/* ── Suggested Services ───────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(300).duration(380)}>
-          <Text style={[s.sectionLabel, { marginTop: 8 }]}>Suggested Services</Text>
-          <View style={s.suggestGrid}>
-            {SUGGESTED.map((svc) => (
-              <Pressable
-                key={svc.label}
-                onPress={() => navigation.navigate("ServicesDashboard")}
-                style={[s.suggestCard, { backgroundColor: svc.color }]}
-              >
-                <Ionicons name={svc.icon} size={24} color="white" />
-                <Text style={s.suggestLabel}>{svc.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </Animated.View>
-
-        <View style={{ height: 110 }} />
+        <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* ── Bottom Buttons ───────────────────────────────────── */}
+      {/* ── Bottom CTA ───────────────────────────────────── */}
       <View style={s.cta}>
         <Pressable
-          style={s.submitBtn}
-          onPress={() => navigation.navigate("HomeDashboard")}
+          style={[s.submitBtn, submitting && s.btnDisabled]}
+          onPress={handleSubmitRating}
+          disabled={submitting}
         >
-          <Text style={s.submitBtnText}>Submit Feedback</Text>
-        </Pressable>
-        <Pressable
-          style={s.skipBtn}
-          onPress={() => navigation.navigate("HomeDashboard")}
-        >
-          <Text style={s.skipBtnText}>Go to Home</Text>
+          {submitting ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <View style={s.submitContent}>
+              <Text style={s.submitBtnText}>Submit & View Bill</Text>
+              <Ionicons name="arrow-forward" size={18} color="white" />
+            </View>
+          )}
         </Pressable>
       </View>
     </View>
@@ -173,110 +243,153 @@ export default function RatingFeedbackScreen({ navigation }: Props) {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#081826" },
   header: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 16, paddingTop: 52, paddingBottom: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 52,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.06)",
   },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: "white" },
+  headerTitle: { fontSize: 17, fontWeight: "700", color: "white" },
   iconBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.12)", justifyContent: "center", alignItems: "center",
-  },
-  scroll: { paddingHorizontal: 16 },
-
-  // Hero
-  hero: { borderRadius: 28, padding: 24, marginBottom: 16, overflow: "hidden" },
-  heroTitle: { fontSize: 22, fontWeight: "700", color: "white", marginBottom: 6 },
-  heroSub: { fontSize: 14, color: "rgba(255,255,255,0.85)" },
-
-  // Rating
-  ratingCard: {
-    backgroundColor: "#1a2c3c", borderRadius: 24, padding: 24, marginBottom: 14,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
-  },
-  starsRow: { flexDirection: "row", justifyContent: "center", gap: 8, marginBottom: 20 },
-  emojiRow: { flexDirection: "row", justifyContent: "space-around", paddingTop: 16, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.1)" },
-  emojiBtn: { padding: 8, borderRadius: 16 },
-  emojiBtnActive: { backgroundColor: "rgba(255,255,255,0.1)", transform: [{ scale: 1.2 }] },
-  emojiText: { fontSize: 36 },
-  emojiGray: { opacity: 0.45 },
-
-  // Review
-  reviewCard: {
-    backgroundColor: "#1a2c3c", borderRadius: 24, padding: 20, marginBottom: 14,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
-  },
-  sectionTitle: { fontSize: 15, fontWeight: "700", color: "white", marginBottom: 12 },
-  reviewInput: {
-    backgroundColor: "#081826", borderRadius: 16, padding: 14,
-    color: "white", fontSize: 14, height: 110, textAlignVertical: "top",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
-  },
-
-  // Photo
-  sectionLabel: { fontSize: 15, fontWeight: "700", color: "white", marginBottom: 12 },
-  photoRow: { flexDirection: "row", gap: 12, marginBottom: 16 },
-  photoBox: {
-    flex: 1, height: 100, borderRadius: 20,
-    borderWidth: 2, borderColor: "rgba(255,255,255,0.15)",
-    borderStyle: "dashed", backgroundColor: "#1a2c3c",
-    alignItems: "center", justifyContent: "center", gap: 8,
-  },
-  photoLabel: { fontSize: 12, fontWeight: "600", color: colors.text.muted },
-
-  // Tip
-  tipCard: {
-    backgroundColor: "#1a2c3c", borderRadius: 24, padding: 20, marginBottom: 14,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
-  },
-  tipHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
-  tipGrid: { flexDirection: "row", gap: 10 },
-  tipBtn: {
-    flex: 1, paddingVertical: 14, borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.08)", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    justifyContent: "center",
     alignItems: "center",
   },
-  tipBtnActive: { backgroundColor: "#f97316", borderColor: "#f97316" },
-  tipText: { fontSize: 13, fontWeight: "700", color: "rgba(255,255,255,0.8)" },
-  tipTextActive: { color: "white" },
+  skipHeaderBtn: { paddingHorizontal: 12, paddingVertical: 6 },
+  skipHeaderText: { color: "rgba(255,255,255,0.6)", fontSize: 14, fontWeight: "600" },
+  scroll: { paddingHorizontal: 16, paddingTop: 16 },
 
-  // Referral
-  referralCard: {
-    borderRadius: 24, padding: 20, marginBottom: 14,
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.15)",
+  // Hero
+  hero: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
   },
-  referralLeft: { flex: 1 },
-  referralTitle: { fontSize: 15, fontWeight: "700", color: "white" },
-  referralSub: { fontSize: 12, color: "rgba(255,255,255,0.8)", marginTop: 3 },
-  inviteBtn: {
-    backgroundColor: "white", borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 9,
+  avatarWrap: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: "rgba(0,188,212,0.15)",
+    borderWidth: 1.5,
+    borderColor: "#00bcd4",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 14,
   },
-  inviteBtnText: { fontSize: 13, fontWeight: "700", color: "#4361ee" },
+  heroTextWrap: { flex: 1 },
+  verifiedRow: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 2 },
+  verifiedText: { fontSize: 11, color: "#10b981", fontWeight: "600" },
+  vendorName: { fontSize: 17, fontWeight: "700", color: "white" },
+  serviceSub: { fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 2 },
 
-  // Suggested
-  suggestGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 8 },
-  suggestCard: {
-    width: "47%", borderRadius: 20, padding: 16, alignItems: "center", gap: 8,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.15)",
+  // Cards
+  card: {
+    backgroundColor: "#102336",
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)",
   },
-  suggestLabel: { fontSize: 12, fontWeight: "600", color: "white", textAlign: "center" },
+  cardTitle: { fontSize: 15, fontWeight: "700", color: "white", marginBottom: 12 },
+
+  // Stars
+  starsRow: { flexDirection: "row", justifyContent: "center", gap: 10, marginVertical: 8 },
+  starTouch: { padding: 4 },
+  starSentiment: {
+    textAlign: "center",
+    color: "#f59e0b",
+    fontSize: 14,
+    fontWeight: "700",
+    marginTop: 6,
+  },
+
+  // Tags
+  tagsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  tagChip: {
+    backgroundColor: "rgba(255,255,255,0.06)",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  tagChipActive: {
+    backgroundColor: "rgba(0,188,212,0.15)",
+    borderColor: "#00bcd4",
+  },
+  tagText: { color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: "500" },
+  tagTextActive: { color: "#00e5ff", fontWeight: "700" },
+
+  // Review Input
+  reviewInput: {
+    backgroundColor: "#091724",
+    borderRadius: 14,
+    padding: 14,
+    color: "white",
+    fontSize: 14,
+    minHeight: 88,
+    textAlignVertical: "top",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+
+  // Tip
+  tipHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  tipSub: { fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 },
+  tipGrid: { flexDirection: "row", gap: 8 },
+  tipBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+  },
+  tipBtnActive: {
+    backgroundColor: "rgba(236,72,153,0.18)",
+    borderColor: "#ec4899",
+  },
+  tipText: { fontSize: 13, fontWeight: "700", color: "rgba(255,255,255,0.7)" },
+  tipTextActive: { color: "#f472b6" },
 
   // CTA
   cta: {
-    position: "absolute", bottom: 0, left: 0, right: 0,
-    paddingHorizontal: 16, paddingBottom: 28, paddingTop: 12, gap: 10,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingBottom: 32,
+    paddingTop: 12,
     backgroundColor: "rgba(8,24,38,0.97)",
-    borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.08)",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.08)",
   },
   submitBtn: {
-    backgroundColor: "#f97316", borderRadius: 22, paddingVertical: 16,
+    backgroundColor: "#00bcd4",
+    borderRadius: 24,
+    paddingVertical: 16,
     alignItems: "center",
+    justifyContent: "center",
   },
-  submitBtnText: { fontSize: 15, fontWeight: "700", color: "white" },
-  skipBtn: {
-    backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 22, paddingVertical: 14,
-    alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
-  },
-  skipBtnText: { fontSize: 14, fontWeight: "600", color: colors.text.secondary },
+  btnDisabled: { opacity: 0.7 },
+  submitContent: { flexDirection: "row", alignItems: "center", gap: 8 },
+  submitBtnText: { fontSize: 16, fontWeight: "700", color: "#081826" },
 });
