@@ -32,42 +32,6 @@
 
     body { background-color: var(--main-bg); color: var(--text-dark); display: flex; min-height: 100vh; overflow-x: hidden; }
 
-    /* ── Config Setup Overlay ── */
-    #configOverlay {
-      display: none;
-      position: fixed; inset: 0;
-      background: rgba(10, 18, 14, 0.97);
-      z-index: 9999;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-    }
-    #configOverlay.visible { display: flex; }
-    .config-box {
-      background: #1a2e24;
-      border: 1px solid #2d4a3a;
-      border-radius: 20px;
-      padding: 36px;
-      width: 100%;
-      max-width: 540px;
-      box-shadow: 0 30px 80px rgba(0,0,0,0.6);
-    }
-    .config-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
-    .config-logo-icon { width: 44px; height: 44px; background: #10b981; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #0a1a10; font-size: 22px; }
-    .config-logo-text { font-size: 18px; font-weight: 800; color: #f1f5f9; }
-    .config-logo-sub { font-size: 12px; color: #64748b; font-weight: 500; }
-    .config-title { font-size: 22px; font-weight: 900; color: #f1f5f9; margin-bottom: 6px; }
-    .config-sub { font-size: 13px; color: #94a3b8; margin-bottom: 24px; line-height: 1.5; }
-    .config-field { margin-bottom: 14px; }
-    .config-field label { display: block; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-    .config-field input { width: 100%; background: #0d1f18; border: 1px solid #2d4a3a; border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #f1f5f9; outline: none; transition: border-color 0.15s; }
-    .config-field input:focus { border-color: #10b981; }
-    .config-field input::placeholder { color: #4a6655; }
-    .config-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .btn-config-connect { width: 100%; margin-top: 8px; padding: 13px; background: #10b981; color: #0a1a10; border: none; border-radius: 12px; font-size: 15px; font-weight: 800; cursor: pointer; transition: background 0.15s; display: flex; align-items: center; justify-content: center; gap: 8px; }
-    .btn-config-connect:hover { background: #0f8a5f; }
-    .config-note { font-size: 11px; color: #475569; margin-top: 14px; text-align: center; line-height: 1.5; }
-
     /* ── Sidebar ── */
     .sidebar { width: 275px; background: var(--sidebar-bg); display: flex; flex-direction: column; flex-shrink: 0; min-height: 100vh; border-right: 1px solid rgba(255,255,255,0.05); position: sticky; top: 0; height: 100vh; overflow-y: auto; }
     .brand-header { padding: 24px 20px 18px; display: flex; align-items: center; gap: 12px; }
@@ -217,57 +181,6 @@
   </style>
 </head>
 <body>
-
-  <!-- ── Firebase Config Setup Overlay ── -->
-  <div id="configOverlay">
-    <div class="config-box" style="position:relative;">
-      <button style="position:absolute;top:16px;right:16px;background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;padding:4px 8px;" onclick="document.getElementById('configOverlay').classList.remove('visible')" title="Close"><i class="fa-solid fa-xmark"></i></button>
-      <div class="config-logo">
-        <div class="config-logo-icon"><i class="fa-solid fa-shield-halved"></i></div>
-        <div>
-          <div class="config-logo-text">Urban Helpers</div>
-          <div class="config-logo-sub">Admin Control Center</div>
-        </div>
-      </div>
-      <div class="config-title">Connect to Firebase</div>
-      <div class="config-sub">Enter your Firebase project credentials to load real user data. These are saved locally in your browser and never sent anywhere else.</div>
-
-      <div class="config-field">
-        <label>API Key</label>
-        <input id="cfgApiKey" type="text" placeholder="AIzaSy..." autocomplete="off">
-      </div>
-      <div class="config-row-2">
-        <div class="config-field">
-          <label>Auth Domain</label>
-          <input id="cfgAuthDomain" type="text" placeholder="project.firebaseapp.com">
-        </div>
-        <div class="config-field">
-          <label>Project ID</label>
-          <input id="cfgProjectId" type="text" placeholder="urban-helpers-admin">
-        </div>
-      </div>
-      <div class="config-row-2">
-        <div class="config-field">
-          <label>Storage Bucket</label>
-          <input id="cfgStorageBucket" type="text" placeholder="project.appspot.com">
-        </div>
-        <div class="config-field">
-          <label>Messaging Sender ID</label>
-          <input id="cfgMessagingSenderId" type="text" placeholder="123456789">
-        </div>
-      </div>
-      <div class="config-field">
-        <label>App ID</label>
-        <input id="cfgAppId" type="text" placeholder="1:123:web:abc...">
-      </div>
-
-      <button class="btn-config-connect" onclick="connectFirebase()">
-        <i class="fa-solid fa-plug-circle-bolt"></i>
-        Connect & Open Dashboard
-      </button>
-      <div class="config-note">Your credentials are stored only in this browser's localStorage. Open your Firebase Console → Project Settings → Your apps → Web app to find these values.</div>
-    </div>
-  </div>
 
   <!-- ── Left Sidebar ── -->
   <aside class="sidebar">
@@ -1141,10 +1054,8 @@
     } from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js';
 
     // ─────────────────────────────────────────────
-    // CONFIG MANAGEMENT
+    // FIREBASE INITIALIZATION (Live Urban Helpers Project)
     // ─────────────────────────────────────────────
-    const CFG_KEY = 'uh_admin_firebase_cfg';
-
     const DEFAULT_FIREBASE_CONFIG = {
       apiKey:            "AIzaSyDhkD-wS-wCc2ZlMbHSNTEp3MFxSrLIUQY",
       authDomain:        "urban-helpers-admin.firebaseapp.com",
@@ -1154,90 +1065,56 @@
       appId:             "1:843343743619:web:a0c09ea15fa85780d6a9b6",
     };
 
-    function loadSavedConfig() {
-      try { return JSON.parse(localStorage.getItem(CFG_KEY) || 'null'); }
-      catch { return null; }
-    }
-
-    function saveConfig(cfg) {
-      localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
-    }
-
-    window.resetConfig = function() {
-      localStorage.removeItem(CFG_KEY);
-      location.reload();
-    };
-
-    // ─────────────────────────────────────────────
-    // CONNECT FIREBASE (called from UI button)
-    // ─────────────────────────────────────────────
     let db = null;
 
-    window.connectFirebase = async function() {
-      const cfg = {
-        apiKey:            document.getElementById('cfgApiKey').value.trim(),
-        authDomain:        document.getElementById('cfgAuthDomain').value.trim(),
-        projectId:         document.getElementById('cfgProjectId').value.trim(),
-        storageBucket:     document.getElementById('cfgStorageBucket').value.trim(),
-        messagingSenderId: document.getElementById('cfgMessagingSenderId').value.trim(),
-        appId:             document.getElementById('cfgAppId').value.trim(),
-      };
-
-      if (!cfg.apiKey || !cfg.projectId) {
-        alert('Please enter at least the API Key and Project ID.');
-        return;
-      }
-
-      saveConfig(cfg);
-      await initDashboard(cfg);
-    };
-
-    async function initDashboard(cfg) {
+    async function initDashboard() {
       try {
-        const app = getApps().length ? getApp() : initializeApp(cfg);
+        const app = getApps().length ? getApp() : initializeApp(DEFAULT_FIREBASE_CONFIG);
         db = getFirestore(app);
 
-        // Hide config overlay
-        document.getElementById('configOverlay').classList.remove('visible');
-
         // Update UI with project info
-        document.getElementById('settingsProjectId').textContent = cfg.projectId;
-        document.getElementById('adminNameDisplay').textContent = 'Admin • ' + cfg.projectId;
-        document.getElementById('adminInitials').textContent = 'A';
+        const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+        setTxt('settingsProjectId', DEFAULT_FIREBASE_CONFIG.projectId);
+        setTxt('adminNameDisplay', 'Admin • ' + DEFAULT_FIREBASE_CONFIG.projectId);
+        setTxt('adminInitials', 'A');
 
         // Update status bar
         const bar = document.getElementById('fbStatusBar');
-        bar.classList.remove('disconnected');
-        document.getElementById('fbStatusText').textContent = '● Connected to Firebase: ' + cfg.projectId;
-        document.getElementById('settingsFbStatus').textContent = 'Connected';
-        document.getElementById('settingsFbStatus').className = 'status-badge badge-green';
+        if (bar) bar.classList.remove('disconnected');
+        setTxt('fbStatusText', '● Connected to Firebase: ' + DEFAULT_FIREBASE_CONFIG.projectId);
+        const fbStatus = document.getElementById('settingsFbStatus');
+        if (fbStatus) {
+          fbStatus.textContent = 'Connected';
+          fbStatus.className = 'status-badge badge-green';
+        }
 
         // Update telemetry UI
-        document.getElementById('fbTelemetryStatus').textContent = '● Online';
-        document.getElementById('fbTelemetryBar').style.width = '100%';
-        document.getElementById('telemetryNote').innerHTML = '<i class="fa-solid fa-circle-check" style="color:#10b981;"></i> Connected to Firebase project: <strong>' + cfg.projectId + '</strong>';
+        setTxt('fbTelemetryStatus', '● Online');
+        const telBar = document.getElementById('fbTelemetryBar');
+        if (telBar) telBar.style.width = '100%';
+        const telNote = document.getElementById('telemetryNote');
+        if (telNote) telNote.innerHTML = '<i class="fa-solid fa-circle-check" style="color:#10b981;"></i> Connected to Firebase project: <strong>' + DEFAULT_FIREBASE_CONFIG.projectId + '</strong>';
 
         // Update header
-        document.getElementById('topGreetingTitle').textContent = 'Urban Helpers Control Center';
-        document.getElementById('topGreetingSub').textContent = 'Live data from Firebase: ' + cfg.projectId;
+        setTxt('topGreetingTitle', 'Urban Helpers Control Center');
+        setTxt('topGreetingSub', 'Live data from Firebase: ' + DEFAULT_FIREBASE_CONFIG.projectId);
 
         // Expose db globally
         window._db = db;
         window._fns = { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy, limit, where };
 
-        // Load all data
-        await Promise.all([
+        // Load all data smoothly without crashing
+        await Promise.allSettled([
           loadOverviewMetrics(),
           loadActivityFeed(),
         ]);
 
       } catch (err) {
         console.error('Firebase init error:', err);
-        document.getElementById('fbStatusBar').classList.add('disconnected');
-        document.getElementById('fbStatusText').textContent = '✕ Firebase Error: ' + err.message;
-        alert('Firebase connection failed: ' + err.message + '\n\nPlease check your credentials and try again.');
-        localStorage.removeItem(CFG_KEY);
-        document.getElementById('configOverlay').classList.add('visible');
+        const bar = document.getElementById('fbStatusBar');
+        if (bar) bar.classList.add('disconnected');
+        const stText = document.getElementById('fbStatusText');
+        if (stText) stText.textContent = '✕ Firebase Error: ' + err.message;
       }
     }
 
@@ -2361,17 +2238,8 @@
     // ─────────────────────────────────────────────
     document.getElementById('currentDateText').textContent = new Date().toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 
-    // Auto-connect with default or saved config
-    const activeCfg = loadSavedConfig() || DEFAULT_FIREBASE_CONFIG;
-    if (activeCfg && activeCfg.apiKey && activeCfg.projectId) {
-      if (document.getElementById('cfgApiKey')) document.getElementById('cfgApiKey').value = activeCfg.apiKey;
-      if (document.getElementById('cfgProjectId')) document.getElementById('cfgProjectId').value = activeCfg.projectId;
-      if (document.getElementById('cfgAuthDomain')) document.getElementById('cfgAuthDomain').value = activeCfg.authDomain || '';
-      if (document.getElementById('cfgStorageBucket')) document.getElementById('cfgStorageBucket').value = activeCfg.storageBucket || '';
-      if (document.getElementById('cfgMessagingSenderId')) document.getElementById('cfgMessagingSenderId').value = activeCfg.messagingSenderId || '';
-      if (document.getElementById('cfgAppId')) document.getElementById('cfgAppId').value = activeCfg.appId || '';
-      initDashboard(activeCfg);
-    }
+    // Auto-connect directly on load
+    initDashboard();
   </script>
 </body>
 </html>
