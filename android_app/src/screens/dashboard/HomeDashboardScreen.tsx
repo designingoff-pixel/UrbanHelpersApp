@@ -40,7 +40,6 @@ import Animated, {
 
 import { RootStackParamList } from "@/navigation/types";
 import SamsungBottomNav from "@/components/SamsungBottomNav";
-import MyDevicesCard from "@/components/MyDevicesCard";
 import { BleManager } from "@/services/ble/BleManager";
 import { WearableHealthData } from "@/services/ble/types";
 import { useAuth } from "@/context/AuthContext";

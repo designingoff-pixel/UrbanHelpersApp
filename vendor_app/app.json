@@ -1,0 +1,64 @@
+{
+  "expo": {
+    "name": "Urban Captain",
+    "slug": "urban-captain-vendor",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#071522"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Urban Captain needs your location to show customers where you are.",
+          "locationWhenInUsePermission": "Urban Captain needs your location to navigate to customers."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {}
+        }
+      ]
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.urbancaptain.vendor",
+      "config": {
+        "googleMapsApiKey": "AIzaSyAMzsDmDdT2c7r5j1dWTSxev6XSHJZTf-s"
+      },
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Urban Captain needs your location to navigate to customers.",
+        "NSLocationAlwaysUsageDescription": "Urban Captain uses your location to show customers where you are."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#071522"
+      },
+      "package": "com.urbancaptain.vendor",
+      "edgeToEdgeEnabled": false,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "FOREGROUND_SERVICE",
+        "INTERNET"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAMzsDmDdT2c7r5j1dWTSxev6XSHJZTf-s"
+        }
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

@@ -34,6 +34,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setInitializing(false);
 
       if (firebaseUser) {
+        try {
+          await setDoc(
+            doc(db, "users", firebaseUser.uid),
+            {
+              uid: firebaseUser.uid,
+              name: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : "User"),
+              displayName: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : "User"),
+              email: firebaseUser.email,
+              photoURL: firebaseUser.photoURL,
+              provider: "google.com",
+              lastLoginAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+        } catch (e) {
+          console.warn("Failed to sync user profile", e);
+        }
+
         // Automatically request push token and save to user profile
         try {
           const token = await registerForPushNotifications();

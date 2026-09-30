@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { ScrollView, Text, View, Pressable, StyleSheet } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { ScrollView, Text, View, Pressable, StyleSheet, RefreshControl } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 import SamsungBottomNav from "@/components/SamsungBottomNav";
-import MyDevicesCard from "@/components/MyDevicesCard";
 import { BleManager } from "@/services/ble/BleManager";
 import { WearableHealthData } from "@/services/ble/types";
 
@@ -15,6 +14,20 @@ type Props = NativeStackScreenProps<RootStackParamList, "HealthDashboard">;
 export default function HealthDashboardScreen({ navigation }: Props) {
   const [wearableData, setWearableData] = useState<WearableHealthData>(BleManager.getHealthData());
   const [connState, setConnState] = useState(BleManager.getConnectionState());
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      setWearableData(BleManager.getHealthData());
+      setConnState(BleManager.getConnectionState());
+      await new Promise((r) => setTimeout(r, 600));
+    } catch (err) {
+      console.warn("Health refresh error:", err);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
     const unsub = BleManager.subscribeRepository(() => {
@@ -48,10 +61,15 @@ export default function HealthDashboardScreen({ navigation }: Props) {
           <Text style={s.title}>Health</Text>
           <Text style={s.caption}>Everything about your wellness.</Text>
         </View>
-        <Pressable style={s.iconBtn}>
-          <Ionicons name="notifications-outline" size={20} color={colors.text.secondary} />
-          <View style={s.badge} />
-        </Pressable>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Pressable onPress={onRefresh} style={s.iconBtn} accessibilityLabel="Refresh Health Data">
+            <Ionicons name={refreshing ? "sync" : "refresh-outline"} size={20} color={colors.text.secondary} />
+          </Pressable>
+          <Pressable style={s.iconBtn}>
+            <Ionicons name="notifications-outline" size={20} color={colors.text.secondary} />
+            <View style={s.badge} />
+          </Pressable>
+        </View>
       </View>
 
       {/* Tabs */}
@@ -63,11 +81,19 @@ export default function HealthDashboardScreen({ navigation }: Props) {
         ))}
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-        {/* My Devices Smartwatch Integration */}
-        <View style={{ marginHorizontal: -16, marginTop: 4 }}>
-          <MyDevicesCard />
-        </View>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={s.scroll}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={["#0C4A6E", "#4C1D95", "#0284c7"]}
+          />
+        }
+      >
+        
 
         {/* Hero */}
         <LinearGradient colors={["#0C4A6E", "#4C1D95"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.hero}>

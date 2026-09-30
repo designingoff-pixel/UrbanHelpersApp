@@ -68,13 +68,17 @@ service cloud.firestore {
 
     // ── users ─────────────────────────────────────────────────────────────────
     match /users/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      allow read: if true;
+      allow write: if isSignedIn() && request.auth.uid == userId;
     }
 
     // ── serviceCategories ─────────────────────────────────────────────────────
     match /serviceCategories/{docId} {
-      allow read: if true;
-      allow write: if false;
+      allow read, write: if true;
+    }
+
+    match /pricing_rules/{docId} {
+      allow read, write: if true;
     }
 
     // ── shop_products ─────────────────────────────────────────────────────────

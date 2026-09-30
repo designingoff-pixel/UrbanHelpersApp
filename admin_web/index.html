@@ -3,12 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Urban Helpers — Control Center</title>
-  <meta name="description" content="Urban Helpers Admin Control Center — real-time platform management dashboard.">
+  <title>Urban Helpers â€” Control Center</title>
+  <meta name="description" content="Urban Helpers Admin Control Center â€” real-time platform management dashboard.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="alternate icon" href="favicon.ico">
 
   <style>
     :root {
@@ -219,21 +221,14 @@
       <li class="nav-group">
         <div class="nav-item has-submenu" id="navItemServices" onclick="toggleSubmenu('servicesSubmenu', this, 'services')">
           <div class="nav-item-left"><i class="fa-solid fa-wrench"></i><span>Services</span></div>
+          <span class="nav-item-badge" id="servicesUnassignedCountBadge" style="background:#0f8a5f; display:none;">0</span>
           <i class="fa-solid fa-chevron-down submenu-arrow"></i>
         </div>
         <ul class="submenu-list" id="servicesSubmenu">
-          <li class="submenu-item active" onclick="showSubSection('services', 'all', this)"><i class="fa-solid fa-list"></i> All Categories (10)</li>
-          <li class="submenu-item" onclick="showSubSection('services', 'bookings', this)"><i class="fa-solid fa-calendar-check" style="color:#10b981;"></i> Service Bookings</li>
-          <li class="submenu-item" onclick="showSubSection('services', 'ro', this)"><i class="fa-solid fa-water" style="color:#0284c7;"></i> RO Service (7)</li>
-          <li class="submenu-item" onclick="showSubSection('services', 'pet', this)"><i class="fa-solid fa-paw" style="color:#db2777;"></i> Pet Care (7)</li>
-          <li class="submenu-item" onclick="showSubSection('services', 'pest', this)"><i class="fa-solid fa-bug" style="color:#15803d;"></i> Pest Control (6)</li>
-          <li class="submenu-item" onclick="showSubSection('services', 'hort', this)"><i class="fa-solid fa-leaf" style="color:#065f46;"></i> Horticulture (7)</li>
-          <li class="submenu-item" onclick="showSubSection('services', 'delivery', this)"><i class="fa-solid fa-bicycle" style="color:#7c3aed;"></i> Delivery (6)</li>
-          <li class="submenu-item" onclick="showSubSection('services', 'appliance', this)"><i class="fa-solid fa-bolt" style="color:#b45309;"></i> Appliance Clean (11)</li>
-          <li class="submenu-item" onclick="showSubSection('services', 'homecare', this)"><i class="fa-solid fa-house" style="color:#0e7490;"></i> Home Care (4)</li>
-          <li class="submenu-item" onclick="showSubSection('services', 'insurance', this)"><i class="fa-solid fa-shield-halved" style="color:#1e3a8a;"></i> Insurance (4)</li>
-          <li class="submenu-item" onclick="showSubSection('services', 'emergency', this)"><i class="fa-solid fa-circle-exclamation" style="color:#7f1d1d;"></i> Emergency (5)</li>
-          <li class="submenu-item" onclick="showSubSection('services', 'cleaning', this)"><i class="fa-solid fa-wand-magic-sparkles" style="color:#00bcd4;"></i> Home Cleaning (4)</li>
+          <li class="submenu-item active" onclick="showSubSection('services', 'bookings', this)"><i class="fa-solid fa-calendar-check" style="color:#10b981;"></i> Bookings <span class="nav-item-badge" id="bookingsSideBadge" style="background:#0f8a5f; margin-left:auto; display:none;">0</span></li>
+          <li class="submenu-item" onclick="showSubSection('services', 'live', this)"><i class="fa-solid fa-tower-broadcast" style="color:#0284c7;"></i> Live Services</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'categories', this)"><i class="fa-solid fa-list" style="color:#f59e0b;"></i> Categories</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'pricing', this)"><i class="fa-solid fa-tags" style="color:#8b5cf6;"></i> Pricing</li>
         </ul>
       </li>
 
@@ -335,9 +330,9 @@
     <!-- Main Content -->
     <main class="content-body">
 
-      <!-- ═══════════════════════════════════════════
+      <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
            1. OVERVIEW SECTION
-           ═══════════════════════════════════════════ -->
+           â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
       <div id="sec-overview" class="admin-section">
         <div class="command-row">
           <div class="command-title">Command Center • <span class="command-date" id="currentDateText"></span></div>
@@ -353,9 +348,9 @@
           <div class="metric-card">
             <div class="metric-card-top">
               <div class="metric-icon-box"><i class="fa-solid fa-user-group"></i></div>
-              <div class="metric-growth-badge" id="metricUsersBadge">—</div>
+              <div class="metric-growth-badge" id="metricUsersBadge">â€”</div>
             </div>
-            <div class="metric-val" id="metricUsers">—</div>
+            <div class="metric-val" id="metricUsers">â€”</div>
             <div class="metric-label">Total Users</div>
             <div class="metric-sub">registered accounts</div>
           </div>
@@ -363,9 +358,9 @@
           <div class="metric-card">
             <div class="metric-card-top">
               <div class="metric-icon-box"><i class="fa-solid fa-crown"></i></div>
-              <div class="metric-growth-badge">—</div>
+              <div class="metric-growth-badge">â€”</div>
             </div>
-            <div class="metric-val" id="metricVendors">—</div>
+            <div class="metric-val" id="metricVendors">â€”</div>
             <div class="metric-label">Active Vendors</div>
             <div class="metric-sub">service partners</div>
           </div>
@@ -373,9 +368,9 @@
           <div class="metric-card">
             <div class="metric-card-top">
               <div class="metric-icon-box"><i class="fa-solid fa-calendar-check"></i></div>
-              <div class="metric-growth-badge">—</div>
+              <div class="metric-growth-badge">â€”</div>
             </div>
-            <div class="metric-val" id="metricBookings">—</div>
+            <div class="metric-val" id="metricBookings">â€”</div>
             <div class="metric-label">Total Bookings</div>
             <div class="metric-sub">all time</div>
           </div>
@@ -383,9 +378,9 @@
           <div class="metric-card">
             <div class="metric-card-top">
               <div class="metric-icon-box"><i class="fa-solid fa-bag-shopping"></i></div>
-              <div class="metric-growth-badge">—</div>
+              <div class="metric-growth-badge">â€”</div>
             </div>
-            <div class="metric-val" id="metricOrders">—</div>
+            <div class="metric-val" id="metricOrders">â€”</div>
             <div class="metric-label">Shop Orders</div>
             <div class="metric-sub">all time</div>
           </div>
@@ -393,9 +388,9 @@
           <div class="metric-card">
             <div class="metric-card-top">
               <div class="metric-icon-box"><i class="fa-solid fa-heart-pulse"></i></div>
-              <div class="metric-growth-badge">—</div>
+              <div class="metric-growth-badge">â€”</div>
             </div>
-            <div class="metric-val" id="metricHealthLogs">—</div>
+            <div class="metric-val" id="metricHealthLogs">â€”</div>
             <div class="metric-label">Health Log Entries</div>
             <div class="metric-sub">all users</div>
           </div>
@@ -403,9 +398,9 @@
           <div class="metric-card">
             <div class="metric-card-top">
               <div class="metric-icon-box"><i class="fa-solid fa-bag-shopping"></i></div>
-              <div class="metric-growth-badge">—</div>
+              <div class="metric-growth-badge">â€”</div>
             </div>
-            <div class="metric-val" id="metricProducts">—</div>
+            <div class="metric-val" id="metricProducts">â€”</div>
             <div class="metric-label">Shop Products</div>
             <div class="metric-sub">in catalogue</div>
           </div>
@@ -413,9 +408,9 @@
           <div class="metric-card">
             <div class="metric-card-top">
               <div class="metric-icon-box"><i class="fa-solid fa-indian-rupee-sign"></i></div>
-              <div class="metric-growth-badge">—</div>
+              <div class="metric-growth-badge">â€”</div>
             </div>
-            <div class="metric-val" id="metricRevenue">—</div>
+            <div class="metric-val" id="metricRevenue">â€”</div>
             <div class="metric-label">Total Order Revenue</div>
             <div class="metric-sub">shop orders (cash)</div>
           </div>
@@ -423,7 +418,7 @@
           <div class="metric-card">
             <div class="metric-card-top">
               <div class="metric-icon-box"><i class="fa-solid fa-tower-broadcast"></i></div>
-              <div class="metric-growth-badge" style="color:#10b981;">● LIVE</div>
+              <div class="metric-growth-badge" style="color:#10b981;">â— LIVE</div>
             </div>
             <div class="metric-val" style="color:#10b981;" id="metricFirebase">OK</div>
             <div class="metric-label">Firebase Status</div>
@@ -455,21 +450,21 @@
               <div>
                 <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; margin-bottom:4px;">
                   <span>Firebase Cloud Store</span>
-                  <span id="fbTelemetryStatus" style="color:#10b981;">● Connecting…</span>
+                  <span id="fbTelemetryStatus" style="color:#10b981;">â— Connecting…</span>
                 </div>
                 <div style="height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden;"><div id="fbTelemetryBar" style="width:0%; height:100%; background:#10b981; transition:width 1s;"></div></div>
               </div>
               <div>
                 <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; margin-bottom:4px;">
                   <span>Firestore Collections</span>
-                  <span id="collectionsStatus" style="color:#64748b;">—</span>
+                  <span id="collectionsStatus" style="color:#64748b;">â€”</span>
                 </div>
                 <div style="height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden;"><div id="collectionsBar" style="width:0%; height:100%; background:#0284c7; transition:width 1s;"></div></div>
               </div>
               <div>
                 <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; margin-bottom:4px;">
                   <span>Emergency Dispatch SOS</span>
-                  <span style="color:#f59e0b;">● Standby Ready</span>
+                  <span style="color:#f59e0b;">â— Standby Ready</span>
                 </div>
                 <div style="height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden;"><div style="width:100%; height:100%; background:#f59e0b;"></div></div>
               </div>
@@ -481,9 +476,9 @@
         </div>
       </div>
 
-      <!-- ═══════════════════════════════════════════
+      <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
            2. URBAN SHOP SECTION
-           ═══════════════════════════════════════════ -->
+           â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
       <div id="sec-shop" class="admin-section" style="display:none;">
         <section class="shop-section-card">
           <div class="section-head-bar">
@@ -499,9 +494,9 @@
         </section>
       </div>
 
-      <!-- ═══════════════════════════════════════════
+      <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
            3. ORDERS SECTION
-           ═══════════════════════════════════════════ -->
+           â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
       <div id="sec-orders" class="admin-section" style="display:none;">
         <section class="shop-section-card">
           <div class="section-head-bar">
@@ -522,39 +517,91 @@
         </section>
       </div>
 
-      <!-- ═══════════════════════════════════════════
+      <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
            4. USERS SECTION
-           ═══════════════════════════════════════════ -->
+           â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
       <div id="sec-users" class="admin-section" style="display:none;">
-        <section class="shop-section-card">
-          <div class="section-head-bar">
-            <div class="section-main-title"><i class="fa-solid fa-users" style="color:#0284c7;"></i> Registered Customers &amp; Members</div>
-            <button class="btn-primary-action" onclick="exportUsersCSV()"><i class="fa-solid fa-download"></i> Export CSV</button>
+        <div style="display:flex; flex-direction:column; gap:20px;">
+
+          <!-- Top Stat KPI Cards (matching Service Catalogue reference design) -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px;">
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:20px 24px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+              <div style="font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; text-transform:uppercase;">TOTAL USERS</div>
+              <div id="kpiTotalUsers" style="font-size:32px; font-weight:900; color:#0284c7; margin-top:8px;">-</div>
+            </div>
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:20px 24px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+              <div style="font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; text-transform:uppercase;">GOOGLE ACCOUNTS</div>
+              <div id="kpiGoogleUsers" style="font-size:32px; font-weight:900; color:#10b981; margin-top:8px;">-</div>
+            </div>
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:20px 24px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+              <div style="font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; text-transform:uppercase;">HEALTH PROFILES</div>
+              <div id="kpiHealthUsers" style="font-size:32px; font-weight:900; color:#f59e0b; margin-top:8px;">-</div>
+            </div>
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:20px 24px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+              <div style="font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; text-transform:uppercase;">ACTIVE BOOKERS</div>
+              <div id="kpiBookerUsers" style="font-size:32px; font-weight:900; color:#8b5cf6; margin-top:8px;">-</div>
+            </div>
           </div>
-          <div class="admin-table-wrap">
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Contact</th>
-                  <th>Subscription</th>
-                  <th>Watch / BLE Telemetry</th>
-                  <th>Coins Earned</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="usersTableBody">
-                <tr><td colspan="7"><div class="loading-state"><div class="spinner"></div>Loading users…</div></td></tr>
-              </tbody>
-            </table>
+
+          <!-- Main Card Container matching Reference Design -->
+          <div class="admin-section-card" style="padding:22px 24px;">
+            <!-- Header bar with Title + Actions -->
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+              <div>
+                <h2 style="font-size:18px; font-weight:800; color:#0f172a;">All Registered Users</h2>
+                <p style="font-size:12.5px; color:#64748b; margin-top:2px;">Live marketplace accounts synced with Firestore &amp; Google Auth</p>
+              </div>
+              <div style="display:flex; gap:10px; align-items:center;">
+                <button class="btn-outline-action" onclick="renderUsers()" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:7px 14px; font-weight:700; font-size:12px; color:#0f172a; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                  <i class="fa-solid fa-arrows-rotate" style="color:#0284c7;"></i> Refresh
+                </button>
+                <button class="btn-primary-action" onclick="exportUsersCSV()" style="background:#0f8a5f; color:#ffffff; border:none; border-radius:8px; padding:7px 14px; font-weight:700; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                  <i class="fa-solid fa-download"></i> Export CSV
+                </button>
+              </div>
+            </div>
+
+            <!-- Filter Pills + Search Input (matching Bookings reference design) -->
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
+              <div class="category-pills-row" style="margin-bottom:0; padding-bottom:0;" id="usersFilterPills">
+                <button class="cat-pill-btn active" id="pillUserAll" onclick="setUserFilter('all', this)">All</button>
+                <button class="cat-pill-btn" id="pillUserGoogle" onclick="setUserFilter('google', this)"><i class="fa-brands fa-google" style="color:#ea4335;"></i> Google Auth</button>
+                <button class="cat-pill-btn" id="pillUserBookers" onclick="setUserFilter('bookers', this)">With Bookings</button>
+                <button class="cat-pill-btn" id="pillUserHealth" onclick="setUserFilter('health', this)">Health Profiles</button>
+              </div>
+
+              <!-- Search Bar -->
+              <div style="position:relative; min-width:280px;">
+                <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:13px;"></i>
+                <input type="text" id="usersSearchInput" placeholder="Search by name, email, phone, UID..." oninput="setUserSearch(this.value)" style="width:100%; padding:8px 14px 8px 34px; border:1px solid #cbd5e1; border-radius:20px; font-size:12.5px; outline:none; background:#f8fafc;">
+              </div>
+            </div>
+
+            <!-- Clean Table matching Reference Table -->
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Customer / User</th>
+                    <th>Contact</th>
+                    <th>Auth Provider</th>
+                    <th>Health Profile</th>
+                    <th>Bookings</th>
+                    <th>Joined</th>
+                    <th>Status</th>
+                    <th style="text-align:right;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                  <tr><td colspan="8"><div class="loading-state"><div class="spinner"></div>Loading users from Firestore…</div></td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
-        </section>
+
+        </div>
       </div>
 
-      <!-- ═══════════════════════════════════════════
-           5. VENDORS SECTION
-           ═══════════════════════════════════════════ -->
       <div id="sec-vendors" class="admin-section" style="display:none;">
         <section class="shop-section-card">
           <div class="section-head-bar">
@@ -585,41 +632,16 @@
         </section>
       </div>
 
-      <!-- ═══════════════════════════════════════════
+      <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
            6. SERVICES SECTION
-           ═══════════════════════════════════════════ -->
+           â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
       <div id="sec-services" class="admin-section" style="display:none;">
-        <section class="shop-section-card">
-          <div class="section-head-bar">
-            <div>
-              <div class="section-main-title" id="servicesSectionTitle">
-                <i class="fa-solid fa-wrench" style="color:#f59e0b;"></i> Services &amp; Bookings Management
-              </div>
-              <p style="font-size:12px; color:#64748b; margin-top:3px;">Manage customer bookings, technician assignments, service packages, and starting prices.</p>
-            </div>
-            <button class="btn-primary-action" onclick="alert('New service package modal')"><i class="fa-solid fa-plus"></i> Add Sub-Service</button>
-          </div>
-          <div class="category-pills-row" id="servicesPillsRow">
-            <button class="cat-pill-btn active" onclick="showSubSection('services', 'all', this)"><i class="fa-solid fa-list"></i> All Categories (10)</button>
-            <button class="cat-pill-btn" onclick="showSubSection('services', 'bookings', this)"><i class="fa-solid fa-calendar-check" style="color:#10b981;"></i> Service Bookings</button>
-            <button class="cat-pill-btn" onclick="showSubSection('services', 'ro', this)"><i class="fa-solid fa-water"></i> RO Service</button>
-            <button class="cat-pill-btn" onclick="showSubSection('services', 'pet', this)"><i class="fa-solid fa-paw"></i> Pet Care</button>
-            <button class="cat-pill-btn" onclick="showSubSection('services', 'pest', this)"><i class="fa-solid fa-bug"></i> Pest Control</button>
-            <button class="cat-pill-btn" onclick="showSubSection('services', 'hort', this)"><i class="fa-solid fa-leaf"></i> Horticulture</button>
-            <button class="cat-pill-btn" onclick="showSubSection('services', 'delivery', this)"><i class="fa-solid fa-bicycle"></i> Delivery</button>
-            <button class="cat-pill-btn" onclick="showSubSection('services', 'appliance', this)"><i class="fa-solid fa-bolt"></i> Appliance Clean</button>
-            <button class="cat-pill-btn" onclick="showSubSection('services', 'homecare', this)"><i class="fa-solid fa-house"></i> Home Care</button>
-            <button class="cat-pill-btn" onclick="showSubSection('services', 'insurance', this)"><i class="fa-solid fa-shield-halved"></i> Insurance</button>
-            <button class="cat-pill-btn" onclick="showSubSection('services', 'emergency', this)"><i class="fa-solid fa-circle-exclamation"></i> Emergency</button>
-            <button class="cat-pill-btn" onclick="showSubSection('services', 'cleaning', this)"><i class="fa-solid fa-wand-magic-sparkles"></i> Home Cleaning</button>
-          </div>
-          <div id="servicesDynamicContainer"></div>
-        </section>
+        <div id="servicesDynamicContainer"></div>
       </div>
 
-      <!-- ═══════════════════════════════════════════
+      <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
            7. SAFETY CENTER SECTION
-           ═══════════════════════════════════════════ -->
+           â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
       <div id="sec-safety" class="admin-section" style="display:none;">
         <section class="shop-section-card">
           <div class="section-head-bar">
@@ -643,12 +665,12 @@
             </div>
             <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:16px; border-radius:14px;">
               <div style="font-size:12px; font-weight:700; color:#166534;">BOOKINGS ON-SITE</div>
-              <div style="font-size:26px; font-weight:900; color:#15803d; margin-top:4px;" id="safetyOnSiteCount">—</div>
+              <div style="font-size:26px; font-weight:900; color:#15803d; margin-top:4px;" id="safetyOnSiteCount">â€”</div>
               <div style="font-size:11px; color:#166534;">In-progress service visits</div>
             </div>
             <div style="background:#f0f9ff; border:1px solid #bae6fd; padding:16px; border-radius:14px;">
               <div style="font-size:12px; font-weight:700; color:#075985;">COMPLETED TODAY</div>
-              <div style="font-size:26px; font-weight:900; color:#0284c7; margin-top:4px;" id="safetyCompletedCount">—</div>
+              <div style="font-size:26px; font-weight:900; color:#0284c7; margin-top:4px;" id="safetyCompletedCount">â€”</div>
               <div style="font-size:11px; color:#0369a1;">Verified completed visits</div>
             </div>
           </div>
@@ -672,9 +694,9 @@
         </section>
       </div>
 
-      <!-- ═══════════════════════════════════════════
+      <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
            8. HEALTH TELEMETRY SECTION
-           ═══════════════════════════════════════════ -->
+           â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
       <div id="sec-health" class="admin-section" style="display:none;">
         <section class="shop-section-card">
           <div class="section-head-bar">
@@ -693,10 +715,10 @@
           </div>
           <!-- Health Aggregate Metrics (from health_logs) -->
           <div class="metrics-grid" style="margin-bottom:20px;" id="healthMetricsGrid">
-            <div class="metric-card"><div class="metric-val" style="color:#0f8a5f;" id="hAvgSteps">—</div><div class="metric-label">Avg Daily Steps</div><div class="metric-sub">Across logged entries</div></div>
-            <div class="metric-card"><div class="metric-val" style="color:#e11d48;" id="hAvgHR">—</div><div class="metric-label">Avg Heart Rate</div><div class="metric-sub">From vitals logs</div></div>
-            <div class="metric-card"><div class="metric-val" style="color:#0284c7;" id="hAvgSpO2">—</div><div class="metric-label">Avg Blood Oxygen</div><div class="metric-sub">SpO2 telemetry</div></div>
-            <div class="metric-card"><div class="metric-val" style="color:#7e22ce;" id="hTotalLogs">—</div><div class="metric-label">Total Health Entries</div><div class="metric-sub">All time logged</div></div>
+            <div class="metric-card"><div class="metric-val" style="color:#0f8a5f;" id="hAvgSteps">â€”</div><div class="metric-label">Avg Daily Steps</div><div class="metric-sub">Across logged entries</div></div>
+            <div class="metric-card"><div class="metric-val" style="color:#e11d48;" id="hAvgHR">â€”</div><div class="metric-label">Avg Heart Rate</div><div class="metric-sub">From vitals logs</div></div>
+            <div class="metric-card"><div class="metric-val" style="color:#0284c7;" id="hAvgSpO2">â€”</div><div class="metric-label">Avg Blood Oxygen</div><div class="metric-sub">SpO2 telemetry</div></div>
+            <div class="metric-card"><div class="metric-val" style="color:#7e22ce;" id="hTotalLogs">â€”</div><div class="metric-label">Total Health Entries</div><div class="metric-sub">All time logged</div></div>
           </div>
           <div class="admin-table-wrap">
             <table class="admin-table">
@@ -717,9 +739,9 @@
         </section>
       </div>
 
-      <!-- ═══════════════════════════════════════════
+      <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
            9. AI CENTER SECTION
-           ═══════════════════════════════════════════ -->
+           â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
       <div id="sec-ai" class="admin-section" style="display:none;">
         <section class="shop-section-card">
           <div class="section-head-bar">
@@ -734,9 +756,9 @@
         </section>
       </div>
 
-      <!-- ═══════════════════════════════════════════
+      <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
            10. REVENUE SECTION
-           ═══════════════════════════════════════════ -->
+           â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
       <div id="sec-revenue" class="admin-section" style="display:none;">
         <section class="shop-section-card">
           <div class="section-head-bar">
@@ -754,17 +776,17 @@
           <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:16px; margin-bottom:20px;">
             <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:18px; border-radius:14px;">
               <div style="font-size:11.5px; font-weight:700; color:#64748b;">TOTAL SHOP REVENUE</div>
-              <div style="font-size:26px; font-weight:900; color:#0f172a; margin-top:4px;" id="revTotalOrders">₹—</div>
+              <div style="font-size:26px; font-weight:900; color:#0f172a; margin-top:4px;" id="revTotalOrders">₹â€”</div>
               <div style="font-size:11px; color:#10b981;">From shop_orders</div>
             </div>
             <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:18px; border-radius:14px;">
               <div style="font-size:11.5px; font-weight:700; color:#64748b;">SERVICE BOOKING REVENUE</div>
-              <div style="font-size:26px; font-weight:900; color:#0f172a; margin-top:4px;" id="revTotalBookings">₹—</div>
+              <div style="font-size:26px; font-weight:900; color:#0f172a; margin-top:4px;" id="revTotalBookings">₹â€”</div>
               <div style="font-size:11px; color:#0284c7;">From bookings</div>
             </div>
             <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:18px; border-radius:14px;">
               <div style="font-size:11.5px; font-weight:700; color:#64748b;">COMBINED GROSS</div>
-              <div style="font-size:26px; font-weight:900; color:#0f8a5f; margin-top:4px;" id="revCombined">₹—</div>
+              <div style="font-size:26px; font-weight:900; color:#0f8a5f; margin-top:4px;" id="revCombined">₹â€”</div>
               <div style="font-size:11px; color:#10b981;">All channels</div>
             </div>
           </div>
@@ -788,9 +810,9 @@
         </section>
       </div>
 
-      <!-- ═══════════════════════════════════════════
+      <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
            11. RESOLUTION CENTER
-           ═══════════════════════════════════════════ -->
+           â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
       <div id="sec-resolution" class="admin-section" style="display:none;">
         <section class="shop-section-card">
           <div class="section-head-bar">
@@ -805,9 +827,9 @@
         </section>
       </div>
 
-      <!-- ═══════════════════════════════════════════
+      <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
            12. ANALYTICS SECTION
-           ═══════════════════════════════════════════ -->
+           â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
       <div id="sec-analytics" class="admin-section" style="display:none;">
         <section class="shop-section-card">
           <div class="section-head-bar">
@@ -826,9 +848,9 @@
         </section>
       </div>
 
-      <!-- ═══════════════════════════════════════════
+      <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
            13. SETTINGS SECTION
-           ═══════════════════════════════════════════ -->
+           â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
       <div id="sec-settings" class="admin-section" style="display:none;">
         <section class="shop-section-card">
           <div class="section-head-bar">
@@ -854,7 +876,7 @@
               <div style="display:flex; flex-direction:column; gap:12px; font-size:13px;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                   <span>Firebase Project ID</span>
-                  <code id="settingsProjectId" style="background:#e2e8f0;padding:3px 8px;border-radius:6px;font-size:12px;">—</code>
+                  <code id="settingsProjectId" style="background:#e2e8f0;padding:3px 8px;border-radius:6px;font-size:12px;">â€”</code>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                   <span>Firestore Status</span>
@@ -1011,9 +1033,9 @@
         <input type="hidden" id="assignBookingId">
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px 16px;margin-bottom:16px;">
           <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;">Booking Summary</div>
-          <div style="font-size:15px;font-weight:800;color:#0f172a;margin-top:2px;" id="assignBookingServiceTitle">—</div>
-          <div style="font-size:12px;color:#475569;margin-top:4px;" id="assignBookingCustomerInfo">—</div>
-          <div style="font-size:12px;color:#64748b;margin-top:2px;" id="assignBookingScheduled">—</div>
+          <div style="font-size:15px;font-weight:800;color:#0f172a;margin-top:2px;" id="assignBookingServiceTitle">â€”</div>
+          <div style="font-size:12px;color:#475569;margin-top:4px;" id="assignBookingCustomerInfo">â€”</div>
+          <div style="font-size:12px;color:#64748b;margin-top:2px;" id="assignBookingScheduled">â€”</div>
         </div>
 
         <div class="form-group">
@@ -1034,6 +1056,204 @@
     </div>
   </div>
 
+  
+  <!-- User Details Modal -->
+  <div class="modal-overlay" id="userDetailsModal" style="display:none;">
+    <div class="modal-box" style="max-width:620px;">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div id="uModalAvatar" style="width:44px; height:44px; border-radius:50%; background:#10b981; display:flex; align-items:center; justify-content:center; color:white; font-size:18px; font-weight:800; overflow:hidden;"></div>
+          <div>
+            <h3 class="modal-title" id="uModalName">User Profile</h3>
+            <p style="font-size:12px; color:#64748b; margin-top:2px;" id="uModalEmail">user@example.com</p>
+          </div>
+        </div>
+        <button class="modal-close" onclick="closeUserDetailsModal()">&times;</button>
+      </div>
+
+      <div id="uModalContent" style="display:flex; flex-direction:column; gap:14px; padding:16px 0;">
+        <!-- Injected via JavaScript -->
+      </div>
+
+      <div style="margin-top:16px; padding-top:14px; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end;">
+        <button type="button" class="btn-outline-action" onclick="closeUserDetailsModal()" style="padding:8px 20px; border-radius:8px; font-weight:700; cursor:pointer; background:#f1f5f9; border:1px solid #cbd5e1; color:#475569;">Close</button>
+      </div>
+    </div>
+  </div>
+
+  
+  <!-- Category Modal (Add / Edit) -->
+  <div class="modal-overlay" id="categoryModal" style="display:none;">
+    <div class="modal-box" style="max-width:540px;">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" id="catModalTitle"><i class="fa-solid fa-layer-group" style="color:#0f8a5f;"></i> Add Service Category</h3>
+          <p style="font-size:12px; color:#64748b; margin-top:2px;">Saved directly to Firestore. Syncs to mobile app in real time.</p>
+        </div>
+        <button class="modal-close" onclick="closeCategoryModal()">&times;</button>
+      </div>
+      <form onsubmit="handleSaveCategory(event)">
+        <input type="hidden" id="catModalId">
+        <div class="form-group">
+          <label>Category Name *</label>
+          <input type="text" class="form-control" id="catModalName" placeholder="e.g. Home Cleaning, Solar Care" required>
+        </div>
+        <div class="form-group">
+          <label>Tagline / Description *</label>
+          <input type="text" class="form-control" id="catModalTagline" placeholder="e.g. Spotless home, happy life" required>
+        </div>
+        <div class="form-group">
+          <label>Thumbnail Image URL (or Unsplash photo)</label>
+          <input type="url" class="form-control" id="catModalImage" placeholder="https://images.unsplash.com/...">
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label>Accent Color</label>
+            <input type="color" class="form-control" id="catModalAccent" value="#10b981" style="height:42px; padding:4px;">
+          </div>
+          <div class="form-group">
+            <label>Display Order #</label>
+            <input type="number" class="form-control" id="catModalOrder" value="1" min="1">
+          </div>
+        </div>
+        <div style="margin-top:18px; display:flex; justify-content:flex-end; gap:10px;">
+          <button type="button" class="btn-outline-action" onclick="closeCategoryModal()" style="padding:8px 18px; border-radius:8px;">Cancel</button>
+          <button type="submit" class="btn-primary-action" style="background:#0f8a5f; color:#fff; border:none; padding:8px 22px; border-radius:8px; font-weight:700;">Save Category</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Sub-Service Modal (Add / Edit Sub-Service & Price) -->
+  <div class="modal-overlay" id="subServiceModal" style="display:none;">
+    <div class="modal-box" style="max-width:540px;">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" id="subModalTitle"><i class="fa-solid fa-wrench" style="color:#0f8a5f;"></i> Add Sub-Service Package</h3>
+          <p style="font-size:12px; color:#64748b; margin-top:2px;">Updates pricing & package details instantly on customer app.</p>
+        </div>
+        <button class="modal-close" onclick="closeSubServiceModal()">&times;</button>
+      </div>
+      <form onsubmit="handleSaveSubService(event)">
+        <input type="hidden" id="subModalCatId">
+        <input type="hidden" id="subModalId">
+        <div class="form-group">
+          <label>Sub-Service Name *</label>
+          <input type="text" class="form-control" id="subModalName" placeholder="e.g. Deep Cleaning (2 BHK)" required>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label>Price (₹) *</label>
+            <input type="text" class="form-control" id="subModalPrice" placeholder="e.g. 599 or ₹599" required>
+          </div>
+          <div class="form-group">
+            <label>Duration *</label>
+            <input type="text" class="form-control" id="subModalDuration" placeholder="e.g. 60 min, 2 hrs" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Package Description *</label>
+          <textarea class="form-control" id="subModalDesc" rows="3" placeholder="Explain what is included..." required></textarea>
+        </div>
+        <div class="form-group" style="display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" id="subModalPopular" style="width:16px; height:16px;">
+          <label for="subModalPopular" style="margin:0; font-weight:600; cursor:pointer;">Mark as Most Popular Package</label>
+        </div>
+        <div style="margin-top:18px; display:flex; justify-content:flex-end; gap:10px;">
+          <button type="button" class="btn-outline-action" onclick="closeSubServiceModal()" style="padding:8px 18px; border-radius:8px;">Cancel</button>
+          <button type="submit" class="btn-primary-action" style="background:#0f8a5f; color:#fff; border:none; padding:8px 22px; border-radius:8px; font-weight:700;">Save Package</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Pricing Rule Modal (Add / Edit Pricing) -->
+  <div class="modal-overlay" id="pricingModal" style="display:none;">
+    <div class="modal-box" style="max-width:520px;">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" id="pricingModalTitle"><i class="fa-solid fa-tags" style="color:#8b5cf6;"></i> Edit Pricing Rule</h3>
+          <p style="font-size:12px; color:#64748b; margin-top:2px;">Configures base price and demand multiplier synced with mobile app.</p>
+        </div>
+        <button class="modal-close" onclick="closePricingModal()">&times;</button>
+      </div>
+      <form onsubmit="handleSavePricing(event)">
+        <input type="hidden" id="pricingRuleId">
+        <div class="form-group">
+          <label>Category *</label>
+          <input type="text" class="form-control" id="pricingCatName" placeholder="e.g. AC Repair" required>
+        </div>
+        <div class="form-group">
+          <label>Region *</label>
+          <select class="form-control" id="pricingRegion">
+            <option value="Bengaluru">Bengaluru</option>
+            <option value="Mumbai">Mumbai</option>
+            <option value="Delhi NCR">Delhi NCR</option>
+            <option value="Chennai">Chennai</option>
+            <option value="Hyderabad">Hyderabad</option>
+            <option value="All Regions">All Regions</option>
+          </select>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label>Base Price (₹) *</label>
+            <input type="number" class="form-control" id="pricingBasePrice" placeholder="e.g. 899" required min="0">
+          </div>
+          <div class="form-group">
+            <label>Surge Multiplier *</label>
+            <select class="form-control" id="pricingSurge">
+              <option value="1x">1x (Standard)</option>
+              <option value="1.15x">1.15x (Moderate Demand)</option>
+              <option value="1.2x">1.2x (High Surge)</option>
+              <option value="1.5x">1.5x (Peak Surge)</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:18px; display:flex; justify-content:flex-end; gap:10px;">
+          <button type="button" class="btn-outline-action" onclick="closePricingModal()" style="padding:8px 18px; border-radius:8px;">Cancel</button>
+          <button type="submit" class="btn-primary-action" style="background:#8b5cf6; color:#fff; border:none; padding:8px 22px; border-radius:8px; font-weight:700;">Save Pricing Rule</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Live Booking Status Update Modal -->
+  <div class="modal-overlay" id="statusModal" style="display:none;">
+    <div class="modal-box" style="max-width:480px;">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title"><i class="fa-solid fa-arrows-rotate" style="color:#0284c7;"></i> Update Job Status</h3>
+          <p style="font-size:12px; color:#64748b; margin-top:2px;">Changes notify the customer and update the live tracking screen.</p>
+        </div>
+        <button class="modal-close" onclick="closeStatusModal()">&times;</button>
+      </div>
+      <form onsubmit="handleUpdateBookingStatus(event)">
+        <input type="hidden" id="statusModalBookingId">
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px; margin-bottom:14px;">
+          <div style="font-size:11px; font-weight:700; color:#64748b;">BOOKING</div>
+          <div style="font-size:14px; font-weight:800; color:#0f172a; margin-top:2px;" id="statusModalSummary">-</div>
+        </div>
+        <div class="form-group">
+          <label>Select New Status *</label>
+          <select class="form-control" id="statusModalSelect" required>
+            <option value="requested">Requested (Unassigned)</option>
+            <option value="assigned">Assigned to Vendor</option>
+            <option value="accepted">Accepted by Vendor</option>
+            <option value="en_route">En Route (Specialist on way)</option>
+            <option value="arrived">Arrived at Location</option>
+            <option value="in_progress">Service Started</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div style="margin-top:18px; display:flex; justify-content:flex-end; gap:10px;">
+          <button type="button" class="btn-outline-action" onclick="closeStatusModal()" style="padding:8px 18px; border-radius:8px;">Cancel</button>
+          <button type="submit" class="btn-primary-action" style="background:#0284c7; color:#fff; border:none; padding:8px 22px; border-radius:8px; font-weight:700;">Update Status</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Firebase JS SDK (v10 modular CDN) -->
   <script type="module">
     import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js';
@@ -1050,7 +1270,8 @@
       query,
       orderBy,
       limit,
-      where
+      where,
+      onSnapshot
     } from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js';
 
     // ─────────────────────────────────────────────
@@ -1066,11 +1287,35 @@
     };
 
     let db = null;
+    let _allBookings = [];
+    let _currentBookingsFilter = 'all';
+    let _currentBookingsSearch = '';
+    let _currentServicesSubKey = 'bookings';
+    let _currentSection = 'overview';
 
     async function initDashboard() {
       try {
         const app = getApps().length ? getApp() : initializeApp(DEFAULT_FIREBASE_CONFIG);
         db = getFirestore(app);
+
+        // Real-time live listener for bookings
+        try {
+          onSnapshot(collection(db, 'bookings'), (snap) => {
+            _allBookings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            // Sort by createdAt descending
+            _allBookings.sort((a, b) => {
+              const aT = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+              const bT = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+              return bT - aT;
+            });
+            updateBookingsKpisAndBadges();
+            if (_currentSection === 'services' && _currentServicesSubKey === 'bookings') {
+              renderBookingsBoardView();
+            }
+          }, (err) => console.warn('Bookings realtime sync error:', err));
+        } catch(e) {
+          console.warn('Realtime listener error:', e);
+        }
 
         // Update UI with project info
         const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
@@ -1081,7 +1326,7 @@
         // Update status bar
         const bar = document.getElementById('fbStatusBar');
         if (bar) bar.classList.remove('disconnected');
-        setTxt('fbStatusText', '● Connected to Firebase: ' + DEFAULT_FIREBASE_CONFIG.projectId);
+        setTxt('fbStatusText', 'â— Connected to Firebase: ' + DEFAULT_FIREBASE_CONFIG.projectId);
         const fbStatus = document.getElementById('settingsFbStatus');
         if (fbStatus) {
           fbStatus.textContent = 'Connected';
@@ -1089,7 +1334,7 @@
         }
 
         // Update telemetry UI
-        setTxt('fbTelemetryStatus', '● Online');
+        setTxt('fbTelemetryStatus', 'â— Online');
         const telBar = document.getElementById('fbTelemetryBar');
         if (telBar) telBar.style.width = '100%';
         const telNote = document.getElementById('telemetryNote');
@@ -1114,7 +1359,7 @@
         const bar = document.getElementById('fbStatusBar');
         if (bar) bar.classList.add('disconnected');
         const stText = document.getElementById('fbStatusText');
-        if (stText) stText.textContent = '✕ Firebase Error: ' + err.message;
+        if (stText) stText.textContent = 'âœ• Firebase Error: ' + err.message;
       }
     }
 
@@ -1140,12 +1385,12 @@
     }
 
     function fmtInr(n) {
-      if (n === null || n === undefined || isNaN(n)) return '₹—';
+      if (n === null || n === undefined || isNaN(n)) return '₹â€”';
       return '₹' + Number(n).toLocaleString('en-IN');
     }
 
     function timeSince(ts) {
-      if (!ts) return '—';
+      if (!ts) return 'â€”';
       const d = ts.toDate ? ts.toDate() : new Date(ts);
       const diff = Math.floor((Date.now() - d) / 1000);
       if (diff < 60) return diff + 's ago';
@@ -1216,7 +1461,7 @@
             type: 'order',
             time: o.createdAt,
             label: 'Shop Order Placed',
-            sub: (o.customerName || 'Customer') + ' placed an order' + (o.items?.[0]?.name ? ' — ' + o.items[0].name : ''),
+            sub: (o.customerName || 'Customer') + ' placed an order' + (o.items?.[0]?.name ? ' â€” ' + o.items[0].name : ''),
             badge: fmtInr(o.totalCash || 0),
             badgeCls: 'badge-green',
             iconBg: '#dcfce7', iconColor: '#15803d', icon: 'fa-cart-shopping',
@@ -1229,7 +1474,7 @@
             type: 'booking',
             time: b.createdAt,
             label: b.serviceCategory ? b.serviceCategory + ' Booking' : 'Service Booking',
-            sub: (b.customerName || 'Customer') + (b.subServiceName ? ' — ' + b.subServiceName : '') + (b.status ? ' [' + b.status + ']' : ''),
+            sub: (b.customerName || 'Customer') + (b.subServiceName ? ' â€” ' + b.subServiceName : '') + (b.status ? ' [' + b.status + ']' : ''),
             badge: b.priceLabel || fmtInr(b.price || 0),
             badgeCls: b.status === 'completed' ? 'badge-green' : b.status === 'in_progress' ? 'badge-blue' : 'badge-yellow',
             iconBg: '#f3e8ff', iconColor: '#7e22ce', icon: 'fa-broom',
@@ -1310,7 +1555,7 @@
               <p class="admin-prod-sub">${p.subtitle || p.description || ''}</p>
               <div class="admin-price-row">
                 <span class="admin-price-inr">₹${Number(price).toLocaleString()}</span>
-                ${points ? `<span class="admin-points-tag">⭐ ${Number(points).toLocaleString()} pts</span>` : ''}
+                ${points ? `<span class="admin-points-tag">â­ ${Number(points).toLocaleString()} pts</span>` : ''}
               </div>
               <div class="admin-card-actions">
                 <button class="btn-delete-prod" onclick="deleteProduct('${docSnap.id}', '${(p.name||'').replace(/'/g,"\\'")}')">
@@ -1398,8 +1643,8 @@
       const STATUS_COLORS = { delivered:'#10b981', shipped:'#6366f1', processing:'#f59e0b', cancelled:'#e11d48' };
       grid.innerHTML = list.map((o, i) => {
         const col = STATUS_COLORS[o.status] || '#64748b';
-        const itemNames = o.items?.map(it => it.name + (it.quantity > 1 ? ' x' + it.quantity : '')).join(', ') || '—';
-        const dateStr = o.createdAt?.toDate ? o.createdAt.toDate().toLocaleDateString('en-IN') : '—';
+        const itemNames = o.items?.map(it => it.name + (it.quantity > 1 ? ' x' + it.quantity : '')).join(', ') || 'â€”';
+        const dateStr = o.createdAt?.toDate ? o.createdAt.toDate().toLocaleDateString('en-IN') : 'â€”';
         return `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:16px;">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
             <div>
@@ -1409,11 +1654,11 @@
             </div>
             <span style="background:${col}22;color:${col};font-size:11px;font-weight:800;padding:5px 12px;border-radius:20px;">${(o.status||'').toUpperCase()}</span>
           </div>
-          <div style="font-size:13px;color:#334155;margin-bottom:10px;">📦 ${itemNames}</div>
+          <div style="font-size:13px;color:#334155;margin-bottom:10px;">ðŸ“¦ ${itemNames}</div>
           <div style="display:flex;align-items:center;justify-content:space-between;">
             <div>
               <span style="font-size:16px;font-weight:900;color:#0f172a;">${fmtInr(o.totalCash || 0)}</span>
-              <span style="font-size:11px;color:#94a3b8;margin-left:6px;">(${o.paymentMethod || '—'})</span>
+              <span style="font-size:11px;color:#94a3b8;margin-left:6px;">(${o.paymentMethod || 'â€”'})</span>
               ${o.pointsEarned > 0 ? `<span style="font-size:11px;font-weight:700;color:#d97706;margin-left:6px;">+${o.pointsEarned} pts earned</span>` : ''}
             </div>
             <select onchange="updateOrderStatus('${o.id}', this.value)" style="padding:6px 10px;border-radius:10px;border:1px solid #e2e8f0;font-size:12px;font-weight:700;cursor:pointer;">
@@ -1435,49 +1680,371 @@
       } catch (e) { alert('Update failed: ' + e.message); }
     };
 
-    // ─────────────────────────────────────────────
-    // USERS (from users collection)
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────────
+    // USERS (Real Firestore & Google Auth sync with Reference Design)
+    // ─────────────────────────────────────────────────────────────────────────────
+    let _allUsers = [];
+    let _currentUserFilter = 'all';
+    let _currentUserSearch = '';
+
+    window.setUserFilter = function(filterVal, el) {
+      _currentUserFilter = filterVal;
+      document.querySelectorAll('#usersFilterPills .cat-pill-btn').forEach(b => b.classList.remove('active'));
+      if (el) el.classList.add('active');
+      renderUsersTableOnly();
+    };
+
+    window.setUserSearch = function(q) {
+      _currentUserSearch = (q || '').trim().toLowerCase();
+      renderUsersTableOnly();
+    };
+
     window.renderUsers = async function() {
       const tb = document.getElementById('usersTableBody');
-      if (!tb) return;
-      tb.innerHTML = '<tr><td colspan="7"><div class="loading-state"><div class="spinner"></div>Loading users from Firestore…</div></td></tr>';
+      if (tb) {
+        tb.innerHTML = '<tr><td colspan="8"><div class="loading-state"><div class="spinner"></div>Loading users from Firestore…</div></td></tr>';
+      }
+
       try {
-        const snap = await getDocs2('users', [orderBy('createdAt', 'desc'), limit(50)]);
-        if (snap.empty) {
-          tb.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-users"></i><div class="empty-state-title">No Users Yet</div><div class="empty-state-sub">Registered users from the Urban Helpers app will appear here.</div></div></td></tr>`;
-          return;
+        let userDocs = [];
+        try {
+          const snap = await getDocs(collection(db, 'users'));
+          userDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (err) {
+          console.warn('Direct fetch from users collection warning:', err);
         }
-        tb.innerHTML = snap.docs.map(d => {
-          const u = d.data();
-          const plan = u.subscriptionPlan || u.plan || 'Standard';
-          const watch = u.watchModel || u.deviceName || (u.watchConnected ? 'Smartwatch Connected' : 'No Watch');
-          const coins = u.coins || u.healthCoins || 0;
-          const email = u.email || '—';
-          const name = u.displayName || u.name || u.fullName || email.split('@')[0] || 'User';
-          const planCls = plan.toLowerCase().includes('premium') ? 'badge-purple' : plan.toLowerCase().includes('family') ? 'badge-blue' : 'badge-green';
-          return `<tr>
-            <td><strong>${name}</strong></td>
-            <td style="color:#64748b;">${email}</td>
-            <td><span class="status-badge ${planCls}">${plan}</span></td>
-            <td><i class="fa-brands fa-bluetooth-b" style="color:#0284c7; margin-right:4px;"></i>${watch}</td>
-            <td><strong style="color:#d97706;">⭐ ${Number(coins).toLocaleString()}</strong></td>
-            <td><span class="status-badge badge-green">Active</span></td>
-            <td><button class="btn-sm-action" onclick="alert('UID: ${d.id}')">View</button></td>
-          </tr>`;
-        }).join('');
-      } catch (e) {
-        tb.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><div class="empty-state-title">Error loading users</div><div class="empty-state-sub">${e.message}</div></div></td></tr>`;
+
+        const usersMap = new Map();
+        userDocs.forEach(u => {
+          const email = (u.email || '').toLowerCase().trim();
+          const name = u.displayName || u.name || u.fullName || (email ? email.split('@')[0] : 'User');
+          const isGoogle = (email && email.includes('@gmail.com')) || !!u.photoURL || u.provider === 'google' || u.provider === 'google.com';
+          
+          usersMap.set(u.id, {
+            id: u.id,
+            name: name,
+            email: u.email || '-',
+            phone: u.phone || u.mobile || '-',
+            photoURL: u.photoURL || null,
+            isGoogle: isGoogle,
+            age: u.age || null,
+            height: u.height || null,
+            weight: u.weight || null,
+            gender: u.gender || null,
+            dob: u.dob || null,
+            plan: u.subscriptionPlan || u.plan || 'Standard',
+            createdAt: u.createdAt || u.updatedAt || null,
+            bookings: []
+          });
+        });
+
+        // Cross-reference with live bookings
+        if (_allBookings && _allBookings.length > 0) {
+          _allBookings.forEach(b => {
+            const custId = b.customerId;
+            const custName = b.customerName || 'Customer';
+            const custPhone = b.customerPhone || '';
+            const custEmail = (b.customerEmail || '').toLowerCase().trim();
+
+            let matchedUser = null;
+            if (custId && usersMap.has(custId)) {
+              matchedUser = usersMap.get(custId);
+            } else {
+              for (const u of usersMap.values()) {
+                if (custEmail && u.email && u.email.toLowerCase() === custEmail) {
+                  matchedUser = u;
+                  break;
+                }
+                if (custPhone && u.phone && u.phone.replace(/\D/g, '') === custPhone.replace(/\D/g, '')) {
+                  matchedUser = u;
+                  break;
+                }
+              }
+            }
+
+            if (matchedUser) {
+              matchedUser.bookings.push(b);
+            } else if (custId || custPhone || custName !== 'Customer') {
+              const syntheticId = custId || ('cust_' + (custPhone || Math.random().toString(36).substr(2, 8)));
+              usersMap.set(syntheticId, {
+                id: syntheticId,
+                name: custName,
+                email: custEmail || '-',
+                phone: custPhone || '-',
+                photoURL: null,
+                isGoogle: custEmail.includes('@gmail.com'),
+                age: null,
+                height: null,
+                weight: null,
+                gender: null,
+                dob: null,
+                plan: 'Standard',
+                createdAt: b.createdAt || null,
+                bookings: [b]
+              });
+            }
+          });
+        }
+
+        _allUsers = Array.from(usersMap.values());
+
+        // Sort by createdAt descending
+        _allUsers.sort((a, b) => {
+          const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+          const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+          if (bTime !== aTime) return bTime - aTime;
+          return b.bookings.length - a.bookings.length;
+        });
+
+        // Top KPI counts
+        const totalCount = _allUsers.length;
+        const googleCount = _allUsers.filter(u => u.isGoogle).length;
+        const healthCount = _allUsers.filter(u => u.age || u.height || u.weight).length;
+        const bookersCount = _allUsers.filter(u => u.bookings.length > 0).length;
+
+        const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+        setTxt('kpiTotalUsers', totalCount);
+        setTxt('kpiGoogleUsers', googleCount);
+        setTxt('kpiHealthUsers', healthCount);
+        setTxt('kpiBookerUsers', bookersCount);
+
+        // Update pills
+        const pillAll = document.getElementById('pillUserAll');
+        if (pillAll) pillAll.textContent = `All (${totalCount})`;
+        const pillGoogle = document.getElementById('pillUserGoogle');
+        if (pillGoogle) pillGoogle.innerHTML = `<i class="fa-brands fa-google" style="color:#ea4335;"></i> Google (${googleCount})`;
+        const pillBookers = document.getElementById('pillUserBookers');
+        if (pillBookers) pillBookers.textContent = `With Bookings (${bookersCount})`;
+        const pillHealth = document.getElementById('pillUserHealth');
+        if (pillHealth) pillHealth.textContent = `Health Profiles (${healthCount})`;
+
+        renderUsersTableOnly();
+
+      } catch (err) {
+        console.error('Error in renderUsers:', err);
+        if (tb) {
+          tb.innerHTML = `<tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><div class="empty-state-title">Error loading users</div><div class="empty-state-sub">${err.message}</div></div></td></tr>`;
+        }
       }
     };
 
-    window.exportUsersCSV = function() {
-      alert('CSV export: Query the users collection from your Firebase Console for bulk export, or implement a Cloud Function for server-side CSV generation.');
+    window.renderUsersTableOnly = function() {
+      const tb = document.getElementById('usersTableBody');
+      if (!tb) return;
+
+      let filtered = _allUsers;
+
+      if (_currentUserFilter === 'google') {
+        filtered = filtered.filter(u => u.isGoogle);
+      } else if (_currentUserFilter === 'bookers') {
+        filtered = filtered.filter(u => u.bookings.length > 0);
+      } else if (_currentUserFilter === 'health') {
+        filtered = filtered.filter(u => u.age || u.height || u.weight);
+      }
+
+      if (_currentUserSearch) {
+        filtered = filtered.filter(u =>
+          u.name.toLowerCase().includes(_currentUserSearch) ||
+          u.email.toLowerCase().includes(_currentUserSearch) ||
+          u.phone.toLowerCase().includes(_currentUserSearch) ||
+          u.id.toLowerCase().includes(_currentUserSearch)
+        );
+      }
+
+      if (filtered.length === 0) {
+        tb.innerHTML = '<tr><td colspan="8"><div class="empty-state" style="padding:32px 20px;"><i class="fa-solid fa-users-slash" style="font-size:28px; color:#94a3b8; margin-bottom:8px;"></i><div class="empty-state-title" style="font-size:15px; font-weight:700; color:#0f172a;">No Users Match Filter</div><div class="empty-state-sub" style="font-size:12.5px; color:#64748b;">Try selecting "All" or adjusting your search term.</div></div></td></tr>';
+        return;
+      }
+
+      tb.innerHTML = filtered.map(u => {
+        const initials = (u.name || 'U').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'U';
+        const avatarHtml = u.photoURL
+          ? `<img src="${u.photoURL}" alt="${u.name}" style="width:38px; height:38px; border-radius:50%; object-fit:cover; border:2px solid #e2e8f0;" onerror="this.outerHTML='<div style=\\'width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#10b981,#0f8a5f);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;\\'>${initials}</div>'">`
+          : `<div style="width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg, #10b981, #0f8a5f); color:white; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;">${initials}</div>`;
+
+        const providerBadge = u.isGoogle
+          ? '<span class="status-badge" style="background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; display:inline-flex; align-items:center; gap:5px;"><i class="fa-brands fa-google" style="color:#ea4335;"></i> Google</span>'
+          : '<span class="status-badge badge-blue"><i class="fa-solid fa-envelope"></i> Email</span>';
+
+        const vitalsList = [];
+        if (u.age) vitalsList.push(`${u.age} yrs`);
+        if (u.height) vitalsList.push(u.height);
+        if (u.weight) vitalsList.push(u.weight);
+        const healthHtml = vitalsList.length > 0
+          ? `<div style="font-size:12px; font-weight:700; color:#0f172a;"><i class="fa-solid fa-heart-pulse" style="color:#10b981; margin-right:4px;"></i>${vitalsList.join(' · ')}</div>`
+          : '<span style="font-size:11.5px; color:#94a3b8; font-weight:600;">Basic Profile</span>';
+
+        const bookingsBadge = u.bookings.length > 0
+          ? `<span class="status-badge badge-green" style="font-weight:700;"><i class="fa-solid fa-calendar-check" style="margin-right:4px;"></i>${u.bookings.length} order${u.bookings.length>1?'s':''}</span>`
+          : '<span style="font-size:11.5px; color:#94a3b8;">0 bookings</span>';
+
+        let joinedStr = 'â€”';
+        if (u.createdAt) {
+          try {
+            const d = u.createdAt.toDate ? u.createdAt.toDate() : new Date(u.createdAt);
+            joinedStr = d.toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+          } catch(e) { joinedStr = 'Active'; }
+        }
+
+        return `
+          <tr>
+            <td>
+              <div style="display:flex; align-items:center; gap:12px;">
+                ${avatarHtml}
+                <div>
+                  <div style="font-weight:700; font-size:13.5px; color:#0f172a;">${u.name}</div>
+                  <div style="font-size:11px; color:#64748b; font-family:monospace; margin-top:1px;">#${u.id.slice(0, 10)}… <i class="fa-regular fa-copy" onclick="copyText('${u.id}')" title="Copy UID" style="cursor:pointer; margin-left:3px; color:#94a3b8;"></i></div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div style="font-size:12.5px; color:#334155; font-weight:600;"><i class="fa-regular fa-envelope" style="color:#94a3b8; margin-right:5px; font-size:11.5px;"></i>${u.email}</div>
+              ${u.phone && u.phone !== '-' ? `<div style="font-size:11.5px; color:#64748b; margin-top:2px;"><i class="fa-solid fa-phone" style="color:#94a3b8; margin-right:5px; font-size:10.5px;"></i>${u.phone}</div>` : ''}
+            </td>
+            <td>${providerBadge}</td>
+            <td>${healthHtml}</td>
+            <td>${bookingsBadge}</td>
+            <td style="font-size:12px; color:#64748b; font-weight:600;">${joinedStr}</td>
+            <td><span class="status-badge badge-green"><span style="width:6px; height:6px; border-radius:50%; background:#10b981; display:inline-block; margin-right:5px;"></span>Active</span></td>
+            <td style="text-align:right;">
+              <button class="btn-sm-action" onclick="openUserDetailsModal('${u.id}')" style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; font-weight:700; border-radius:8px; padding:5px 12px; display:inline-flex; align-items:center; gap:5px; cursor:pointer;">
+                <i class="fa-regular fa-eye"></i> View Profile
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
     };
 
-    // ─────────────────────────────────────────────
-    // UTILITY: Copy text to clipboard
-    // ─────────────────────────────────────────────
+    window.openUserDetailsModal = function(userId) {
+      const u = _allUsers.find(x => x.id === userId);
+      if (!u) return;
+
+      const modal = document.getElementById('userDetailsModal');
+      const nameEl = document.getElementById('uModalName');
+      const emailEl = document.getElementById('uModalEmail');
+      const avatarEl = document.getElementById('uModalAvatar');
+      const contentEl = document.getElementById('uModalContent');
+
+      nameEl.textContent = u.name;
+      emailEl.textContent = u.email;
+
+      const initials = (u.name || 'U').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'U';
+      if (u.photoURL) {
+        avatarEl.innerHTML = `<img src="${u.photoURL}" style="width:100%; height:100%; object-fit:cover;" onerror="this.outerHTML='${initials}'">`;
+      } else {
+        avatarEl.textContent = initials;
+      }
+
+      contentEl.innerHTML = `
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:14px 16px;">
+          <div>
+            <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Firebase UID</div>
+            <div style="font-size:12px; font-family:monospace; color:#0f172a; margin-top:2px; word-break:break-all;">${u.id}</div>
+          </div>
+          <div>
+            <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Phone Number</div>
+            <div style="font-size:13px; font-weight:600; color:#0f172a; margin-top:2px;">${u.phone || 'Not provided'}</div>
+          </div>
+          <div>
+            <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Auth Provider</div>
+            <div style="font-size:13px; font-weight:700; color:#0f172a; margin-top:2px;">
+              ${u.isGoogle ? '<i class="fa-brands fa-google" style="color:#ea4335; margin-right:4px;"></i> Google Account' : '<i class="fa-solid fa-envelope" style="color:#0284c7; margin-right:4px;"></i> Email / Password'}
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Account Status</div>
+            <div style="font-size:13px; font-weight:700; color:#10b981; margin-top:2px;">
+              <span class="status-badge badge-green">Active Member</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:14px 16px;">
+          <div style="font-size:13px; font-weight:800; color:#0f172a; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+            <i class="fa-solid fa-heart-pulse" style="color:#10b981;"></i> Health Profile &amp; Vitals
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:10px;">
+            <div style="background:#f1f5f9; padding:10px; border-radius:8px; text-align:center;">
+              <div style="font-size:10px; font-weight:700; color:#64748b;">AGE</div>
+              <div style="font-size:15px; font-weight:800; color:#0f172a; margin-top:2px;">${u.age || 'â€”'}</div>
+            </div>
+            <div style="background:#f1f5f9; padding:10px; border-radius:8px; text-align:center;">
+              <div style="font-size:10px; font-weight:700; color:#64748b;">GENDER</div>
+              <div style="font-size:15px; font-weight:800; color:#0f172a; margin-top:2px;">${u.gender || 'â€”'}</div>
+            </div>
+            <div style="background:#f1f5f9; padding:10px; border-radius:8px; text-align:center;">
+              <div style="font-size:10px; font-weight:700; color:#64748b;">HEIGHT</div>
+              <div style="font-size:15px; font-weight:800; color:#0f172a; margin-top:2px;">${u.height || 'â€”'}</div>
+            </div>
+            <div style="background:#f1f5f9; padding:10px; border-radius:8px; text-align:center;">
+              <div style="font-size:10px; font-weight:700; color:#64748b;">WEIGHT</div>
+              <div style="font-size:15px; font-weight:800; color:#0f172a; margin-top:2px;">${u.weight || 'â€”'}</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:14px 16px;">
+          <div style="font-size:13px; font-weight:800; color:#0f172a; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+            <span><i class="fa-solid fa-calendar-check" style="color:#0284c7; margin-right:6px;"></i>Booking History</span>
+            <span style="font-size:11.5px; font-weight:700; color:#0f8a5f;">${u.bookings.length} total</span>
+          </div>
+          ${u.bookings.length === 0
+            ? '<div style="font-size:12px; color:#94a3b8; padding:8px 0;">No bookings placed yet.</div>'
+            : `<div style="max-height:160px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;">
+                ${u.bookings.map(b => `
+                  <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; font-size:12px;">
+                    <div>
+                      <strong style="color:#0f172a;">${b.serviceCategory || 'Service'}</strong> â€” ${b.subServiceName || 'Standard Package'}
+                      <div style="color:#64748b; font-size:11px;">#${b.id.slice(-6).toUpperCase()} · ${b.scheduledAt || 'Immediate'}</div>
+                    </div>
+                    <div style="text-align:right;">
+                      <strong style="color:#0f172a;">${b.priceLabel || fmtInr(b.price || 0)}</strong>
+                      <div><span class="status-badge ${statusMap[b.status] || 'badge-yellow'}" style="font-size:9.5px;">${(b.status || 'requested').toUpperCase()}</span></div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>`
+          }
+        </div>
+      `;
+
+      modal.style.display = 'flex';
+    };
+
+    window.closeUserDetailsModal = function() {
+      const modal = document.getElementById('userDetailsModal');
+      if (modal) modal.style.display = 'none';
+    };
+
+    window.exportUsersCSV = function() {
+      if (!_allUsers || _allUsers.length === 0) {
+        alert('No users to export.');
+        return;
+      }
+      const headers = ['UID', 'Name', 'Email', 'Phone', 'Provider', 'Age', 'Gender', 'Height', 'Weight', 'BookingsCount'];
+      const rows = _allUsers.map(u => [
+        `"${u.id}"`,
+        `"${(u.name || '').replace(/"/g, '""')}"`,
+        `"${u.email}"`,
+        `"${u.phone}"`,
+        `"${u.isGoogle ? 'Google' : 'Email'}"`,
+        `"${u.age || ''}"`,
+        `"${u.gender || ''}"`,
+        `"${u.height || ''}"`,
+        `"${u.weight || ''}"`,
+        `"${u.bookings.length}"`
+      ]);
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `urban_helpers_users_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+
     window.copyText = function(txt) {
       if (!txt) return;
       navigator.clipboard.writeText(txt).then(() => {
@@ -1559,7 +2126,7 @@
         await setDoc(doc(db, 'vendors', vendorId), vendorData);
 
         closeCreateVendorModal();
-        alert(`✅ Vendor Registered Successfully!\n\nShare this login info with the vendor:\n• Vendor ID: ${vendorId}\n• Mobile Number: +91 ${mobile}\n\nThe vendor can now open the Vendor App and log in with this ID & Mobile via OTP.`);
+        alert(`âœ… Vendor Registered Successfully!\n\nShare this login info with the vendor:\n• Vendor ID: ${vendorId}\n• Mobile Number: +91 ${mobile}\n\nThe vendor can now open the Vendor App and log in with this ID & Mobile via OTP.`);
         await renderVendors();
       } catch (err) {
         console.error('Error saving vendor:', err);
@@ -1596,10 +2163,10 @@
 
         tb.innerHTML = _allVendorsList.map(v => {
           const vId = v.vendorId || v.id;
-          const name = v.name || v.displayName || '—';
-          const mobile = v.mobile ? `+91 ${v.mobile}` : '—';
-          const cat = v.category || v.serviceCategory || '—';
-          const rating = v.rating ? v.rating + ' ⭐' : '5.0 ⭐';
+          const name = v.name || v.displayName || 'â€”';
+          const mobile = v.mobile ? `+91 ${v.mobile}` : 'â€”';
+          const cat = v.category || v.serviceCategory || 'â€”';
+          const rating = v.rating ? v.rating + ' â­' : '5.0 â­';
           const jobs = v.jobsCompleted || v.completedJobs || 0;
           return `<tr>
             <td>
@@ -1645,7 +2212,7 @@
         <span style="font-size:12px;color:#0f8a5f;font-weight:700;margin-left:8px;">${b.priceLabel || fmtInr(b.price || 0)}</span>
       `;
       document.getElementById('assignBookingCustomerInfo').innerHTML = `
-        <strong>Customer:</strong> ${b.customerName || 'Customer'} ${b.customerPhone ? '(' + b.customerPhone + ')' : ''} • <strong>Address:</strong> ${b.address || '—'}
+        <strong>Customer:</strong> ${b.customerName || 'Customer'} ${b.customerPhone ? '(' + b.customerPhone + ')' : ''} • <strong>Address:</strong> ${b.address || 'â€”'}
       `;
       document.getElementById('assignBookingScheduled').innerHTML = `
         <strong>Scheduled:</strong> ${b.scheduledAt || 'Immediate'} • <strong>Current Status:</strong> <span class="status-badge badge-yellow">${b.status || 'requested'}</span>
@@ -1678,8 +2245,8 @@
 
         sel.innerHTML = '<option value="">-- Choose Vendor Partner --</option>' + sorted.map(v => {
           const vId = v.vendorId || v.id;
-          const matchTag = (v.serviceCategory || '').toLowerCase().includes(bookingCat) ? ' ⭐ MATCHING SERVICE' : '';
-          return `<option value="${vId}">${v.name} (${vId}) — ${v.serviceCategory || 'All-rounder'} ${matchTag}</option>`;
+          const matchTag = (v.serviceCategory || '').toLowerCase().includes(bookingCat) ? ' â­ MATCHING SERVICE' : '';
+          return `<option value="${vId}">${v.name} (${vId}) â€” ${v.serviceCategory || 'All-rounder'} ${matchTag}</option>`;
         }).join('');
 
         document.getElementById('assignModal').style.display = 'flex';
@@ -1732,7 +2299,7 @@
         }
 
         closeAssignModal();
-        alert(`✅ Booking #${bookingId.slice(-8).toUpperCase()} Assigned to ${vendor.name} (${vendor.vendorId || vendor.id})!\n\nThe vendor can now view and accept this order on their Vendor App.`);
+        alert(`âœ… Booking #${bookingId.slice(-8).toUpperCase()} Assigned to ${vendor.name} (${vendor.vendorId || vendor.id})!\n\nThe vendor can now view and accept this order on their Vendor App.`);
         renderServices('bookings');
       } catch (err) {
         console.error('Assignment error:', err);
@@ -1746,8 +2313,6 @@
     // ─────────────────────────────────────────────
     // SAFETY (from bookings collection)
     // ─────────────────────────────────────────────
-    let _allBookings = [];
-
     async function ensureBookings() {
       if (_allBookings.length > 0) return;
       const snap = await getDocs2('bookings', [orderBy('createdAt', 'desc'), limit(100)]);
@@ -1779,14 +2344,14 @@
 
         const statusMap = { requested:'badge-yellow', assigned:'badge-blue', accepted:'badge-blue', en_route:'badge-blue', arrived:'badge-blue', in_progress:'badge-blue', completed:'badge-green', cancelled:'badge-red' };
         tb.innerHTML = list.slice(0, 20).map(b => {
-          const dateStr = b.scheduledAt || (b.createdAt?.toDate ? b.createdAt.toDate().toLocaleDateString('en-IN') : '—');
+          const dateStr = b.scheduledAt || (b.createdAt?.toDate ? b.createdAt.toDate().toLocaleDateString('en-IN') : 'â€”');
           return `<tr>
             <td><strong>#${b.id.slice(-8).toUpperCase()}</strong></td>
-            <td><span class="status-badge badge-blue">${b.serviceCategory || '—'}</span><div style="font-size:11px;font-weight:700;margin-top:3px;">${b.subServiceName || ''}</div></td>
-            <td><strong>${b.customerName || '—'}</strong><div style="font-size:11px;color:#64748b;">${b.address || ''}</div></td>
+            <td><span class="status-badge badge-blue">${b.serviceCategory || 'â€”'}</span><div style="font-size:11px;font-weight:700;margin-top:3px;">${b.subServiceName || ''}</div></td>
+            <td><strong>${b.customerName || 'â€”'}</strong><div style="font-size:11px;color:#64748b;">${b.address || ''}</div></td>
             <td>${b.vendorName || 'Pending assignment'}</td>
             <td style="font-size:12px;color:#64748b;">${dateStr}</td>
-            <td><span class="status-badge ${statusMap[b.status] || 'badge-yellow'}">${b.status || '—'}</span></td>
+            <td><span class="status-badge ${statusMap[b.status] || 'badge-yellow'}">${b.status || 'â€”'}</span></td>
           </tr>`;
         }).join('');
       } catch (e) {
@@ -1810,9 +2375,9 @@
 
         if (snap.empty) {
           tb.innerHTML = `<tr><td colspan="5"><div class="empty-state"><i class="fa-solid fa-heart-pulse"></i><div class="empty-state-title">No Health Data Yet</div><div class="empty-state-sub">Health log entries (steps, heart rate, SpO2, sleep) from users' smartwatches and manual logs will appear here.</div></div></td></tr>`;
-          document.getElementById('hAvgSteps').textContent = '—';
-          document.getElementById('hAvgHR').textContent = '—';
-          document.getElementById('hAvgSpO2').textContent = '—';
+          document.getElementById('hAvgSteps').textContent = 'â€”';
+          document.getElementById('hAvgHR').textContent = 'â€”';
+          document.getElementById('hAvgSpO2').textContent = 'â€”';
           document.getElementById('hTotalLogs').textContent = '0';
           return;
         }
@@ -1834,9 +2399,9 @@
         const avgHR = hrLogs.length ? Math.round(hrLogs.reduce((s, l) => s + (l.heartRate || l.hr || 0), 0) / hrLogs.length) : null;
         const avgSpo2 = spo2Logs.length ? (spo2Logs.reduce((s, l) => s + (l.spo2 || l.bloodOxygen || 0), 0) / spo2Logs.length).toFixed(1) : null;
 
-        document.getElementById('hAvgSteps').textContent = avgSteps ? avgSteps.toLocaleString() : '—';
-        document.getElementById('hAvgHR').textContent = avgHR ? avgHR + ' bpm' : '—';
-        document.getElementById('hAvgSpO2').textContent = avgSpo2 ? avgSpo2 + '%' : '—';
+        document.getElementById('hAvgSteps').textContent = avgSteps ? avgSteps.toLocaleString() : 'â€”';
+        document.getElementById('hAvgHR').textContent = avgHR ? avgHR + ' bpm' : 'â€”';
+        document.getElementById('hAvgSpO2').textContent = avgSpo2 ? avgSpo2 + '%' : 'â€”';
         document.getElementById('hTotalLogs').textContent = allLogs.length.toLocaleString();
 
         if (filtered.length === 0) {
@@ -1845,15 +2410,15 @@
         }
 
         tb.innerHTML = filtered.slice(0, 30).map(l => {
-          const uid = l.userId || l.uid || '—';
+          const uid = l.userId || l.uid || 'â€”';
           const type = l.type || l.logType || 'Health Log';
-          const dateStr = l.timestamp?.toDate ? l.timestamp.toDate().toLocaleString('en-IN') : l.date || '—';
+          const dateStr = l.timestamp?.toDate ? l.timestamp.toDate().toLocaleString('en-IN') : l.date || 'â€”';
           const val = l.steps ? l.steps.toLocaleString() + ' steps'
             : l.heartRate ? l.heartRate + ' bpm'
             : l.spo2 ? l.spo2 + '% SpO2'
             : l.bloodPressure ? l.bloodPressure
             : l.sleepDuration ? l.sleepDuration + ' hrs sleep'
-            : JSON.stringify(l.value || '—');
+            : JSON.stringify(l.value || 'â€”');
           const src = l.source || l.device || 'App';
           return `<tr>
             <td><strong style="font-size:11px;color:#64748b;">${uid.slice(0,12)}…</strong></td>
@@ -1909,10 +2474,10 @@
           const isOrder = r._type === 'order';
           const id = r.orderNumber || r.id.slice(-10).toUpperCase();
           const channel = isOrder ? 'Urban Shop Order' : 'Service Booking';
-          const customer = r.customerName || '—';
+          const customer = r.customerName || 'â€”';
           const amount = isOrder ? fmtInr(r.totalCash || 0) : fmtInr(r.price || 0);
-          const method = r.paymentMethod || r.paymentStatus || '—';
-          const status = r.status || '—';
+          const method = r.paymentMethod || r.paymentStatus || 'â€”';
+          const status = r.status || 'â€”';
           const statusCls = status === 'delivered' || status === 'completed' ? 'badge-green' : status === 'processing' ? 'badge-yellow' : 'badge-blue';
           return `<tr>
             <td><strong>#${id}</strong></td>
@@ -1929,7 +2494,7 @@
     };
 
     window.exportRevenueCSV = function() {
-      alert('CSV export: Use Firebase Console → Firestore → Export, or implement a Cloud Function for automated report generation.');
+      alert('CSV export: Use Firebase Console â†’ Firestore â†’ Export, or implement a Cloud Function for automated report generation.');
     };
 
     // ─────────────────────────────────────────────
@@ -1964,10 +2529,10 @@
     }
 
     // ─────────────────────────────────────────────
-    // SERVICES (static catalog — not mock user data)
+    // SERVICES (static catalog â€” not mock user data)
     // ─────────────────────────────────────────────
     const SERVICE_CATEGORIES = [
-      { id:"ro", name:"RO Service", icon:"fa-water", tagline:"Pure water, every drop", startingPrice:"₹99", providers:"—", status:"Active", subServices:[
+      { id:"ro", name:"RO Service", icon:"fa-water", tagline:"Pure water, every drop", startingPrice:"₹99", providers:"â€”", status:"Active", subServices:[
         {name:"Filter Change",price:"₹399",duration:"45 min",desc:"Replace all RO filters for cleaner, safer water.",popular:true},
         {name:"RO Cleaning",price:"₹299",duration:"60 min",desc:"Deep clean of membrane and housing to remove scale."},
         {name:"New RO System",price:"₹5,999",duration:"2 hrs",desc:"Supply and install a new branded RO purifier of your choice."},
@@ -1976,7 +2541,7 @@
         {name:"Leakage Repair",price:"₹249",duration:"45 min",desc:"Diagnose and fix pipe or fitting leaks in your RO unit."},
         {name:"TDS Checking",price:"₹99",duration:"20 min",desc:"On-site TDS meter reading with a written report."},
       ]},
-      { id:"pet", name:"Pet Care", icon:"fa-paw", tagline:"Love them the right way", startingPrice:"₹149", providers:"—", status:"Active", subServices:[
+      { id:"pet", name:"Pet Care", icon:"fa-paw", tagline:"Love them the right way", startingPrice:"₹149", providers:"â€”", status:"Active", subServices:[
         {name:"Pet Bathing",price:"₹399",duration:"45 min",desc:"Gentle shampoo bath, blow-dry and ear cleaning for your pet."},
         {name:"Pet Grooming",price:"₹599",duration:"90 min",desc:"Full groom: cut, trim, nail clipping and de-shedding.",popular:true},
         {name:"Pet Walking",price:"₹149",duration:"30 min",desc:"Trained walker takes your dog for a safe, GPS-tracked walk."},
@@ -1985,7 +2550,7 @@
         {name:"Pet Hospital",price:"₹199",duration:"Varies",desc:"Connect with a verified vet for consultation at home or clinic."},
         {name:"Pet Emergency",price:"₹0 (call)",duration:"ASAP",desc:"24/7 emergency vet helpline and ambulance coordination."},
       ]},
-      { id:"pest", name:"Pest Control", icon:"fa-bug", tagline:"Your home, pest-free", startingPrice:"₹299", providers:"—", status:"Active", subServices:[
+      { id:"pest", name:"Pest Control", icon:"fa-bug", tagline:"Your home, pest-free", startingPrice:"₹299", providers:"â€”", status:"Active", subServices:[
         {name:"Anti-Cockroach",price:"₹499",duration:"60 min",desc:"Gel bait treatment in kitchen, bathrooms and drains.",popular:true},
         {name:"Anti-Lizard",price:"₹399",duration:"45 min",desc:"Repellent spray on walls, corners and behind furniture."},
         {name:"Anti-Termite",price:"₹1,499",duration:"3 hrs",desc:"Soil and wood treatment with 1-year warranty."},
@@ -1993,7 +2558,7 @@
         {name:"Anti-Bed Bug",price:"₹999",duration:"2 hrs",desc:"Heat + chemical treatment for mattresses and furniture."},
         {name:"Snake Rescue",price:"₹299",duration:"30 min",desc:"Trained rescuers safely capture and relocate snakes."},
       ]},
-      { id:"hort", name:"Horticulture", icon:"fa-leaf", tagline:"Grow green, live better", startingPrice:"₹199", providers:"—", status:"Active", subServices:[
+      { id:"hort", name:"Horticulture", icon:"fa-leaf", tagline:"Grow green, live better", startingPrice:"₹199", providers:"â€”", status:"Active", subServices:[
         {name:"Terrace Garden Setup",price:"₹2,999",duration:"Half day",desc:"End-to-end terrace garden design and installation.",popular:true},
         {name:"Plantation",price:"₹999",duration:"2 hrs",desc:"Seasonal plants sourced and planted in your terrace pots."},
         {name:"Organic Manures",price:"₹499",duration:"1 hr",desc:"Supply and apply organic compost for healthy soil."},
@@ -2002,7 +2567,7 @@
         {name:"Plantation Shed Setup",price:"₹3,999",duration:"1 day",desc:"Install a shaded enclosure to protect your plants."},
         {name:"Vegetable Pot Setup",price:"₹799",duration:"2 hrs",desc:"Start growing your own vegetables in pots today."},
       ]},
-      { id:"delivery", name:"Delivery", icon:"fa-bicycle", tagline:"Everything at your doorstep", startingPrice:"₹19", providers:"—", status:"Active", subServices:[
+      { id:"delivery", name:"Delivery", icon:"fa-bicycle", tagline:"Everything at your doorstep", startingPrice:"₹19", providers:"â€”", status:"Active", subServices:[
         {name:"Medicine Delivery",price:"₹29",duration:"2 hrs",desc:"Prescription and OTC medicines from nearby pharmacies.",popular:true},
         {name:"Vegetable Delivery",price:"₹19",duration:"3 hrs",desc:"Fresh farm vegetables delivered same day."},
         {name:"Food Delivery",price:"₹39",duration:"45 min",desc:"Hot meals from restaurants near you."},
@@ -2010,7 +2575,7 @@
         {name:"Equipment Delivery",price:"₹99",duration:"Same day",desc:"Medical or household equipment rental and delivery."},
         {name:"Diet Food Delivery",price:"₹149",duration:"Daily",desc:"Customised diet meal plans delivered fresh daily."},
       ]},
-      { id:"appliance", name:"Appliance Cleaning", icon:"fa-bolt", tagline:"Clean machines, clean home", startingPrice:"₹149", providers:"—", status:"Active", subServices:[
+      { id:"appliance", name:"Appliance Cleaning", icon:"fa-bolt", tagline:"Clean machines, clean home", startingPrice:"₹149", providers:"â€”", status:"Active", subServices:[
         {name:"Bed Cleaning",price:"₹699",duration:"90 min",desc:"Vacuuming, steam and disinfection of mattress and frame."},
         {name:"Sofa Cleaning",price:"₹799",duration:"2 hrs",desc:"Dry foam cleaning and stain removal for all sofa types.",popular:true},
         {name:"Curtain Cleaning",price:"₹499",duration:"1 hr",desc:"On-site steam clean or pick-up-and-drop service."},
@@ -2023,26 +2588,26 @@
         {name:"Gas Stove Cleaning",price:"₹299",duration:"45 min",desc:"Burner decarbonisation and full cooktop deep clean."},
         {name:"Chimney Cleaning",price:"₹699",duration:"90 min",desc:"Filter and duct clean to restore full suction power."},
       ]},
-      { id:"homecare", name:"Home Care", icon:"fa-house", tagline:"Caring hands at home", startingPrice:"₹399/day", providers:"—", status:"Active", subServices:[
+      { id:"homecare", name:"Home Care", icon:"fa-house", tagline:"Caring hands at home", startingPrice:"₹399/day", providers:"â€”", status:"Active", subServices:[
         {name:"Day Care",price:"₹599/day",duration:"8 hrs",desc:"Trained caregiver for children or elderly during day hours."},
         {name:"Maid Service",price:"₹399/day",duration:"4 hrs",desc:"Verified house help for cooking, cleaning and daily chores.",popular:true},
         {name:"Nurse Care",price:"₹1,199/day",duration:"12 hrs",desc:"Qualified nurse for post-operative or chronic care at home."},
         {name:"Elderly Care",price:"₹799/day",duration:"8 hrs",desc:"Compassionate full-day care for senior family members."},
       ]},
-      { id:"insurance", name:"Insurance", icon:"fa-shield-halved", tagline:"Protect what matters most", startingPrice:"Instant Quote", providers:"—", status:"Active", subServices:[
+      { id:"insurance", name:"Insurance", icon:"fa-shield-halved", tagline:"Protect what matters most", startingPrice:"Instant Quote", providers:"â€”", status:"Active", subServices:[
         {name:"Health Insurance",price:"Get quote",duration:"15 min",desc:"Compare and buy the best health cover for your family.",popular:true},
         {name:"Life Insurance",price:"Get quote",duration:"15 min",desc:"Secure your family's future with a term or endowment plan."},
         {name:"Vehicle Insurance",price:"Get quote",duration:"10 min",desc:"Renew or buy car and two-wheeler insurance instantly."},
         {name:"General Insurance",price:"Get quote",duration:"10 min",desc:"Home, travel and other general insurance plans."},
       ]},
-      { id:"emergency", name:"Emergency", icon:"fa-circle-exclamation", tagline:"Help in seconds, not minutes", startingPrice:"₹0 (Helpline)", providers:"—", status:"Active", subServices:[
+      { id:"emergency", name:"Emergency", icon:"fa-circle-exclamation", tagline:"Help in seconds, not minutes", startingPrice:"₹0 (Helpline)", providers:"â€”", status:"Active", subServices:[
         {name:"Ambulance Service",price:"₹0 (call)",duration:"ASAP",desc:"24/7 ambulance dispatch with trained paramedics.",popular:true},
         {name:"Roadside Assistance",price:"₹499",duration:"30 min",desc:"Towing, flat tyre, battery jump and fuel delivery."},
         {name:"Women Helpline",price:"₹0 (call)",duration:"ASAP",desc:"Immediate safety response and counselling for women."},
         {name:"Child Protection",price:"₹0 (call)",duration:"ASAP",desc:"24/7 support for child safety and protection issues."},
         {name:"Precaution Service",price:"₹199",duration:"1 hr",desc:"Home safety audit and precautionary measures installation."},
       ]},
-      { id:"cleaning", name:"Home Cleaning", icon:"fa-wand-magic-sparkles", tagline:"Spotless and fresh living spaces", startingPrice:"₹499", providers:"—", status:"Active", subServices:[
+      { id:"cleaning", name:"Home Cleaning", icon:"fa-wand-magic-sparkles", tagline:"Spotless and fresh living spaces", startingPrice:"₹499", providers:"â€”", status:"Active", subServices:[
         {name:"Full Home Deep Cleaning",price:"₹1,499",duration:"4 hrs",desc:"Intense deep scrubbing of all rooms, kitchen, and washrooms.",popular:true},
         {name:"Kitchen Deep Clean",price:"₹599",duration:"2 hrs",desc:"Oil, grease, and exhaust grime removal for modular kitchens."},
         {name:"Bathroom Sanitization",price:"₹499",duration:"90 min",desc:"Tile descaling, toilet disinfection, and mirror polishing."},
@@ -2055,113 +2620,967 @@
       await ensureBookings();
       SERVICE_CATEGORIES.forEach(cat => {
         const cnt = _allBookings.filter(b => b.serviceCategory?.toLowerCase().includes(cat.name.toLowerCase().split(' ')[0])).length;
-        cat.providers = cnt > 0 ? cnt + ' bookings' : '—';
+        cat.providers = cnt > 0 ? cnt + ' bookings' : 'â€”';
       });
     }
 
-    window.renderServices = async function(subKey = 'all') {
+    // ─────────────────────────────────────────────
+    // SERVICES & BOOKINGS LIFECYCLE (MATCHING SCREENSHOT)
+    // ─────────────────────────────────────────────
+    window.setBookingsFilter = function(filterVal, el) {
+      _currentBookingsFilter = filterVal;
+      if (el) {
+        document.querySelectorAll('#bookingsStagePills .cat-pill-btn').forEach(b => b.classList.remove('active'));
+        el.classList.add('active');
+      }
+      renderBookingsTableOnly();
+    };
+
+    window.setBookingsSearch = function(q) {
+      _currentBookingsSearch = (q || '').trim().toLowerCase();
+      renderBookingsTableOnly();
+    };
+
+    function updateBookingsKpisAndBadges() {
+      const unassigned = _allBookings.filter(b => b.status === 'requested' || !b.vendorId || b.vendorName === 'Pending' || b.vendorName === 'Pending Admin Assignment' || b.vendorName === 'Vendor pending').length;
+      
+      const sBadge = document.getElementById('servicesUnassignedCountBadge');
+      if (sBadge) {
+        sBadge.textContent = unassigned;
+        sBadge.style.display = unassigned > 0 ? 'inline-block' : 'none';
+      }
+      const bBadge = document.getElementById('bookingsSideBadge');
+      if (bBadge) {
+        bBadge.textContent = unassigned;
+        bBadge.style.display = unassigned > 0 ? 'inline-block' : 'none';
+      }
+    }
+
+    function renderBookingsTableOnly() {
+      const container = document.getElementById('bookingsTableBodyContainer');
+      if (!container) return;
+
+      const q = _currentBookingsSearch;
+      const f = _currentBookingsFilter;
+
+      const filtered = _allBookings.filter(b => {
+        const isUnassigned = !b.vendorId || b.status === 'requested' || b.vendorName === 'Pending' || b.vendorName === 'Pending Admin Assignment' || b.vendorName === 'Vendor pending';
+        const matchesFilter =
+          f === 'all' ? true :
+          f === 'active' ? (!['completed', 'cancelled'].includes(b.status)) :
+          f === 'unassigned' ? isUnassigned :
+          b.status === f;
+
+        const matchesQuery = !q ||
+          (b.id || '').toLowerCase().includes(q) ||
+          (b.customerName || '').toLowerCase().includes(q) ||
+          (b.customerPhone || '').toLowerCase().includes(q) ||
+          (b.vendorName || '').toLowerCase().includes(q) ||
+          (b.vendorId || '').toLowerCase().includes(q) ||
+          (b.serviceCategory || '').toLowerCase().includes(q) ||
+          (b.subServiceName || '').toLowerCase().includes(q) ||
+          (b.address || '').toLowerCase().includes(q);
+
+        return matchesFilter && matchesQuery;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state" style="padding:40px 20px;">
+            <i class="fa-solid fa-calendar-check" style="font-size:32px; color:#cbd5e1; margin-bottom:10px;"></i>
+            <div class="empty-state-title" style="font-size:15px; font-weight:700;">No Bookings Found</div>
+            <div class="empty-state-sub" style="font-size:12.5px;">No bookings match the filter "${f}" or search "${q}".</div>
+          </div>`;
+        return;
+      }
+
+      const statusMap = {
+        requested: 'badge-yellow',
+        assigned: 'badge-blue',
+        accepted: 'badge-blue',
+        en_route: 'badge-blue',
+        arrived: 'badge-blue',
+        in_progress: 'badge-purple',
+        completed: 'badge-green',
+        cancelled: 'badge-red'
+      };
+
+      container.innerHTML = `
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Booking #</th>
+                <th>Customer &amp; Address</th>
+                <th>Service &amp; Package</th>
+                <th>Scheduled</th>
+                <th>Assigned Tech</th>
+                <th>OTP</th>
+                <th>Price</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filtered.slice(0, 80).map(b => {
+                const isUnassigned = !b.vendorId || b.status === 'requested' || b.vendorName === 'Pending' || b.vendorName === 'Pending Admin Assignment' || b.vendorName === 'Vendor pending';
+                const techHtml = isUnassigned
+                  ? '<span class="status-badge badge-yellow" style="font-size:10px;"><i class="fa-solid fa-clock"></i> Pending Assignment</span>'
+                  : `<strong>${b.vendorName}</strong>${b.vendorId ? `<div style="font-size:11px;color:#0f8a5f;font-weight:700;">ID: ${b.vendorId}</div>` : ''}`;
+
+                const actionBtn = isUnassigned
+                  ? `<button class="btn-sm-action" style="background:#10b981;color:#fff;border-color:#059669;font-weight:700;display:inline-flex;align-items:center;gap:4px;" onclick="openAssignModal('${b.id}')"><i class="fa-solid fa-user-plus"></i> Assign Vendor</button>`
+                  : `<button class="btn-sm-action" style="display:inline-flex;align-items:center;gap:4px;" onclick="openAssignModal('${b.id}')"><i class="fa-solid fa-arrows-rotate"></i> Reassign</button>`;
+
+                const dateStr = b.scheduledAt
+                  ? (b.scheduledAt.includes('T') ? new Date(b.scheduledAt).toLocaleString('en-IN', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : b.scheduledAt)
+                  : 'Immediate';
+
+                return `
+                <tr>
+                  <td><strong>#${b.id.slice(-8).toUpperCase()}</strong></td>
+                  <td>
+                    <strong>${b.customerName || 'Customer'}</strong>
+                    ${b.customerPhone ? `<span style="font-size:11px; color:#64748b; margin-left:4px;">(${b.customerPhone})</span>` : ''}
+                    <div style="font-size:11px; color:#64748b; max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${b.address || 'â€”'}</div>
+                  </td>
+                  <td>
+                    <span class="status-badge badge-blue" style="font-size:10px;">${b.serviceCategory || 'Service'}</span>
+                    <div style="font-size:12px; font-weight:700; margin-top:3px; color:#0f172a;">${b.subServiceName || 'Standard Package'}</div>
+                  </td>
+                  <td style="font-size:12px; color:#334155;">${dateStr}</td>
+                  <td>${techHtml}</td>
+                  <td><code style="background:#f1f5f9; padding:3px 7px; border-radius:6px; font-weight:800; color:#0f8a5f; font-size:12px;">${b.otp || 'â€”'}</code></td>
+                  <td><strong style="color:#0f172a;">${b.priceLabel || fmtInr(b.price || 0)}</strong></td>
+                  <td><span class="status-badge ${statusMap[b.status] || 'badge-yellow'}">${(b.status || 'requested').toUpperCase()}</span></td>
+                  <td>${actionBtn}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+
+    
+    window.refreshServicesData = async function(btnEl) {
+      const origHtml = btnEl ? btnEl.innerHTML : '';
+      if (btnEl) {
+        btnEl.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin" style="color:#0f8a5f;"></i> Refreshing...';
+        btnEl.disabled = true;
+      }
+      try {
+        const snap = await getDocs(collection(db, 'bookings'));
+        _allBookings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        await enrichServiceCategories();
+        if (_currentServicesSubKey === 'bookings') {
+          renderBookingsBoardView();
+        } else {
+          renderServices(_currentServicesSubKey);
+        }
+      } catch(err) {
+        console.warn('Refresh services error:', err);
+      } finally {
+        if (btnEl) {
+          btnEl.innerHTML = origHtml || '<i class="fa-solid fa-arrows-rotate" style="color:#0f8a5f;"></i> Refresh';
+          btnEl.disabled = false;
+        }
+      }
+    };
+
+    window.renderBookingsBoardView = function() {
       const container = document.getElementById('servicesDynamicContainer');
       if (!container) return;
-      container.innerHTML = '<div class="loading-state"><div class="spinner"></div>Loading…</div>';
+
+      const totalBookings = _allBookings.length;
+      const unassignedCount = _allBookings.filter(b => b.status === 'requested' || !b.vendorId || b.vendorName === 'Pending' || b.vendorName === 'Pending Admin Assignment' || b.vendorName === 'Vendor pending').length;
+      const autoAcceptedCount = _allBookings.filter(b => b.status === 'accepted').length;
+      const adminAssignedCount = _allBookings.filter(b => b.status === 'assigned').length;
+      const activeNowCount = _allBookings.filter(b => ['en_route', 'arrived', 'in_progress'].includes(b.status)).length;
+
+      // Pipeline counters
+      const pipeRequested  = _allBookings.filter(b => b.status === 'requested').length;
+      const pipeAssigned   = _allBookings.filter(b => b.status === 'assigned').length;
+      const pipeAccepted   = _allBookings.filter(b => b.status === 'accepted').length;
+      const pipeEnRoute    = _allBookings.filter(b => b.status === 'en_route').length;
+      const pipeArrived    = _allBookings.filter(b => b.status === 'arrived').length;
+      const pipeStarted    = _allBookings.filter(b => b.status === 'in_progress').length;
+      const pipeCompleted  = _allBookings.filter(b => b.status === 'completed').length;
+      const pipeCancelled  = _allBookings.filter(b => b.status === 'cancelled').length;
+
+      // Percentage for progress bar
+      const progressPct = totalBookings > 0 ? Math.min(100, Math.round(((pipeCompleted + pipeStarted + pipeArrived + pipeEnRoute) / totalBookings) * 100)) : 0;
+
+      updateBookingsKpisAndBadges();
+
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:20px;">
+
+          <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+               1. DISPATCH OVERVIEW
+               â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+          <div class="admin-section-card" style="padding:22px 24px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+              <div>
+                <h2 style="font-size:16px; font-weight:800; color:#0f172a;">Dispatch Overview</h2>
+                <p style="font-size:12.5px; color:#64748b; margin-top:2px;">Auto-dispatch + admin assignment â€” both flows live</p>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <button class="btn-outline-action" onclick="refreshServicesData(this)" style="background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:6px 14px; font-weight:700; font-size:12px; color:#0f172a; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 1px 2px rgba(0,0,0,0.04);">
+                  <i class="fa-solid fa-arrows-rotate" style="color:#0f8a5f;"></i> Refresh
+                </button>
+                <div style="background:#fff7ed; color:#ea580c; border:1px solid #fed7aa; font-size:11.5px; font-weight:700; padding:4px 12px; border-radius:20px; display:inline-flex; align-items:center; gap:6px;">
+                  <span style="width:6px; height:6px; border-radius:50%; background:#ea580c;"></span>
+                  <span>${unassignedCount} need assignment</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Flow Step Ribbon -->
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px 18px; display:flex; align-items:center; gap:12px; font-size:12.5px; font-weight:600; color:#475569; margin-bottom:18px; flex-wrap:wrap;">
+              <span style="font-weight:700; color:#0f172a;">Customer Books</span>
+              <span style="color:#cbd5e1;">âž”</span>
+              <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:4px 10px; display:inline-flex; flex-direction:column; line-height:1.2;">
+                <span style="color:#1d4ed8; font-weight:700; font-size:11.5px;">Auto-Dispatch</span>
+                <span style="color:#64748b; font-size:10px;">Vendor grabs</span>
+              </div>
+              <span style="color:#94a3b8; font-size:11px; font-weight:600;">or</span>
+              <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:4px 10px; display:inline-flex; flex-direction:column; line-height:1.2;">
+                <span style="color:#15803d; font-weight:700; font-size:11.5px;">Admin Assigns</span>
+                <span style="color:#64748b; font-size:10px;">Manual dispatch</span>
+              </div>
+              <span style="color:#cbd5e1;">âž”</span>
+              <span>En Route</span>
+              <span style="color:#cbd5e1;">âž”</span>
+              <span>OTP Verify</span>
+              <span style="color:#cbd5e1;">âž”</span>
+              <span style="color:#10b981; font-weight:800;">Complete</span>
+            </div>
+
+            <!-- 4 Stat KPI cards in row -->
+            <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:16px;">
+              <!-- 1. Unassigned -->
+              <div style="background:#fff7ed; border:1px solid #fed7aa; border-radius:14px; padding:18px; position:relative;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <i class="fa-solid fa-bolt" style="color:#ea580c; font-size:16px;"></i>
+                  <span style="width:7px; height:7px; border-radius:50%; background:#ea580c;"></span>
+                </div>
+                <div style="font-size:32px; font-weight:900; color:#ea580c;">${unassignedCount}</div>
+                <div style="font-size:13.5px; font-weight:800; color:#9a3412; margin-top:3px;">Unassigned</div>
+                <div style="font-size:11.5px; color:#c2410c; margin-top:2px;">Waiting for a vendor</div>
+              </div>
+
+              <!-- 2. Auto-Accepted -->
+              <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:14px; padding:18px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <i class="fa-solid fa-bolt" style="color:#2563eb; font-size:16px;"></i>
+                </div>
+                <div style="font-size:32px; font-weight:900; color:#2563eb;">${autoAcceptedCount}</div>
+                <div style="font-size:13.5px; font-weight:800; color:#1e40af; margin-top:3px;">Auto-Accepted</div>
+                <div style="font-size:11.5px; color:#3b82f6; margin-top:2px;">Vendor grabbed directly</div>
+              </div>
+
+              <!-- 3. Admin Assigned -->
+              <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:14px; padding:18px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <i class="fa-solid fa-shield-halved" style="color:#16a34a; font-size:16px;"></i>
+                </div>
+                <div style="font-size:32px; font-weight:900; color:#16a34a;">${adminAssignedCount}</div>
+                <div style="font-size:13.5px; font-weight:800; color:#166534; margin-top:3px;">Admin Assigned</div>
+                <div style="font-size:11.5px; color:#15803d; margin-top:2px;">Manually dispatched</div>
+              </div>
+
+              <!-- 4. Active Now -->
+              <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:14px; padding:18px; position:relative;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <i class="fa-solid fa-tower-broadcast" style="color:#16a34a; font-size:16px;"></i>
+                  <span style="width:7px; height:7px; border-radius:50%; background:#16a34a;"></span>
+                </div>
+                <div style="font-size:32px; font-weight:900; color:#16a34a;">${activeNowCount}</div>
+                <div style="font-size:13.5px; font-weight:800; color:#166534; margin-top:3px;">Active Now</div>
+                <div style="font-size:11.5px; color:#15803d; margin-top:2px;">En route / In service</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+               2. TODAY'S PIPELINE
+               â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+          <div class="admin-section-card" style="padding:22px 24px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <h2 style="font-size:16px; font-weight:800; color:#0f172a;">Today's pipeline</h2>
+              <span style="font-size:12px; color:#94a3b8; font-weight:600;">Request âž” Settlement</span>
+            </div>
+            <p style="font-size:12.5px; color:#64748b; margin-bottom:18px;">
+              ${totalBookings} bookings in the pipeline; ${pipeCompleted} have settled end to end.
+            </p>
+
+            <!-- Horizontal Stages Grid with > separator -->
+            <div style="display:flex; align-items:center; justify-content:space-between; overflow-x:auto; padding-bottom:10px;">
+              <div style="display:flex; flex-direction:column; min-width:80px;">
+                <span style="font-size:22px; font-weight:900; color:#0f172a;">${pipeRequested}</span>
+                <span style="font-size:12px; font-weight:600; color:#64748b; margin-top:3px;">Requested</span>
+              </div>
+              <span style="color:#cbd5e1; font-weight:700;">&gt;</span>
+
+              <div style="display:flex; flex-direction:column; min-width:80px;">
+                <span style="font-size:22px; font-weight:900; color:#0f172a;">${pipeAssigned}</span>
+                <span style="font-size:12px; font-weight:600; color:#64748b; margin-top:3px;">Assigned</span>
+              </div>
+              <span style="color:#cbd5e1; font-weight:700;">&gt;</span>
+
+              <div style="display:flex; flex-direction:column; min-width:80px;">
+                <span style="font-size:22px; font-weight:900; color:#0f172a;">${pipeAccepted}</span>
+                <span style="font-size:12px; font-weight:600; color:#64748b; margin-top:3px;">Accepted</span>
+              </div>
+              <span style="color:#cbd5e1; font-weight:700;">&gt;</span>
+
+              <div style="display:flex; flex-direction:column; min-width:80px;">
+                <span style="font-size:22px; font-weight:900; color:#0f172a;">${pipeEnRoute}</span>
+                <span style="font-size:12px; font-weight:600; color:#64748b; margin-top:3px;">En route</span>
+              </div>
+              <span style="color:#cbd5e1; font-weight:700;">&gt;</span>
+
+              <div style="display:flex; flex-direction:column; min-width:80px;">
+                <span style="font-size:22px; font-weight:900; color:#0f172a;">${pipeArrived}</span>
+                <span style="font-size:12px; font-weight:600; color:#64748b; margin-top:3px;">Arrived</span>
+              </div>
+              <span style="color:#cbd5e1; font-weight:700;">&gt;</span>
+
+              <div style="display:flex; flex-direction:column; min-width:95px;">
+                <span style="font-size:22px; font-weight:900; color:#0f172a;">${pipeStarted}</span>
+                <span style="font-size:12px; font-weight:600; color:#64748b; margin-top:3px;">Service started</span>
+              </div>
+              <span style="color:#cbd5e1; font-weight:700;">&gt;</span>
+
+              <div style="display:flex; flex-direction:column; min-width:80px;">
+                <span style="font-size:22px; font-weight:900; color:#0f172a;">${pipeCompleted}</span>
+                <span style="font-size:12px; font-weight:600; color:#64748b; margin-top:3px;">Completed</span>
+              </div>
+              <span style="color:#cbd5e1; font-weight:700;">&gt;</span>
+
+              <div style="display:flex; flex-direction:column; min-width:80px;">
+                <span style="font-size:22px; font-weight:900; color:#0f172a;">${pipeCancelled}</span>
+                <span style="font-size:12px; font-weight:600; color:#64748b; margin-top:3px;">Cancelled</span>
+              </div>
+            </div>
+
+            <!-- Connected Rail with Active Markers -->
+            <div style="position:relative; width:100%; height:5px; background:#e2e8f0; border-radius:3px; margin-top:10px;">
+              <div style="position:absolute; left:0; top:0; height:100%; width:${progressPct}%; background:#10b981; border-radius:3px;"></div>
+            </div>
+          </div>
+
+          <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+               3. BOOKINGS BOARD
+               â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+          <div class="admin-section-card" style="padding:22px 24px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+              <div>
+                <h2 style="font-size:16px; font-weight:800; color:#0f172a;">Bookings</h2>
+                <p style="font-size:12.5px; color:#64748b; margin-top:2px;">Filter by stage or search for a specific booking, customer, or vendor</p>
+              </div>
+              <button class="btn-outline-action" onclick="refreshServicesData(this)" style="background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:6px 14px; font-weight:700; font-size:12px; color:#0f172a; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 1px 2px rgba(0,0,0,0.04);">
+                <i class="fa-solid fa-arrows-rotate" style="color:#0f8a5f;"></i> Refresh Bookings
+              </button>
+            </div>
+
+            <!-- Filter Pills + Search Input -->
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+              <div class="category-pills-row" style="margin-bottom:0; padding-bottom:0;" id="bookingsStagePills">
+                <button class="cat-pill-btn ${_currentBookingsFilter==='all'?'active':''}" onclick="setBookingsFilter('all', this)">All</button>
+                <button class="cat-pill-btn ${_currentBookingsFilter==='active'?'active':''}" onclick="setBookingsFilter('active', this)">Active now</button>
+                <button class="cat-pill-btn ${_currentBookingsFilter==='unassigned'?'active':''}" onclick="setBookingsFilter('unassigned', this)">
+                  Unassigned ${unassignedCount > 0 ? `<span style="background:#e11d48; color:white; font-size:10px; font-weight:800; padding:1px 6px; border-radius:10px; margin-left:4px;">${unassignedCount}</span>` : ''}
+                </button>
+                <button class="cat-pill-btn ${_currentBookingsFilter==='requested'?'active':''}" onclick="setBookingsFilter('requested', this)">Requested</button>
+                <button class="cat-pill-btn ${_currentBookingsFilter==='assigned'?'active':''}" onclick="setBookingsFilter('assigned', this)">Assigned</button>
+                <button class="cat-pill-btn ${_currentBookingsFilter==='en_route'?'active':''}" onclick="setBookingsFilter('en_route', this)">En route</button>
+                <button class="cat-pill-btn ${_currentBookingsFilter==='in_progress'?'active':''}" onclick="setBookingsFilter('in_progress', this)">In progress</button>
+                <button class="cat-pill-btn ${_currentBookingsFilter==='completed'?'active':''}" onclick="setBookingsFilter('completed', this)">Completed</button>
+                <button class="cat-pill-btn ${_currentBookingsFilter==='cancelled'?'active':''}" onclick="setBookingsFilter('cancelled', this)">Cancelled</button>
+              </div>
+
+              <div class="search-input-box" style="width:280px;">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="bookingsFilterSearchInput" value="${_currentBookingsSearch}" placeholder="Search booking, customer, vendor" oninput="setBookingsSearch(this.value)">
+              </div>
+            </div>
+
+            <!-- Table Container -->
+            <div id="bookingsTableBodyContainer"></div>
+          </div>
+        </div>`;
+
+      renderBookingsTableOnly();
+    };
+
+    window.renderServices = async function(subKey = 'bookings') {
+      _currentServicesSubKey = subKey;
+      const container = document.getElementById('servicesDynamicContainer');
+      if (!container) return;
 
       await enrichServiceCategories();
 
+      // ─────────────────────────────────────────────────────────────────
+      // 1. BOOKINGS BOARD
+      // ─────────────────────────────────────────────────────────────────
       if (subKey === 'bookings') {
-        // Show real bookings from Firestore
-        await ensureBookings();
-        if (_allBookings.length === 0) {
-          container.innerHTML = `<div class="empty-state"><i class="fa-solid fa-calendar-check"></i><div class="empty-state-title">No Bookings Yet</div><div class="empty-state-sub">Service bookings placed through the app will appear here in real time.</div></div>`;
-          return;
-        }
-        const statusMap = { requested:'badge-yellow', assigned:'badge-blue', accepted:'badge-blue', en_route:'badge-blue', arrived:'badge-blue', in_progress:'badge-blue', completed:'badge-green', cancelled:'badge-red' };
+        renderBookingsBoardView();
+        return;
+      }
+
+      // 2. LIVE SERVICES (Matching User Reference Image 1)
+      if (subKey === 'live') {
+        const reqCount = _allBookings.filter(b => b.status === 'requested').length;
+        const assignedEnRouteCount = _allBookings.filter(b => ['assigned', 'accepted', 'en_route'].includes(b.status)).length;
+        const activeNowCount = _allBookings.filter(b => ['arrived', 'in_progress'].includes(b.status)).length;
+        const needsAttentionCount = _allBookings.filter(b => b.status === 'cancelled' || (b.status === 'requested' && (!b.vendorId || b.vendorName === 'Pending'))).length;
+        const liveBookings = _allBookings.filter(b => ['requested', 'assigned', 'accepted', 'en_route', 'arrived', 'in_progress'].includes(b.status));
+
         container.innerHTML = `
-          <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:12px 16px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-size:13px; color:#166534; font-weight:700;"><i class="fa-solid fa-bell"></i> Live Service Bookings (${_allBookings.length} Total)</div>
-            <span class="status-badge badge-green">${_allBookings.length} TOTAL</span>
+          <div style="display:flex; flex-direction:column; gap:20px;">
+            <div>
+              <h1 style="font-size:20px; font-weight:800; color:#0f172a;">Live Services</h1>
+              <p style="font-size:13px; color:#64748b; margin-top:2px;">Every service in progress right now, refreshed in real time.</p>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px;">
+              <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:20px 24px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+                <div style="font-size:32px; font-weight:900; color:#0f172a;">${reqCount}</div>
+                <div style="font-size:12.5px; font-weight:600; color:#64748b; margin-top:4px;">Requested</div>
+              </div>
+              <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:20px 24px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+                <div style="font-size:32px; font-weight:900; color:#0f172a;">${assignedEnRouteCount}</div>
+                <div style="font-size:12.5px; font-weight:600; color:#64748b; margin-top:4px;">Assigned / en route</div>
+              </div>
+              <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:20px 24px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+                <div style="font-size:32px; font-weight:900; color:#0f172a;">${activeNowCount}</div>
+                <div style="font-size:12.5px; font-weight:600; color:#64748b; margin-top:4px;">Active now</div>
+              </div>
+              <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:20px 24px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+                <div style="font-size:32px; font-weight:900; color:#0f172a;">${needsAttentionCount}</div>
+                <div style="font-size:12.5px; font-weight:600; color:#64748b; margin-top:4px;">Needs attention</div>
+              </div>
+            </div>
+            <div class="admin-section-card" style="padding:22px 24px;">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+                <div>
+                  <h2 style="font-size:16px; font-weight:800; color:#0f172a;">Live board</h2>
+                  <p style="font-size:12.5px; color:#64748b; margin-top:2px;">Auto-refreshes as vendors update job status</p>
+                </div>
+                <button class="btn-outline-action" onclick="refreshServicesData(this)" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:6px 14px; font-weight:700; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                  <i class="fa-solid fa-arrows-rotate" style="color:#0284c7;"></i> Refresh Board
+                </button>
+              </div>
+              <div class="admin-table-wrap">
+                <table class="admin-table">
+                  <thead><tr><th>Booking</th><th>Customer</th><th>Vendor</th><th>Service</th><th>Status</th><th>Time</th><th>Safety</th><th>Amount</th><th style="text-align:right;">Action</th></tr></thead>
+                  <tbody>
+                    ${liveBookings.length === 0 ? `<tr><td colspan="9"><div class="empty-state" style="padding:32px 20px;"><i class="fa-solid fa-tower-broadcast" style="font-size:28px; color:#94a3b8; margin-bottom:8px;"></i><div class="empty-state-title" style="font-size:15px; font-weight:700;">No Services In Progress</div><div class="empty-state-sub" style="font-size:12.5px; color:#64748b;">Active customer orders will appear here dynamically in real time.</div></div></td></tr>` : liveBookings.map(b => {
+                      const isUnassigned = !b.vendorId || b.status === 'requested' || b.vendorName === 'Pending';
+                      const vendorHtml = isUnassigned ? '<span style="color:#f59e0b; font-weight:600; font-style:italic;"><i class="fa-solid fa-user-plus" style="margin-right:4px;"></i> Unassigned</span>' : ('<strong style="color:#0f172a;">' + (b.vendorName || 'Specialist') + '</strong>');
+                      const statusBadgeMap = { 'requested': 'badge-blue', 'assigned': 'badge-purple', 'accepted': 'badge-blue', 'en_route': 'badge-yellow', 'arrived': 'badge-yellow', 'in_progress': 'badge-green', 'completed': 'badge-green', 'cancelled': 'badge-red' };
+                      const statusBadge = '<span class="status-badge ' + (statusBadgeMap[b.status] || 'badge-blue') + '" style="text-transform:capitalize;">' + (b.status === 'in_progress' ? 'In progress' : b.status) + '</span>';
+                      const actionBtn = isUnassigned ? ('<button class="btn-sm-action" onclick="openAssignModal(\'' + b.id + '\')" style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; font-weight:700; border-radius:8px; padding:5px 12px; display:inline-flex; align-items:center; gap:4px; cursor:pointer;"><i class="fa-solid fa-user-plus"></i> Assign</button>') : ('<button class="btn-sm-action" onclick="openStatusModal(\'' + b.id + '\')" style="background:#f8fafc; color:#0f172a; border:1px solid #cbd5e1; font-weight:700; border-radius:8px; padding:5px 12px; display:inline-flex; align-items:center; gap:4px; cursor:pointer;"><i class="fa-solid fa-pen-to-square"></i> Update</button>');
+                      return '<tr><td><strong style="color:#0f8a5f; font-family:monospace;">#' + b.id + '</strong></td><td><strong style="color:#0f172a;">' + (b.customerName || 'Customer') + '</strong></td><td>' + vendorHtml + '</td><td style="color:#0f172a; font-weight:600;">' + (b.serviceCategory || 'Service') + '</td><td>' + statusBadge + '</td><td style="color:#94a3b8;">' + (b.scheduledAt ? b.scheduledAt.slice(-5) : 'â€”') + '</td><td><span style="color:#10b981; font-weight:600; font-size:12px;"><span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#10b981; margin-right:4px;"></span>Normal</span></td><td><strong style="color:#0f172a;">' + (b.priceLabel || fmtInr(b.price || 0)) + '</strong></td><td style="text-align:right;">' + actionBtn + '</td></tr>';
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
-          <div class="admin-table-wrap">
-            <table class="admin-table">
-              <thead><tr><th>Booking #</th><th>Customer &amp; Address</th><th>Service &amp; Package</th><th>Scheduled</th><th>Assigned Tech</th><th>OTP</th><th>Price</th><th>Status</th><th>Action</th></tr></thead>
-              <tbody>
-                ${_allBookings.slice(0,50).map(b => {
-                  const isUnassigned = !b.vendorId || b.status === 'requested' || b.vendorName === 'Pending' || b.vendorName === 'Pending Admin Assignment';
-                  const techHtml = isUnassigned
-                    ? '<span class="status-badge badge-yellow"><i class="fa-solid fa-clock"></i> Pending Assignment</span>'
-                    : `<strong>${b.vendorName}</strong>${b.vendorId ? `<div style="font-size:10.5px;color:#0f8a5f;font-weight:700;">ID: ${b.vendorId}</div>` : ''}`;
-                  const actionBtn = isUnassigned
-                    ? `<button class="btn-sm-action" style="background:#10b981;color:#fff;border-color:#059669;font-weight:700;display:inline-flex;align-items:center;gap:4px;" onclick="openAssignModal('${b.id}')"><i class="fa-solid fa-user-plus"></i> Assign Vendor</button>`
-                    : `<button class="btn-sm-action" style="display:inline-flex;align-items:center;gap:4px;" onclick="openAssignModal('${b.id}')"><i class="fa-solid fa-arrows-rotate"></i> Reassign</button>`;
+        `;
+        return;
+      }
+
+
+      // 3. SERVICE CATALOGUE / CATEGORIES (Matching User Reference Image 3)
+      if (subKey === 'categories' || subKey === 'all') {
+        const totalCats = SERVICE_CATEGORIES.length;
+        let totalSubs = 0;
+        let popularCount = 0;
+        SERVICE_CATEGORIES.forEach(c => {
+          totalSubs += (c.subServices || []).length;
+          popularCount += (c.subServices || []).filter(s => s.popular).length;
+        });
+
+        const accentColors = ['#0ea5e9', '#10b981', '#ec4899', '#f59e0b', '#8b5cf6', '#06b6d4', '#e11d48'];
+
+        container.innerHTML = `
+          <div style="display:flex; flex-direction:column; gap:20px;">
+            <div>
+              <h1 style="font-size:20px; font-weight:800; color:#0f172a;">Service Catalogue</h1>
+              <p style="font-size:13px; color:#64748b; margin-top:2px;">Manage all service categories and sub-services. Changes sync to the mobile app in real time.</p>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px;">
+              <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:20px 24px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+                <div style="font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; text-transform:uppercase;">TOTAL CATEGORIES</div>
+                <div style="font-size:32px; font-weight:900; color:#0284c7; margin-top:8px;">${totalCats}</div>
+              </div>
+              <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:20px 24px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+                <div style="font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; text-transform:uppercase;">TOTAL SUB-SERVICES</div>
+                <div style="font-size:32px; font-weight:900; color:#10b981; margin-top:8px;">${totalSubs}</div>
+              </div>
+              <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:20px 24px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+                <div style="font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; text-transform:uppercase;">POPULAR SERVICES</div>
+                <div style="font-size:32px; font-weight:900; color:#f59e0b; margin-top:8px;">${popularCount || totalCats}</div>
+              </div>
+            </div>
+            <div class="admin-section-card" style="padding:22px 24px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+                <div>
+                  <h2 style="font-size:17px; font-weight:800; color:#0f172a;">All Service Categories</h2>
+                  <p style="font-size:12.5px; color:#64748b; margin-top:2px;">Live marketplace services synced with Firestore</p>
+                </div>
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                  <button class="btn-outline-action" onclick="refreshServicesData(this)" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:7px 14px; font-weight:700; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-arrows-rotate" style="color:#0284c7;"></i> Refresh
+                  </button>
+                  <button class="btn-outline-action" onclick="handleSeed10Categories()" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; border-radius:8px; padding:7px 14px; font-weight:700; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-bolt" style="color:#3b82f6;"></i> Seed 10 Default Categories
+                  </button>
+                  <button class="btn-primary-action" onclick="openAddCategoryModal()" style="background:#0f8a5f; color:#ffffff; border:none; border-radius:8px; padding:7px 16px; font-weight:700; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-plus"></i> Add Category
+                  </button>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:12px;">
+                ${SERVICE_CATEGORIES.map((cat, idx) => {
+                  const dotColor = cat.accent || accentColors[idx % accentColors.length];
+                  const rank = '#' + (idx + 1);
+                  const subCount = (cat.subServices || []).length;
+                  const thumb = cat.imageUrl || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=120&q=80';
                   return `
-                  <tr>
-                    <td><strong>#${b.id.slice(-8).toUpperCase()}</strong></td>
-                    <td><strong>${b.customerName||'—'}</strong><div style="font-size:11px;color:#64748b;">${b.address||''}</div></td>
-                    <td><span class="status-badge badge-blue">${b.serviceCategory||'—'}</span><div style="font-size:12px;font-weight:700;margin-top:3px;">${b.subServiceName||''}</div></td>
-                    <td style="font-size:12px;color:#334155;">${b.scheduledAt||'—'}</td>
-                    <td>${techHtml}</td>
-                    <td><code style="background:#f1f5f9;padding:3px 6px;border-radius:6px;font-weight:800;color:#0f8a5f;">${b.otp||'—'}</code></td>
-                    <td><strong>${b.priceLabel||fmtInr(b.price||0)}</strong></td>
-                    <td><span class="status-badge ${statusMap[b.status]||'badge-yellow'}">${b.status||'—'}</span></td>
-                    <td>${actionBtn}</td>
-                  </tr>`;
+                    <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:12px 18px; box-shadow:0 1px 3px rgba(0,0,0,0.02); transition:all 0.15s;">
+                      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                        <div style="display:flex; align-items:center; gap:14px;">
+                          <img src="${thumb}" alt="${cat.name}" style="width:44px; height:44px; border-radius:10px; object-fit:cover; border:1px solid #e2e8f0;" onerror="this.src='https://placehold.co/80x80/f1f5f9/94a3b8?text=Service'">
+                          <span style="width:9px; height:9px; border-radius:50%; background:${dotColor}; display:inline-block;"></span>
+                          <div>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                              <strong style="font-size:15px; color:#0f172a;">${cat.name}</strong>
+                              <span style="background:#eff6ff; color:#1d4ed8; font-size:11px; font-weight:700; padding:2px 8px; border-radius:12px;">${subCount} sub-services</span>
+                              <span style="background:#fffbeb; color:#b45309; font-size:11px; font-weight:700; padding:2px 8px; border-radius:12px;">${rank}</span>
+                            </div>
+                            <div style="font-size:12px; color:#64748b; margin-top:2px;">${cat.tagline || 'Professional home service'}</div>
+                          </div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                          <button class="btn-sm-action" onclick="openAddSubServiceModal('${cat.id}')" style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; font-weight:700; border-radius:8px; padding:6px 14px; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+                            <i class="fa-solid fa-plus"></i> Sub-service
+                          </button>
+                          <button class="btn-sm-action" onclick="openEditCategoryModal('${cat.id}')" style="background:#f8fafc; color:#475569; border:1px solid #cbd5e1; font-weight:700; border-radius:8px; padding:6px 14px; font-size:12px; cursor:pointer;">Edit</button>
+                          <button class="btn-sm-action" onclick="handleDeleteCategory('${cat.id}')" style="background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; font-weight:700; border-radius:8px; padding:6px 14px; font-size:12px; cursor:pointer;">Delete</button>
+                          <button class="btn-sm-action" onclick="toggleCategoryAccordion('catSubRow_${cat.id}', this)" style="background:#f8fafc; color:#64748b; border:1px solid #e2e8f0; border-radius:8px; padding:6px 10px; cursor:pointer;">
+                            <i class="fa-solid fa-chevron-down"></i>
+                          </button>
+                        </div>
+                      </div>
+                      <div id="catSubRow_${cat.id}" style="display:none; margin-top:14px; padding-top:12px; border-top:1px dashed #e2e8f0;">
+                        <div style="font-size:12px; font-weight:700; color:#64748b; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.4px;">Available Packages & Pricing</div>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:10px;">
+                          ${(cat.subServices || []).map(s => `
+                            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 14px; display:flex; justify-content:space-between; align-items:flex-start;">
+                              <div>
+                                <div style="font-weight:700; font-size:13px; color:#0f172a;">${s.name} ${s.popular ? '<span style="font-size:9.5px; background:#fef3c7; color:#92400e; padding:1px 5px; border-radius:4px; font-weight:800; margin-left:4px;">POPULAR</span>' : ''}</div>
+                                <div style="font-size:11.5px; color:#64748b; margin-top:2px;">${s.duration || '60 min'} · ${s.description || ''}</div>
+                                <div style="font-size:13.5px; font-weight:900; color:#0f8a5f; margin-top:4px;">${s.price.startsWith('₹') ? s.price : '₹' + s.price}</div>
+                              </div>
+                              <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">
+                                <button class="btn-sm-action" onclick="openEditSubServicePrice('${cat.id}', '${s.id}')" style="font-size:11px; padding:3px 8px; border-radius:6px; background:#ffffff; border:1px solid #cbd5e1; cursor:pointer;">Edit Price</button>
+                                <button class="btn-sm-action" onclick="handleDeleteSubService('${cat.id}', '${s.id}')" style="font-size:11px; padding:3px 8px; border-radius:6px; background:#ffffff; color:#dc2626; border:1px solid #fecaca; cursor:pointer;">Remove</button>
+                              </div>
+                            </div>
+                          `).join('')}
+                        </div>
+                      </div>
+                    </div>
+                  `;
                 }).join('')}
-              </tbody>
-            </table>
-          </div>`;
-        return;
-      }
-
-      if (subKey === 'all') {
-        container.innerHTML = `
-          <div class="admin-table-wrap">
-            <table class="admin-table">
-              <thead><tr><th>Category</th><th>Tagline &amp; Focus</th><th>Sub-Services</th><th>Starting Price</th><th>Booking Activity</th><th>Status</th><th>Actions</th></tr></thead>
-              <tbody>
-                ${SERVICE_CATEGORIES.map(c => `
-                  <tr>
-                    <td><div style="display:flex;align-items:center;gap:10px;"><div style="width:32px;height:32px;border-radius:8px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#0f8a5f;"><i class="fa-solid ${c.icon}"></i></div><strong>${c.name}</strong></div></td>
-                    <td style="color:#64748b;">${c.tagline}</td>
-                    <td><strong>${c.subServices.length} Packages</strong></td>
-                    <td><strong style="color:#0f8a5f;">${c.startingPrice}</strong></td>
-                    <td><strong>${c.providers}</strong></td>
-                    <td><span class="status-badge badge-green">${c.status}</span></td>
-                    <td><button class="btn-sm-action" onclick="showSubSection('services','${c.id}',null)">View Sub-Services</button></td>
-                  </tr>`).join('')}
-              </tbody>
-            </table>
-          </div>`;
-        return;
-      }
-
-      // Specific sub-category
-      const cat = SERVICE_CATEGORIES.find(c => c.id === subKey);
-      if (!cat) { container.innerHTML = ''; return; }
-      container.innerHTML = `
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
-          <div>
-            <div style="font-size:16px;font-weight:800;color:#0f172a;display:flex;align-items:center;gap:8px;"><i class="fa-solid ${cat.icon}" style="color:#0f8a5f;"></i> ${cat.name} — ${cat.subServices.length} Sub-Services</div>
-            <div style="font-size:12px;color:#64748b;margin-top:2px;">${cat.tagline}</div>
+              </div>
+            </div>
           </div>
-          <button class="btn-sm-action" onclick="alert('Add new package to ${cat.name}')"><i class="fa-solid fa-plus"></i> Add Sub-Service</button>
-        </div>
-        <div class="subservices-grid">
-          ${cat.subServices.map(sub => `
-            <div class="subservice-card">
-              <div>
-                <div class="subservice-top"><div class="subservice-title">${sub.name}</div><div class="subservice-price">${sub.price}</div></div>
-                ${sub.popular ? '<span class="status-badge badge-yellow" style="margin-bottom:8px;font-size:9.5px;">MOST POPULAR</span>' : ''}
-                <div class="subservice-desc">${sub.desc}</div>
+        `;
+        return;
+      }
+
+
+      // 4. PRICING RULES (Matching User Reference Image 2)
+      if (subKey === 'pricing') {
+        let rulesSnap = [];
+        try {
+          const snap = await getDocs(collection(db, 'pricing_rules'));
+          rulesSnap = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch(e) { console.warn('pricing_rules fetch warning:', e); }
+
+        if (rulesSnap.length === 0) {
+          rulesSnap = [
+            { id: 'rule_1', category: 'AC Repair', region: 'Bengaluru', basePrice: 899, surge: '1x', updatedAt: '2026-08-01' },
+            { id: 'rule_2', category: 'AC Repair', region: 'Mumbai', basePrice: 1049, surge: '1.2x', updatedAt: '2026-08-01' },
+            { id: 'rule_3', category: 'Deep Cleaning', region: 'Bengaluru', basePrice: 1499, surge: '1x', updatedAt: '2026-07-22' },
+            { id: 'rule_4', category: 'Plumbing', region: 'Bengaluru', basePrice: 650, surge: '1.15x', updatedAt: '2026-08-10' },
+            { id: 'rule_5', category: 'Electrical', region: 'Delhi NCR', basePrice: 600, surge: '1x', updatedAt: '2026-07-15' },
+            { id: 'rule_6', category: 'Elderly Care Visit', region: 'Bengaluru', basePrice: 1200, surge: '1x', updatedAt: '2026-08-05' },
+            { id: 'rule_7', category: 'Home Cleaning', region: 'Bengaluru', basePrice: 600, surge: '1x', updatedAt: '2026-09-30' },
+            { id: 'rule_8', category: 'RO Service', region: 'Bengaluru', basePrice: 399, surge: '1x', updatedAt: '2026-09-30' },
+            { id: 'rule_9', category: 'Pest Control', region: 'Bengaluru', basePrice: 499, surge: '1x', updatedAt: '2026-09-30' },
+            { id: 'rule_10', category: 'Pet Care', region: 'Bengaluru', basePrice: 499, surge: '1x', updatedAt: '2026-09-30' },
+          ];
+        }
+
+        window._allPricingRules = rulesSnap;
+
+        container.innerHTML = `
+          <div style="display:flex; flex-direction:column; gap:20px;">
+            <div>
+              <h1 style="font-size:20px; font-weight:800; color:#0f172a;">Pricing</h1>
+              <p style="font-size:13px; color:#64748b; margin-top:2px;">Configure pricing rules across service categories and regions.</p>
+            </div>
+            <div class="admin-section-card" style="padding:22px 24px;">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
+                <div>
+                  <h2 style="font-size:16px; font-weight:800; color:#0f172a;">Pricing rules</h2>
+                  <p style="font-size:12.5px; color:#64748b; margin-top:2px;">Base price applies before demand-based surge</p>
+                </div>
+                <div style="display:flex; gap:10px; align-items:center;">
+                  <button class="btn-outline-action" onclick="refreshServicesData(this)" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:7px 14px; font-weight:700; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-arrows-rotate" style="color:#8b5cf6;"></i> Refresh
+                  </button>
+                  <button class="btn-primary-action" onclick="openAddPricingModal()" style="background:#8b5cf6; color:#ffffff; border:none; border-radius:8px; padding:7px 16px; font-weight:700; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-plus"></i> Add Pricing Rule
+                  </button>
+                </div>
               </div>
-              <div class="subservice-meta">
-                <span><i class="fa-regular fa-clock"></i> ${sub.duration}</span>
-                <button class="btn-sm-action" onclick="alert('Editing pricing for ${sub.name}')">Edit</button>
+
+              <div class="admin-table-wrap">
+                <table class="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Category</th>
+                      <th>Region</th>
+                      <th>Base price</th>
+                      <th>Surge multiplier</th>
+                      <th>Last updated</th>
+                      <th style="text-align:right;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${rulesSnap.map(r => `
+                      <tr>
+                        <td><strong style="color:#0f172a;">${r.category}</strong></td>
+                        <td style="color:#475569; font-weight:600;">${r.region}</td>
+                        <td><strong style="color:#0f172a;">₹${Number(r.basePrice).toLocaleString('en-IN')}</strong></td>
+                        <td style="color:#475569; font-weight:600;">${r.surge || '1x'}</td>
+                        <td style="color:#64748b; font-size:12px;">${r.updatedAt || 'Recent'}</td>
+                        <td style="text-align:right;">
+                          <button class="btn-sm-action" onclick="openEditPricingModal('${r.id}')" style="background:#f8fafc; color:#475569; border:1px solid #cbd5e1; font-weight:700; border-radius:8px; padding:5px 14px; font-size:12px; cursor:pointer;">
+                            Edit
+                          </button>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
               </div>
-            </div>`).join('')}
-        </div>`;
+            </div>
+          </div>
+        `;
+        return;
+      }
     };
 
-    // ─────────────────────────────────────────────
-    // NAVIGATION
-    // ─────────────────────────────────────────────
+    window.toggleCategoryAccordion = function(rowId, btn) {
+      const row = document.getElementById(rowId);
+      if (!row) return;
+      const isVisible = row.style.display !== 'none';
+      row.style.display = isVisible ? 'none' : 'block';
+      if (btn) {
+        btn.innerHTML = isVisible ? '<i class="fa-solid fa-chevron-down"></i>' : '<i class="fa-solid fa-chevron-up"></i>';
+      }
+    };
+
+    window.openAddCategoryModal = function() {
+      document.getElementById('catModalId').value = '';
+      document.getElementById('catModalTitle').innerHTML = '<i class="fa-solid fa-layer-group" style="color:#0f8a5f;"></i> Add Service Category';
+      document.getElementById('catModalName').value = '';
+      document.getElementById('catModalTagline').value = '';
+      document.getElementById('catModalImage').value = '';
+      document.getElementById('catModalAccent').value = '#10b981';
+      document.getElementById('catModalOrder').value = (SERVICE_CATEGORIES.length + 1);
+      document.getElementById('categoryModal').style.display = 'flex';
+    };
+
+    window.openEditCategoryModal = function(catId) {
+      const cat = SERVICE_CATEGORIES.find(c => c.id === catId);
+      if (!cat) return;
+      document.getElementById('catModalId').value = cat.id;
+      document.getElementById('catModalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square" style="color:#0f8a5f;"></i> Edit Service Category';
+      document.getElementById('catModalName').value = cat.name || '';
+      document.getElementById('catModalTagline').value = cat.tagline || '';
+      document.getElementById('catModalImage').value = cat.imageUrl || '';
+      document.getElementById('catModalAccent').value = cat.accent || '#10b981';
+      document.getElementById('catModalOrder').value = cat.order || 1;
+      document.getElementById('categoryModal').style.display = 'flex';
+    };
+
+    window.closeCategoryModal = function() {
+      document.getElementById('categoryModal').style.display = 'none';
+    };
+
+    window.handleSaveCategory = async function(e) {
+      e.preventDefault();
+      const catId = document.getElementById('catModalId').value.trim() || document.getElementById('catModalName').value.trim().toLowerCase().replace(/\s+/g, '_');
+      const name = document.getElementById('catModalName').value.trim();
+      const tagline = document.getElementById('catModalTagline').value.trim();
+      const imageUrl = document.getElementById('catModalImage').value.trim() || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&q=80';
+      const accent = document.getElementById('catModalAccent').value;
+      const order = Number(document.getElementById('catModalOrder').value) || 1;
+
+      try {
+        const existing = SERVICE_CATEGORIES.find(c => c.id === catId);
+        const subServices = existing ? (existing.subServices || []) : [];
+
+        await setDoc(doc(db, 'serviceCategories', catId), {
+          id: catId,
+          name,
+          tagline,
+          imageUrl,
+          accent,
+          order,
+          icon: existing?.icon || 'sparkles',
+          gradient: existing?.gradient || [accent, '#0097a7'],
+          subServices
+        }, { merge: true });
+
+        closeCategoryModal();
+        await enrichServiceCategories();
+        renderServices('categories');
+        alert(`Category "${name}" saved to Firestore! Mobile app will update in real time.`);
+      } catch(err) {
+        alert('Failed to save category: ' + err.message);
+      }
+    };
+
+    window.handleDeleteCategory = async function(catId) {
+      if (!confirm('Are you sure you want to delete this category? It will be removed from the mobile app.')) return;
+      try {
+        await deleteDoc(doc(db, 'serviceCategories', catId));
+        await enrichServiceCategories();
+        renderServices('categories');
+        alert('Category deleted from Firestore!');
+      } catch(err) {
+        alert('Failed to delete category: ' + err.message);
+      }
+    };
+
+    window.openAddSubServiceModal = function(catId) {
+      document.getElementById('subModalCatId').value = catId;
+      document.getElementById('subModalId').value = '';
+      document.getElementById('subModalTitle').innerHTML = '<i class="fa-solid fa-wrench" style="color:#0f8a5f;"></i> Add Sub-Service Package';
+      document.getElementById('subModalName').value = '';
+      document.getElementById('subModalPrice').value = '499';
+      document.getElementById('subModalDuration').value = '60 min';
+      document.getElementById('subModalDesc').value = '';
+      document.getElementById('subModalPopular').checked = false;
+      document.getElementById('subServiceModal').style.display = 'flex';
+    };
+
+    window.openEditSubServicePrice = function(catId, subId) {
+      const cat = SERVICE_CATEGORIES.find(c => c.id === catId);
+      if (!cat) return;
+      const sub = (cat.subServices || []).find(s => s.id === subId);
+      if (!sub) return;
+
+      document.getElementById('subModalCatId').value = catId;
+      document.getElementById('subModalId').value = sub.id;
+      document.getElementById('subModalTitle').innerHTML = `<i class="fa-solid fa-pen-to-square" style="color:#0f8a5f;"></i> Edit Package & Price: ${sub.name}`;
+      document.getElementById('subModalName').value = sub.name || '';
+      document.getElementById('subModalPrice').value = (sub.price || '').replace(/[^0-9]/g, '');
+      document.getElementById('subModalDuration').value = sub.duration || '60 min';
+      document.getElementById('subModalDesc').value = sub.description || '';
+      document.getElementById('subModalPopular').checked = !!sub.popular;
+      document.getElementById('subServiceModal').style.display = 'flex';
+    };
+
+    window.closeSubServiceModal = function() {
+      document.getElementById('subServiceModal').style.display = 'none';
+    };
+
+    window.handleSaveSubService = async function(e) {
+      e.preventDefault();
+      const catId = document.getElementById('subModalCatId').value;
+      const subId = document.getElementById('subModalId').value.trim() || ('sub_' + Math.random().toString(36).substr(2, 6));
+      const name = document.getElementById('subModalName').value.trim();
+      let price = document.getElementById('subModalPrice').value.trim();
+      if (!price.startsWith('₹') && !price.toLowerCase().includes('call')) {
+        price = '₹' + price;
+      }
+      const duration = document.getElementById('subModalDuration').value.trim();
+      const description = document.getElementById('subModalDesc').value.trim();
+      const popular = document.getElementById('subModalPopular').checked;
+
+      try {
+        const cat = SERVICE_CATEGORIES.find(c => c.id === catId);
+        if (!cat) throw new Error('Category not found');
+
+        let subServices = [...(cat.subServices || [])];
+        const existingIdx = subServices.findIndex(s => s.id === subId);
+        const subData = { id: subId, name, price, duration, description, popular };
+
+        if (existingIdx !== -1) {
+          subServices[existingIdx] = subData;
+        } else {
+          subServices.push(subData);
+        }
+
+        await setDoc(doc(db, 'serviceCategories', catId), {
+          subServices
+        }, { merge: true });
+
+        closeSubServiceModal();
+        await enrichServiceCategories();
+        renderServices('categories');
+        alert(`Package "${name}" updated with price ${price}! Changes are now live on the mobile app.`);
+      } catch(err) {
+        alert('Failed to save subservice: ' + err.message);
+      }
+    };
+
+    window.handleDeleteSubService = async function(catId, subId) {
+      if (!confirm('Are you sure you want to remove this package? It will be removed from the mobile app.')) return;
+      try {
+        const cat = SERVICE_CATEGORIES.find(c => c.id === catId);
+        if (!cat) return;
+        const subServices = (cat.subServices || []).filter(s => s.id !== subId);
+
+        await setDoc(doc(db, 'serviceCategories', catId), {
+          subServices
+        }, { merge: true });
+
+        await enrichServiceCategories();
+        renderServices('categories');
+        alert('Package removed from Firestore and mobile app!');
+      } catch(err) {
+        alert('Failed to remove package: ' + err.message);
+      }
+    };
+
+    window.handleSeed10Categories = async function() {
+      if (!confirm('Seed the default 10 service categories to Firestore? This will ensure the mobile app and admin catalog are completely in sync.')) return;
+      try {
+        for (let i = 0; i < SERVICE_CATEGORIES.length; i++) {
+          const c = SERVICE_CATEGORIES[i];
+          await setDoc(doc(db, 'serviceCategories', c.id), {
+            id: c.id,
+            name: c.name,
+            tagline: c.tagline || '',
+            icon: c.icon || 'sparkles',
+            accent: c.accent || '#10b981',
+            order: (i + 1),
+            imageUrl: c.imageUrl || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&q=80',
+            subServices: c.subServices || []
+          }, { merge: true });
+        }
+        await enrichServiceCategories();
+        renderServices('categories');
+        alert('Successfully seeded 10 default categories to Firestore!');
+      } catch(err) {
+        alert('Failed to seed categories: ' + err.message);
+      }
+    };
+
+    window.openAddPricingModal = function() {
+      document.getElementById('pricingRuleId').value = '';
+      document.getElementById('pricingModalTitle').innerHTML = '<i class="fa-solid fa-plus" style="color:#8b5cf6;"></i> Add Pricing Rule';
+      document.getElementById('pricingCatName').value = '';
+      document.getElementById('pricingRegion').value = 'Bengaluru';
+      document.getElementById('pricingBasePrice').value = '799';
+      document.getElementById('pricingSurge').value = '1x';
+      document.getElementById('pricingModal').style.display = 'flex';
+    };
+
+    window.openEditPricingModal = function(ruleId) {
+      const r = (window._allPricingRules || []).find(x => x.id === ruleId);
+      if (!r) return;
+      document.getElementById('pricingRuleId').value = r.id;
+      document.getElementById('pricingModalTitle').innerHTML = `<i class="fa-solid fa-pen-to-square" style="color:#8b5cf6;"></i> Edit Pricing: ${r.category}`;
+      document.getElementById('pricingCatName').value = r.category;
+      document.getElementById('pricingRegion').value = r.region;
+      document.getElementById('pricingBasePrice').value = r.basePrice;
+      document.getElementById('pricingSurge').value = r.surge || '1x';
+      document.getElementById('pricingModal').style.display = 'flex';
+    };
+
+    window.closePricingModal = function() {
+      document.getElementById('pricingModal').style.display = 'none';
+    };
+
+    window.handleSavePricing = async function(e) {
+      e.preventDefault();
+      const ruleId = document.getElementById('pricingRuleId').value.trim() || ('rule_' + Math.random().toString(36).substr(2, 6));
+      const category = document.getElementById('pricingCatName').value.trim();
+      const region = document.getElementById('pricingRegion').value;
+      const basePrice = Number(document.getElementById('pricingBasePrice').value);
+      const surge = document.getElementById('pricingSurge').value;
+      const today = new Date().toISOString().slice(0, 10);
+
+      try {
+        await setDoc(doc(db, 'pricing_rules', ruleId), {
+          category,
+          region,
+          basePrice,
+          surge,
+          updatedAt: today
+        }, { merge: true });
+
+        const matchedCat = SERVICE_CATEGORIES.find(c => c.name.toLowerCase() === category.toLowerCase());
+        if (matchedCat && matchedCat.subServices && matchedCat.subServices.length > 0) {
+          const subs = [...matchedCat.subServices];
+          subs[0].price = '₹' + basePrice;
+          await setDoc(doc(db, 'serviceCategories', matchedCat.id), {
+            subServices: subs
+          }, { merge: true });
+        }
+
+        closePricingModal();
+        renderServices('pricing');
+        alert(`Pricing rule for "${category}" saved! Base price ₹${basePrice} is now active in Firestore & mobile app.`);
+      } catch(err) {
+        alert('Failed to save pricing rule: ' + err.message);
+      }
+    };
+
+    window.openStatusModal = function(bookingId) {
+      const b = _allBookings.find(x => x.id === bookingId);
+      if (!b) return;
+      document.getElementById('statusModalBookingId').value = b.id;
+      document.getElementById('statusModalSummary').textContent = `#${b.id.slice(-8).toUpperCase()} · ${b.customerName || 'Customer'} (${b.serviceCategory || 'Service'})`;
+      document.getElementById('statusModalSelect').value = b.status || 'requested';
+      document.getElementById('statusModal').style.display = 'flex';
+    };
+
+    window.closeStatusModal = function() {
+      document.getElementById('statusModal').style.display = 'none';
+    };
+
+    window.handleUpdateBookingStatus = async function(e) {
+      e.preventDefault();
+      const bookingId = document.getElementById('statusModalBookingId').value;
+      const newStatus = document.getElementById('statusModalSelect').value;
+
+      try {
+        await updateDoc(doc(db, 'bookings', bookingId), {
+          status: newStatus,
+          updatedAt: serverTimestamp()
+        });
+        closeStatusModal();
+        renderServices('live');
+        alert(`Booking status updated to "${newStatus.toUpperCase()}"! Live tracking on customer phone updated.`);
+      } catch(err) {
+        alert('Failed to update status: ' + err.message);
+      }
+    };
+
+
     window.toggleSubmenu = function(submenuId, navItemEl, sec) {
       const submenu = document.getElementById(submenuId);
       const isOpen = submenu.classList.contains('open');
@@ -2189,7 +3608,13 @@
       document.querySelectorAll('.admin-section').forEach(s => s.style.display = 'none');
       const t = document.getElementById('sec-' + sec);
       if (t) t.style.display = 'block';
-      if (sec === 'services') renderServices(subKey);
+      _currentSection = sec;
+      if (sec === 'services') {
+        _currentServicesSubKey = subKey;
+        document.getElementById('topGreetingTitle').textContent = 'Services';
+        document.getElementById('topGreetingSub').textContent = 'Every booking moving through the Urban Helpers marketplace.';
+        renderServices(subKey);
+      }
       if (sec === 'safety') renderSafety(subKey);
       if (sec === 'health') renderHealth(subKey);
       if (sec === 'revenue') renderRevenue(subKey);
@@ -2198,7 +3623,7 @@
     const titles = {
       overview:'Overview & Live Telemetry', shop:'Urban Shop Products Manager',
       orders:'Orders & Fulfillment Hub', users:'User & Customer Management',
-      vendors:'Service Partners & Verification', services:'Services & Bookings Catalog',
+      vendors:'Service Partners & Verification', services:'Services',
       safety:'Safety Center & Emergency SOS', health:'Health Telemetry & BLE Watch Sync',
       ai:'AI Health Companion Engine', revenue:'Revenue & Financial Settlements',
       resolution:'Customer Support & Disputes', analytics:'Platform Analytics & Health Trends',
@@ -2206,18 +3631,35 @@
     };
 
     window.showSection = function(sec, el) {
+      _currentSection = sec;
       document.querySelectorAll('.nav-menu .nav-item').forEach(n => n.classList.remove('active'));
       if (el) el.classList.add('active');
       document.querySelectorAll('.admin-section').forEach(s => s.style.display = 'none');
       const t = document.getElementById('sec-' + sec);
       if (t) t.style.display = 'block';
+
+      if (sec === 'services') {
+        _currentServicesSubKey = 'bookings';
+        document.getElementById('topGreetingTitle').textContent = 'Services';
+        document.getElementById('topGreetingSub').textContent = 'Every booking moving through the Urban Helpers marketplace.';
+        // activate bookings subitem in sidebar
+        const sub = document.getElementById('servicesSubmenu');
+        if (sub) {
+          sub.querySelectorAll('.submenu-item').forEach(i => i.classList.remove('active'));
+          const first = sub.querySelector('.submenu-item');
+          if (first) first.classList.add('active');
+        }
+        renderServices('bookings');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
       document.getElementById('topGreetingTitle').textContent = titles[sec] || 'Control Center';
       document.getElementById('topGreetingSub').textContent = 'Real-time data from Firebase • Section: ' + sec.toUpperCase();
       if (sec === 'shop') renderAdminProducts();
       if (sec === 'orders') { _allOrders = []; renderOrders(); }
       if (sec === 'users') renderUsers();
       if (sec === 'vendors') renderVendors();
-      if (sec === 'services') renderServices('all');
       if (sec === 'safety') { _allBookings = []; renderSafety('all'); }
       if (sec === 'health') renderHealth('all');
       if (sec === 'revenue') renderRevenue('all');
@@ -2243,3 +3685,4 @@
   </script>
 </body>
 </html>
+

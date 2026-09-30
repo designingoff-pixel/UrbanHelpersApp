@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import {
   ScrollView,
+  RefreshControl,
   Text,
   View,
   Pressable,
@@ -32,6 +33,8 @@ import SamsungBottomNav from "@/components/SamsungBottomNav";
 import { SERVICE_LOCAL_IMAGES, getServiceLocalImage } from "@/assets/serviceImages";
 import { SERVICE_CATEGORIES } from "./servicesData";
 import { subscribeToUserBookings, cancelBooking, Booking } from "@/services/bookingService";
+import { db } from "@/services/firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServicesDashboard">;
 
@@ -91,6 +94,32 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
   const [activeSlide, setActiveSlide] = useState(0);
   const slideRef = useRef<FlatList>(null);
   const [activeBooking, setActiveBooking] = useState<Booking | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      if (user?.uid) {
+        const q = query(collection(db, "bookings"), where("customerId", "==", user.uid));
+        const snap = await getDocs(q);
+        const list: Booking[] = [];
+        snap.forEach((d) => {
+          list.push({ id: d.id, ...(d.data() as any) });
+        });
+        list.sort((a, b) => {
+          const tA = (a.createdAt as any)?.toMillis?.() || (a.createdAt ? new Date(a.createdAt as any).getTime() : 0);
+          const tB = (b.createdAt as any)?.toMillis?.() || (b.createdAt ? new Date(b.createdAt as any).getTime() : 0);
+          return tB - tA;
+        });
+        const active = list.find((b) => b.status !== "completed" && b.status !== "cancelled");
+        setActiveBooking(active || null);
+      }
+    } catch (err) {
+      console.warn("Error refreshing services data:", err);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [user?.uid]);
 
   // Subscribe to real-time user bookings for live home tracking card
   useEffect(() => {
@@ -224,6 +253,7 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={s.scrollContent}
           stickyHeaderIndices={[1]}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10b981" colors={["#10b981", "#059669"]} />}
         >
           {/* ── 1. HERO HEADER — deep green gradient, full-width ──────── */}
           <LinearGradient
@@ -249,6 +279,13 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
               </View>
 
               <View style={s.heroTopBarRight}>
+                <Pressable
+                  style={s.heroIconBtn}
+                  onPress={onRefresh}
+                  accessibilityLabel="Refresh Services"
+                >
+                  <Ionicons name={refreshing ? "sync" : "refresh-outline"} size={20} color="#ffffff" />
+                </Pressable>
                 <Pressable
                   style={s.heroSosBtn}
                   onPress={() => navigation.navigate("EmergencyAssistance")}
@@ -662,6 +699,7 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={s.scrollContent}
           stickyHeaderIndices={[1]}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10b981" colors={["#10b981", "#059669"]} />}
         >
           {/* ── 1. Curved Emerald Wave Header with 3D House ──────────── */}
           <LinearGradient
@@ -681,13 +719,22 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
 
               <Text style={s.exploreTopTitle}>Explore Services</Text>
 
-              <Pressable
-                style={s.heroSosBtn}
-                onPress={() => navigation.navigate("EmergencyAssistance")}
-              >
-                <Ionicons name="warning" size={14} color="#ffffff" />
-                <Text style={s.heroSosBtnText}>SOS</Text>
-              </Pressable>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Pressable
+                  style={s.heroIconBtn}
+                  onPress={onRefresh}
+                  accessibilityLabel="Refresh Services"
+                >
+                  <Ionicons name={refreshing ? "sync" : "refresh-outline"} size={20} color="#ffffff" />
+                </Pressable>
+                <Pressable
+                  style={s.heroSosBtn}
+                  onPress={() => navigation.navigate("EmergencyAssistance")}
+                >
+                  <Ionicons name="warning" size={14} color="#ffffff" />
+                  <Text style={s.heroSosBtnText}>SOS</Text>
+                </Pressable>
+              </View>
             </View>
 
             <View style={s.exploreHeaderContent}>
