@@ -74,7 +74,8 @@ export async function createBooking(input: CreateBookingInput): Promise<{ bookin
   const generatedOTP = generateOTP();
   const docRef = await addDoc(collection(db, "bookings"), {
     ...input,
-    vendorName: "Vendor pending",
+    vendorName: "Pending Admin Assignment",
+    vendorId: null,
     status: "requested" as BookingStatus,
     paymentStatus: input.paymentStatus || "pending",
     paymentId: input.paymentId || null,

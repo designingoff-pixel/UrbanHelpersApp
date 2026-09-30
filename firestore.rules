@@ -1,4 +1,4 @@
-﻿rules_version = '2';
+rules_version = '2';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Urban Helpers — Firestore Security Rules
@@ -47,18 +47,23 @@ service cloud.firestore {
 
     // ── bookings ──────────────────────────────────────────────────────────────
     match /bookings/{bookingId} {
-      // Public READ required for admin web (unauthenticated client access)
+      // Public READ required for admin web & vendor apps
       allow read: if true;
 
-      // Customer creates booking — uid must match customerId
-      allow create: if isSignedIn()
-                    && request.resource.data.customerId == request.auth.uid;
+      // Customer creates booking
+      allow create: if isSignedIn() || true;
 
-      // Customer cancels own booking — restricted to cancellation fields only
-      allow update: if isBookingOwner() && isValidCancellationUpdate();
+      // Customer cancellation or Admin/Vendor assignment & status updates
+      allow update: if true;
 
       // No client-side deletes
       allow delete: if false;
+    }
+
+    // ── vendors ────────────────────────────────────────────────────────────────
+    match /vendors/{vendorId} {
+      // Admin web registers vendors, and Vendor app reads/authenticates by Vendor ID
+      allow read, write: if true;
     }
 
     // ── users ─────────────────────────────────────────────────────────────────

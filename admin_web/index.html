@@ -644,18 +644,21 @@
       <div id="sec-vendors" class="admin-section" style="display:none;">
         <section class="shop-section-card">
           <div class="section-head-bar">
-            <div class="section-main-title"><i class="fa-solid fa-truck" style="color:#10b981;"></i> Service Partners &amp; Verification Hub</div>
-            <button class="btn-primary-action" onclick="alert('Opening onboarding link generator...')"><i class="fa-solid fa-user-plus"></i> Invite Vendor</button>
+            <div>
+              <div class="section-main-title"><i class="fa-solid fa-truck" style="color:#10b981;"></i> Service Partners &amp; Verification Hub</div>
+              <p style="font-size:12px; color:#64748b; margin-top:3px;">Create vendor accounts with official IDs. Vendors log into the Vendor App using their ID, mobile number &amp; OTP.</p>
+            </div>
+            <button class="btn-primary-action" onclick="openCreateVendorModal()"><i class="fa-solid fa-user-plus"></i> Create Vendor Partner</button>
           </div>
           <div class="admin-table-wrap">
             <table class="admin-table">
               <thead>
                 <tr>
-                  <th>Vendor Partner</th>
+                  <th>Vendor ID</th>
+                  <th>Partner Name &amp; Mobile</th>
                   <th>Primary Category</th>
                   <th>Rating</th>
                   <th>Jobs Completed</th>
-                  <th>Background Check</th>
                   <th>Status</th>
                   <th>Action</th>
                 </tr>
@@ -1014,6 +1017,109 @@
     </div>
   </div>
 
+  <!-- ── Create / Register Vendor Modal ── -->
+  <div class="modal-overlay" id="vendorModal">
+    <div class="modal-box" style="max-width:560px;">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title"><i class="fa-solid fa-id-card" style="color:#10b981;"></i> Create Vendor Partner ID</h3>
+          <p style="font-size:12px; color:#64748b; margin-top:2px;">Generate an official Vendor ID and assign services. The vendor will use this ID &amp; mobile number to log in.</p>
+        </div>
+        <button class="modal-close" onclick="closeCreateVendorModal()">&times;</button>
+      </div>
+      <form onsubmit="handleCreateVendor(event)">
+        <div class="form-row">
+          <div class="form-group" style="flex:1;">
+            <label>Vendor ID (Auto-Generated / Custom) *</label>
+            <div style="position:relative;">
+              <input class="form-control" id="vVendorId" placeholder="VND-1001" style="font-weight:800;letter-spacing:0.5px;color:#0f8a5f;" required>
+              <button type="button" onclick="generateFreshVendorId()" style="position:absolute;right:8px;top:8px;background:none;border:none;color:#64748b;cursor:pointer;font-size:12px;" title="Regenerate ID"><i class="fa-solid fa-arrows-rotate"></i></button>
+            </div>
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label>Mobile Number (10 Digits) *</label>
+            <input type="tel" class="form-control" id="vMobile" placeholder="9876543210" maxlength="10" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Vendor Full Name / Partner Name *</label>
+          <input class="form-control" id="vName" placeholder="e.g. Ramesh Kumar" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex:1;">
+            <label>Primary Service Category *</label>
+            <select class="form-control" id="vCategory" required>
+              <option value="Home Cleaning">Home Cleaning</option>
+              <option value="RO Service">RO Service</option>
+              <option value="Pest Control">Pest Control</option>
+              <option value="Appliance Repair">Appliance Repair</option>
+              <option value="Electrician">Electrician</option>
+              <option value="Plumbing">Plumbing</option>
+              <option value="Painting">Painting</option>
+              <option value="Pet Care">Pet Care</option>
+              <option value="Horticulture">Horticulture</option>
+              <option value="Salon &amp; Grooming">Salon &amp; Grooming</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label>Initial Status</label>
+            <select class="form-control" id="vStatus">
+              <option value="Active">Active / Approved</option>
+              <option value="Pending">Pending Verification</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Specific Skills / Badges (Optional)</label>
+          <input class="form-control" id="vSkills" placeholder="e.g. Deep Cleaning, Floor Polishing, Verified Pro">
+        </div>
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#166534;">
+          <i class="fa-solid fa-circle-info"></i> <strong>How login works:</strong> The vendor will open the Urban Helpers Vendor App, enter this <strong>Vendor ID</strong> and <strong>Mobile Number</strong>, and verify via OTP. Public signup is disabled.
+        </div>
+        <button type="submit" class="btn-submit" id="btnSaveVendor">
+          <i class="fa-solid fa-user-check"></i> Register Vendor Partner
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Assign Vendor to Booking Modal ── -->
+  <div class="modal-overlay" id="assignModal">
+    <div class="modal-box" style="max-width:540px;">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title"><i class="fa-solid fa-user-plus" style="color:#0f8a5f;"></i> Assign Vendor to Booking</h3>
+          <p style="font-size:12px; color:#64748b; margin-top:2px;">Select an authorized vendor partner. The booking will appear on their app.</p>
+        </div>
+        <button class="modal-close" onclick="closeAssignModal()">&times;</button>
+      </div>
+      <form onsubmit="handleConfirmAssignment(event)">
+        <input type="hidden" id="assignBookingId">
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px 16px;margin-bottom:16px;">
+          <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;">Booking Summary</div>
+          <div style="font-size:15px;font-weight:800;color:#0f172a;margin-top:2px;" id="assignBookingServiceTitle">—</div>
+          <div style="font-size:12px;color:#475569;margin-top:4px;" id="assignBookingCustomerInfo">—</div>
+          <div style="font-size:12px;color:#64748b;margin-top:2px;" id="assignBookingScheduled">—</div>
+        </div>
+
+        <div class="form-group">
+          <label>Select Vendor Partner *</label>
+          <select class="form-control" id="assignVendorSelect" required style="font-size:13px;padding:12px 14px;">
+            <option value="">Loading active vendors…</option>
+          </select>
+        </div>
+
+        <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#0369a1;">
+          <i class="fa-solid fa-shield-check"></i> <strong>Dispatch Policy:</strong> Once assigned, the selected vendor will see this order in their app. Once the vendor accepts, they <strong>cannot cancel</strong> the order.
+        </div>
+
+        <button type="submit" class="btn-submit" id="btnConfirmAssign" style="background:#10b981;">
+          <i class="fa-solid fa-check"></i> Confirm Assignment
+        </button>
+      </form>
+    </div>
+  </div>
+
   <!-- Firebase JS SDK (v10 modular CDN) -->
   <script type="module">
     import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js';
@@ -1022,6 +1128,7 @@
       collection,
       getDocs,
       addDoc,
+      setDoc,
       updateDoc,
       deleteDoc,
       doc,
@@ -1482,37 +1589,270 @@
     };
 
     // ─────────────────────────────────────────────
-    // VENDORS (from vendors collection)
+    // UTILITY: Copy text to clipboard
     // ─────────────────────────────────────────────
+    window.copyText = function(txt) {
+      if (!txt) return;
+      navigator.clipboard.writeText(txt).then(() => {
+        alert('Copied to clipboard: ' + txt);
+      }).catch(() => {
+        prompt('Copy manually:', txt);
+      });
+    };
+
+    // ─────────────────────────────────────────────
+    // VENDOR ID GENERATION & MANAGEMENT
+    // ─────────────────────────────────────────────
+    let _allVendorsList = [];
+
+    window.generateFreshVendorId = function() {
+      const code = 'VND-' + Math.floor(1000 + Math.random() * 9000);
+      const input = document.getElementById('vVendorId');
+      if (input) input.value = code;
+      return code;
+    };
+
+    window.openCreateVendorModal = function() {
+      const modal = document.getElementById('vendorModal');
+      if (!modal) return;
+      generateFreshVendorId();
+      document.getElementById('vMobile').value = '';
+      document.getElementById('vName').value = '';
+      document.getElementById('vSkills').value = '';
+      modal.style.display = 'flex';
+    };
+
+    window.closeCreateVendorModal = function() {
+      const modal = document.getElementById('vendorModal');
+      if (modal) modal.style.display = 'none';
+    };
+
+    window.handleCreateVendor = async function(e) {
+      e.preventDefault();
+      const vendorId = document.getElementById('vVendorId').value.trim();
+      const mobile = document.getElementById('vMobile').value.trim().replace(/\D/g, '');
+      const name = document.getElementById('vName').value.trim();
+      const serviceCategory = document.getElementById('vCategory').value;
+      const status = document.getElementById('vStatus').value;
+      const skills = document.getElementById('vSkills').value.trim();
+
+      if (!vendorId) {
+        alert('Please enter a valid Vendor ID.');
+        return;
+      }
+      if (mobile.length !== 10) {
+        alert('Please enter a valid 10-digit mobile number.');
+        return;
+      }
+      if (!name) {
+        alert('Please enter the vendor full name.');
+        return;
+      }
+
+      const btn = document.getElementById('btnSaveVendor');
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></div> Saving vendor…';
+
+      try {
+        const vendorData = {
+          vendorId,
+          name,
+          mobile,
+          serviceCategory,
+          skills,
+          status,
+          isOnline: true,
+          isVerified: true,
+          rating: 5.0,
+          completedJobs: 0,
+          createdAt: serverTimestamp(),
+        };
+
+        // Write directly to vendors collection with docId = vendorId
+        await setDoc(doc(db, 'vendors', vendorId), vendorData);
+
+        closeCreateVendorModal();
+        alert(`✅ Vendor Registered Successfully!\n\nShare this login info with the vendor:\n• Vendor ID: ${vendorId}\n• Mobile Number: +91 ${mobile}\n\nThe vendor can now open the Vendor App and log in with this ID & Mobile via OTP.`);
+        await renderVendors();
+      } catch (err) {
+        console.error('Error saving vendor:', err);
+        alert('Failed to save vendor: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-user-check"></i> Register Vendor Partner';
+      }
+    };
+
+    window.deleteVendor = async function(docId, vendorName) {
+      if (!confirm(`Are you sure you want to remove vendor "${vendorName}" (${docId})?`)) return;
+      try {
+        await deleteDoc(doc(db, 'vendors', docId));
+        alert(`Vendor ${vendorName} removed.`);
+        await renderVendors();
+      } catch (err) {
+        alert('Failed to delete vendor: ' + err.message);
+      }
+    };
+
     window.renderVendors = async function() {
       const tb = document.getElementById('vendorsTableBody');
       if (!tb) return;
       tb.innerHTML = '<tr><td colspan="7"><div class="loading-state"><div class="spinner"></div>Loading vendors…</div></td></tr>';
       try {
         const snap = await getDocs2('vendors', [orderBy('createdAt', 'desc'), limit(50)]);
-        if (snap.empty) {
-          tb.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-truck"></i><div class="empty-state-title">No Vendors Yet</div><div class="empty-state-sub">Onboarded service partners will appear here.</div></div></td></tr>`;
+        _allVendorsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        if (_allVendorsList.length === 0) {
+          tb.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-truck"></i><div class="empty-state-title">No Vendors Registered Yet</div><div class="empty-state-sub">Click "Create Vendor Partner" above to register an official Vendor ID and mobile number.</div></div></td></tr>`;
           return;
         }
-        tb.innerHTML = snap.docs.map(d => {
-          const v = d.data();
+
+        tb.innerHTML = _allVendorsList.map(v => {
+          const vId = v.vendorId || v.id;
           const name = v.name || v.displayName || '—';
+          const mobile = v.mobile ? `+91 ${v.mobile}` : '—';
           const cat = v.category || v.serviceCategory || '—';
-          const rating = v.rating ? v.rating + ' ⭐' : '—';
+          const rating = v.rating ? v.rating + ' ⭐' : '5.0 ⭐';
           const jobs = v.jobsCompleted || v.completedJobs || 0;
-          const verified = v.verified || v.backgroundVerified;
           return `<tr>
-            <td><strong>${name}</strong></td>
-            <td>${cat}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-family:monospace;font-weight:800;background:#e0f2fe;color:#0369a1;padding:4px 8px;border-radius:6px;font-size:12px;letter-spacing:0.5px;">${vId}</span>
+                <button class="btn-sm-action" onclick="copyText('${vId}')" title="Copy Vendor ID" style="padding:2px 6px;cursor:pointer;"><i class="fa-regular fa-copy"></i></button>
+              </div>
+            </td>
+            <td>
+              <strong>${name}</strong>
+              <div style="font-size:11px;color:#64748b;margin-top:2px;"><i class="fa-solid fa-phone" style="font-size:10px;"></i> ${mobile}</div>
+            </td>
+            <td><span class="status-badge badge-blue">${cat}</span></td>
             <td><strong style="color:#f59e0b;">${rating}</strong></td>
             <td><strong>${jobs}</strong></td>
-            <td>${verified ? '<span class="status-badge badge-green"><i class="fa-solid fa-check"></i> Verified</span>' : '<span class="status-badge badge-yellow">Pending</span>'}</td>
             <td><span class="status-badge badge-green">${v.status || 'Active'}</span></td>
-            <td><button class="btn-sm-action" onclick="alert('Vendor UID: ${d.id}')">Manage</button></td>
+            <td>
+              <div style="display:flex;gap:6px;">
+                <button class="btn-sm-action" onclick="copyText('ID: ${vId} | Mobile: ${v.mobile}')" title="Copy Login Info"><i class="fa-solid fa-key"></i> Info</button>
+                <button class="btn-sm-action" style="color:#e11d48;" onclick="deleteVendor('${v.id || vId}', '${name}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
+              </div>
+            </td>
           </tr>`;
         }).join('');
       } catch (e) {
         tb.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><div class="empty-state-title">Error loading vendors</div><div class="empty-state-sub">${e.message}</div></div></td></tr>`;
+      }
+    };
+
+    // ─────────────────────────────────────────────
+    // BOOKING ASSIGNMENT MODAL & DISPATCH
+    // ─────────────────────────────────────────────
+    window.openAssignModal = async function(bookingId) {
+      const b = _allBookings.find(x => x.id === bookingId);
+      if (!b) {
+        alert('Booking not found.');
+        return;
+      }
+
+      document.getElementById('assignBookingId').value = bookingId;
+      document.getElementById('assignBookingServiceTitle').innerHTML = `
+        <span class="status-badge badge-blue">${b.serviceCategory || 'Service'}</span> ${b.subServiceName || 'Service Request'}
+        <span style="font-size:12px;color:#0f8a5f;font-weight:700;margin-left:8px;">${b.priceLabel || fmtInr(b.price || 0)}</span>
+      `;
+      document.getElementById('assignBookingCustomerInfo').innerHTML = `
+        <strong>Customer:</strong> ${b.customerName || 'Customer'} ${b.customerPhone ? '(' + b.customerPhone + ')' : ''} • <strong>Address:</strong> ${b.address || '—'}
+      `;
+      document.getElementById('assignBookingScheduled').innerHTML = `
+        <strong>Scheduled:</strong> ${b.scheduledAt || 'Immediate'} • <strong>Current Status:</strong> <span class="status-badge badge-yellow">${b.status || 'requested'}</span>
+      `;
+
+      // Load active vendors
+      const sel = document.getElementById('assignVendorSelect');
+      sel.innerHTML = '<option value="">Loading active vendors…</option>';
+
+      try {
+        if (_allVendorsList.length === 0) {
+          const snap = await getDocs2('vendors', [limit(100)]);
+          _allVendorsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+
+        if (_allVendorsList.length === 0) {
+          sel.innerHTML = '<option value="">No vendors registered yet. Please create a vendor first.</option>';
+          return;
+        }
+
+        // Sort so vendors matching this service category are on top
+        const bookingCat = (b.serviceCategory || '').toLowerCase();
+        const sorted = [..._allVendorsList].sort((a, bVendor) => {
+          const aMatch = (a.serviceCategory || '').toLowerCase().includes(bookingCat);
+          const bMatch = (bVendor.serviceCategory || '').toLowerCase().includes(bookingCat);
+          if (aMatch && !bMatch) return -1;
+          if (!aMatch && bMatch) return 1;
+          return 0;
+        });
+
+        sel.innerHTML = '<option value="">-- Choose Vendor Partner --</option>' + sorted.map(v => {
+          const vId = v.vendorId || v.id;
+          const matchTag = (v.serviceCategory || '').toLowerCase().includes(bookingCat) ? ' ⭐ MATCHING SERVICE' : '';
+          return `<option value="${vId}">${v.name} (${vId}) — ${v.serviceCategory || 'All-rounder'} ${matchTag}</option>`;
+        }).join('');
+
+        document.getElementById('assignModal').style.display = 'flex';
+      } catch (err) {
+        alert('Error loading vendors list: ' + err.message);
+      }
+    };
+
+    window.closeAssignModal = function() {
+      const m = document.getElementById('assignModal');
+      if (m) m.style.display = 'none';
+    };
+
+    window.handleConfirmAssignment = async function(e) {
+      e.preventDefault();
+      const bookingId = document.getElementById('assignBookingId').value;
+      const vendorId = document.getElementById('assignVendorSelect').value;
+
+      if (!bookingId || !vendorId) {
+        alert('Please select a vendor.');
+        return;
+      }
+
+      const vendor = _allVendorsList.find(v => (v.vendorId || v.id) === vendorId);
+      if (!vendor) {
+        alert('Selected vendor not found.');
+        return;
+      }
+
+      const btn = document.getElementById('btnConfirmAssign');
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></div> Assigning…';
+
+      try {
+        await updateDoc(doc(db, 'bookings', bookingId), {
+          vendorId: vendor.vendorId || vendor.id,
+          vendorName: vendor.name,
+          vendorPhone: vendor.mobile || '',
+          status: 'assigned',
+          assignedAt: serverTimestamp(),
+        });
+
+        // Update local cache
+        const b = _allBookings.find(x => x.id === bookingId);
+        if (b) {
+          b.vendorId = vendor.vendorId || vendor.id;
+          b.vendorName = vendor.name;
+          b.vendorPhone = vendor.mobile || '';
+          b.status = 'assigned';
+        }
+
+        closeAssignModal();
+        alert(`✅ Booking #${bookingId.slice(-8).toUpperCase()} Assigned to ${vendor.name} (${vendor.vendorId || vendor.id})!\n\nThe vendor can now view and accept this order on their Vendor App.`);
+        renderServices('bookings');
+      } catch (err) {
+        console.error('Assignment error:', err);
+        alert('Failed to assign vendor: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Confirm Assignment';
       }
     };
 
@@ -1854,19 +2194,29 @@
           </div>
           <div class="admin-table-wrap">
             <table class="admin-table">
-              <thead><tr><th>Booking #</th><th>Customer &amp; Address</th><th>Service &amp; Package</th><th>Scheduled</th><th>Assigned Tech</th><th>OTP</th><th>Price</th><th>Status</th></tr></thead>
+              <thead><tr><th>Booking #</th><th>Customer &amp; Address</th><th>Service &amp; Package</th><th>Scheduled</th><th>Assigned Tech</th><th>OTP</th><th>Price</th><th>Status</th><th>Action</th></tr></thead>
               <tbody>
-                ${_allBookings.slice(0,20).map(b => `
+                ${_allBookings.slice(0,50).map(b => {
+                  const isUnassigned = !b.vendorId || b.status === 'requested' || b.vendorName === 'Pending' || b.vendorName === 'Pending Admin Assignment';
+                  const techHtml = isUnassigned
+                    ? '<span class="status-badge badge-yellow"><i class="fa-solid fa-clock"></i> Pending Assignment</span>'
+                    : `<strong>${b.vendorName}</strong>${b.vendorId ? `<div style="font-size:10.5px;color:#0f8a5f;font-weight:700;">ID: ${b.vendorId}</div>` : ''}`;
+                  const actionBtn = isUnassigned
+                    ? `<button class="btn-sm-action" style="background:#10b981;color:#fff;border-color:#059669;font-weight:700;display:inline-flex;align-items:center;gap:4px;" onclick="openAssignModal('${b.id}')"><i class="fa-solid fa-user-plus"></i> Assign Vendor</button>`
+                    : `<button class="btn-sm-action" style="display:inline-flex;align-items:center;gap:4px;" onclick="openAssignModal('${b.id}')"><i class="fa-solid fa-arrows-rotate"></i> Reassign</button>`;
+                  return `
                   <tr>
                     <td><strong>#${b.id.slice(-8).toUpperCase()}</strong></td>
                     <td><strong>${b.customerName||'—'}</strong><div style="font-size:11px;color:#64748b;">${b.address||''}</div></td>
                     <td><span class="status-badge badge-blue">${b.serviceCategory||'—'}</span><div style="font-size:12px;font-weight:700;margin-top:3px;">${b.subServiceName||''}</div></td>
                     <td style="font-size:12px;color:#334155;">${b.scheduledAt||'—'}</td>
-                    <td><strong>${b.vendorName||'Pending'}</strong></td>
+                    <td>${techHtml}</td>
                     <td><code style="background:#f1f5f9;padding:3px 6px;border-radius:6px;font-weight:800;color:#0f8a5f;">${b.otp||'—'}</code></td>
                     <td><strong>${b.priceLabel||fmtInr(b.price||0)}</strong></td>
                     <td><span class="status-badge ${statusMap[b.status]||'badge-yellow'}">${b.status||'—'}</span></td>
-                  </tr>`).join('')}
+                    <td>${actionBtn}</td>
+                  </tr>`;
+                }).join('')}
               </tbody>
             </table>
           </div>`;
