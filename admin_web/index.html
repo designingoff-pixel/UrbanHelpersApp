@@ -219,8 +219,9 @@
 <body>
 
   <!-- ── Firebase Config Setup Overlay ── -->
-  <div id="configOverlay" class="visible">
-    <div class="config-box">
+  <div id="configOverlay">
+    <div class="config-box" style="position:relative;">
+      <button style="position:absolute;top:16px;right:16px;background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;padding:4px 8px;" onclick="document.getElementById('configOverlay').classList.remove('visible')" title="Close"><i class="fa-solid fa-xmark"></i></button>
       <div class="config-logo">
         <div class="config-logo-icon"><i class="fa-solid fa-shield-halved"></i></div>
         <div>
@@ -1143,6 +1144,15 @@
     // CONFIG MANAGEMENT
     // ─────────────────────────────────────────────
     const CFG_KEY = 'uh_admin_firebase_cfg';
+
+    const DEFAULT_FIREBASE_CONFIG = {
+      apiKey:            "AIzaSyDhkD-wS-wCc2ZlMbHSNTEp3MFxSrLIUQY",
+      authDomain:        "urban-helpers-admin.firebaseapp.com",
+      projectId:         "urban-helpers-admin",
+      storageBucket:     "urban-helpers-admin.firebasestorage.app",
+      messagingSenderId: "843343743619",
+      appId:             "1:843343743619:web:a0c09ea15fa85780d6a9b6",
+    };
 
     function loadSavedConfig() {
       try { return JSON.parse(localStorage.getItem(CFG_KEY) || 'null'); }
@@ -2351,14 +2361,16 @@
     // ─────────────────────────────────────────────
     document.getElementById('currentDateText').textContent = new Date().toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 
-    // Auto-connect if config is saved
-    const saved = loadSavedConfig();
-    if (saved && saved.apiKey && saved.projectId) {
-      // Pre-fill fields just in case
-      document.getElementById('cfgApiKey').value = saved.apiKey;
-      document.getElementById('cfgProjectId').value = saved.projectId;
-      // Auto-connect
-      initDashboard(saved);
+    // Auto-connect with default or saved config
+    const activeCfg = loadSavedConfig() || DEFAULT_FIREBASE_CONFIG;
+    if (activeCfg && activeCfg.apiKey && activeCfg.projectId) {
+      if (document.getElementById('cfgApiKey')) document.getElementById('cfgApiKey').value = activeCfg.apiKey;
+      if (document.getElementById('cfgProjectId')) document.getElementById('cfgProjectId').value = activeCfg.projectId;
+      if (document.getElementById('cfgAuthDomain')) document.getElementById('cfgAuthDomain').value = activeCfg.authDomain || '';
+      if (document.getElementById('cfgStorageBucket')) document.getElementById('cfgStorageBucket').value = activeCfg.storageBucket || '';
+      if (document.getElementById('cfgMessagingSenderId')) document.getElementById('cfgMessagingSenderId').value = activeCfg.messagingSenderId || '';
+      if (document.getElementById('cfgAppId')) document.getElementById('cfgAppId').value = activeCfg.appId || '';
+      initDashboard(activeCfg);
     }
   </script>
 </body>
