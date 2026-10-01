@@ -29,7 +29,7 @@ import {
   getSavedAddresses, saveAddress, SavedAddress
 } from "@/services/addressStorage";
 import {
-  searchAddressSuggestions, GeocodedLocation
+  searchAddressSuggestions, reverseGeocodeLocation, GeocodedLocation
 } from "@/services/geocodingService";
 import { getStoredCoupon, setStoredCoupon, validateCoupon } from "@/services/offersService";
 
@@ -231,15 +231,10 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
             });
             setPinCoords({ lat, lng });
 
-            // Reverse geocode to get current address text
-            const geocode = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
-            if (geocode && geocode.length > 0) {
-              const place = geocode[0];
-              const parts = [place.name, place.street, place.subregion, place.city, place.region].filter(Boolean);
-              const detectedAddr = parts.join(", ");
-              if (detectedAddr) {
-                setAddressText(detectedAddr);
-              }
+            // Reverse geocode using high accuracy reverseGeocodeLocation
+            const detectedAddr = await reverseGeocodeLocation(lat, lng);
+            if (detectedAddr) {
+              setAddressText(detectedAddr);
             }
           }
         }
@@ -264,14 +259,16 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         const lng = loc.coords.longitude;
         setCustomerLat(lat);
         setCustomerLng(lng);
-        const geocode = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
-        if (geocode && geocode.length > 0) {
-          const place = geocode[0];
-          const parts = [place.name, place.street, place.subregion, place.city, place.region].filter(Boolean);
-          const detectedAddr = parts.join(", ");
-          if (detectedAddr) {
-            setAddressText(detectedAddr);
-          }
+        setMapRegion({
+          latitude: lat,
+          longitude: lng,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005,
+        });
+        setPinCoords({ lat, lng });
+        const detectedAddr = await reverseGeocodeLocation(lat, lng);
+        if (detectedAddr) {
+          setAddressText(detectedAddr);
         }
       }
     } catch (e) {
@@ -317,6 +314,13 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
     setAddressText(item.label);
     setCustomerLat(item.lat);
     setCustomerLng(item.lng);
+    setPinCoords({ lat: item.lat, lng: item.lng });
+    setMapRegion({
+      latitude: item.lat,
+      longitude: item.lng,
+      latitudeDelta: 0.005,
+      longitudeDelta: 0.005,
+    });
     setSuggestions([]);
     setShowSuggestions(false);
   };
@@ -329,6 +333,15 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
     setLandmark(addr.landmark || "");
     setCustomerLat(addr.lat);
     setCustomerLng(addr.lng);
+    if (addr.lat && addr.lng) {
+      setPinCoords({ lat: addr.lat, lng: addr.lng });
+      setMapRegion({
+        latitude: addr.lat,
+        longitude: addr.lng,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
+      });
+    }
     setShowSuggestions(false);
   };
 
@@ -370,18 +383,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   const handleConfirmLocation = async () => {
     if (pinCoords) {
       try {
-        const geocode = await Location.reverseGeocodeAsync({
-          latitude: pinCoords.lat,
-          longitude: pinCoords.lng,
-        });
-        let addrStr = `${pinCoords.lat.toFixed(4)}, ${pinCoords.lng.toFixed(4)}`;
-        if (geocode && geocode.length > 0) {
-          const place = geocode[0];
-          addrStr = [place.name, place.street, place.subregion, place.city, place.region]
-            .filter(Boolean)
-            .join(", ");
-        }
-
+        const addrStr = await reverseGeocodeLocation(pinCoords.lat, pinCoords.lng);
         if (isNewAddressMap) {
           setNewAddressText(addrStr);
           setNewLat(pinCoords.lat);

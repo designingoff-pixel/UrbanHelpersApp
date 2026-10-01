@@ -107,8 +107,8 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
           list.push({ id: d.id, ...(d.data() as any) });
         });
         list.sort((a, b) => {
-          const tA = (a.createdAt as any)?.toMillis?.() || (a.createdAt ? new Date(a.createdAt as any).getTime() : 0);
-          const tB = (b.createdAt as any)?.toMillis?.() || (b.createdAt ? new Date(b.createdAt as any).getTime() : 0);
+          const tA = ((a as any).createdAt)?.toMillis?.() || ((a as any).createdAt ? new Date((a as any).createdAt).getTime() : 0);
+          const tB = ((b as any).createdAt)?.toMillis?.() || ((b as any).createdAt ? new Date((b as any).createdAt).getTime() : 0);
           return tB - tA;
         });
         const active = list.find((b) => b.status !== "completed" && b.status !== "cancelled");
@@ -265,27 +265,7 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
             {/* Top Bar: Hamburger menu & brand on left; SOS + Notifications + Profile Avatar on top right */}
             <Animated.View style={[s.heroTopBar, headerStyle]}>
               <View style={s.heroTopBarLeft}>
-                <Pressable
-                  style={s.heroHamburgerBtn}
-                  onPress={() => setSideMenuVisible(true)}
-                >
-                  <Ionicons name="menu" size={23} color="#ffffff" />
-                </Pressable>
-
-                <View style={s.heroBrandWrap}>
-                  <Text style={s.heroBrandTitle}>Urban Services</Text>
-                  <Text style={s.heroBrandSub}>Home &amp; Living Solutions</Text>
-                </View>
-              </View>
-
-              <View style={s.heroTopBarRight}>
-                <Pressable
-                  style={s.heroIconBtn}
-                  onPress={onRefresh}
-                  accessibilityLabel="Refresh Services"
-                >
-                  <Ionicons name={refreshing ? "sync" : "refresh-outline"} size={20} color="#ffffff" />
-                </Pressable>
+                
                 <Pressable
                   style={s.heroSosBtn}
                   onPress={() => navigation.navigate("EmergencyAssistance")}
@@ -468,7 +448,7 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                         ? "PARTNER ARRIVED"
                         : activeBooking.status === "en_route"
                         ? "PARTNER ON THE WAY"
-                        : activeBooking.status === "confirmed" || activeBooking.status === "accepted" || activeBooking.status === "assigned"
+                        : (activeBooking.status as string) === "confirmed" || activeBooking.status === "accepted" || activeBooking.status === "assigned"
                         ? "BOOKING CONFIRMED"
                         : "SERVICE REQUESTED"}
                     </Text>
@@ -720,13 +700,7 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
               <Text style={s.exploreTopTitle}>Explore Services</Text>
 
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <Pressable
-                  style={s.heroIconBtn}
-                  onPress={onRefresh}
-                  accessibilityLabel="Refresh Services"
-                >
-                  <Ionicons name={refreshing ? "sync" : "refresh-outline"} size={20} color="#ffffff" />
-                </Pressable>
+
                 <Pressable
                   style={s.heroSosBtn}
                   onPress={() => navigation.navigate("EmergencyAssistance")}

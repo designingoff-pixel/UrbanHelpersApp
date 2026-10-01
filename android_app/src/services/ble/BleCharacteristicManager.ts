@@ -29,7 +29,7 @@ export class BleCharacteristicManagerClass {
     const serviceUuid = event.serviceUuid.toUpperCase();
     const bytes = event.valueBytes || [];
 
-    const decoded = CharacteristicDecoder.decode(serviceUuid, charUuid, bytes);
+    const decoded = CharacteristicDecoder.decode(charUuid, bytes, event.valueHex || "");
 
     this.packetListeners.forEach((listener) => {
       listener(decoded, event);

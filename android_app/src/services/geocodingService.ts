@@ -65,7 +65,7 @@ export async function searchAddressSuggestions(
     const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=6&lat=13.08&lon=80.27`;
     const res = await fetch(photonUrl, { signal });
     if (res.ok) {
-      const data = await res.json();
+      const data: any = await res.json();
       if (Array.isArray(data.features)) {
         for (const f of data.features) {
           const props = f.properties || {};
@@ -134,3 +134,51 @@ export async function searchAddressSuggestions(
 
   return results.slice(0, 7);
 }
+
+/**
+ * Reverse geocode latitude & longitude into a clean, human-readable address.
+ * Prioritizes high-precision OpenStreetMap/Photon reverse geocoding with fallback to Expo Location.
+ */
+export async function reverseGeocodeLocation(lat: number, lng: number): Promise<string> {
+  // 1. Try Photon reverse geocoding
+  try {
+    const url = `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) {
+      const data: any = await res.json();
+      if (Array.isArray(data.features) && data.features.length > 0) {
+        const props = data.features[0].properties || {};
+        const parts = [
+          props.name,
+          props.street,
+          props.district || props.suburb,
+          props.city,
+          props.state,
+        ].filter(Boolean);
+        const unique = parts.filter((v, i, a) => a.indexOf(v) === i).join(", ");
+        if (unique.trim().length > 3) {
+          return unique;
+        }
+      }
+    }
+  } catch (_) {}
+
+  // 2. Fallback to Expo reverseGeocodeAsync
+  try {
+    const geocode = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+    if (geocode && geocode.length > 0) {
+      const p = geocode[0];
+      const parts = [p.name, p.street, p.subregion, p.city, p.region].filter(Boolean);
+      const label = parts.filter((v, i, a) => a.indexOf(v) === i).join(", ");
+      if (label.trim().length > 3) {
+        return label;
+      }
+    }
+  } catch (_) {}
+
+  return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+}
+

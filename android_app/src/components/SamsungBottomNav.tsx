@@ -16,7 +16,7 @@ export const NAV_TABS: {
   hasDot: boolean;
 }[] = [
   { icon: "construct-outline", activeIcon: "construct", route: "ServicesDashboard", label: "Service", hasDot: false },
-  { icon: "heart-outline",     activeIcon: "heart",     route: "HealthDashboard",   label: "Health",   hasDot: false },
+  { icon: "heart-outline",     activeIcon: "heart",     route: "HomeDashboard",     label: "Health",   hasDot: false },
   { icon: "people-outline",    activeIcon: "people",    route: "FamilyDashboard",   label: "Together", hasDot: true },
   { icon: "compass-outline",   activeIcon: "compass",   route: "Discover",          label: "Discover", hasDot: true },
   { icon: "barbell-outline",   activeIcon: "barbell",   route: "FitnessDashboard",  label: "Fitness",  hasDot: true },

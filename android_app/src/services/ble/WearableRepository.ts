@@ -169,8 +169,8 @@ export class WearableRepositoryClass {
       this.deviceInfo.lastSyncedAt = now;
     }
 
-    if (packet.metric === "heart_rate" && packet.data?.heartRate != null) {
-      const hr = packet.data.heartRate;
+    if (packet.metricType === "heartRate" && packet.value != null) {
+      const hr = Number(packet.value);
       this.healthData.heartRate = {
         value: hr,
         unit: "bpm",
@@ -179,8 +179,8 @@ export class WearableRepositoryClass {
         source: devName,
       };
       this.addLog("packet", "HEART_RATE", `Heart Rate: ${hr} bpm`, rawHex);
-    } else if (packet.metric === "battery" && packet.data?.batteryLevel != null) {
-      const batt = packet.data.batteryLevel;
+    } else if (packet.metricType === "battery" && packet.value != null) {
+      const batt = Number(packet.value);
       this.healthData.batteryLevel = {
         value: batt,
         unit: "%",
@@ -192,28 +192,17 @@ export class WearableRepositoryClass {
         this.deviceInfo.batteryPercent = batt;
       }
       this.addLog("packet", "BATTERY", `Battery: ${batt}%`, rawHex);
-    } else if (packet.metric === "steps" && packet.data?.steps != null) {
+    } else if (packet.metricType === "steps" && packet.value != null) {
       this.healthData.steps = {
-        value: packet.data.steps,
+        value: Number(packet.value),
         unit: "steps",
         timestamp: now,
         availability: "SUPPORTED",
         source: devName,
       };
-      this.addLog("packet", "STEPS", `Steps: ${packet.data.steps}`, rawHex);
-    } else if (packet.metric === "spo2" && packet.data?.spo2 != null) {
-      this.healthData.spo2 = {
-        value: packet.data.spo2,
-        unit: "%",
-        timestamp: now,
-        availability: "SUPPORTED",
-        source: devName,
-      };
-      this.addLog("packet", "SPO2", `SpO2: ${packet.data.spo2}%`, rawHex);
-    } else if (packet.metric === "vendor_stream") {
-      this.addLog("packet", "VENDOR_STREAM", `Vendor health stream payload: ${packet.message}`, rawHex);
+      this.addLog("packet", "STEPS", `Steps: ${packet.value}`, rawHex);
     } else {
-      this.addLog("packet", "RAW_GATT", `${packet.message || "Unknown packet"}`, rawHex);
+      this.addLog("packet", "RAW_GATT", `${packet.debugNote || "Received packet"}`, rawHex);
     }
 
     this.healthData.timestamp = now;

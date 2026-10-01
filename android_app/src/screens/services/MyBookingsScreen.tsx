@@ -369,7 +369,6 @@ export default function MyBookingsScreen({ navigation }: Props) {
                               bookingId: booking.id,
                               vendorName: booking.vendorName,
                               serviceCategory: booking.serviceCategory,
-                              subServiceName: booking.subServiceName,
                             })
                           }
                         >

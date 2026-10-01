@@ -572,7 +572,6 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
                     bookingId: booking.id,
                     vendorName: booking.vendorName,
                     serviceCategory: booking.serviceCategory,
-                    subServiceName: booking.subServiceName,
                   })
                 }
               >
@@ -606,7 +605,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
               <Text style={s.ctaBtnText}>Contact Professional</Text>
             </Pressable>
 
-            {booking && booking.status !== "completed" && booking.status !== "cancelled" && (
+            {booking && booking.status !== "cancelled" && (
               <Pressable
                 style={s.cancelBtn}
                 onPress={() => {

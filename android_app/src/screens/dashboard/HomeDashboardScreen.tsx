@@ -1147,8 +1147,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             ═══════════════════════════════════════════════════════════════ */}
         {activePill === 0 && (
           <View>
-            {/* My Devices Smartwatch Connection Card */}
-            <MyDevicesCard />
+
 
             {/* 2. Sync Alert Banner */}
             {!syncDismissed && (

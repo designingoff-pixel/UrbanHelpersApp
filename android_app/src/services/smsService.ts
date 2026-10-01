@@ -49,7 +49,7 @@ export async function sendRealSMSViaFast2SMS(
       }),
     });
 
-    const data = await response.json();
+    const data: any = await response.json();
     return {
       success: data.return === true,
       messageId: data.request_id,
@@ -95,7 +95,7 @@ export async function sendRealSMSViaTwilio(
       body: formBody,
     });
 
-    const data = await response.json();
+    const data: any = await response.json();
     return {
       success: response.ok,
       messageId: data.sid,

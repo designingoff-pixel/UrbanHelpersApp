@@ -1588,7 +1588,7 @@ export async function searchUSDAFood(
     clearTimeout(timeoutId);
 
     if (!res.ok) return [];
-    const data = await res.json();
+    const data: any = await res.json();
     if (!data.foods || !Array.isArray(data.foods)) return [];
 
     /** Helper: pull a nutrient value (per 100 g) by nutrient number */
@@ -1682,7 +1682,7 @@ export async function searchOpenFoodFacts(query: string): Promise<FoodDefinition
     clearTimeout(timeoutId);
 
     if (!res.ok) return [];
-    const data = await res.json();
+    const data: any = await res.json();
     if (!data.products || !Array.isArray(data.products)) return [];
 
     return data.products

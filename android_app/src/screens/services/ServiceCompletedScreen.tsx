@@ -7,12 +7,16 @@ import {
   StyleSheet,
   ActivityIndicator,
   Share,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { doc, onSnapshot } from "firebase/firestore";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system";
 import { db } from "@/services/firebase";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
@@ -24,6 +28,7 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
 
   const [booking, setBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     if (!bookingId || bookingId === "UH-SAMPLE") {
@@ -80,6 +85,282 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
         minute: "2-digit",
       })
     : "Just now";
+
+  const handleDownloadInvoicePDF = async () => {
+    try {
+      setDownloading(true);
+      const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Urban Helpers Tax Invoice</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 30px;
+      color: #1e293b;
+      background: #ffffff;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #059669;
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+    }
+    .brand-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: #065f46;
+      letter-spacing: -0.5px;
+      margin: 0;
+    }
+    .brand-tag {
+      font-size: 12px;
+      color: #059669;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+    .invoice-badge {
+      text-align: right;
+    }
+    .invoice-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 0;
+    }
+    .invoice-no {
+      font-size: 13px;
+      color: #64748b;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+    .paid-stamp {
+      display: inline-block;
+      margin-top: 8px;
+      background: #d1fae5;
+      color: #065f46;
+      font-weight: 800;
+      font-size: 12px;
+      padding: 4px 12px;
+      border-radius: 6px;
+      border: 1px solid #10b981;
+    }
+    .grid {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+    .card {
+      flex: 1;
+      background: #f8fafc;
+      border-radius: 10px;
+      padding: 16px;
+      border: 1px solid #e2e8f0;
+    }
+    .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+    .card-value-bold {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .card-text {
+      font-size: 13px;
+      color: #475569;
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 24px;
+    }
+    th {
+      background: #f1f5f9;
+      text-align: left;
+      padding: 12px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-top: 1px solid #e2e8f0;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    td {
+      padding: 14px;
+      font-size: 13.5px;
+      border-bottom: 1px solid #f1f5f9;
+      color: #1e293b;
+    }
+    .text-right {
+      text-align: right;
+    }
+    .total-section {
+      margin-left: auto;
+      width: 320px;
+      margin-bottom: 30px;
+    }
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 13.5px;
+      color: #475569;
+    }
+    .grand-total-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-top: 2px solid #0f172a;
+      border-bottom: 2px solid #0f172a;
+      font-size: 17px;
+      font-weight: 800;
+      color: #065f46;
+      margin-top: 8px;
+    }
+    .footer {
+      border-top: 1px solid #e2e8f0;
+      padding-top: 18px;
+      font-size: 11.5px;
+      color: #94a3b8;
+      text-align: center;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1 class="brand-title">URBAN HELPERS</h1>
+      <div class="brand-tag">Premium Home &amp; Living Services • Verified Partner Network</div>
+    </div>
+    <div class="invoice-badge">
+      <h2 class="invoice-title">TAX INVOICE</h2>
+      <div class="invoice-no">${invoiceNo}</div>
+      <div class="paid-stamp">✓ PAID ONLINE</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-title">Billed To (Customer)</div>
+      <div class="card-value-bold">${booking?.customerName || "Valued Customer"}</div>
+      <div class="card-text">${booking?.address || "Address on record"}</div>
+      <div class="card-text">Date: ${formattedDate}</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Service Specialist</div>
+      <div class="card-value-bold">${booking?.vendorName || "Verified Specialist Captain"}</div>
+      <div class="card-text">Category: ${booking?.serviceCategory || "General Service"}</div>
+      <div class="card-text">Payment: Prepaid Online (Verified 100%)</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Description</th>
+        <th>SAC Code</th>
+        <th class="text-right">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <strong>${booking?.subServiceName || booking?.serviceCategory || "Professional Home Service"}</strong><br/>
+          <span style="color:#64748b; font-size:12px;">Completed with 100% Quality &amp; Safety Guarantee</span>
+        </td>
+        <td>998721</td>
+        <td class="text-right">₹${baseServiceFee}</td>
+      </tr>
+      <tr>
+        <td>Platform &amp; Safety Insurance Fee</td>
+        <td>998319</td>
+        <td class="text-right">₹${platformFee}</td>
+      </tr>
+      <tr>
+        <td>Goods &amp; Services Tax (GST 18%)</td>
+        <td>GST-18</td>
+        <td class="text-right">₹${gst}</td>
+      </tr>
+      ${discount > 0 ? `
+      <tr style="color: #059669;">
+        <td><strong>Promo / Coupon Discount (${booking?.couponCode || "Applied"})</strong></td>
+        <td>-</td>
+        <td class="text-right"><strong>-₹${discount}</strong></td>
+      </tr>
+      ` : ""}
+    </tbody>
+  </table>
+
+  <div class="total-section">
+    <div class="total-row">
+      <span>Subtotal</span>
+      <span>₹${baseServiceFee + platformFee}</span>
+    </div>
+    <div class="total-row">
+      <span>GST (CGST 9% + SGST 9%)</span>
+      <span>₹${gst}</span>
+    </div>
+    ${discount > 0 ? `
+    <div class="total-row" style="color: #059669;">
+      <span>Discount</span>
+      <span>-₹${discount}</span>
+    </div>
+    ` : ""}
+    <div class="grand-total-row">
+      <span>Grand Total Paid</span>
+      <span>₹${total}</span>
+    </div>
+  </div>
+
+  <div class="footer">
+    <strong>Urban Helpers Technologies Private Limited</strong><br/>
+    GSTIN: 33AAECU1234F1Z5 • CIN: U74999KA2024PTC123456 • HSN/SAC: 998721<br/>
+    This is a computer-generated tax invoice and requires no physical signature.<br/>
+    For support or queries, contact support@urbanhelpers.in
+  </div>
+</body>
+</html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      const targetPath = `${FileSystem.documentDirectory}UrbanHelpers_Invoice_${invoiceNo}.pdf`;
+      await FileSystem.copyAsync({ from: uri, to: targetPath });
+
+      const isShareAvailable = await Sharing.isAvailableAsync();
+      if (isShareAvailable) {
+        await Sharing.shareAsync(targetPath, {
+          UTI: ".pdf",
+          mimeType: "application/pdf",
+          dialogTitle: `Download Urban Helpers Invoice ${invoiceNo}`,
+        });
+      } else {
+        Alert.alert(
+          "Invoice Downloaded",
+          `Tax invoice PDF has been saved successfully:\n${targetPath}`
+        );
+      }
+    } catch (e: any) {
+      console.warn("PDF generation error:", e);
+      Alert.alert("Invoice Download", "Failed to generate PDF. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const handleShareInvoice = async () => {
     try {
@@ -289,9 +570,19 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
 
       {/* Bottom Floating Actions */}
       <View style={s.ctaWrap}>
-        <Pressable style={s.shareBtn} onPress={handleShareInvoice}>
-          <Ionicons name="download-outline" size={18} color="#00bcd4" />
-          <Text style={s.shareBtnText}>Share / Download Invoice</Text>
+        <Pressable
+          style={[s.shareBtn, { backgroundColor: "#065f46", borderColor: "#10b981" }]}
+          onPress={handleDownloadInvoicePDF}
+          disabled={downloading}
+        >
+          {downloading ? (
+            <ActivityIndicator size="small" color="#ffffff" />
+          ) : (
+            <>
+              <Ionicons name="download-outline" size={18} color="#ffffff" />
+              <Text style={[s.shareBtnText, { color: "#ffffff", fontWeight: "700" }]}>Download PDF Invoice</Text>
+            </>
+          )}
         </Pressable>
 
         <Pressable

@@ -38,6 +38,10 @@ export interface DecodedResult {
   debugNote: string;
 }
 
+export type DecodedHealthPacket = DecodedResult;
+export const STANDARD_SERVICES = STANDARD_UUIDS;
+export const STANDARD_CHARACTERISTICS = STANDARD_UUIDS;
+
 export class CharacteristicDecoder {
   /**
    * Normalize any UUID to lowercase standard representation

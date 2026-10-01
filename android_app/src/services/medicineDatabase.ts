@@ -628,7 +628,7 @@ export async function searchRxNormDrugs(
     const candidates: Candidate[] = [];
 
     if (res1.ok) {
-      const data1 = await res1.json();
+      const data1: any = await res1.json();
       const conceptGroup: any[] = data1.drugGroup?.conceptGroup ?? [];
       for (const group of conceptGroup) {
         const tty: string = group.tty ?? "";
@@ -657,7 +657,7 @@ export async function searchRxNormDrugs(
         );
         clearTimeout(timeout2);
         if (res2.ok) {
-          const data2 = await res2.json();
+          const data2: any = await res2.json();
           const candList: any[] = data2.approximateGroup?.candidate ?? [];
           for (const c of candList) {
             if (!c.rxcui || !c.name) continue;
