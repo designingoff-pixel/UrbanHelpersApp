@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { ScrollView, Text, View, Pressable, StyleSheet, RefreshControl } from "react-native";
+import { ScrollView, Text, View, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -61,15 +61,10 @@ export default function HealthDashboardScreen({ navigation }: Props) {
           <Text style={s.title}>Health</Text>
           <Text style={s.caption}>Everything about your wellness.</Text>
         </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Pressable onPress={onRefresh} style={s.iconBtn} accessibilityLabel="Refresh Health Data">
-            <Ionicons name={refreshing ? "sync" : "refresh-outline"} size={20} color={colors.text.secondary} />
-          </Pressable>
-          <Pressable style={s.iconBtn}>
+        <Pressable style={s.iconBtn}>
             <Ionicons name="notifications-outline" size={20} color={colors.text.secondary} />
             <View style={s.badge} />
           </Pressable>
-        </View>
       </View>
 
       {/* Tabs */}
@@ -84,14 +79,6 @@ export default function HealthDashboardScreen({ navigation }: Props) {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={s.scroll}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-            colors={["#0C4A6E", "#4C1D95", "#0284c7"]}
-          />
-        }
       >
         
 

@@ -62,7 +62,12 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
-  const [timeSlot, setTimeSlot] = useState("10:00 AM - 12:00 PM");
+  const [selectedTime, setSelectedTime] = useState(() => {
+    const d = new Date();
+    d.setHours(10, 0, 0, 0);
+    return d;
+  });
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   // ── Coupon State ──────────────────────────────────────────────────────────
   const [couponInput, setCouponInput] = useState("");
@@ -481,6 +486,15 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         } catch (_) {}
       }
 
+      const scheduledDateTime = new Date(
+        selectedDate.getFullYear(),
+        selectedDate.getMonth(),
+        selectedDate.getDate(),
+        selectedTime.getHours(),
+        selectedTime.getMinutes(),
+        0, 0
+      );
+
       const fullAddress = addressText.trim();
 
       const { bookingId, otp } = await createBooking({
@@ -490,7 +504,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         serviceCategory: category.name,
         subServiceName: sub.name,
         address: fullAddress,
-        scheduledAt: selectedDate.toISOString(),
+        scheduledAt: scheduledDateTime.toISOString(),
         price: finalPrice,
         priceLabel: displayPrice,
         originalPrice: numericPrice,
@@ -622,24 +636,39 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
           <View style={s.section}>
             <Text style={s.sectionTitle}>Service Address</Text>
 
-            {/* 1. Pick Current Location Button */}
+            {/* Select Location button — opens interactive map */}
             <Pressable
               style={s.currentLocationBtn}
-              onPress={handlePickCurrentLocation}
-              disabled={searchingAddress}
+              onPress={() => handleOpenMap(false)}
             >
-              <Ionicons name="navigate" size={17} color="#10b981" />
-              <Text style={s.currentLocationBtnText}>
-                {searchingAddress ? "Detecting current location..." : "Use Current Location (GPS)"}
-              </Text>
-              {searchingAddress && <ActivityIndicator size="small" color="#10b981" style={{ marginLeft: "auto" }} />}
+              <Ionicons name="map" size={17} color="#10b981" />
+              <Text style={s.currentLocationBtnText}>Select Location on Map</Text>
+              <Ionicons name="chevron-forward" size={15} color="#10b981" style={{ marginLeft: "auto" }} />
             </Pressable>
 
-            {/* 2. Type Address Input */}
-            <View style={[s.addressInputWrap, { marginTop: 12 }]}>
+            {/* Selected address preview */}
+            {addressText.trim().length > 0 && (
+              <View style={[s.addressInputWrap, { marginTop: 10 }]}>
+                <Ionicons name="location" size={16} color="#10b981" style={{ marginRight: 8 }} />
+                <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 13, flex: 1 }} numberOfLines={2}>
+                  {addressText}
+                </Text>
+              </View>
+            )}
+
+            {/* OR divider */}
+            <View style={{ flexDirection: "row", alignItems: "center", marginVertical: 10, gap: 8 }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: "rgba(255,255,255,0.1)" }} />
+              <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>OR SEARCH</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: "rgba(255,255,255,0.1)" }} />
+            </View>
+
+            {/* Search bar — live autocomplete as user types */}
+            <View style={[s.addressInputWrap, { marginTop: 0 }]}>
+              <Ionicons name="search-outline" size={16} color="rgba(255,255,255,0.5)" style={{ marginRight: 8 }} />
               <TextInput
-                style={[s.addressInput, s.addressInputWithIcon]}
-                placeholder="Type your service address, area, city..."
+                style={[s.addressInput, s.addressInputWithIcon, { marginBottom: 0, flex: 1 }]}
+                placeholder="Search location..."
                 placeholderTextColor={colors.text.muted}
                 value={addressText}
                 onChangeText={(text) => {
@@ -647,9 +676,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                 }}
                 returnKeyType="search"
               />
-              {addressText.trim().length >= 2 ? (
-                <Ionicons name="search-outline" size={18} color={colors.text.muted} style={s.addressInputStatusIcon} />
-              ) : null}
+              {searchingAddress && <ActivityIndicator size="small" color="#10b981" />}
             </View>
 
             {/* Live Autocomplete Suggestions Dropdown */}
@@ -707,31 +734,29 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               />
             )}
 
-            {/* Time Slot Selector */}
-            <View style={s.timeSlotsRow}>
-              {["09:00 AM - 11:00 AM", "11:00 AM - 01:00 PM", "02:00 PM - 04:00 PM", "04:00 PM - 06:00 PM"].map((slot) => {
-                const isSelected = timeSlot === slot;
-                return (
-                  <Pressable
-                    key={slot}
-                    onPress={() => setTimeSlot(slot)}
-                    style={[
-                      s.timeSlotChip,
-                      isSelected && [s.timeSlotActive, { borderColor: category.accent }],
-                    ]}
-                  >
-                    <Ionicons
-                      name="time-outline"
-                      size={12}
-                      color={isSelected ? category.accent : colors.text.muted}
-                    />
-                    <Text style={[s.timeSlotText, isSelected && { color: category.accent }]}>
-                      {slot.split(" - ")[0]}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            {/* Custom Time Picker */}
+            <Pressable
+              style={[s.datePickerBtn, { marginTop: 10 }]}
+              onPress={() => setShowTimePicker(true)}
+            >
+              <Ionicons name="time-outline" size={18} color={category.accent} />
+              <Text style={s.datePickerText}>
+                {selectedTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.text.muted} style={{ marginLeft: "auto" }} />
+            </Pressable>
+
+            {showTimePicker && (
+              <DateTimePicker
+                value={selectedTime}
+                mode="time"
+                display="default"
+                onChange={(event, time) => {
+                  setShowTimePicker(false);
+                  if (time) setSelectedTime(time);
+                }}
+              />
+            )}
           </View>
         </Animated.View>
 
@@ -752,7 +777,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
           ) : (
             <View style={s.couponInputRow}>
               <TextInput
-                style={[s.addressInput, { flex: 1, marginBottom: 0 }]}
+                style={[s.plainInput, { flex: 1, marginBottom: 0 }]}
                 placeholder="Enter coupon code"
                 placeholderTextColor={colors.text.muted}
                 value={couponInput}
@@ -843,7 +868,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
             </Pressable>
 
             <TextInput
-              style={[s.addressInput, { marginBottom: 10 }]}
+              style={[s.plainInput, { marginBottom: 10 }]}
               placeholder="Street Address, Area, City"
               placeholderTextColor={colors.text.muted}
               value={newAddressText}
@@ -852,14 +877,14 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 
             <View style={s.flatLandmarkRow}>
               <TextInput
-                style={[s.addressInput, { flex: 1 }]}
+                style={[s.plainInput, { flex: 1 }]}
                 placeholder="House / Flat No."
                 placeholderTextColor={colors.text.muted}
                 value={newFlatNo}
                 onChangeText={setNewFlatNo}
               />
               <TextInput
-                style={[s.addressInput, { flex: 1.2 }]}
+                style={[s.plainInput, { flex: 1.2 }]}
                 placeholder="Landmark"
                 placeholderTextColor={colors.text.muted}
                 value={newLandmark}
@@ -874,7 +899,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         </View>
       </Modal>
 
-      {/* ── Modal: Map Location Picker ────────────────────────── */}
+      {/* Modal: Map Location Picker */}
       <Modal visible={showMapModal} transparent animationType="fade">
         <View style={s.mapModalRoot}>
           <MapView
@@ -891,27 +916,60 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                 coordinate={{ latitude: pinCoords.lat, longitude: pinCoords.lng }}
                 title="Service Location"
                 draggable
+                pinColor="red"
                 onDragEnd={(e) => setPinCoords({ lat: e.nativeEvent.coordinate.latitude, lng: e.nativeEvent.coordinate.longitude })}
               />
             )}
           </MapView>
 
-          {/* Map Header */}
+          {/* Map Header with back + inline search bar */}
           <View style={s.mapModalHeader}>
             <Pressable onPress={() => setShowMapModal(false)} style={s.mapModalBackBtn}>
               <Ionicons name="arrow-back" size={22} color="white" />
             </Pressable>
-            <Text style={s.mapModalTitle}>Pin Your Exact Location</Text>
+            <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.75)", borderRadius: 12, flexDirection: "row", alignItems: "center", paddingHorizontal: 10, height: 42, borderWidth: 1, borderColor: "rgba(255,255,255,0.18)" }}>
+              <Ionicons name="search-outline" size={16} color="rgba(255,255,255,0.6)" />
+              <TextInput
+                style={{ flex: 1, color: "white", fontSize: 14, marginLeft: 8 }}
+                placeholder="Search location..."
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                value={addressText}
+                onChangeText={(text) => setAddressText(text)}
+                returnKeyType="search"
+              />
+              {searchingAddress && <ActivityIndicator size="small" color="#10b981" />}
+            </View>
           </View>
+
+          {/* In-map suggestion list */}
+          {showSuggestions && suggestions.length > 0 && (
+            <View style={{ position: "absolute", top: 110, left: 12, right: 12, backgroundColor: "rgba(10,20,35,0.97)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.15)", overflow: "hidden", zIndex: 100 }}>
+              {suggestions.map((item, idx) => (
+                <Pressable
+                  key={`mapsug-${idx}`}
+                  onPress={() => {
+                    handleSelectSuggestion(item);
+                    setMapRegion({ latitude: item.lat, longitude: item.lng, latitudeDelta: 0.005, longitudeDelta: 0.005 });
+                    setPinCoords({ lat: item.lat, lng: item.lng });
+                  }}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 12, gap: 10, borderBottomWidth: idx < suggestions.length - 1 ? 1 : 0, borderBottomColor: "rgba(255,255,255,0.08)", backgroundColor: pressed ? "rgba(255,255,255,0.08)" : "transparent" }]}
+                >
+                  <Ionicons name="location-outline" size={16} color="#10b981" />
+                  <Text style={{ color: "rgba(255,255,255,0.9)", fontSize: 13, flex: 1 }} numberOfLines={2}>{item.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
 
           {/* Map Confirm Button */}
           <View style={s.mapModalBottom}>
-            <Text style={s.mapModalHint}>Move map or drag pin to exact doorstep</Text>
+            <Text style={s.mapModalHint}>Drag the red pin to your exact doorstep</Text>
             <Pressable style={[s.mapModalConfirmBtn, { backgroundColor: category.accent }]} onPress={handleConfirmLocation}>
               <Text style={s.mapModalConfirmText}>Confirm Location</Text>
             </Pressable>
           </View>
         </View>
+
       </Modal>
     </View>
   );
@@ -1114,8 +1172,19 @@ const s = StyleSheet.create({
   },
   mapBtnText: { fontSize: 13, fontWeight: "700", color: "white" },
 
-  addressInputWrap: { position: "relative", marginBottom: 10 },
+  addressInputWrap: { position: "relative", marginBottom: 10, flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 16, paddingHorizontal: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" },
   addressInput: {
+    backgroundColor: "transparent",
+    borderRadius: 16,
+    paddingHorizontal: 2,
+    paddingVertical: 12,
+    color: "white",
+    fontSize: 13,
+    flex: 1,
+  },
+  addressInputWithIcon: { paddingRight: 40 },
+  addressInputStatusIcon: { position: "absolute", right: 14, top: 14 },
+  plainInput: {
     backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 16,
     paddingHorizontal: 14,
@@ -1125,8 +1194,6 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
   },
-  addressInputWithIcon: { paddingRight: 40 },
-  addressInputStatusIcon: { position: "absolute", right: 14, top: 14 },
 
   suggestionsContainer: {
     backgroundColor: "#0d2136",

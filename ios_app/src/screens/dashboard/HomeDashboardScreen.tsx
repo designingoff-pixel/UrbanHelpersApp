@@ -683,17 +683,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                 <Text style={[s.sidebarSubItemText, { color: isDark ? "#e2e8f0" : "#334155" }]}>Policies & Legal</Text>
               </TouchableOpacity>
 
-              {/* Reset Home Layout */}
-              <TouchableOpacity
-                style={s.sidebarSubItem}
-                onPress={() => {
-                  setSidebarVisible(false);
-                  resetHome();
-                }}
-              >
-                <Ionicons name="refresh" size={17} color="#94a3b8" style={s.sidebarSubIcon} />
-                <Text style={[s.sidebarSubItemText, { color: isDark ? "#e2e8f0" : "#334155" }]}>Reset home layout</Text>
-              </TouchableOpacity>
+              <View style={s.sidebarDivider} />
 
               <View style={s.sidebarDivider} />
 
@@ -931,7 +921,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
             </Animated.View>
 
             {/* 1. Daily activity card (with steps, mins, kcal and heart rings) */}
-            <PressCard index={0} onPress={() => navigation.navigate("DailyStepsDashboard")}>
+            <PressCard index={0} onPress={() => navigation.navigate("FitnessDashboard")}>
               <View style={s.actDailyCard}>
                 <Text style={s.actDailyTitle}>Daily activity</Text>
                 <View style={s.actDailyRow}>
@@ -1287,7 +1277,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
               <View style={[s.row2, { marginTop: 10 }]}>
                 {isVisible("daily_activity") && (
                   <View style={[s.halfOuter, { position: "relative" }]}>
-                    <PressCard index={2} onPress={() => navigation.navigate("DailyStepsDashboard")} style={{ flex: 1 }}>
+                    <PressCard index={2} onPress={() => navigation.navigate("FitnessDashboard")} style={{ flex: 1 }}>
                       <View style={[s.halfCard, { backgroundColor: "#1c1c28" }]}>
                         <Text style={s.halfTitle}>Daily activity</Text>
                         <View style={s.heartRingWrap}>
