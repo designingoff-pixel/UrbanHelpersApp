@@ -1,11 +1,7 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Job } from '../data/types';
-import { SERVICE_ICONS } from '../data/mockData';
-import StatusBadge from './StatusBadge';
-import { Colors, Typography, Spacing, Radius, Shadows } from '../theme';
 
 interface Props {
   job: Job;
@@ -13,59 +9,50 @@ interface Props {
 }
 
 export default function JobCard({ job, onPress }: Props) {
-  const iconName = (SERVICE_ICONS[job.serviceType] || 'construct') as any;
-  const isAdmin = job.assignmentType === 'ADMIN_ASSIGNED';
+  const isAssigned = job.assignmentType === 'ADMIN_ASSIGNED';
 
   return (
-    <TouchableOpacity activeOpacity={0.85} onPress={() => onPress(job)} style={styles.card}>
-      {/* Left accent strip */}
-      <LinearGradient
-        colors={[Colors.gradientCyanStart, Colors.gradientCyanEnd]}
-        style={styles.accentStrip}
-      />
-      <View style={styles.body}>
-        {/* Header row */}
-        <View style={styles.row}>
-          <LinearGradient colors={[Colors.gradientCyanStart, Colors.gradientCyanEnd]} style={styles.iconCircle}>
-            <Ionicons name={iconName} size={22} color="#fff" />
-          </LinearGradient>
-          <View style={styles.titleBlock}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <Text style={styles.serviceName}>{job.serviceName}</Text>
-              {isAdmin && (
-                <View style={styles.adminPill}>
-                  <Text style={styles.adminPillText}>Admin</Text>
-                </View>
-              )}
-            </View>
-            <View style={styles.customerRow}>
-              <Ionicons name="person" size={12} color={Colors.onSurfaceVariant} />
-              <Text style={styles.customerName}>{job.customerName}</Text>
-            </View>
-          </View>
-          <StatusBadge status={job.status} />
+    <TouchableOpacity activeOpacity={0.9} onPress={() => onPress(job)} style={styles.card}>
+      <View style={styles.cardTop}>
+        <View style={styles.jobThumbnailWrap}>
+          <Image
+            source={{ uri: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&q=80' }}
+            style={styles.jobThumbnailImg}
+          />
         </View>
 
-        {/* Stats row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>SCHEDULE</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Ionicons name="time" size={14} color={Colors.primary} />
-              <Text style={styles.statValue}>{job.date} • {job.time}</Text>
-            </View>
+        <View style={{ flex: 1, paddingLeft: 12 }}>
+          <View style={styles.captainBadgePill}>
+            <Text style={styles.captainBadgePillText}>
+              {isAssigned ? 'URBAN CAPTAIN' : 'REQUEST'}
+            </Text>
           </View>
-          <View style={styles.statItemRight}>
-            <Text style={styles.statLabel}>EARNINGS</Text>
-            <Text style={[styles.statValue, { color: '#4ade80', ...Typography.headlineMd }]}>₹{job.vendorEarnings}</Text>
+          <Text style={styles.jobTitleText} numberOfLines={1}>
+            {job.serviceName || 'Full Home Cleaning'}
+          </Text>
+          <View style={styles.jobMetaRow}>
+            <Ionicons name="person-outline" size={13} color="#6B7280" />
+            <Text style={styles.jobCustomerName} numberOfLines={1}>
+              Customer: {job.customerName || 'Visweswaran .P'}
+            </Text>
+          </View>
+          <View style={styles.jobMetaRow}>
+            <Ionicons name="location-outline" size={13} color="#6B7280" />
+            <Text style={styles.jobDistanceText}>Nearby • {job.distance || '1.2 km'}</Text>
           </View>
         </View>
 
-        {/* Distance */}
-        <View style={styles.distanceRow}>
-          <Ionicons name="location" size={14} color={Colors.primary} />
-          <Text style={styles.distanceText}>{job.distance} away</Text>
+        <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+      </View>
+
+      <View style={styles.jobDivider} />
+
+      <View style={styles.jobCardBottom}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Ionicons name="calendar-outline" size={14} color="#6B7280" />
+          <Text style={styles.jobDateText}>{job.date} • {job.time}</Text>
         </View>
+        <Text style={styles.jobPriceText}>₹{job.vendorEarnings}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -73,39 +60,86 @@ export default function JobCard({ job, onPress }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.darkNavy, borderRadius: Radius.lg,
-    marginBottom: Spacing.cardGap, flexDirection: 'row',
-    overflow: 'hidden', ...Shadows.cardSoft,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#EBECEF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+    marginBottom: 14,
   },
-  accentStrip: { width: 5 },
-  body: { flex: 1, padding: Spacing.gutter },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
-  iconCircle: {
-    width: 44, height: 44, borderRadius: 22,
-    justifyContent: 'center', alignItems: 'center',
+  cardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  titleBlock: { flex: 1 },
-  serviceName: { ...Typography.headlineMd, color: Colors.onSurface },
-  adminPill: {
-    backgroundColor: 'rgba(37,99,235,0.3)', borderRadius: Radius.full,
-    paddingHorizontal: 8, paddingVertical: 2, borderWidth: 1, borderColor: '#3b82f670',
+  jobThumbnailWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: '#E5F3EB',
   },
-  adminPillText: { ...Typography.labelMd, fontSize: 10, color: '#93c5fd' },
-  customerRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  customerName: { ...Typography.bodyMd, color: Colors.onSurfaceVariant },
-  statsRow: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    paddingTop: 12, borderTopWidth: 1, borderTopColor: Colors.surfaceVariant + '80',
-    marginBottom: 10,
+  jobThumbnailImg: {
+    width: '100%',
+    height: '100%',
   },
-  statItem: {},
-  statItemRight: { alignItems: 'flex-end' },
-  statLabel: { ...Typography.labelMd, fontSize: 10, color: Colors.onSurfaceVariant, marginBottom: 4 },
-  statValue: { ...Typography.bodyLg, color: Colors.onSurface },
-  distanceRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: Colors.surfaceContainerLowest, borderRadius: Radius.md,
-    paddingHorizontal: 10, paddingVertical: 6,
+  captainBadgePill: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#0D3325',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginBottom: 4,
   },
-  distanceText: { ...Typography.bodyMd, color: Colors.onSurfaceVariant },
+  captainBadgePillText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  jobTitleText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  jobMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  jobCustomerName: {
+    fontSize: 12,
+    color: '#4B5563',
+    fontWeight: '500',
+  },
+  jobDistanceText: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  jobDivider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginVertical: 12,
+  },
+  jobCardBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  jobDateText: {
+    fontSize: 12,
+    color: '#4B5563',
+    fontWeight: '600',
+  },
+  jobPriceText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0D3325',
+  },
 });

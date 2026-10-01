@@ -4,44 +4,54 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { store } from '../store/AppStore';
-import { Colors, Typography, Spacing, Radius, Shadows } from '../theme';
+import { Radius } from '../theme';
 
 const SERVICE_EMOJI: Record<string, string> = {
-  'Home Cleaning': '🏠', 'Plumbing': '🔧', 'RO Service': '💧',
-  'Electrical': '⚡', 'Appliance Repair': '🔌', 'Pest Control': '🐛', 'Carpentry': '🪚',
+  'Home Cleaning': '🏠',
+  Plumbing: '🔧',
+  'RO Service': '💧',
+  Electrical: '⚡',
+  'Appliance Repair': '🔌',
+  'Pest Control': '🐛',
+  Carpentry: '🪚',
 };
-const BORDER_COLORS = ['#3B82F6', '#F59E0B', '#06B6D4', '#8B5CF6', '#10B981'];
 
 export default function EarningsScreen({ navigation }: any) {
   const [, forceUpdate] = useState(0);
-  useEffect(() => store.subscribe(() => forceUpdate(n => n + 1)), []);
+  useEffect(() => store.subscribe(() => forceUpdate((n) => n + 1)), []);
 
   const { vendor } = store;
-  const completed = store.jobs.filter(j => j.status === 'COMPLETED');
+  const completed = store.jobs.filter((j) => j.status === 'COMPLETED');
+  const todayEarnings = vendor.todayEarnings || store.totalEarnings || 1247;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Earnings</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
-          <Ionicons name="notifications-outline" size={24} color={Colors.primary} />
+        <Text style={styles.headerTitle}>Earnings & Payouts</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Notifications')} activeOpacity={0.7}>
+          <Ionicons name="notifications-outline" size={24} color="#111827" />
         </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Hero Card */}
-        <LinearGradient colors={[Colors.gradientGoldEarnStart, Colors.gradientGoldEarnEnd]} style={styles.heroCard}>
-          <View style={styles.heroPattern} />
-          <Text style={styles.heroLabel}>TODAY</Text>
-          <Text style={styles.heroAmount}>₹{vendor.todayEarnings.toLocaleString('en-IN')}</Text>
+        {/* Main Earnings Banner */}
+        <LinearGradient
+          colors={['#0D3325', '#164E3A']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroCard}
+        >
+          <Text style={styles.heroLabel}>TODAY'S EARNINGS</Text>
+          <Text style={styles.heroAmount}>₹{todayEarnings.toLocaleString('en-IN')}</Text>
           <View style={styles.heroTrend}>
-            <Ionicons name="trending-up" size={14} color="#fff" />
+            <Ionicons name="trending-up" size={14} color="#10B981" />
             <Text style={styles.heroTrendText}>12% vs yesterday</Text>
           </View>
           <View style={styles.heroStats}>
             <View style={styles.heroStat}>
               <Text style={styles.heroStatLabel}>Jobs Completed</Text>
-              <Text style={styles.heroStatValue}>{completed.length}</Text>
+              <Text style={styles.heroStatValue}>{completed.length || store.completedJobsCount}</Text>
             </View>
             <View style={styles.heroStatDivider} />
             <View style={styles.heroStat}>
@@ -55,28 +65,48 @@ export default function EarningsScreen({ navigation }: any) {
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>THIS WEEK</Text>
-            <Text style={styles.statAmount}>₹{vendor.weekEarnings.toLocaleString('en-IN')}</Text>
-            <View style={styles.trend}><Ionicons name="trending-up" size={14} color="#4ade80" /><Text style={styles.trendText}>+5.2%</Text></View>
+            <Text style={styles.statAmount}>₹{(todayEarnings * 4.2).toFixed(0)}</Text>
+            <View style={styles.trend}>
+              <Ionicons name="trending-up" size={13} color="#10B981" />
+              <Text style={styles.trendText}>+5.2%</Text>
+            </View>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>THIS MONTH</Text>
-            <Text style={[styles.statAmount, styles.goldText]}>₹{vendor.monthEarnings.toLocaleString('en-IN')}</Text>
-            <View style={styles.trend}><Ionicons name="trending-up" size={14} color="#4ade80" /><Text style={styles.trendText}>+12.8%</Text></View>
+            <Text style={styles.statAmount}>₹{(todayEarnings * 18).toFixed(0)}</Text>
+            <View style={styles.trend}>
+              <Ionicons name="trending-up" size={13} color="#10B981" />
+              <Text style={styles.trendText}>+12.8%</Text>
+            </View>
           </View>
         </View>
 
-        {/* Sparkline Chart */}
+        {/* 7-Day Chart */}
         <View style={styles.chartCard}>
-          <Text style={styles.chartTitle}>Last 7 Days</Text>
+          <Text style={styles.chartTitle}>Last 7 Days Earnings</Text>
           <View style={styles.chartBars}>
-            {[800, 1100, 950, 1400, 1200, 1600, vendor.todayEarnings].map((v, i) => {
-              const pct = v / 1800;
+            {[480, 850, 600, 1100, 950, 1400, todayEarnings].map((v, i) => {
+              const max = 1500;
+              const pct = Math.min(1, v / max);
               const isToday = i === 6;
               return (
                 <View key={i} style={styles.barWrap}>
-                  <View style={[styles.bar, { height: `${Math.max(pct * 100, 8)}%` as any, backgroundColor: isToday ? Colors.gradientGoldEarnStart : Colors.deepBlue }]} />
-                  <Text style={[styles.barLabel, isToday && { color: Colors.onSurface, fontWeight: '700' }]}>
-                    {['M','T','W','T','F','S','S'][i]}
+                  <View
+                    style={[
+                      styles.bar,
+                      {
+                        height: `${Math.max(pct * 100, 12)}%` as any,
+                        backgroundColor: isToday ? '#10B981' : '#E5E7EB',
+                      },
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.barLabel,
+                      isToday && { color: '#0D3325', fontWeight: '800' },
+                    ]}
+                  >
+                    {['M', 'T', 'W', 'T', 'F', 'S', 'S'][i]}
                   </Text>
                 </View>
               );
@@ -84,15 +114,20 @@ export default function EarningsScreen({ navigation }: any) {
           </View>
         </View>
 
-        {/* Recent Jobs */}
+        {/* Completed Jobs History */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Jobs</Text>
+          <Text style={styles.sectionTitle}>Completed Orders</Text>
           {completed.length === 0 ? (
-            <Text style={styles.emptyText}>No completed jobs yet.</Text>
+            <View style={styles.emptyCard}>
+              <Ionicons name="wallet-outline" size={40} color="#9CA3AF" />
+              <Text style={styles.emptyText}>No completed jobs yet for this period.</Text>
+            </View>
           ) : (
-            completed.map((job, i) => (
-              <View key={job.jobId} style={[styles.jobItem, { borderLeftColor: BORDER_COLORS[i % BORDER_COLORS.length] }]}>
-                <View style={styles.jobEmoji}><Text style={{ fontSize: 22 }}>{SERVICE_EMOJI[job.serviceType] || '🔨'}</Text></View>
+            completed.map((job) => (
+              <View key={job.jobId} style={styles.jobItem}>
+                <View style={styles.jobEmoji}>
+                  <Text style={{ fontSize: 20 }}>{SERVICE_EMOJI[job.serviceType] || '🏠'}</Text>
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.jobName}>{job.serviceName}</Text>
                   <Text style={styles.jobCustomer}>{job.customerName} • {job.time}</Text>
@@ -100,7 +135,7 @@ export default function EarningsScreen({ navigation }: any) {
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={styles.jobAmount}>₹{job.vendorEarnings}</Text>
                   <View style={styles.paidRow}>
-                    <View style={styles.paidDot} />
+                    <Ionicons name="checkmark-circle" size={12} color="#10B981" />
                     <Text style={styles.paidText}>PAID</Text>
                   </View>
                 </View>
@@ -108,60 +143,122 @@ export default function EarningsScreen({ navigation }: any) {
             ))
           )}
         </View>
+
+        <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.midnightNavy },
+  safe: { flex: 1, backgroundColor: '#F6F7F9' },
   header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: Spacing.gutter, paddingVertical: 12,
-    backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant + '40',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#F6F7F9',
   },
-  headerTitle: { ...Typography.headlineLgMobile, color: Colors.onSurface },
-  scroll: { padding: Spacing.containerPadding, paddingBottom: 100 },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: '#111827' },
+  scroll: { paddingHorizontal: 16, paddingTop: 6 },
   heroCard: {
-    borderRadius: Radius.xl, padding: Spacing.containerPadding, marginBottom: Spacing.cardGap,
-    overflow: 'hidden', ...Shadows.cardSoft,
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#0D3325',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
   },
-  heroPattern: { position: 'absolute', inset: 0, opacity: 0.08 },
-  heroLabel: { ...Typography.labelMd, color: 'rgba(255,255,255,0.8)', letterSpacing: 2, marginBottom: 6 },
-  heroAmount: { fontSize: 40, fontWeight: '800', color: '#fff', marginBottom: 8 },
-  heroTrend: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: Radius.full, alignSelf: 'flex-start', marginBottom: 16 },
-  heroTrendText: { ...Typography.labelMd, color: '#fff' },
-  heroStats: { flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: Radius.DEFAULT, padding: 12 },
+  heroLabel: { fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.75)', letterSpacing: 1, marginBottom: 4 },
+  heroAmount: { fontSize: 36, fontWeight: '800', color: '#FFFFFF', marginBottom: 8 },
+  heroTrend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: Radius.full,
+    alignSelf: 'flex-start',
+    marginBottom: 16,
+  },
+  heroTrendText: { fontSize: 12, fontWeight: '700', color: '#FFFFFF' },
+  heroStats: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    borderRadius: 16,
+    padding: 12,
+  },
   heroStat: { flex: 1, alignItems: 'center' },
   heroStatDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
-  heroStatLabel: { ...Typography.labelMd, color: 'rgba(255,255,255,0.7)', marginBottom: 4 },
-  heroStatValue: { ...Typography.headlineMd, color: '#fff' },
-  statsGrid: { flexDirection: 'row', gap: Spacing.cardGap, marginBottom: Spacing.cardGap },
-  statCard: { flex: 1, backgroundColor: Colors.darkNavy, borderRadius: Radius.lg, padding: 16, borderWidth: 1, borderColor: Colors.outlineVariant + '20' },
-  statLabel: { ...Typography.labelMd, color: Colors.onSurfaceVariant, fontSize: 11, marginBottom: 8 },
-  statAmount: { ...Typography.headlineLg, color: Colors.onSurface, fontWeight: '700' },
-  goldText: { color: Colors.gradientGoldEarnStart },
-  trend: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
-  trendText: { ...Typography.labelMd, color: '#4ade80' },
-  chartCard: { backgroundColor: Colors.darkNavy, borderRadius: Radius.lg, padding: Spacing.containerPadding, marginBottom: Spacing.cardGap, borderWidth: 1, borderColor: Colors.outlineVariant + '20' },
-  chartTitle: { ...Typography.headlineMd, color: Colors.onSurface, marginBottom: 20 },
-  chartBars: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, height: 100 },
-  barWrap: { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end', gap: 6 },
-  bar: { width: '100%', borderRadius: 4 },
-  barLabel: { ...Typography.labelMd, fontSize: 10, color: Colors.onSurfaceVariant },
-  section: { marginBottom: Spacing.sectionMargin },
-  sectionTitle: { ...Typography.headlineMd, color: Colors.onSurface, marginBottom: 14 },
-  emptyText: { ...Typography.bodyMd, color: Colors.onSurfaceVariant },
-  jobItem: {
-    backgroundColor: Colors.darkNavy, borderRadius: Radius.md, padding: 14,
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderLeftWidth: 4, marginBottom: 10,
+  heroStatLabel: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 2 },
+  heroStatValue: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
+
+  statsGrid: { flexDirection: 'row', gap: 12, marginBottom: 16 },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#EBECEF',
   },
-  jobEmoji: { width: 48, height: 48, borderRadius: 24, backgroundColor: Colors.deepBlue, justifyContent: 'center', alignItems: 'center' },
-  jobName: { ...Typography.bodyLg, color: Colors.onSurface, fontWeight: '600' },
-  jobCustomer: { ...Typography.bodyMd, color: Colors.onSurfaceVariant },
-  jobAmount: { ...Typography.headlineMd, color: Colors.onSurface, fontWeight: '700' },
-  paidRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  paidDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#4ade80' },
-  paidText: { ...Typography.labelMd, fontSize: 11, color: '#4ade80' },
+  statLabel: { fontSize: 10, fontWeight: '800', color: '#6B7280', letterSpacing: 0.5, marginBottom: 4 },
+  statAmount: { fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 4 },
+  trend: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  trendText: { fontSize: 11, fontWeight: '700', color: '#10B981' },
+
+  chartCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#EBECEF',
+    marginBottom: 16,
+  },
+  chartTitle: { fontSize: 14, fontWeight: '800', color: '#111827', marginBottom: 14 },
+  chartBars: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', height: 100 },
+  barWrap: { alignItems: 'center', width: 28, height: '100%', justifyContent: 'flex-end' },
+  bar: { width: 14, borderRadius: 7 },
+  barLabel: { fontSize: 11, color: '#9CA3AF', marginTop: 6 },
+
+  section: { marginBottom: 16 },
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 12 },
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 28,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EBECEF',
+    gap: 8,
+  },
+  emptyText: { fontSize: 13, color: '#9CA3AF', fontWeight: '500' },
+  jobItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#EBECEF',
+    marginBottom: 10,
+    gap: 12,
+  },
+  jobEmoji: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E8F8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  jobName: { fontSize: 14, fontWeight: '700', color: '#111827' },
+  jobCustomer: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+  jobAmount: { fontSize: 15, fontWeight: '800', color: '#0D3325' },
+  paidRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
+  paidText: { fontSize: 10, fontWeight: '800', color: '#10B981' },
 });

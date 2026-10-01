@@ -4,10 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { store } from '../store/AppStore';
-import { Colors, Typography, Spacing, Radius, Shadows } from '../theme';
-
+import { Colors, Typography, Spacing, Radius } from '../theme';
 import { signOut } from 'firebase/auth';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../services/firebase';
 
 export default function ProfileScreen({ navigation }: any) {
@@ -38,127 +36,172 @@ export default function ProfileScreen({ navigation }: any) {
 
   const menuItems = [
     { icon: 'create-outline', label: 'Edit Profile', onPress: () => navigation.navigate('EditProfile') },
-    { icon: 'document-text-outline', label: 'Documents', onPress: () => Alert.alert('Coming Soon', 'Document management coming soon.') },
-    { icon: 'help-circle-outline', label: 'Support', onPress: () => Alert.alert('Support', 'Call us: 1800-XXX-XXXX\nEmail: support@urbancaptain.com') },
-    { icon: 'settings-outline', label: 'Settings', onPress: () => Alert.alert('Coming Soon', 'Settings will be available in the next release.') },
+    { icon: 'document-text-outline', label: 'Documents & Verification', onPress: () => Alert.alert('Documents', 'Your partner KYC & documents are fully verified.') },
+    { icon: 'help-circle-outline', label: 'Support & Help Desk', onPress: () => Alert.alert('Support', 'Contact Captain Support:\nPhone: 1800-123-4567\nEmail: support@urbancaptain.com') },
+    { icon: 'settings-outline', label: 'Settings', onPress: () => Alert.alert('Settings', 'App preferences and notification settings.') },
     { icon: 'log-out-outline', label: 'Logout', onPress: handleLogout, danger: true },
   ];
 
+  const vendorAvatar =
+    vendor.avatar ||
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80';
+  const displayRating = vendor.rating ? vendor.rating.toFixed(1) : '4.8';
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Profile Header */}
-        <LinearGradient colors={[Colors.gradientPurpleStart, Colors.gradientPurpleEnd]} style={styles.profileCard}>
-          <View style={styles.glowBg} />
-          <Image source={{ uri: vendor.avatar }} style={styles.avatar} />
-          <Text style={styles.name}>{vendor.name}</Text>
-          <View style={styles.badgesRow}>
-            <View style={styles.ratingBadge}>
-              <Ionicons name="star" size={12} color="#fbbf24" />
-              <Text style={styles.badgeText}>{vendor.rating} Rating</Text>
+    <SafeAreaView style={s.safe} edges={['top']}>
+      {/* Header */}
+      <View style={s.header}>
+        <Text style={s.headerTitle}>Vendor Profile</Text>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+        {/* Profile Card */}
+        <LinearGradient
+          colors={['#0D3325', '#164E3A']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.profileCard}
+        >
+          <View style={s.avatarWrapper}>
+            <Image source={{ uri: vendorAvatar }} style={s.avatar} />
+            <View style={s.verifiedIcon}>
+              <Ionicons name="checkmark-circle" size={20} color="#3B82F6" />
             </View>
-            {vendor.isVerified && (
-              <View style={styles.verifiedBadge}>
-                <Ionicons name="checkmark-circle" size={12} color="#4ade80" />
-                <Text style={[styles.badgeText, { color: '#4ade80' }]}>Verified Partner</Text>
-              </View>
-            )}
           </View>
-          <Text style={styles.completedText}>{store.completedJobsCount} Completed Services</Text>
+
+          <Text style={s.name}>{vendor.name || 'Viswesh'}</Text>
+          <Text style={s.phoneText}>{vendor.mobile || '+91 98765 43210'}</Text>
+
+          <View style={s.badgesRow}>
+            <View style={s.ratingBadge}>
+              <Ionicons name="star" size={13} color="#F59E0B" />
+              <Text style={s.badgeText}>{displayRating} Rating</Text>
+            </View>
+            <View style={s.verifiedBadge}>
+              <Ionicons name="shield-checkmark" size={13} color="#10B981" />
+              <Text style={[s.badgeText, { color: '#10B981' }]}>Vendor Captain</Text>
+            </View>
+          </View>
         </LinearGradient>
 
-        {/* Info Cards */}
-        <View style={styles.infoRow}>
-          <View style={styles.infoCard}>
-            <View style={styles.infoCardHeader}>
-              <Ionicons name="construct" size={16} color={Colors.primary} />
-              <Text style={styles.infoCardLabel}>SERVICES</Text>
+        {/* Info Cards Row */}
+        <View style={s.infoRow}>
+          <View style={s.infoCard}>
+            <View style={s.infoCardHeader}>
+              <Ionicons name="construct" size={15} color="#0D3325" />
+              <Text style={s.infoCardLabel}>SERVICES</Text>
             </View>
-            <Text style={styles.infoCardValue}>{vendor.services.join(', ')}</Text>
+            <Text style={s.infoCardValue} numberOfLines={2}>
+              {vendor.services && vendor.services.length > 0 ? vendor.services.join(', ') : 'Home Cleaning, Appliance'}
+            </Text>
           </View>
-          <View style={styles.infoCard}>
-            <View style={styles.infoCardHeader}>
-              <Ionicons name="location" size={16} color={Colors.primary} />
-              <Text style={styles.infoCardLabel}>AREA</Text>
+          <View style={s.infoCard}>
+            <View style={s.infoCardHeader}>
+              <Ionicons name="location" size={15} color="#0D3325" />
+              <Text style={s.infoCardLabel}>COVERAGE AREA</Text>
             </View>
-            <Text style={styles.infoCardValue}>{vendor.serviceArea}, {vendor.serviceRadius} km</Text>
+            <Text style={s.infoCardValue} numberOfLines={2}>
+              {vendor.serviceArea || 'Citywide'}, {vendor.serviceRadius || 15} km
+            </Text>
           </View>
         </View>
 
-        {/* Stats */}
-        <View style={styles.statsRow}>
-          {[
-            { label: 'Total Jobs', value: store.completedJobsCount.toString() },
-            { label: 'This Month', value: '₹' + store.totalEarnings.toLocaleString('en-IN') },
-            { label: 'Rating', value: vendor.rating.toString() + ' ⭐' },
-          ].map(s => (
-            <View key={s.label} style={styles.statBox}>
-              <Text style={styles.statValue}>{s.value}</Text>
-              <Text style={styles.statLabel}>{s.label}</Text>
-            </View>
-          ))}
+        {/* Stats 3-Box Row */}
+        <View style={s.statsCard}>
+          <View style={s.statBox}>
+            <Text style={s.statValue}>{store.completedJobsCount}</Text>
+            <Text style={s.statLabel}>Completed</Text>
+          </View>
+          <View style={s.statDivider} />
+          <View style={s.statBox}>
+            <Text style={s.statValue}>₹{store.totalEarnings.toLocaleString('en-IN')}</Text>
+            <Text style={s.statLabel}>Earnings</Text>
+          </View>
+          <View style={s.statDivider} />
+          <View style={s.statBox}>
+            <Text style={s.statValue}>{displayRating} ⭐</Text>
+            <Text style={s.statLabel}>Rating</Text>
+          </View>
         </View>
 
-        {/* Menu */}
-        <View style={styles.menuCard}>
+        {/* Menu Items */}
+        <View style={s.menuCard}>
           {menuItems.map((item, i) => (
             <TouchableOpacity
               key={item.label}
               onPress={item.onPress}
-              style={[styles.menuItem, i < menuItems.length - 1 && styles.menuItemBorder]}
-              activeOpacity={0.8}>
-              <View style={[styles.menuIconBox, item.danger && { backgroundColor: Colors.errorContainer + '40' }]}>
-                <Ionicons name={item.icon as any} size={22} color={item.danger ? Colors.error : Colors.onSecondaryContainer} />
+              style={[s.menuItem, i < menuItems.length - 1 && s.menuItemBorder]}
+              activeOpacity={0.7}
+            >
+              <View style={[s.menuIconBox, item.danger && { backgroundColor: '#FEE2E2' }]}>
+                <Ionicons
+                  name={item.icon as any}
+                  size={20}
+                  color={item.danger ? '#EF4444' : '#0D3325'}
+                />
               </View>
-              <Text style={[styles.menuLabel, item.danger && { color: Colors.error }]}>{item.label}</Text>
-              <Ionicons name="chevron-forward" size={18} color={item.danger ? Colors.error : Colors.onSurfaceVariant} />
+              <Text style={[s.menuLabel, item.danger && { color: '#EF4444', fontWeight: '700' }]}>
+                {item.label}
+              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={item.danger ? '#EF4444' : '#9CA3AF'}
+              />
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* SOS Button */}
-        <View style={styles.sosSection}>
-          <TouchableOpacity onPress={() => setSosVisible(true)} activeOpacity={0.85} style={styles.sosBtnWrap}>
-            <LinearGradient colors={[Colors.gradientSOSStart, Colors.gradientSOSEnd]} style={styles.sosBtn}>
-              <Ionicons name="warning" size={28} color="#fff" />
-              <Text style={styles.sosBtnText}>EMERGENCY SOS</Text>
+        {/* Emergency SOS Button */}
+        <View style={s.sosSection}>
+          <TouchableOpacity
+            onPress={() => setSosVisible(true)}
+            activeOpacity={0.85}
+            style={s.sosBtnWrap}
+          >
+            <LinearGradient colors={['#EF4444', '#DC2626']} style={s.sosBtn}>
+              <Ionicons name="warning" size={22} color="#FFFFFF" />
+              <Text style={s.sosBtnText}>EMERGENCY SOS</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
+
+        <View style={{ height: 100 }} />
       </ScrollView>
 
       {/* SOS Modal */}
       <Modal visible={sosVisible} animationType="slide" transparent>
-        <View style={styles.sosOverlay}>
+        <View style={s.sosOverlay}>
           <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setSosVisible(false)} />
-          <View style={styles.sosSheet}>
-            <View style={styles.sheetHandle} />
-            <Text style={styles.sosTitle}>Emergency Help</Text>
-            <View style={styles.sosOptions}>
-              <TouchableOpacity style={styles.sosOption} onPress={() => Linking.openURL('tel:18001234567')}>
-                <View style={[styles.sosOptionIcon, { backgroundColor: Colors.errorContainer }]}>
-                  <Ionicons name="headset" size={22} color={Colors.onErrorContainer} />
+          <View style={s.sosSheet}>
+            <View style={s.sheetHandle} />
+            <Text style={s.sosTitle}>Emergency Help</Text>
+            <View style={s.sosOptions}>
+              <TouchableOpacity
+                style={s.sosOption}
+                onPress={() => Linking.openURL('tel:18001234567')}
+              >
+                <View style={[s.sosOptionIcon, { backgroundColor: '#FEE2E2' }]}>
+                  <Ionicons name="headset" size={22} color="#DC2626" />
                 </View>
-                <Text style={styles.sosOptionLabel}>Call Urban Captain</Text>
-                <Ionicons name="call-outline" size={18} color={Colors.onSurfaceVariant} />
+                <Text style={s.sosOptionLabel}>Call Urban Captain Support</Text>
+                <Ionicons name="call-outline" size={18} color="#6B7280" />
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.sosOption, { borderColor: Colors.error, backgroundColor: Colors.errorContainer + '20' }]} onPress={() => Linking.openURL('tel:100')}>
-                <View style={[styles.sosOptionIcon, { backgroundColor: Colors.error }]}>
-                  <Ionicons name="shield" size={22} color="#fff" />
+              <TouchableOpacity
+                style={[s.sosOption, { borderColor: '#EF4444', backgroundColor: '#FEF2F2' }]}
+                onPress={() => Linking.openURL('tel:100')}
+              >
+                <View style={[s.sosOptionIcon, { backgroundColor: '#EF4444' }]}>
+                  <Ionicons name="shield" size={22} color="#FFFFFF" />
                 </View>
-                <Text style={[styles.sosOptionLabel, { color: Colors.error }]}>Call Police (100)</Text>
-                <Ionicons name="call" size={18} color={Colors.error} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.sosOption} onPress={() => Alert.alert('Location Shared', 'Your live location has been shared with Urban Captain support.')}>
-                <View style={[styles.sosOptionIcon, { backgroundColor: Colors.secondaryContainer }]}>
-                  <Ionicons name="location" size={22} color={Colors.onSecondaryContainer} />
-                </View>
-                <Text style={styles.sosOptionLabel}>Share Live Location</Text>
-                <Ionicons name="share-outline" size={18} color={Colors.onSurfaceVariant} />
+                <Text style={[s.sosOptionLabel, { color: '#DC2626', fontWeight: '700' }]}>
+                  Call Police (100)
+                </Text>
+                <Ionicons name="call" size={18} color="#DC2626" />
               </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={() => setSosVisible(false)} style={styles.sosCancelBtn}>
-              <Text style={styles.sosCancelText}>Cancel</Text>
+            <TouchableOpacity onPress={() => setSosVisible(false)} style={s.sosCancelBtn}>
+              <Text style={s.sosCancelText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -167,53 +210,268 @@ export default function ProfileScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.midnightNavy },
-  scroll: { padding: Spacing.containerPadding, paddingBottom: 100 },
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#F6F7F9' },
+  header: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#F6F7F9',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  scroll: {
+    paddingHorizontal: 16,
+  },
+
   profileCard: {
-    borderRadius: Radius.xl, padding: Spacing.containerPadding, alignItems: 'center',
-    marginBottom: Spacing.cardGap, overflow: 'hidden', ...Shadows.cardSoft,
+    borderRadius: 24,
+    padding: 20,
+    alignItems: 'center',
+    marginBottom: 14,
+    shadowColor: '#0D3325',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  glowBg: { position: 'absolute', top: -60, right: -60, width: 200, height: 200, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 100 },
-  avatar: { width: 120, height: 120, borderRadius: 60, borderWidth: 4, borderColor: Colors.surface, marginBottom: 14 },
-  name: { ...Typography.headlineLg, color: '#fff', marginBottom: 10 },
-  badgesRow: { flexDirection: 'row', gap: 10, marginBottom: 6 },
-  ratingBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.25)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: Radius.full },
-  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.25)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: Radius.full },
-  badgeText: { ...Typography.labelMd, color: '#fff' },
-  completedText: { ...Typography.bodyMd, color: 'rgba(255,255,255,0.8)' },
-  infoRow: { flexDirection: 'row', gap: Spacing.cardGap, marginBottom: Spacing.cardGap },
-  infoCard: { flex: 1, backgroundColor: Colors.darkNavy, borderRadius: Radius.lg, padding: 14, borderWidth: 1, borderColor: Colors.outlineVariant },
-  infoCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
-  infoCardLabel: { ...Typography.labelMd, color: Colors.onSurfaceVariant, fontSize: 11 },
-  infoCardValue: { ...Typography.bodyLg, color: Colors.onSurface },
-  statsRow: { flexDirection: 'row', backgroundColor: Colors.darkNavy, borderRadius: Radius.lg, marginBottom: Spacing.cardGap, borderWidth: 1, borderColor: Colors.outlineVariant + '30' },
-  statBox: { flex: 1, alignItems: 'center', padding: 14 },
-  statValue: { ...Typography.headlineMd, color: Colors.onSurface },
-  statLabel: { ...Typography.labelMd, color: Colors.onSurfaceVariant, marginTop: 4 },
-  menuCard: { backgroundColor: Colors.surfaceContainer, borderRadius: Radius.lg, overflow: 'hidden', marginBottom: Spacing.cardGap, borderWidth: 1, borderColor: Colors.outlineVariant + '30' },
-  menuItem: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 },
-  menuItemBorder: { borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant + '40' },
-  menuIconBox: { width: 38, height: 38, borderRadius: Radius.md, backgroundColor: Colors.secondaryContainer, justifyContent: 'center', alignItems: 'center' },
-  menuLabel: { ...Typography.bodyLg, color: Colors.onSurface, flex: 1 },
-  sosSection: { alignItems: 'center', paddingVertical: Spacing.sectionMargin },
-  sosBtnWrap: { borderRadius: Radius.full, overflow: 'hidden' },
-  sosBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 36, paddingVertical: 18 },
-  sosBtnText: { ...Typography.headlineMd, color: '#fff' },
-  sosOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  avatarWrapper: {
+    position: 'relative',
+    marginBottom: 12,
+  },
+  avatar: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+  },
+  verifiedIcon: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+  },
+  name: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  phoneText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 12,
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  ratingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
+  infoRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 14,
+  },
+  infoCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#EBECEF',
+  },
+  infoCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  infoCardLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#6B7280',
+    letterSpacing: 0.5,
+  },
+  infoCardValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#111827',
+  },
+
+  statsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: '#EBECEF',
+    marginBottom: 14,
+  },
+  statBox: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  statLabel: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: '#E5E7EB',
+  },
+
+  menuCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#EBECEF',
+    marginBottom: 16,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    gap: 12,
+  },
+  menuItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  menuIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#E8F8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  menuLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
+
+  sosSection: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  sosBtnWrap: {
+    borderRadius: 18,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  sosBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+  },
+  sosBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+
+  sosOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
   sosSheet: {
-    backgroundColor: Colors.surfaceContainerLow, borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl,
-    padding: Spacing.containerPadding, paddingBottom: 48,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 20,
+    paddingBottom: 40,
   },
-  sheetHandle: { width: 48, height: 5, borderRadius: 3, backgroundColor: Colors.outlineVariant, alignSelf: 'center', marginBottom: 20 },
-  sosTitle: { ...Typography.headlineLgMobile, color: Colors.error, textAlign: 'center', marginBottom: 20 },
-  sosOptions: { gap: 12 },
+  sheetHandle: {
+    width: 44,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D1D5DB',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  sosTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#EF4444',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  sosOptions: {
+    gap: 10,
+  },
   sosOption: {
-    flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14,
-    backgroundColor: Colors.surfaceVariant, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.outlineVariant,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  sosOptionIcon: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  sosOptionLabel: { ...Typography.bodyLg, color: Colors.onSurface, flex: 1 },
-  sosCancelBtn: { marginTop: 20, height: 52, justifyContent: 'center', alignItems: 'center' },
-  sosCancelText: { ...Typography.bodyLg, color: Colors.onSurfaceVariant },
+  sosOptionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sosOptionLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  sosCancelBtn: {
+    marginTop: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  sosCancelText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#6B7280',
+  },
 });

@@ -5,17 +5,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { store } from '../store/AppStore';
 import { subscribeToVendorJobs } from '../services/firestoreService';
 import JobCard from '../components/JobCard';
-import { Colors, Typography, Spacing, Radius } from '../theme';
+import { Spacing, Radius } from '../theme';
 
 const TABS = [
   { key: 'requests', label: 'Requests' },
-
   { key: 'active', label: 'Active' },
   { key: 'completed', label: 'Completed' },
 ];
 
 export default function JobsScreen({ navigation }: any) {
-  const [tab, setTab] = useState('requests');
+  const [tab, setTab] = useState('active');
   const [, forceUpdate] = useState(0);
 
   useEffect(() => {
@@ -28,7 +27,7 @@ export default function JobsScreen({ navigation }: any) {
     };
     if (store.vendorId) startSub(store.vendorId);
     const unsubStore = store.subscribe(() => {
-      forceUpdate(n => n + 1);
+      forceUpdate((n) => n + 1);
       if (!unsub && store.vendorId) startSub(store.vendorId);
     });
     return () => {
@@ -38,49 +37,63 @@ export default function JobsScreen({ navigation }: any) {
   }, []);
 
   const jobs = store.getJobsForTab(tab);
+  const vendorAvatar =
+    store.vendor.avatar ||
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80';
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Image source={{ uri: store.vendor.avatar }} style={styles.avatar} />
-          <Text style={styles.title}>Urban Captain</Text>
+          <Image source={{ uri: vendorAvatar }} style={styles.avatar} />
+          <Text style={styles.title}>Your Jobs</Text>
         </View>
-        <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
-          <Ionicons name="notifications-outline" size={24} color={Colors.onSurfaceVariant} />
+        <TouchableOpacity onPress={() => navigation.navigate('Notifications')} activeOpacity={0.7}>
+          <Ionicons name="notifications-outline" size={24} color="#111827" />
         </TouchableOpacity>
       </View>
 
       {/* Tab Bar */}
       <View style={styles.tabsWrapper}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
-          {TABS.map(t => (
+          {TABS.map((t) => (
             <TouchableOpacity
               key={t.key}
               onPress={() => setTab(t.key)}
               style={[styles.tab, tab === t.key && styles.tabActive]}
-              activeOpacity={0.8}>
-              <Text style={[styles.tabText, tab === t.key && styles.tabTextActive]}>{t.label}{store.getJobsForTab(t.key).length > 0 ? ` (${store.getJobsForTab(t.key).length})` : ""}</Text>
-              {tab === t.key && <View style={styles.tabDot} />}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.tabText, tab === t.key && styles.tabTextActive]}>
+                {t.label}
+                {store.getJobsForTab(t.key).length > 0 ? ` (${store.getJobsForTab(t.key).length})` : ''}
+              </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
 
       {/* Jobs List */}
-      <ScrollView style={styles.scroll} contentContainerStyle={{ padding: Spacing.gutter, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
+      >
         {jobs.length === 0 ? (
           <View style={styles.empty}>
-            <Ionicons name="briefcase-outline" size={64} color={Colors.onSurfaceVariant} />
-            <Text style={styles.emptyText}>No jobs in this category.</Text>
+            <Ionicons name="briefcase-outline" size={56} color="#9CA3AF" />
+            <Text style={styles.emptyText}>No {tab} jobs right now.</Text>
           </View>
         ) : (
-          jobs.map(job => (
-            <JobCard key={job.jobId} job={job} onPress={j => {
-              store.setCurrentJob(j.jobId);
-              navigation.navigate('JobDetails', { jobId: j.jobId });
-            }} />
+          jobs.map((job) => (
+            <JobCard
+              key={job.jobId}
+              job={job}
+              onPress={(j) => {
+                store.setCurrentJob(j.jobId);
+                navigation.navigate('JobDetails', { jobId: j.jobId });
+              }}
+            />
           ))
         )}
       </ScrollView>
@@ -89,30 +102,33 @@ export default function JobsScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.midnightNavy },
+  safe: { flex: 1, backgroundColor: '#F6F7F9' },
   header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: Spacing.gutter, paddingVertical: 12,
-    backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant + '40',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#F6F7F9',
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  avatar: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: Colors.surfaceVariant },
-  title: { ...Typography.headlineLgMobile, color: Colors.onSurface },
-  tabsWrapper: { backgroundColor: Colors.midnightNavy, paddingTop: 12 },
-  tabs: { paddingHorizontal: Spacing.gutter, gap: 8, paddingBottom: 8 },
+  avatar: { width: 38, height: 38, borderRadius: 19, borderWidth: 2, borderColor: '#FFFFFF' },
+  title: { fontSize: 18, fontWeight: '800', color: '#111827' },
+  tabsWrapper: { backgroundColor: '#F6F7F9', paddingVertical: 4 },
+  tabs: { paddingHorizontal: 16, gap: 8, paddingBottom: 6 },
   tab: {
-    paddingHorizontal: 20, paddingVertical: 10, borderRadius: Radius.full,
-    backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: Radius.full,
+    backgroundColor: '#E5E7EB',
+    alignItems: 'center',
   },
   tabActive: {
-    backgroundColor: Colors.primary + '33',
-    borderWidth: 1, borderColor: Colors.primary + '50',
+    backgroundColor: '#0D3325',
   },
-  tabText: { ...Typography.labelMd, color: Colors.onSurfaceVariant },
-  tabTextActive: { color: Colors.primary },
-  tabDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: Colors.primary, marginTop: 4 },
+  tabText: { fontSize: 13, fontWeight: '600', color: '#4B5563' },
+  tabTextActive: { color: '#FFFFFF', fontWeight: '800' },
   scroll: { flex: 1 },
-  empty: { alignItems: 'center', paddingVertical: 80, gap: 16 },
-  emptyText: { ...Typography.bodyMd, color: Colors.onSurfaceVariant },
+  empty: { alignItems: 'center', paddingVertical: 80, gap: 14 },
+  emptyText: { fontSize: 14, color: '#9CA3AF', fontWeight: '500' },
 });
-

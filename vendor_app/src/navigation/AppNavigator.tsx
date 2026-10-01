@@ -58,7 +58,7 @@ function CustomTabBar({ activeTab, onTabPress }: { activeTab: string; onTabPress
               <Ionicons
                 name={(active ? tab.icon : tab.iconOut) as any}
                 size={22}
-                color={active ? Colors.onSecondaryContainer : Colors.onSurfaceVariant}
+                color={active ? '#0D3325' : '#9CA3AF'}
               />
             </View>
             <Text style={[tabStyles.label, active && tabStyles.labelActive]}>
@@ -174,12 +174,17 @@ export default function AppNavigator() {
 const tabStyles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
-    backgroundColor: Colors.surfaceContainerLowest,
+    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: Colors.outlineVariant,
+    borderTopColor: '#EBECEF',
     height: Platform.OS === 'ios' ? 82 : 68,
     paddingBottom: Platform.OS === 'ios' ? 20 : 8,
     paddingTop: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 4,
   },
   item: {
     flex: 1,
@@ -188,19 +193,19 @@ const tabStyles = StyleSheet.create({
     gap: 3,
   },
   iconWrap: {
-    padding: 5,
-    borderRadius: Radius.md,
+    padding: 4,
+    borderRadius: 12,
   },
   iconWrapActive: {
-    backgroundColor: Colors.secondaryContainer,
+    backgroundColor: 'rgba(13,51,37,0.08)',
   },
   label: {
-    ...Typography.labelMd,
-    fontSize: 10,
-    color: Colors.onSurfaceVariant,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9CA3AF',
   },
   labelActive: {
-    color: Colors.onSecondaryContainer,
-    fontWeight: '700',
+    color: '#0D3325',
+    fontWeight: '800',
   },
 });

@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import {
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  KeyboardAvoidingView, Platform, ScrollView, Alert,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { store } from '../store/AppStore';
-import { Colors, Typography, Spacing, Radius } from '../theme';
+import { Radius } from '../theme';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 
@@ -15,31 +18,27 @@ export default function EditProfileScreen({ navigation }: any) {
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
-    if (!name.trim()) return Alert.alert("Error", "Name is required.");
+    if (!name.trim()) return Alert.alert('Error', 'Name is required.');
     setSaving(true);
     try {
       if (store.vendorId) {
-        // Save to Firestore vendors collection
         const vendorRef = doc(db, 'vendors', store.vendorId);
         await updateDoc(vendorRef, {
           name: name.trim(),
           mobile: mobile.trim(),
-          avatar: avatar.trim()
+          avatar: avatar.trim(),
         });
       }
-      
-      // Update local store
+
       store.vendor.name = name.trim();
       store.vendor.mobile = mobile.trim();
       store.vendor.avatar = avatar.trim();
-      
-      // Force update UI
-      store.setCurrentJob(store.currentJobId || '');
-      
+      store.notify();
+
+      Alert.alert('Profile Updated', 'Your vendor profile has been successfully updated.');
       navigation.goBack();
     } catch (e: any) {
-      console.error(e);
-      Alert.alert("Error", "Failed to update profile: " + e.message);
+      Alert.alert('Error', 'Failed to update profile: ' + e.message);
     } finally {
       setSaving(false);
     }
@@ -48,8 +47,8 @@ export default function EditProfileScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+          <Ionicons name="arrow-back" size={24} color="#111827" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Profile</Text>
         <View style={{ width: 40 }} />
@@ -63,7 +62,7 @@ export default function EditProfileScreen({ navigation }: any) {
               style={styles.input}
               value={name}
               onChangeText={setName}
-              placeholderTextColor={Colors.onSurfaceVariant}
+              placeholderTextColor="#9CA3AF"
             />
           </View>
 
@@ -74,7 +73,7 @@ export default function EditProfileScreen({ navigation }: any) {
               value={mobile}
               onChangeText={setMobile}
               keyboardType="phone-pad"
-              placeholderTextColor={Colors.onSurfaceVariant}
+              placeholderTextColor="#9CA3AF"
             />
           </View>
 
@@ -85,14 +84,15 @@ export default function EditProfileScreen({ navigation }: any) {
               value={avatar}
               onChangeText={setAvatar}
               placeholder="https://..."
-              placeholderTextColor={Colors.onSurfaceVariant}
+              placeholderTextColor="#9CA3AF"
             />
           </View>
 
-          <TouchableOpacity 
-            style={[styles.saveBtn, saving && { opacity: 0.7 }]} 
-            onPress={handleSave} 
+          <TouchableOpacity
+            style={[styles.saveBtn, saving && { opacity: 0.7 }]}
+            onPress={handleSave}
             disabled={saving}
+            activeOpacity={0.85}
           >
             <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Save Changes'}</Text>
           </TouchableOpacity>
@@ -103,27 +103,44 @@ export default function EditProfileScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.midnightNavy },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
-  backBtn: { width: 40, height: 40, justifyContent: 'center' },
-  headerTitle: { ...Typography.headlineMd, color: '#fff' },
-  scroll: { padding: Spacing.containerPadding },
-  inputGroup: { marginBottom: 20 },
-  label: { ...Typography.labelLg, color: Colors.onSurfaceVariant, marginBottom: 8 },
+  safe: { flex: 1, backgroundColor: '#F6F7F9' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#F6F7F9',
+  },
+  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: '#111827' },
+  scroll: { padding: 16 },
+  inputGroup: { marginBottom: 18 },
+  label: { fontSize: 13, fontWeight: '700', color: '#374151', marginBottom: 8 },
   input: {
-    backgroundColor: Colors.surfaceContainer,
-    borderRadius: Radius.md,
-    padding: 16,
-    color: '#fff',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+    color: '#111827',
     borderWidth: 1,
-    borderColor: Colors.outlineVariant + '40',
+    borderColor: '#E5E7EB',
+    fontSize: 14,
   },
   saveBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
+    backgroundColor: '#0D3325',
+    borderRadius: 18,
     paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 20
+    marginTop: 14,
+    shadowColor: '#0D3325',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  saveBtnText: { ...Typography.titleMd, color: '#fff', fontWeight: 'bold' }
+  saveBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
 });
