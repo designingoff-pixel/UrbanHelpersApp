@@ -195,19 +195,25 @@ class AppStore {
   getJobsForTab(tab: string): Job[] {
     const map: Record<string, JobStatus[]> = {
       requests: ['NEW_REQUEST', 'ADMIN_ASSIGNED'],
-      active: ['ACCEPTED', 'ADMIN_ASSIGNED', 'UPCOMING', 'NAVIGATING', 'ARRIVED', 'OTP_PENDING', 'CUSTOMER_VERIFIED', 'SERVICE_STARTED', 'RECORDING_ACTIVE', 'RECORDING_STOPPED'],
+      active: ['ACCEPTED', 'UPCOMING', 'NAVIGATING', 'ARRIVED', 'OTP_PENDING', 'CUSTOMER_VERIFIED', 'SERVICE_STARTED', 'RECORDING_ACTIVE', 'RECORDING_STOPPED'],
       completed: ['COMPLETED', 'REJECTED', 'CANCELLED'],
     };
     return this.jobs.filter(j => (map[tab] || []).includes(j.status));
   }
 
-  // â”€â”€ Computed Stats â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Computed Stats ──────────────────────────────────────────────────────────
   get completedJobsCount(): number {
     return this.jobs.filter(j => j.status === 'COMPLETED').length;
   }
 
   get totalEarnings(): number {
     return this.jobs.filter(j => j.status === 'COMPLETED').reduce((acc, job) => acc + job.vendorEarnings, 0);
+  }
+
+  get todayEarnings(): number {
+    return this.jobs
+      .filter(j => j.status === 'COMPLETED' && j.date === 'Today')
+      .reduce((acc, job) => acc + job.vendorEarnings, 0);
   }
 }
 

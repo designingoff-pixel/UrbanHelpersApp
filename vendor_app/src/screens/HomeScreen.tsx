@@ -1,17 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, Switch,
-  StyleSheet, Image, Alert, ActivityIndicator, Dimensions, ImageBackground,
+  StyleSheet, Image, Dimensions, ImageBackground,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { store } from '../store/AppStore';
-import { Colors, Typography, Spacing, Radius } from '../theme';
 import {
   subscribeToVendorJobs,
   subscribeToNewRequests,
-  acceptJob,
   setVendorOnlineStatus,
   FirestoreBooking,
 } from '../services/firestoreService';
@@ -21,7 +19,6 @@ const { width } = Dimensions.get('window');
 export default function HomeScreen({ navigation }: any) {
   const [, forceUpdate] = useState(0);
   const [newRequests, setNewRequests] = useState<FirestoreBooking[]>([]);
-  const [acceptingId, setAcceptingId] = useState<string | null>(null);
 
   useEffect(() => {
     let unsubV: (() => void) | null = null;
@@ -65,9 +62,9 @@ export default function HomeScreen({ navigation }: any) {
   const assignedJobs = store.jobs.filter(
     (j) => j.status === 'ADMIN_ASSIGNED' || j.status === 'ACCEPTED' || j.status === 'NAVIGATING' || j.status === 'ARRIVED' || j.status === 'SERVICE_STARTED'
   );
-  const todayJobsCount = store.jobs.filter(
-    (j) => j.status === 'COMPLETED' && j.date === 'Today'
-  ).length;
+  const completedJobs = store.jobs.filter((j) => j.status === 'COMPLETED');
+  const todayJobsCount = completedJobs.filter((j) => j.date === 'Today').length;
+  const realTotalEarnings = completedJobs.reduce((sum, j) => sum + (j.vendorEarnings || 0), 0);
 
   // ── Online toggle ────────────────────────────────────────────────────────
   const handleToggleOnline = async (v: boolean) => {
@@ -82,83 +79,77 @@ export default function HomeScreen({ navigation }: any) {
   };
 
   const displayName = vendor.name || 'Viswesh';
-  const displayRating = vendor.rating ? vendor.rating.toFixed(1) : '4.8';
-  const displayEarnings = store.totalEarnings > 0 ? store.totalEarnings.toLocaleString('en-IN') : '1,247';
+  const displayRating = vendor.rating ? vendor.rating.toFixed(1) : '5.0';
+  const displayEarnings = realTotalEarnings.toLocaleString('en-IN');
 
   return (
     <View style={s.root}>
       {/* Top Scenic Banner & Header */}
       <View style={s.headerContainer}>
-        {/* Scenic Mountain Background Banner */}
         <ImageBackground
           source={{ uri: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200&q=80' }}
           style={s.headerBgImage}
-          imageStyle={{ opacity: 0.38 }}
+          imageStyle={{ opacity: 0.35 }}
         >
           <LinearGradient
-            colors={['rgba(246,247,249,0.3)', 'rgba(246,247,249,0.85)', '#F6F7F9']}
+            colors={['rgba(246,247,249,0.35)', 'rgba(246,247,249,0.88)', '#F6F7F9']}
             style={s.headerGradient}
           />
           <SafeAreaView edges={['top']} style={s.safeHeader}>
-            {/* Header Top Bar: Notification Bell */}
+            {/* Header Top Bar: Brand & Notification Bell */}
             <View style={s.topBarRow}>
-              <View style={{ flex: 1 }} />
+              <View style={s.brandPill}>
+                <Ionicons name="shield-checkmark" size={13} color="#0D3325" />
+                <Text style={s.brandPillText}>URBAN CAPTAIN</Text>
+              </View>
               <TouchableOpacity
                 onPress={() => navigation.navigate('Notifications')}
                 style={s.notifBtn}
                 activeOpacity={0.8}
               >
-                <Ionicons name="notifications-outline" size={22} color="#111827" />
-                <View style={s.notifRedDot} />
+                <Ionicons name="notifications-outline" size={20} color="#111827" />
+                {store.unreadCount > 0 && <View style={s.notifRedDot} />}
               </TouchableOpacity>
             </View>
 
             {/* Profile Info Area */}
             <View style={s.profileRow}>
-              {/* Left Column: Avatar + Greeting + Badge + Quote */}
-              <View style={s.profileLeft}>
-                <View style={s.avatarWrapper}>
-                  <Image
-                    source={{
-                      uri: vendor.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80',
-                    }}
-                    style={s.avatarImg}
-                  />
-                  {/* Blue Verified Checkmark Badge */}
-                  <View style={s.verifiedBadge}>
-                    <Ionicons name="checkmark" size={10} color="#FFFFFF" />
-                  </View>
+              {/* Avatar + Verified Badge */}
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Profile')}
+                style={s.avatarWrapper}
+                activeOpacity={0.85}
+              >
+                <Image
+                  source={{
+                    uri: vendor.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80',
+                  }}
+                  style={s.avatarImg}
+                />
+                <View style={s.verifiedBadge}>
+                  <Ionicons name="checkmark" size={10} color="#FFFFFF" />
+                </View>
+              </TouchableOpacity>
+
+              {/* Name & Details Column */}
+              <View style={s.profileDetailsCol}>
+                <Text style={s.greetingSub}>Good Day,</Text>
+                <View style={s.nameBadgeRow}>
+                  <Text style={s.vendorNameText} numberOfLines={1}>{displayName}</Text>
+                  <Ionicons name="checkmark-circle" size={16} color="#2563EB" />
                 </View>
 
-                <View style={{ marginTop: 6 }}>
-                  <Text style={s.greetingSub}>Good Morning,</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={s.vendorNameText}>{displayName}</Text>
-                    <View style={s.nameVerifiedBadge}>
-                      <Ionicons name="checkmark-circle" size={16} color="#2563eb" />
-                    </View>
-                  </View>
-
-                  {/* Vendor Captain Tag */}
-                  <View style={s.captainTag}>
-                    <Ionicons name="shield-checkmark" size={13} color="#10B981" />
-                    <Text style={s.captainTagText}>Vendor Captain</Text>
-                  </View>
-
-                  {/* Motivational Quote */}
-                  <Text style={s.mottoText}>Small steps every day{'\n'}create big results.</Text>
+                {/* Vendor Captain Tag */}
+                <View style={s.captainTag}>
+                  <Ionicons name="star" size={12} color="#F59E0B" />
+                  <Text style={s.captainTagText}>Vendor Captain</Text>
+                  <Text style={s.captainRatingText}>★ {displayRating}</Text>
                 </View>
-              </View>
 
-              {/* Right Column: Polo Shirt / Vendor Captain Badge Illustration */}
-              <View style={s.profileRightIllustration}>
-                <View style={s.captainShirtPill}>
-                  <Ionicons name="person" size={44} color="#0D3325" style={{ opacity: 0.85 }} />
-                  <View style={s.shirtBadgeTag}>
-                    <Text style={s.shirtBadgeTagText}>VENDOR</Text>
-                    <Text style={s.shirtBadgeTagText}>CAPTAIN</Text>
-                  </View>
-                </View>
+                {/* Motivational Quote */}
+                <Text style={s.mottoText} numberOfLines={2}>
+                  "The best way to find yourself is to lose yourself in the service of others."
+                </Text>
               </View>
             </View>
           </SafeAreaView>
@@ -172,20 +163,23 @@ export default function HomeScreen({ navigation }: any) {
       >
         {/* ── Ready to receive jobs card ─────────────────────────── */}
         <View style={s.onlineCard}>
-          <View style={s.onlineIconWrap}>
-            <Ionicons name="briefcase" size={20} color="#FFFFFF" />
+          <View style={[s.onlineIconWrap, { backgroundColor: vendor.isOnline ? '#059669' : '#6B7280' }]}>
+            <Ionicons name={vendor.isOnline ? 'flash' : 'power'} size={20} color="#FFFFFF" />
           </View>
           <View style={{ flex: 1, paddingHorizontal: 12 }}>
-            <Text style={s.onlineTitle}>You're ready to receive</Text>
-            <Text style={s.onlineTitle}>new jobs.</Text>
-            <Text style={s.onlineSub}>Stay online and keep going!</Text>
+            <Text style={s.onlineTitle}>
+              {vendor.isOnline ? "You're ready to receive jobs" : "You are currently Offline"}
+            </Text>
+            <Text style={s.onlineSub}>
+              {vendor.isOnline ? 'Stay online to get live bookings' : 'Switch online to start accepting orders'}
+            </Text>
           </View>
           <Switch
             value={vendor.isOnline}
             onValueChange={handleToggleOnline}
-            trackColor={{ false: 'rgba(255,255,255,0.2)', true: '#10B981' }}
+            trackColor={{ false: '#D1D5DB', true: '#10B981' }}
             thumbColor={'#FFFFFF'}
-            ios_backgroundColor="rgba(255,255,255,0.2)"
+            ios_backgroundColor="#D1D5DB"
           />
         </View>
 
@@ -198,7 +192,7 @@ export default function HomeScreen({ navigation }: any) {
             </View>
             <Text style={s.statHeaderLabel}>TODAY'S JOBS</Text>
             <Text style={s.statBigNumber}>{todayJobsCount}</Text>
-            <Text style={s.statFooterMuted}>No jobs yet</Text>
+            <Text style={s.statFooterMuted}>{todayJobsCount > 0 ? `${todayJobsCount} Done` : 'No jobs yet'}</Text>
           </View>
 
           {/* Card 2: Earnings */}
@@ -208,10 +202,7 @@ export default function HomeScreen({ navigation }: any) {
             </View>
             <Text style={s.statHeaderLabel}>EARNINGS</Text>
             <Text style={s.statBigNumber}>₹{displayEarnings}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-              <Ionicons name="arrow-up" size={11} color="#10B981" />
-              <Text style={s.statFooterGreen}>12% <Text style={s.statFooterMuted}>Vs yesterday</Text></Text>
-            </View>
+            <Text style={s.statFooterMuted}>Total Payouts</Text>
           </View>
 
           {/* Card 3: Rating */}
@@ -222,9 +213,9 @@ export default function HomeScreen({ navigation }: any) {
             <Text style={s.statHeaderLabel}>RATING</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <Text style={s.statBigNumber}>{displayRating}</Text>
-              <Ionicons name="star" size={14} color="#F59E0B" />
+              <Ionicons name="star" size={13} color="#F59E0B" />
             </View>
-            <Text style={s.statFooterMuted}>(124 reviews)</Text>
+            <Text style={s.statFooterMuted}>Verified Score</Text>
           </View>
         </View>
 
@@ -233,65 +224,25 @@ export default function HomeScreen({ navigation }: any) {
           <Text style={s.sectionTitle}>Assigned to You</Text>
           <TouchableOpacity onPress={() => navigation.navigate('Jobs')} activeOpacity={0.7}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Text style={s.viewAllText}>View All</Text>
+              <Text style={s.viewAllText}>View All ({assignedJobs.length})</Text>
               <Ionicons name="arrow-forward" size={13} color="#0D3325" />
             </View>
           </TouchableOpacity>
         </View>
 
-        {/* Job Cards */}
+        {/* Real Job Cards or Clean Empty State */}
         {assignedJobs.length === 0 ? (
-          /* Default reference placeholder card when no live job is assigned yet */
-          <TouchableOpacity
-            style={s.jobCard}
-            activeOpacity={0.9}
-            onPress={() => {
-              if (store.jobs.length > 0) {
-                navigation.navigate('JobDetails', { jobId: store.jobs[0].jobId });
-              } else {
-                Alert.alert('No Jobs', 'Waiting for new customer bookings.');
-              }
-            }}
-          >
-            {/* Top row */}
-            <View style={s.jobCardTop}>
-              <View style={s.jobThumbnailWrap}>
-                <Image
-                  source={{ uri: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&q=80' }}
-                  style={s.jobThumbnailImg}
-                />
-              </View>
-
-              <View style={{ flex: 1, paddingLeft: 12 }}>
-                <View style={s.captainBadgePill}>
-                  <Text style={s.captainBadgePillText}>URBAN CAPTAIN</Text>
-                </View>
-                <Text style={s.jobTitleText}>Full Home Cleaning</Text>
-                <View style={s.jobMetaRow}>
-                  <Ionicons name="person-outline" size={13} color="#6B7280" />
-                  <Text style={s.jobCustomerName}>Customer: Visweswaran .P</Text>
-                </View>
-                <View style={s.jobMetaRow}>
-                  <Ionicons name="location-outline" size={13} color="#6B7280" />
-                  <Text style={s.jobDistanceText}>Nearby • 1.2 km</Text>
-                </View>
-              </View>
-
-              <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+          <View style={s.emptyAssignedCard}>
+            <View style={s.emptyIconCircle}>
+              <Ionicons name="briefcase-outline" size={26} color="#0D3325" />
             </View>
-
-            {/* Divider */}
-            <View style={s.jobDivider} />
-
-            {/* Bottom Bar: Schedule & Earnings */}
-            <View style={s.jobCardBottom}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="calendar-outline" size={14} color="#6B7280" />
-                <Text style={s.jobDateText}>Sep 30 • 1:26 PM</Text>
-              </View>
-              <Text style={s.jobPriceText}>₹480</Text>
-            </View>
-          </TouchableOpacity>
+            <Text style={s.emptyAssignedTitle}>No Active Jobs Assigned</Text>
+            <Text style={s.emptyAssignedSub}>
+              {vendor.isOnline
+                ? "You're online! As soon as an order is assigned to you, it will appear here in real time."
+                : 'Turn on your Online switch above to start receiving customer service requests.'}
+            </Text>
+          </View>
         ) : (
           assignedJobs.map((job) => (
             <TouchableOpacity
@@ -319,7 +270,7 @@ export default function HomeScreen({ navigation }: any) {
                   </View>
                   <View style={s.jobMetaRow}>
                     <Ionicons name="location-outline" size={13} color="#6B7280" />
-                    <Text style={s.jobDistanceText}>Nearby • {job.distance || '1.2 km'}</Text>
+                    <Text style={s.jobDistanceText}>{job.address || 'Nearby Location'}</Text>
                   </View>
                 </View>
 
@@ -365,45 +316,61 @@ const s = StyleSheet.create({
   topBarRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingVertical: 6,
   },
+  brandPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(13,51,37,0.15)',
+  },
+  brandPillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0D3325',
+    letterSpacing: 0.5,
+  },
   notifBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
     elevation: 2,
     position: 'relative',
   },
   notifRedDot: {
     position: 'absolute',
-    top: 9,
-    right: 9,
+    top: 8,
+    right: 8,
     width: 7,
     height: 7,
-    borderRadius: 4,
+    borderRadius: 3.5,
     backgroundColor: '#EF4444',
   },
 
   profileRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    paddingTop: 4,
-  },
-  profileLeft: {
-    flex: 1,
+    alignItems: 'center',
+    paddingTop: 8,
+    paddingBottom: 4,
+    gap: 14,
   },
   avatarWrapper: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     position: 'relative',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
@@ -412,10 +379,10 @@ const s = StyleSheet.create({
     elevation: 3,
   },
   avatarImg: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    borderWidth: 2,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 2.5,
     borderColor: '#FFFFFF',
   },
   verifiedBadge: {
@@ -431,108 +398,83 @@ const s = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
   },
+  profileDetailsCol: {
+    flex: 1,
+  },
   greetingSub: {
-    fontSize: 14,
-    color: '#4B5563',
+    fontSize: 12.5,
+    color: '#6B7280',
     fontWeight: '500',
   },
+  nameBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   vendorNameText: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     color: '#111827',
-  },
-  nameVerifiedBadge: {
-    marginLeft: 2,
   },
   captainTag: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 3,
+    marginTop: 2,
   },
   captainTagText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '700',
     color: '#0D3325',
   },
-  mottoText: {
+  captainRatingText: {
     fontSize: 12,
+    fontWeight: '700',
+    color: '#D97706',
+    marginLeft: 4,
+  },
+  mottoText: {
+    fontSize: 11,
     color: '#6B7280',
-    marginTop: 6,
-    lineHeight: 16,
+    marginTop: 3,
+    lineHeight: 15,
+    fontStyle: 'italic',
   },
 
-  profileRightIllustration: {
-    paddingTop: 10,
-    alignItems: 'center',
-  },
-  captainShirtPill: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(13,51,37,0.06)',
-    borderRadius: 18,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(13,51,37,0.1)',
-  },
-  shirtBadgeTag: {
-    backgroundColor: '#0D3325',
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  shirtBadgeTagText: {
-    fontSize: 8,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
+  scroll: { flex: 1 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 10 },
 
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 6,
-  },
-
-  // ── Online Card ──────────────────────────────────────────────────────────
   onlineCard: {
     backgroundColor: '#0D3325',
     borderRadius: 20,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    marginBottom: 16,
     shadowColor: '#0D3325',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.25,
     shadowRadius: 10,
     elevation: 4,
-    marginBottom: 16,
   },
   onlineIconWrap: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   onlineTitle: {
-    fontSize: 14,
+    fontSize: 14.5,
     fontWeight: '700',
     color: '#FFFFFF',
-    lineHeight: 18,
   },
   onlineSub: {
-    fontSize: 11,
+    fontSize: 12,
     color: 'rgba(255,255,255,0.7)',
     marginTop: 2,
   },
 
-  // ── Stats 3-card Row ─────────────────────────────────────────────────────
   statsRow: {
     flexDirection: 'row',
     gap: 10,
@@ -544,45 +486,39 @@ const s = StyleSheet.create({
     borderRadius: 18,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#EBECEF',
+    borderColor: '#E5E7EB',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 5,
+    shadowRadius: 4,
     elevation: 1,
   },
   statIconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
   },
   statHeaderLabel: {
-    fontSize: 9,
+    fontSize: 9.5,
     fontWeight: '800',
     color: '#6B7280',
     letterSpacing: 0.5,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   statBigNumber: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     color: '#111827',
-    marginBottom: 3,
+    marginBottom: 2,
   },
   statFooterMuted: {
-    fontSize: 10,
+    fontSize: 10.5,
     color: '#9CA3AF',
   },
-  statFooterGreen: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#10B981',
-  },
 
-  // ── Section ──────────────────────────────────────────────────────────────
   sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -590,29 +526,63 @@ const s = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
     color: '#111827',
   },
   viewAllText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: '#0D3325',
   },
 
-  // ── Job Card ─────────────────────────────────────────────────────────────
+  emptyAssignedCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  emptyIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#E8F8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  emptyAssignedTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  emptyAssignedSub: {
+    fontSize: 12.5,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+
   jobCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    padding: 14,
+    padding: 16,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#EBECEF',
+    borderColor: '#E5E7EB',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 2,
-    marginBottom: 14,
   },
   jobCardTop: {
     flexDirection: 'row',
@@ -623,7 +593,7 @@ const s = StyleSheet.create({
     height: 64,
     borderRadius: 14,
     overflow: 'hidden',
-    backgroundColor: '#E5F3EB',
+    backgroundColor: '#E5E7EB',
   },
   jobThumbnailImg: {
     width: '100%',
@@ -631,23 +601,23 @@ const s = StyleSheet.create({
   },
   captainBadgePill: {
     alignSelf: 'flex-start',
-    backgroundColor: '#0D3325',
+    backgroundColor: '#E8F8F0',
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 2,
     borderRadius: 8,
     marginBottom: 4,
   },
   captainBadgePillText: {
-    fontSize: 9,
+    fontSize: 9.5,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#059669',
     letterSpacing: 0.5,
   },
   jobTitleText: {
     fontSize: 15,
     fontWeight: '800',
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   jobMetaRow: {
     flexDirection: 'row',
@@ -657,11 +627,11 @@ const s = StyleSheet.create({
   },
   jobCustomerName: {
     fontSize: 12,
+    fontWeight: '600',
     color: '#4B5563',
-    fontWeight: '500',
   },
   jobDistanceText: {
-    fontSize: 12,
+    fontSize: 11.5,
     color: '#6B7280',
   },
   jobDivider: {
@@ -676,8 +646,7 @@ const s = StyleSheet.create({
   },
   jobDateText: {
     fontSize: 12,
-    color: '#4B5563',
-    fontWeight: '600',
+    color: '#6B7280',
   },
   jobPriceText: {
     fontSize: 16,

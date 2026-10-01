@@ -4,7 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { store } from '../store/AppStore';
-import { Radius } from '../theme';
 
 const SERVICE_EMOJI: Record<string, string> = {
   'Home Cleaning': '🏠',
@@ -16,19 +15,41 @@ const SERVICE_EMOJI: Record<string, string> = {
   Carpentry: '🪚',
 };
 
+const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
 export default function EarningsScreen({ navigation }: any) {
   const [, forceUpdate] = useState(0);
   useEffect(() => store.subscribe(() => forceUpdate((n) => n + 1)), []);
 
-  const { vendor } = store;
   const completed = store.jobs.filter((j) => j.status === 'COMPLETED');
-  const todayEarnings = vendor.todayEarnings || store.totalEarnings || 1247;
+  const realTotalEarnings = completed.reduce((sum, j) => sum + (j.vendorEarnings || 0), 0);
+  const realTodayEarnings = completed
+    .filter((j) => j.date === 'Today')
+    .reduce((sum, j) => sum + (j.vendorEarnings || 0), 0);
+
+  // Group 7-day earnings by day of week (Monday=0 ... Sunday=6)
+  const todayDayIdx = (new Date().getDay() + 6) % 7; // Convert Sunday=0 to Monday=0
+  const dailyEarnings = [0, 0, 0, 0, 0, 0, 0];
+  dailyEarnings[todayDayIdx] = realTodayEarnings;
+
+  // Populate from completed jobs timestamps if available
+  completed.forEach((job) => {
+    if (job.completedAt) {
+      const d = new Date(job.completedAt);
+      const dayIdx = (d.getDay() + 6) % 7;
+      if (dayIdx !== todayDayIdx) {
+        dailyEarnings[dayIdx] += job.vendorEarnings || 0;
+      }
+    }
+  });
+
+  const maxBarValue = Math.max(...dailyEarnings, 500);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Earnings & Payouts</Text>
+        <Text style={styles.headerTitle}>Earnings &amp; Payouts</Text>
         <TouchableOpacity onPress={() => navigation.navigate('Notifications')} activeOpacity={0.7}>
           <Ionicons name="notifications-outline" size={24} color="#111827" />
         </TouchableOpacity>
@@ -42,71 +63,58 @@ export default function EarningsScreen({ navigation }: any) {
           end={{ x: 1, y: 1 }}
           style={styles.heroCard}
         >
-          <Text style={styles.heroLabel}>TODAY'S EARNINGS</Text>
-          <Text style={styles.heroAmount}>₹{todayEarnings.toLocaleString('en-IN')}</Text>
+          <Text style={styles.heroLabel}>TODAY'S REAL EARNINGS</Text>
+          <Text style={styles.heroAmount}>₹{realTodayEarnings.toLocaleString('en-IN')}</Text>
           <View style={styles.heroTrend}>
-            <Ionicons name="trending-up" size={14} color="#10B981" />
-            <Text style={styles.heroTrendText}>12% vs yesterday</Text>
+            <Ionicons name="shield-checkmark" size={14} color="#10B981" />
+            <Text style={styles.heroTrendText}>Direct verified earnings</Text>
           </View>
           <View style={styles.heroStats}>
             <View style={styles.heroStat}>
-              <Text style={styles.heroStatLabel}>Jobs Completed</Text>
-              <Text style={styles.heroStatValue}>{completed.length || store.completedJobsCount}</Text>
+              <Text style={styles.heroStatLabel}>Total Completed</Text>
+              <Text style={styles.heroStatValue}>{completed.length} Orders</Text>
             </View>
             <View style={styles.heroStatDivider} />
             <View style={styles.heroStat}>
-              <Text style={styles.heroStatLabel}>Time Online</Text>
-              <Text style={styles.heroStatValue}>6h 15m</Text>
+              <Text style={styles.heroStatLabel}>Total Lifetime</Text>
+              <Text style={styles.heroStatValue}>₹{realTotalEarnings.toLocaleString('en-IN')}</Text>
             </View>
           </View>
         </LinearGradient>
 
-        {/* Stats Grid */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>THIS WEEK</Text>
-            <Text style={styles.statAmount}>₹{(todayEarnings * 4.2).toFixed(0)}</Text>
-            <View style={styles.trend}>
-              <Ionicons name="trending-up" size={13} color="#10B981" />
-              <Text style={styles.trendText}>+5.2%</Text>
-            </View>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>THIS MONTH</Text>
-            <Text style={styles.statAmount}>₹{(todayEarnings * 18).toFixed(0)}</Text>
-            <View style={styles.trend}>
-              <Ionicons name="trending-up" size={13} color="#10B981" />
-              <Text style={styles.trendText}>+12.8%</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* 7-Day Chart */}
+        {/* 7-Day Chart based on real earnings */}
         <View style={styles.chartCard}>
-          <Text style={styles.chartTitle}>Last 7 Days Earnings</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <Text style={styles.chartTitle}>7-Day Earnings Activity</Text>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: '#059669' }}>
+              ₹{dailyEarnings.reduce((a, b) => a + b, 0).toLocaleString('en-IN')} This Week
+            </Text>
+          </View>
+
           <View style={styles.chartBars}>
-            {[480, 850, 600, 1100, 950, 1400, todayEarnings].map((v, i) => {
-              const max = 1500;
-              const pct = Math.min(1, v / max);
-              const isToday = i === 6;
+            {dailyEarnings.map((val, i) => {
+              const pct = val > 0 ? Math.min(1, val / maxBarValue) : 0;
+              const isToday = i === todayDayIdx;
               return (
                 <View key={i} style={styles.barWrap}>
-                  <View
-                    style={[
-                      styles.bar,
-                      {
-                        height: `${Math.max(pct * 100, 12)}%` as any,
-                        backgroundColor: isToday ? '#10B981' : '#E5E7EB',
-                      },
-                    ]}
-                  />
+                  <View style={styles.barTrack}>
+                    <View
+                      style={[
+                        styles.bar,
+                        {
+                          height: val > 0 ? `${Math.max(pct * 100, 15)}%` : '4%',
+                          backgroundColor: isToday ? '#10B981' : val > 0 ? '#0D3325' : '#E5E7EB',
+                        },
+                      ]}
+                    />
+                  </View>
                   <Text
                     style={[
                       styles.barLabel,
                       isToday && { color: '#0D3325', fontWeight: '800' },
                     ]}
                   >
-                    {['M', 'T', 'W', 'T', 'F', 'S', 'S'][i]}
+                    {DAY_LABELS[i]}
                   </Text>
                 </View>
               );
@@ -116,11 +124,14 @@ export default function EarningsScreen({ navigation }: any) {
 
         {/* Completed Jobs History */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Completed Orders</Text>
+          <Text style={styles.sectionTitle}>Completed Orders ({completed.length})</Text>
           {completed.length === 0 ? (
             <View style={styles.emptyCard}>
               <Ionicons name="wallet-outline" size={40} color="#9CA3AF" />
-              <Text style={styles.emptyText}>No completed jobs yet for this period.</Text>
+              <Text style={styles.emptyText}>No completed jobs yet.</Text>
+              <Text style={styles.emptySubText}>
+                When you finish customer service orders, your real earnings and payout records will appear here.
+              </Text>
             </View>
           ) : (
             completed.map((job) => (
@@ -130,10 +141,10 @@ export default function EarningsScreen({ navigation }: any) {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.jobName}>{job.serviceName}</Text>
-                  <Text style={styles.jobCustomer}>{job.customerName} • {job.time}</Text>
+                  <Text style={styles.jobCustomer}>{job.customerName} • {job.date}</Text>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.jobAmount}>₹{job.vendorEarnings}</Text>
+                  <Text style={styles.jobAmount}>+₹{job.vendorEarnings}</Text>
                   <View style={styles.paidRow}>
                     <Ionicons name="checkmark-circle" size={12} color="#10B981" />
                     <Text style={styles.paidText}>PAID</Text>
@@ -144,7 +155,7 @@ export default function EarningsScreen({ navigation }: any) {
           )}
         </View>
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 90 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -160,98 +171,114 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     backgroundColor: '#F6F7F9',
   },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#111827' },
-  scroll: { paddingHorizontal: 16, paddingTop: 6 },
+  headerTitle: { fontSize: 20, fontWeight: '800', color: '#111827' },
+  scroll: { padding: 16 },
+
   heroCard: {
     borderRadius: 24,
     padding: 20,
     marginBottom: 16,
     shadowColor: '#0D3325',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
     elevation: 4,
   },
-  heroLabel: { fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.75)', letterSpacing: 1, marginBottom: 4 },
-  heroAmount: { fontSize: 36, fontWeight: '800', color: '#FFFFFF', marginBottom: 8 },
+  heroLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 0.8,
+  },
+  heroAmount: {
+    fontSize: 34,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginVertical: 4,
+  },
   heroTrend: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: Radius.full,
+    gap: 4,
+    backgroundColor: 'rgba(16,185,129,0.18)',
     alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
     marginBottom: 16,
   },
-  heroTrendText: { fontSize: 12, fontWeight: '700', color: '#FFFFFF' },
+  heroTrendText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#10B981',
+  },
   heroStats: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(0,0,0,0.15)',
-    borderRadius: 16,
-    padding: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.12)',
+    paddingTop: 14,
   },
-  heroStat: { flex: 1, alignItems: 'center' },
-  heroStatDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
-  heroStatLabel: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 2 },
-  heroStatValue: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
-
-  statsGrid: { flexDirection: 'row', gap: 12, marginBottom: 16 },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#EBECEF',
-  },
-  statLabel: { fontSize: 10, fontWeight: '800', color: '#6B7280', letterSpacing: 0.5, marginBottom: 4 },
-  statAmount: { fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 4 },
-  trend: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  trendText: { fontSize: 11, fontWeight: '700', color: '#10B981' },
+  heroStat: { flex: 1 },
+  heroStatDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.12)', marginHorizontal: 12 },
+  heroStatLabel: { fontSize: 11.5, color: 'rgba(255,255,255,0.65)' },
+  heroStatValue: { fontSize: 16, fontWeight: '700', color: '#FFFFFF', marginTop: 2 },
 
   chartCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#EBECEF',
+    padding: 18,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
   },
-  chartTitle: { fontSize: 14, fontWeight: '800', color: '#111827', marginBottom: 14 },
-  chartBars: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', height: 100 },
-  barWrap: { alignItems: 'center', width: 28, height: '100%', justifyContent: 'flex-end' },
-  bar: { width: 14, borderRadius: 7 },
-  barLabel: { fontSize: 11, color: '#9CA3AF', marginTop: 6 },
+  chartTitle: { fontSize: 15, fontWeight: '800', color: '#111827' },
+  chartBars: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    height: 120,
+    paddingTop: 10,
+  },
+  barWrap: { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end' },
+  barTrack: { width: 14, height: '85%', justifyContent: 'flex-end', alignItems: 'center' },
+  bar: { width: '100%', borderRadius: 6 },
+  barLabel: { fontSize: 11, color: '#9CA3AF', marginTop: 6, fontWeight: '600' },
 
-  section: { marginBottom: 16 },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 12 },
+  section: { marginTop: 4 },
+  sectionTitle: { fontSize: 17, fontWeight: '800', color: '#111827', marginBottom: 12 },
+
   emptyCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 28,
+    borderRadius: 20,
+    padding: 30,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#EBECEF',
+    borderColor: '#E5E7EB',
     gap: 8,
   },
-  emptyText: { fontSize: 13, color: '#9CA3AF', fontWeight: '500' },
+  emptyText: { fontSize: 15, fontWeight: '700', color: '#374151' },
+  emptySubText: { fontSize: 12.5, color: '#9CA3AF', textAlign: 'center', lineHeight: 18, paddingHorizontal: 12 },
+
   jobItem: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#EBECEF',
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     gap: 12,
   },
   jobEmoji: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: '#E8F8F0',
     justifyContent: 'center',
     alignItems: 'center',
@@ -260,5 +287,5 @@ const styles = StyleSheet.create({
   jobCustomer: { fontSize: 12, color: '#6B7280', marginTop: 2 },
   jobAmount: { fontSize: 15, fontWeight: '800', color: '#0D3325' },
   paidRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
-  paidText: { fontSize: 10, fontWeight: '800', color: '#10B981' },
+  paidText: { fontSize: 10.5, fontWeight: '800', color: '#10B981' },
 });
