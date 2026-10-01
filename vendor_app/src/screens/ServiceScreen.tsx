@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { store } from '../store/AppStore';
 import { Colors, Typography, Spacing, Radius } from '../theme';
 import { updateBookingStatus, updateBookingAudio } from '../services/firestoreService';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import { Audio } from 'expo-av';
 
 const { width } = Dimensions.get('window');
@@ -112,9 +112,9 @@ export default function ServiceScreen({ route, navigation }: any) {
                 const uri = recording.getURI();
                 if (uri && job) {
                   const cloudinaryUrl = 'https://api.cloudinary.com/v1_1/kzqaiull/video/upload';
-                  const response = await FileSystem.uploadAsync(cloudinaryUrl, uri, {
+                  const response = await (FileSystem as any).uploadAsync?.(cloudinaryUrl, uri, {
                     httpMethod: 'POST',
-                    uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+                    uploadType: (FileSystem as any).FileSystemUploadType?.MULTIPART ?? 0,
                     fieldName: 'file',
                     parameters: { upload_preset: 'Urban Helpers' },
                   });

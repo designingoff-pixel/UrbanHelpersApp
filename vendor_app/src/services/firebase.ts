@@ -5,7 +5,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { initializeAuth, getAuth } from "firebase/auth";
+import { initializeAuth, getAuth, Auth } from "firebase/auth";
 // @ts-expect-error - React Native persistence types
 import { getReactNativePersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
@@ -23,15 +23,19 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-// Use initializeAuth only once (on first init); fall back to getAuth() if already initialized
-let _auth: ReturnType<typeof getAuth>;
+// Use initializeAuth with AsyncStorage persistence, with robust fallback
+let _auth: Auth;
 try {
   _auth = initializeAuth(app, {
     persistence: getReactNativePersistence(AsyncStorage),
   });
 } catch (_) {
-  // Already initialized — just get the existing instance
-  _auth = getAuth(app);
+  try {
+    _auth = getAuth(app);
+  } catch (e) {
+    console.warn("[Firebase] Auth fallback init:", e);
+    _auth = {} as any;
+  }
 }
 
 export const auth    = _auth;

@@ -5,12 +5,11 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
-    "newArchEnabled": false,
+    "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#071522"
+      "backgroundColor": "#0D3325"
     },
     "plugins": [
       [
@@ -18,12 +17,6 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Urban Captain needs your location to show customers where you are.",
           "locationWhenInUsePermission": "Urban Captain needs your location to navigate to customers."
-        }
-      ],
-      [
-        "expo-build-properties",
-        {
-          "android": {}
         }
       ]
     ],
@@ -35,20 +28,25 @@
       },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Urban Captain needs your location to navigate to customers.",
-        "NSLocationAlwaysUsageDescription": "Urban Captain uses your location to show customers where you are."
+        "NSLocationAlwaysUsageDescription": "Urban Captain uses your location to show customers where you are.",
+        "NSCameraUsageDescription": "Urban Captain needs camera access to upload your profile photo.",
+        "NSMicrophoneUsageDescription": "Urban Captain records audio during service for transparency and safety."
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#071522"
+        "backgroundColor": "#0D3325"
       },
       "package": "com.urbancaptain.vendor",
-      "edgeToEdgeEnabled": false,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
-        "FOREGROUND_SERVICE",
+        "RECORD_AUDIO",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES",
         "INTERNET"
       ],
       "config": {

@@ -99,6 +99,13 @@ export default function AppNavigator() {
   useEffect(() => {
     let active = true;
 
+    // Safety fallback timer to prevent any freeze
+    const safetyTimer = setTimeout(() => {
+      if (active && checkingAuth) {
+        setCheckingAuth(false);
+      }
+    }, 1200);
+
     async function checkSession() {
       try {
         const stored = await AsyncStorage.getItem('@vendor_session');
@@ -147,6 +154,7 @@ export default function AppNavigator() {
 
     return () => {
       active = false;
+      clearTimeout(safetyTimer);
     };
   }, []);
 
