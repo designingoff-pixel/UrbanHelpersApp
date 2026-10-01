@@ -262,10 +262,24 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
             end={{ x: 1, y: 1 }}
             style={s.mainHeroHeader}
           >
-            {/* Top Bar: Hamburger menu & brand on left; SOS + Notifications + Profile Avatar on top right */}
+                        {/* Top Bar: Hamburger menu & brand on left; SOS + Notifications + Profile Avatar on top right */}
             <Animated.View style={[s.heroTopBar, headerStyle]}>
               <View style={s.heroTopBarLeft}>
-                
+                <Pressable
+                  style={s.heroHamburgerBtn}
+                  onPress={() => setSideMenuVisible(true)}
+                  accessibilityLabel="Open Menu"
+                >
+                  <Ionicons name="menu" size={23} color="#ffffff" />
+                </Pressable>
+
+                <View style={s.heroBrandWrap}>
+                  <Text style={s.heroBrandTitle}>Urban Services</Text>
+                  <Text style={s.heroBrandSub}>Home &amp; Living Solutions</Text>
+                </View>
+              </View>
+
+              <View style={s.heroTopBarRight}>
                 <Pressable
                   style={s.heroSosBtn}
                   onPress={() => navigation.navigate("EmergencyAssistance")}
