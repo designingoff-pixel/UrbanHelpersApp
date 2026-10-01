@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, Switch,
+  View, Text, ScrollView, TouchableOpacity,
   StyleSheet, Image, Dimensions, ImageBackground,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,8 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { store } from '../store/AppStore';
 import {
   subscribeToVendorJobs,
-  subscribeToNewRequests,
-  setVendorOnlineStatus,
+  subscribeToVendorProfile,
   FirestoreBooking,
 } from '../services/firestoreService';
 
@@ -18,25 +17,21 @@ const { width } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }: any) {
   const [, forceUpdate] = useState(0);
-  const [newRequests, setNewRequests] = useState<FirestoreBooking[]>([]);
 
   useEffect(() => {
     let unsubV: (() => void) | null = null;
-    let unsubN: (() => void) | null = null;
+    let unsubP: (() => void) | null = null;
 
     const startSubscriptions = (uid: string) => {
       if (unsubV) unsubV();
-      if (unsubN) unsubN();
+      if (unsubP) unsubP();
 
       unsubV = subscribeToVendorJobs(uid, (jobs) => {
         store.syncAssignedJobs(jobs);
       });
 
-      unsubN = subscribeToNewRequests((requests) => {
-        setNewRequests(requests);
-        if (store.vendor.isOnline) {
-          store.syncNewRequests(requests);
-        }
+      unsubP = subscribeToVendorProfile(uid, (profileData) => {
+        store.syncVendorProfile(profileData);
       });
     };
 
@@ -54,7 +49,7 @@ export default function HomeScreen({ navigation }: any) {
     return () => {
       unsubStore();
       unsubV?.();
-      unsubN?.();
+      unsubP?.();
     };
   }, []);
 
@@ -66,20 +61,8 @@ export default function HomeScreen({ navigation }: any) {
   const todayJobsCount = completedJobs.filter((j) => j.date === 'Today').length;
   const realTotalEarnings = completedJobs.reduce((sum, j) => sum + (j.vendorEarnings || 0), 0);
 
-  // ── Online toggle ────────────────────────────────────────────────────────
-  const handleToggleOnline = async (v: boolean) => {
-    store.toggleOnline(v);
-    if (!v) {
-      setNewRequests([]);
-      store.syncNewRequests([]);
-    }
-    if (store.vendorId) {
-      await setVendorOnlineStatus(store.vendorId, v).catch(() => {});
-    }
-  };
-
   const displayName = vendor.name || 'Viswesh';
-  const displayRating = vendor.rating ? vendor.rating.toFixed(1) : '5.0';
+  const displayRating = store.effectiveRating ? store.effectiveRating.toFixed(1) : '5.0';
   const displayEarnings = realTotalEarnings.toLocaleString('en-IN');
 
   return (
@@ -161,28 +144,6 @@ export default function HomeScreen({ navigation }: any) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={s.scrollContent}
       >
-        {/* ── Ready to receive jobs card ─────────────────────────── */}
-        <View style={s.onlineCard}>
-          <View style={[s.onlineIconWrap, { backgroundColor: vendor.isOnline ? '#059669' : '#6B7280' }]}>
-            <Ionicons name={vendor.isOnline ? 'flash' : 'power'} size={20} color="#FFFFFF" />
-          </View>
-          <View style={{ flex: 1, paddingHorizontal: 12 }}>
-            <Text style={s.onlineTitle}>
-              {vendor.isOnline ? "You're ready to receive jobs" : "You are currently Offline"}
-            </Text>
-            <Text style={s.onlineSub}>
-              {vendor.isOnline ? 'Stay online to get live bookings' : 'Switch online to start accepting orders'}
-            </Text>
-          </View>
-          <Switch
-            value={vendor.isOnline}
-            onValueChange={handleToggleOnline}
-            trackColor={{ false: '#D1D5DB', true: '#10B981' }}
-            thumbColor={'#FFFFFF'}
-            ios_backgroundColor="#D1D5DB"
-          />
-        </View>
-
         {/* ── Stats 3-card Row ────────────────────────────────────── */}
         <View style={s.statsRow}>
           {/* Card 1: Today's Jobs */}

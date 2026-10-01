@@ -40,6 +40,8 @@ export interface Job {
   recordingStartedAt?: number;
   recordingStoppedAt?: number;
   completedAt?: number;
+  rating?: number;
+  review?: string;
 }
 
 export interface Vendor {

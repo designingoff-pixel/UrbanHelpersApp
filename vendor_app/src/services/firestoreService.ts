@@ -1,13 +1,11 @@
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Urban Captain Vendor App â€” Firestore Service
+// ─────────────────────────────────────────────────────────────────────────────
+// Urban Captain Vendor App — Firestore Service
 //
-// Replaces Socket.io with Firestore real-time listeners.
-// Same Firebase project as customer app + admin dashboard.
-//
+// Real-time Firestore sync with Customer app and Admin Dashboard.
 // Collections used:
-//   /bookings/{bookingId}  â€” booking status + OTP
-//   /vendors/{vendorId}    â€” vendor online status + live location
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//   /bookings/{bookingId}  — booking status + OTP + customer ratings
+//   /vendors/{vendorId}    — vendor online status + live location + profile rating
+// ─────────────────────────────────────────────────────────────────────────────
 
 import {
   collection,
@@ -21,7 +19,7 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 
-// â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 export type BookingStatus =
   | "requested"
@@ -37,11 +35,11 @@ export interface FirestoreBooking {
   id:              string;
   customerId:      string;
   customerName:    string;
-  customerPhone?:  string; // â† added
+  customerPhone?:  string;
   vendorId?:       string;
   vendorName?:     string;
-  vendorPhone?:    string; // â† added
-  vendorImage?:    string; // â† added
+  vendorPhone?:    string;
+  vendorImage?:    string;
   serviceCategory: string;
   subServiceName:  string;
   status:          BookingStatus;
@@ -54,12 +52,15 @@ export interface FirestoreBooking {
   otp?:            string;
   customerLat?:    number;
   customerLng?:    number;
+  rating?:         number;
+  review?:         string;
+  reviewTags?:     string[];
+  rated?:          boolean;
+  completedAt?:    any;
+  createdAt?:      any;
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// JOBS â€” Listen for bookings assigned to this vendor
-// Call this on the HomeScreen / JobsScreen to get live job list
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── JOBS: Listen for all bookings assigned to this vendor ───────────────────
 export function subscribeToVendorJobs(
   vendorId: string,
   onChange:  (bookings: FirestoreBooking[]) => void
@@ -72,11 +73,7 @@ export function subscribeToVendorJobs(
   return onSnapshot(
     q,
     (snapshot) => {
-      const jobs = snapshot.docs
-        .map((d) => ({ id: d.id, ...d.data() } as FirestoreBooking))
-        .filter((b) =>
-          ["assigned", "accepted", "en_route", "arrived", "in_progress"].includes(b.status)
-        );
+      const jobs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as FirestoreBooking));
       onChange(jobs);
     },
     (err) => {
@@ -85,25 +82,31 @@ export function subscribeToVendorJobs(
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Listen for new booking requests that have NO vendor assigned yet.
-// These are broadcast to ALL online vendors â€” first to accept wins.
-// Uses vendorName == "Vendor pending" as the unassigned signal
-// (set by customer app's createBooking).
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Listen for live vendor profile rating & earnings from Admin / Customers ───
+export function subscribeToVendorProfile(
+  vendorId: string,
+  onChange: (vendorData: any) => void
+) {
+  return onSnapshot(
+    doc(db, "vendors", vendorId),
+    (snap) => {
+      if (snap.exists()) {
+        onChange(snap.data());
+      }
+    },
+    (err) => console.warn("[subscribeToVendorProfile] Error:", err)
+  );
+}
+
+// ── Direct unassigned broadcasts (managed via Admin portal) ───────────────────
 export function subscribeToNewRequests(
   onChange: (bookings: FirestoreBooking[]) => void
 ) {
-  // Direct unassigned broadcasts disabled. Bookings are assigned exclusively by Admin.
   onChange([]);
   return () => {};
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Accept a job â€” uses a Firestore TRANSACTION to prevent two vendors
-// accepting the same job simultaneously (race condition protection).
-// Only succeeds if booking is still "requested" or "assigned" with no vendor.
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Accept a job ─────────────────────────────────────────────────────────────
 export async function acceptJob(
   bookingId: string,
   vendorId:  string,
@@ -135,20 +138,18 @@ export async function acceptJob(
     transaction.update(bookingRef, {
       vendorId,
       vendorName,
-      vendorPhone, // â† save vendor phone to booking
-      vendorImage: vendorImage ?? null, // â† save vendor avatar
+      vendorPhone,
+      vendorImage: vendorImage ?? null,
       status:     "accepted",
       acceptedAt: serverTimestamp(),
     });
   });
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Reject a job
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Reject a job ─────────────────────────────────────────────────────────────
 export async function rejectJob(bookingId: string): Promise<void> {
   await updateDoc(doc(db, "bookings", bookingId), {
-    status:     "requested",   // back to requested so admin can reassign
+    status:     "requested",
     vendorId:   null,
     vendorName: "Pending Admin Assignment",
     vendorImage: null,
@@ -156,12 +157,12 @@ export async function rejectJob(bookingId: string): Promise<void> {
   });
 }
 
-// ============================================================================
-// Update booking status
-// ============================================================================
+// ── Update booking status & sync with vendor statistics ───────────────────────
 export async function updateBookingStatus(
   bookingId: string,
-  status:    BookingStatus
+  status:    BookingStatus,
+  vendorId?: string,
+  vendorEarnings?: number
 ): Promise<void> {
   const update: Record<string, any> = {
     status,
@@ -170,9 +171,32 @@ export async function updateBookingStatus(
 
   if (status === "completed") {
     update.completedAt = serverTimestamp();
+    update.paymentStatus = "paid";
   }
 
   await updateDoc(doc(db, "bookings", bookingId), update);
+
+  // When completing a job, update the vendor document in Firestore for Admin Web visibility
+  if (status === "completed" && vendorId) {
+    try {
+      const vRef = doc(db, "vendors", vendorId);
+      const vSnap = await getDoc(vRef);
+      if (vSnap.exists()) {
+        const vData = vSnap.data();
+        const prevCompleted = vData.completedJobs || 0;
+        const prevTotal = vData.totalEarnings || 0;
+        const prevToday = vData.todayEarnings || 0;
+        await updateDoc(vRef, {
+          completedJobs: prevCompleted + 1,
+          totalEarnings: prevTotal + (vendorEarnings || 0),
+          todayEarnings: prevToday + (vendorEarnings || 0),
+          lastCompletedAt: serverTimestamp(),
+        });
+      }
+    } catch (err) {
+      console.warn("[updateBookingStatus] Could not update vendor doc stats:", err);
+    }
+  }
 }
 
 export async function updateBookingAudio(
@@ -213,13 +237,10 @@ export async function setVendorOnlineStatus(
   });
 }
 
-
 export async function verifyOTP(
   bookingId:   string,
   enteredOTP:  string
 ): Promise<boolean> {
-  // Read current OTP from Firestore
-  const { getDoc } = await import("firebase/firestore");
   const snap = await getDoc(doc(db, "bookings", bookingId));
 
   if (!snap.exists()) return false;
@@ -230,7 +251,6 @@ export async function verifyOTP(
   const correct  = storedOtp === inputOtp || (Boolean(storedOtp) && parseInt(storedOtp, 10) === parseInt(inputOtp, 10));
 
   if (correct) {
-    // OTP verified â€” start service
     await updateDoc(doc(db, "bookings", bookingId), {
       status:       "in_progress",
       otpVerified:  true,
@@ -241,16 +261,13 @@ export async function verifyOTP(
   return correct;
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Send OTP via Expo Push API to Customer
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Send OTP via Expo Push API to Customer ────────────────────────────────────
 export async function notifyCustomerOTP(customerId: string, otp: string) {
   try {
     const userDoc = await getDoc(doc(db, "users", customerId));
     if (userDoc.exists()) {
       const data = userDoc.data();
       if (data.pushToken) {
-        // Send Expo Push Notification
         await fetch("https://exp.host/--/api/v2/push/send", {
           method: "POST",
           headers: {
@@ -261,18 +278,15 @@ export async function notifyCustomerOTP(customerId: string, otp: string) {
           body: JSON.stringify({
             to: data.pushToken,
             sound: "default",
-            title: "ðŸ“ Vendor Arrived!",
+            title: "📍 Vendor Arrived!",
             body: `Your vendor has arrived. Share this OTP with them: ${otp}`,
             data: { screen: "LiveTracking" },
           }),
         });
         console.log("OTP Push sent to customer");
-      } else {
-        console.warn("Customer does not have a push token saved.");
       }
     }
   } catch (error) {
     console.error("Failed to send OTP push notification:", error);
   }
 }
-

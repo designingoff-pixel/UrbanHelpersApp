@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Modal, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,7 +9,13 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../services/firebase';
 
 export default function ProfileScreen({ navigation }: any) {
+  const [, forceUpdate] = useState(0);
   const [sosVisible, setSosVisible] = useState(false);
+
+  useEffect(() => {
+    return store.subscribe(() => forceUpdate((n) => n + 1));
+  }, []);
+
   const { vendor } = store;
 
   const handleLogout = () => {
@@ -45,7 +51,7 @@ export default function ProfileScreen({ navigation }: any) {
   const vendorAvatar =
     vendor.avatar ||
     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80';
-  const displayRating = vendor.rating ? vendor.rating.toFixed(1) : '4.8';
+  const displayRating = store.effectiveRating ? store.effectiveRating.toFixed(1) : (vendor.rating ? vendor.rating.toFixed(1) : '5.0');
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>

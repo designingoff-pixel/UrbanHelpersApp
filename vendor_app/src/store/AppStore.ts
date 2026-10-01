@@ -1,18 +1,19 @@
-// Simple reactive store â€” no Redux needed for this scale
-import { MOCK_JOBS, MOCK_NOTIFICATIONS, MOCK_VENDOR } from '../data/mockData';
+// Simple reactive store — no Redux needed for this scale
+import { MOCK_NOTIFICATIONS, MOCK_VENDOR } from '../data/mockData';
 import { Job, JobStatus, Vendor, Notification } from '../data/types';
+import { FirestoreBooking } from '../services/firestoreService';
 
 type Listener = () => void;
 
 class AppStore {
-  vendor: Vendor = { ...MOCK_VENDOR };
+  vendor: Vendor = { ...MOCK_VENDOR, isOnline: true };
   jobs: Job[] = [];
   notifications: Notification[] = [];
   currentJobId: string | null = null;
   recordingSeconds: number = 0;
   isRecording: boolean = false;
 
-  // â”€â”€ Firebase identity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Firebase identity ─────────────────────────────────────────────────────
   firebaseUid: string | null = null;   // Firebase Auth UID (= vendorId in Firestore)
   vendorId: string | null = null;      // same value, explicit alias for clarity
   isFirebaseReady: boolean = false;    // true once auth + Firestore listener running
@@ -28,35 +29,47 @@ class AppStore {
     this._listeners.forEach(fn => fn());
   }
 
-  // â”€â”€ Called by LoginScreen after Firebase Auth succeeds â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Called by LoginScreen after Firebase Auth succeeds ───────────────────
   setFirebaseUser(uid: string, displayName: string, mobile: string) {
-    this.firebaseUid    = uid;
-    this.vendorId       = uid;
+    this.firebaseUid     = uid;
+    this.vendorId        = uid;
     this.isFirebaseReady = true;
-    // Patch vendor identity fields
     this.vendor.vendorId = uid;
     if (displayName) this.vendor.name = displayName;
     if (mobile)      this.vendor.mobile = mobile;
     this.notify();
   }
 
-  // â”€â”€ Sync New Requests (clears out stale requests) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  syncNewRequests(firestoreJobs: import('../services/firestoreService').FirestoreBooking[]) {
+  // ── Update vendor profile from live Firestore /vendors/{id} ──────────────
+  syncVendorProfile(data: any) {
+    if (!data) return;
+    if (typeof data.rating === 'number') this.vendor.rating = data.rating;
+    if (data.name) this.vendor.name = data.name;
+    if (data.mobile) this.vendor.mobile = data.mobile;
+    if (data.avatar) this.vendor.avatar = data.avatar;
+    if (data.services) this.vendor.services = data.services;
+    if (data.serviceArea) this.vendor.serviceArea = data.serviceArea;
+    if (data.serviceRadius) this.vendor.serviceRadius = data.serviceRadius;
+    this.notify();
+  }
+
+  // ── Sync New Requests ────────────────────────────────────────────────────
+  syncNewRequests(firestoreJobs: FirestoreBooking[]) {
     const otherJobs = this.jobs.filter(j => j.status !== 'NEW_REQUEST');
     const mapped = this._mapFirestore(firestoreJobs);
     this.jobs = [...mapped, ...otherJobs];
     this.notify();
   }
 
-  // â”€â”€ Sync Assigned Jobs (keeps current new requests) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  syncAssignedJobs(firestoreJobs: import('../services/firestoreService').FirestoreBooking[]) {
+  // ── Sync Assigned & Completed Jobs ───────────────────────────────────────
+  syncAssignedJobs(firestoreJobs: FirestoreBooking[]) {
     const newReqs = this.jobs.filter(j => j.status === 'NEW_REQUEST');
     const mapped = this._mapFirestore(firestoreJobs);
     this.jobs = [...mapped, ...newReqs];
     this.notify();
   }
 
-  private _mapFirestore(firestoreJobs: import('../services/firestoreService').FirestoreBooking[]): Job[] {
+  private _mapFirestore(firestoreJobs: FirestoreBooking[]): Job[] {
     return firestoreJobs.map(fb => {
       const existing = this.jobs.find(j => j.jobId === fb.id);
       let dateStr = 'Today';
@@ -75,6 +88,10 @@ class AppStore {
       }
 
       const isAssigned = fb.status === 'assigned';
+      let completedTimestamp = existing?.completedAt;
+      if (fb.completedAt) {
+        completedTimestamp = fb.completedAt.toMillis ? fb.completedAt.toMillis() : fb.completedAt;
+      }
 
       return {
         jobId:               fb.id,
@@ -100,11 +117,14 @@ class AppStore {
         checklist:           existing?.checklist ?? [],
         checklistDone:       existing?.checklistDone ?? [],
         createdAt:           Date.now(),
+        completedAt:         completedTimestamp,
+        rating:              fb.rating,
+        review:              fb.review,
       } as Job;
     });
   }
 
-  // Map Firestore status string â†’ vendor app JobStatus
+  // Map Firestore status string → vendor app JobStatus
   private _mapStatus(s: string): JobStatus {
     const map: Record<string, JobStatus> = {
       requested:   'NEW_REQUEST',
@@ -202,6 +222,15 @@ class AppStore {
   }
 
   // ── Computed Stats ──────────────────────────────────────────────────────────
+  get effectiveRating(): number {
+    const ratedJobs = this.jobs.filter(j => typeof j.rating === 'number' && j.rating > 0);
+    if (ratedJobs.length > 0) {
+      const sum = ratedJobs.reduce((acc, j) => acc + (j.rating || 5), 0);
+      return Number((sum / ratedJobs.length).toFixed(1));
+    }
+    return this.vendor.rating || 5.0;
+  }
+
   get completedJobsCount(): number {
     return this.jobs.filter(j => j.status === 'COMPLETED').length;
   }
@@ -218,5 +247,3 @@ class AppStore {
 }
 
 export const store = new AppStore();
-
-

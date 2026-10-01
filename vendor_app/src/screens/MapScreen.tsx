@@ -47,7 +47,9 @@ export default function MapScreen({ route, navigation }: any) {
   const job = store.getJob(jobId);
 
   const [vendorCoords,   setVendorCoords]   = useState<{ lat: number; lng: number } | null>(null);
-  const [customerCoords, setCustomerCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [customerCoords, setCustomerCoords] = useState<{ lat: number; lng: number } | null>(
+    job && job.latitude && job.latitude !== 0 ? { lat: job.latitude, lng: job.longitude } : null
+  );
   const [etaText,        setEtaText]        = useState('Calculating…');
   const [distText,       setDistText]       = useState('');
   const [gpsGranted,     setGpsGranted]     = useState<boolean | null>(null);
@@ -62,7 +64,7 @@ export default function MapScreen({ route, navigation }: any) {
     return onSnapshot(doc(db, 'bookings', job.bookingId), (snap) => {
       if (!snap.exists()) return;
       const d = snap.data();
-      if (d?.customerLat && d?.customerLng)
+      if (d?.customerLat && d?.customerLng && d.customerLat !== 0)
         setCustomerCoords({ lat: d.customerLat, lng: d.customerLng });
     });
   }, [job?.bookingId]);
@@ -121,14 +123,40 @@ export default function MapScreen({ route, navigation }: any) {
 
   const handleNavigation = async () => {
     setNavigating(true);
-    const dest = customerCoords
-      ? `${customerCoords.lat},${customerCoords.lng}`
-      : encodeURIComponent(job.address);
-    const url = Platform.OS === 'ios'
-      ? `maps://app?daddr=${dest}&dirflg=d`
-      : `google.navigation:q=${dest}&mode=d`;
-    const fallback = `https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`;
-    Linking.openURL(await Linking.canOpenURL(url) ? url : fallback);
+
+    const lat = customerCoords?.lat || (job.latitude !== 0 ? job.latitude : null);
+    const lng = customerCoords?.lng || (job.longitude !== 0 ? job.longitude : null);
+
+    let navUrl = '';
+    if (lat && lng) {
+      if (Platform.OS === 'ios') {
+        navUrl = `maps://?daddr=${lat},${lng}&dirflg=d`;
+      } else {
+        navUrl = `google.navigation:q=${lat},${lng}&mode=d`;
+      }
+    } else {
+      const addressQuery = encodeURIComponent(job.address || 'Customer Location');
+      if (Platform.OS === 'ios') {
+        navUrl = `maps://?daddr=${addressQuery}&dirflg=d`;
+      } else {
+        navUrl = `google.navigation:q=${addressQuery}&mode=d`;
+      }
+    }
+
+    const fallbackUrl = lat && lng
+      ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`
+      : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.address || '')}&travelmode=driving`;
+
+    try {
+      const canOpen = await Linking.canOpenURL(navUrl);
+      if (canOpen) {
+        await Linking.openURL(navUrl);
+      } else {
+        await Linking.openURL(fallbackUrl);
+      }
+    } catch {
+      await Linking.openURL(fallbackUrl);
+    }
   };
 
   const handleArrived = async () => {

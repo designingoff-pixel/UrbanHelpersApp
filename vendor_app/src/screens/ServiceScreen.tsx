@@ -21,6 +21,91 @@ function formatTime(secs: number) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+function getDynamicChecklist(serviceType: string, serviceName: string): string[] {
+  const text = `${serviceType} ${serviceName}`.toLowerCase();
+
+  if (text.includes('clean') || text.includes('maid') || text.includes('housekeep')) {
+    return [
+      'Inspect rooms, surfaces & high-touch areas',
+      'Dusting, vacuuming & deep scrubbing of floors',
+      'Kitchen counter, sink & appliance degreasing',
+      'Bathroom sanitation & tile descaling',
+      'Final walkthrough & customer satisfaction review',
+    ];
+  }
+  if (text.includes('ac') || text.includes('air conditioner') || text.includes('cool')) {
+    return [
+      'Inspect indoor/outdoor units & diagnostics',
+      'Deep jet cleaning of filters & condenser coils',
+      'Check refrigerant gas pressure & leak detection',
+      'Measure air output temperature & voltage test',
+      'Complete test run & handover to customer',
+    ];
+  }
+  if (text.includes('plumb') || text.includes('pipe') || text.includes('drain') || text.includes('tap') || text.includes('water')) {
+    return [
+      'Inspect pipeline joints, valves & leakage points',
+      'Replace damaged washers, cartridges & seals',
+      'Clear clogged drains & test drainage velocity',
+      'Verify water pressure & seal integrity',
+      'Final inspection & water flow test with customer',
+    ];
+  }
+  if (text.includes('electr') || text.includes('wire') || text.includes('switch') || text.includes('fan') || text.includes('light')) {
+    return [
+      'Check main circuit breaker & safety switches',
+      'Test wiring integrity, earthing & voltage levels',
+      'Repair / install requested electrical fixtures',
+      'Verify load balance & short-circuit safety',
+      'Final operation test & safety handover',
+    ];
+  }
+  if (text.includes('ro') || text.includes('purifier') || text.includes('filter')) {
+    return [
+      'Measure inlet raw water TDS & input pressure',
+      'Clean housing & replace sediment/carbon filters',
+      'Inspect RO membrane & booster pump efficiency',
+      'Measure purified water TDS & taste test',
+      'Handover test report & maintenance schedule',
+    ];
+  }
+  if (text.includes('pest') || text.includes('termite') || text.includes('cockroach') || text.includes('bedbug')) {
+    return [
+      'Inspect infestation hotspots & nesting areas',
+      'Apply odorless gel & targeted chemical barriers',
+      'Treat perimeter corners, vents & drainage points',
+      'Provide ventilation & family safety guidelines',
+      'Final inspection & warranty certificate handover',
+    ];
+  }
+  if (text.includes('paint') || text.includes('wall')) {
+    return [
+      'Inspect surface condition & masking protection',
+      'Sanding, putty application & primer base coat',
+      'Apply smooth finish coat with uniform texture',
+      'Clean floors, frames & remove masking tape',
+      'Final inspection in natural lighting with customer',
+    ];
+  }
+  if (text.includes('carpent') || text.includes('wood') || text.includes('door') || text.includes('lock')) {
+    return [
+      'Inspect measurements, wood alignment & hardware',
+      'Precision cutting, planing & joint fastening',
+      'Install locks, hinges & test smooth operation',
+      'Sand rough edges & clean wood shavings',
+      'Functional review & handover to customer',
+    ];
+  }
+
+  return [
+    'Inspect service requirements & setup tools',
+    'Execute core professional service protocol',
+    'Disinfect & clean up workspace',
+    'Verify service operation with customer',
+    'Final sign-off & customer review',
+  ];
+}
+
 export default function ServiceScreen({ route, navigation }: any) {
   const { jobId } = route.params;
   const [, forceUpdate] = useState(0);
@@ -79,13 +164,8 @@ export default function ServiceScreen({ route, navigation }: any) {
   const job = store.getJob(jobId);
   if (!job) return null;
 
-  const defaultChecklist = [
-    'Inspect service area and equipment',
-    'Execute deep cleaning protocol',
-    'Disinfect high-touch surfaces',
-    'Final quality inspection with customer',
-  ];
-  const checklistItems = job.checklist.length > 0 ? job.checklist : defaultChecklist;
+  const dynamicChecklist = getDynamicChecklist(job.serviceType || '', job.serviceName || '');
+  const checklistItems = job.checklist && job.checklist.length > 0 ? job.checklist : dynamicChecklist;
   const doneCount = job.checklistDone.length;
   const totalCount = checklistItems.length;
   const progressRatio = totalCount > 0 ? doneCount / totalCount : 0;
@@ -129,7 +209,14 @@ export default function ServiceScreen({ route, navigation }: any) {
             }
 
             store.completeJob(jobId);
-            if (job) updateBookingStatus(job.bookingId, 'completed');
+            if (job) {
+              await updateBookingStatus(
+                job.bookingId,
+                'completed',
+                store.vendorId || undefined,
+                job.vendorEarnings || 0
+              ).catch((e) => console.warn('updateBookingStatus error:', e));
+            }
             setUploading(false);
             navigation.navigate('Complete', { jobId });
           },
