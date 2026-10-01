@@ -5,7 +5,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { initializeAuth, getAuth, getReactNativePersistence } from "firebase/auth";
+import { initializeAuth, getAuth } from "firebase/auth";
+// @ts-expect-error - React Native persistence types
+import { getReactNativePersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import AsyncStorage from "@react-native-async-storage/async-storage";

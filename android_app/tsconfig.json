@@ -1,14 +1,14 @@
 {
-  "extends": "expo/tsconfig.base.json",
   "compilerOptions": {
-    "strict": true,
-    "baseUrl": ".",
+    "strict": false,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "jsx": "react-jsx",
     "paths": {
-      "@/*": ["src/*"]
-    },
-    "types": ["node"],
-    "skipLibCheck": true
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["**/*.ts", "**/*.tsx", "node_modules/expo-location/build/**/*.d.ts"],
+  "include": ["**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules"]
 }

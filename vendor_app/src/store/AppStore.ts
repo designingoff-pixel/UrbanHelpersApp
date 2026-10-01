@@ -24,7 +24,7 @@ class AppStore {
     return () => { this._listeners.delete(fn); };
   }
 
-  private notify() {
+  notify() {
     this._listeners.forEach(fn => fn());
   }
 

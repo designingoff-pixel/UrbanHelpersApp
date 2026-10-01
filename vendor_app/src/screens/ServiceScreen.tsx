@@ -91,7 +91,7 @@ export default function ServiceScreen({ route, navigation }: any) {
   const progressRatio = totalCount > 0 ? doneCount / totalCount : 0;
 
   const handleToggleItem = (item: string) => {
-    store.toggleChecklistItem(jobId, item);
+    store.toggleChecklist(jobId, item);
   };
 
   const handleStopRecordingAndComplete = async () => {
