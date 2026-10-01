@@ -37,10 +37,10 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, State
 }
 
 const eb = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#071522', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  container: { flex: 1, backgroundColor: '#F6F7F9', justifyContent: 'center', alignItems: 'center', padding: 24 },
   title:     { color: '#ef4444', fontSize: 20, fontWeight: '700', marginBottom: 12 },
-  msg:       { color: 'rgba(255,255,255,0.7)', fontSize: 13, textAlign: 'center', marginBottom: 24 },
-  btn:       { backgroundColor: '#2563eb', borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14 },
+  msg:       { color: '#4B5563', fontSize: 13, textAlign: 'center', marginBottom: 24 },
+  btn:       { backgroundColor: '#0D3325', borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14 },
   btnText:   { color: 'white', fontWeight: '700', fontSize: 15 },
 });
 
@@ -50,7 +50,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
-        <StatusBar style="light" backgroundColor="#071522" />
+        <StatusBar style="dark" backgroundColor="#F6F7F9" />
         <AppNavigator />
       </SafeAreaProvider>
     </ErrorBoundary>

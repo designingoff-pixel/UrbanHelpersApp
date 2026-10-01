@@ -82,7 +82,7 @@ function MainTabsScreen({ navigation }: any) {
   const ActiveScreen = TAB_SCREENS[activeTab] ?? HomeScreen;
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.midnightNavy }}>
+    <View style={{ flex: 1, backgroundColor: '#F6F7F9' }}>
       <View style={{ flex: 1 }}>
         <ActiveScreen navigation={navigation} route={{ params: {} }} />
       </View>
@@ -105,15 +105,32 @@ export default function AppNavigator() {
         if (stored) {
           const session = JSON.parse(stored);
           if (session && session.vendorId) {
-            // Verify vendor is still active in Firestore
-            const snap = await getDoc(doc(db, 'vendors', session.vendorId));
-            if (snap.exists() && active) {
-              const data = snap.data();
-              store.setFirebaseUser(session.vendorId, data.name || session.name, data.mobile || session.mobile);
+            // Restore vendor identity immediately so user is never pushed out
+            store.setFirebaseUser(
+              session.vendorId,
+              session.name || 'Vendor Captain',
+              session.mobile || ''
+            );
+            if (active) {
               setInitialRoute('MainTabs');
               setCheckingAuth(false);
-              return;
             }
+
+            // In background: sync with Firestore if online (non-blocking)
+            try {
+              const snap = await getDoc(doc(db, 'vendors', session.vendorId));
+              if (snap.exists() && active) {
+                const data = snap.data();
+                store.setFirebaseUser(
+                  session.vendorId,
+                  data.name || session.name,
+                  data.mobile || session.mobile
+                );
+              }
+            } catch (fsErr) {
+              console.warn('[AppNavigator] Background sync warn:', fsErr);
+            }
+            return;
           }
         }
       } catch (err) {
@@ -135,8 +152,8 @@ export default function AppNavigator() {
 
   if (checkingAuth) {
     return (
-      <View style={{ flex: 1, backgroundColor: Colors.midnightNavy, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={{ flex: 1, backgroundColor: '#F6F7F9', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#0D3325" />
       </View>
     );
   }
