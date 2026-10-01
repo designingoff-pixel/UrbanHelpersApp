@@ -112,9 +112,9 @@ export default function ServiceScreen({ route, navigation }: any) {
                 const uri = recording.getURI();
                 if (uri && job) {
                   const cloudinaryUrl = 'https://api.cloudinary.com/v1_1/kzqaiull/video/upload';
-                  const response = await (FileSystem as any).uploadAsync?.(cloudinaryUrl, uri, {
+                  const response = await (FileSystem as any).uploadAsync(cloudinaryUrl, uri, {
                     httpMethod: 'POST',
-                    uploadType: (FileSystem as any).FileSystemUploadType?.MULTIPART ?? 0,
+                    uploadType: (FileSystem as any).FileSystemUploadType?.MULTIPART ?? (FileSystem as any).UploadType?.MULTIPART ?? 0,
                     fieldName: 'file',
                     parameters: { upload_preset: 'Urban Helpers' },
                   });

@@ -1,6 +1,8 @@
+import 'react-native-gesture-handler';
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import AppNavigator from './src/navigation/AppNavigator';
 
@@ -44,15 +46,15 @@ const eb = StyleSheet.create({
   btnText:   { color: 'white', fontWeight: '700', fontSize: 15 },
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 export default function App() {
   return (
-    <ErrorBoundary>
-      <SafeAreaProvider>
-        <StatusBar style="dark" backgroundColor="#F6F7F9" />
-        <AppNavigator />
-      </SafeAreaProvider>
-    </ErrorBoundary>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ErrorBoundary>
+        <SafeAreaProvider>
+          <StatusBar style="dark" backgroundColor="#F6F7F9" />
+          <AppNavigator />
+        </SafeAreaProvider>
+      </ErrorBoundary>
+    </GestureHandlerRootView>
   );
 }

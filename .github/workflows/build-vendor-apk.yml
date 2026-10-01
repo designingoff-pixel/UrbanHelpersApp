@@ -1,4 +1,4 @@
-﻿name: Build Android APK ── Urban Captain Vendor (Local)
+name: Build Android APK ── Urban Captain Vendor (Local)
 
 on:
   push:
@@ -49,7 +49,6 @@ jobs:
       - name: Build APK
         working-directory: vendor_app
         run: |
-          sed -i '/enableBundleCompression/d' android/app/build.gradle
           cd android
           ./gradlew assembleRelease
         env:
