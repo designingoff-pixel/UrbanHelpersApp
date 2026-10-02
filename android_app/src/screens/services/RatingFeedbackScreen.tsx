@@ -13,7 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "@/services/firebase";
 import { submitBookingRating } from "@/services/bookingService";
 import { RootStackParamList } from "@/navigation/types";
@@ -32,6 +32,14 @@ const COMPLIMENT_TAGS = [
   "Clear communication 💬",
 ];
 
+const COMPLAINT_REASONS = [
+  "Incomplete work / Poor quality",
+  "Damaged household property / item",
+  "Unprofessional conduct or behavior",
+  "Unreasonable overcharging dispute",
+  "Safety / Security violation",
+];
+
 const TIPS = ["No Tip", "₹50", "₹100", "₹200"];
 
 export default function RatingFeedbackScreen({ navigation, route }: Props) {
@@ -44,6 +52,8 @@ export default function RatingFeedbackScreen({ navigation, route }: Props) {
   const [selectedTags, setSelectedTags] = useState<string[]>([COMPLIMENT_TAGS[0], COMPLIMENT_TAGS[1]]);
   const [activeTip, setActiveTip] = useState(0);
   const [review, setReview] = useState("");
+  const [isComplaint, setIsComplaint] = useState(false);
+  const [selectedComplaintReason, setSelectedComplaintReason] = useState(COMPLAINT_REASONS[0]);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -69,82 +79,122 @@ export default function RatingFeedbackScreen({ navigation, route }: Props) {
 
   const handleSubmitRating = async () => {
     if (!bookingId) {
-      navigation.replace("ServiceCompleted", { bookingId: "UH-SAMPLE" });
+      navigation.replace("ServiceCompleted", { bookingId: "UH-DEMO982" });
       return;
     }
+
     setSubmitting(true);
     try {
-      const tipVal = activeTip > 0 ? TIPS[activeTip] : null;
+      // 1. Submit rating & review to booking doc
       await submitBookingRating({
         bookingId,
         rating: stars,
-        review,
-        tags: selectedTags,
-        tip: tipVal,
-        vendorId,
+        tags: isComplaint ? [selectedComplaintReason] : selectedTags,
+        review: review.trim(),
+        tip: activeTip > 0 ? TIPS[activeTip] : undefined,
       });
-      // Navigate to the final digital bill / invoice
-      navigation.replace("ServiceCompleted", { bookingId });
+
+      // 2. If complaint filed or rating <= 2, register in complaints & lock vendor profile
+      if (isComplaint || stars <= 2) {
+        try {
+          await addDoc(collection(db, "complaints"), {
+            bookingId,
+            vendorId: vendorId || "unknown",
+            vendorName,
+            customerName: bookingData?.customerName || "Customer",
+            customerPhone: bookingData?.customerPhone || "",
+            complaintReason: isComplaint ? selectedComplaintReason : "Low Rating (≤2 Stars)",
+            customerNotes: review.trim() || "Quality dissatisfaction",
+            stars,
+            status: "OPEN_INVESTIGATION",
+            createdAt: serverTimestamp(),
+          });
+
+          // Auto-lock vendor profile pending admin review
+          if (vendorId) {
+            await updateDoc(doc(db, "vendors", vendorId), {
+              status: "locked",
+              isLocked: true,
+              lockReason: `Locked due to Customer Complaint on Booking #${bookingId.slice(-6).toUpperCase()}: ${isComplaint ? selectedComplaintReason : "Low Quality Score"}`,
+              lockedAt: serverTimestamp(),
+            });
+          }
+        } catch (compErr) {
+          console.warn("[RatingFeedback] Could not auto-lock vendor:", compErr);
+        }
+      }
+
+      if (isComplaint || stars <= 2) {
+        Alert.alert(
+          "🚨 Complaint Escalated",
+          "Your complaint has been escalated directly to Senior Incident Management. The partner's profile has been placed on hold pending quality investigation.",
+          [
+            {
+              text: "View Receipt",
+              onPress: () => navigation.replace("ServiceCompleted", { bookingId }),
+            },
+          ]
+        );
+      } else {
+        navigation.replace("ServiceCompleted", { bookingId });
+      }
     } catch (e: any) {
-      console.error("[RatingFeedback] Failed to submit:", e);
-      Alert.alert(
-        "Notice",
-        "Could not save rating at this moment, but your bill is ready.",
-        [
-          {
-            text: "View Bill",
-            onPress: () => navigation.replace("ServiceCompleted", { bookingId }),
-          },
-        ]
-      );
+      Alert.alert("Error", e.message || "Failed to submit feedback.");
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleSkip = () => {
-    navigation.replace("ServiceCompleted", { bookingId: bookingId || "UH-SAMPLE" });
   };
 
   return (
     <View style={s.root}>
       {/* Header */}
       <View style={s.header}>
-        <Pressable onPress={() => navigation.goBack()} style={s.iconBtn}>
-          <Ionicons name="close" size={22} color="white" />
+        <Pressable
+          style={s.iconBtn}
+          onPress={() => navigation.replace("ServiceCompleted", { bookingId })}
+        >
+          <Ionicons name="close" size={20} color="white" />
         </Pressable>
-        <Text style={s.headerTitle}>Rate Your Experience</Text>
-        <Pressable onPress={handleSkip} style={s.skipHeaderBtn}>
+        <Text style={s.headerTitle}>Rate &amp; Review</Text>
+        <Pressable
+          style={s.skipHeaderBtn}
+          onPress={() => navigation.replace("ServiceCompleted", { bookingId })}
+        >
           <Text style={s.skipHeaderText}>Skip</Text>
         </Pressable>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-        {/* ── Captain Hero ────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.duration(350)}>
-          <LinearGradient colors={["#1e293b", "#0f172a"]} style={s.hero}>
-            <View style={s.avatarWrap}>
-              <Ionicons name="person" size={32} color="#00bcd4" />
+      <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
+        {/* Hero Partner Info */}
+        <Animated.View entering={FadeInDown.duration(380)} style={s.hero}>
+          <LinearGradient
+            colors={["#10283b", "#091724"]}
+            style={[StyleSheet.absoluteFillObject, { borderRadius: 20 }]}
+          />
+          <View style={s.avatarWrap}>
+            <Ionicons name="person" size={26} color="#00bcd4" />
+          </View>
+          <View style={s.heroTextWrap}>
+            <View style={s.verifiedRow}>
+              <Ionicons name="shield-checkmark" size={13} color="#10b981" />
+              <Text style={s.verifiedText}>Verified Professional</Text>
             </View>
-            <View style={s.heroTextWrap}>
-              <View style={s.verifiedRow}>
-                <Ionicons name="shield-checkmark" size={14} color="#10b981" />
-                <Text style={s.verifiedText}>Verified Professional</Text>
-              </View>
-              <Text style={s.vendorName}>{vendorName}</Text>
-              <Text style={s.serviceSub}>{serviceName}</Text>
-            </View>
-          </LinearGradient>
+            <Text style={s.vendorName}>{vendorName}</Text>
+            <Text style={s.serviceSub}>{serviceName}</Text>
+          </View>
         </Animated.View>
 
-        {/* ── Star Rating ──────────────────────────────────── */}
+        {/* Stars Rating */}
         <Animated.View entering={FadeInDown.delay(80).duration(380)} style={s.card}>
           <Text style={s.cardTitle}>How would you rate the service?</Text>
           <View style={s.starsRow}>
             {[1, 2, 3, 4, 5].map((star) => (
               <Pressable
                 key={star}
-                onPress={() => setStars(star)}
+                onPress={() => {
+                  setStars(star);
+                  if (star <= 2) setIsComplaint(true);
+                }}
                 hitSlop={8}
                 style={s.starTouch}
               >
@@ -159,31 +209,84 @@ export default function RatingFeedbackScreen({ navigation, route }: Props) {
           <Text style={s.starSentiment}>{STAR_LABELS[stars]}</Text>
         </Animated.View>
 
-        {/* ── Compliments / Tags ───────────────────────────── */}
+        {/* File Complaint / Issue Toggle */}
         <Animated.View entering={FadeInDown.delay(120).duration(380)} style={s.card}>
-          <Text style={s.cardTitle}>What did you like the most?</Text>
-          <View style={s.tagsGrid}>
-            {COMPLIMENT_TAGS.map((tag) => {
-              const active = selectedTags.includes(tag);
-              return (
-                <Pressable
-                  key={tag}
-                  onPress={() => toggleTag(tag)}
-                  style={[s.tagChip, active && s.tagChipActive]}
-                >
-                  <Text style={[s.tagText, active && s.tagTextActive]}>{tag}</Text>
-                </Pressable>
-              );
-            })}
+          <View style={s.complaintHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.cardTitle, { marginBottom: 2 }]}>Report Service Complaint</Text>
+              <Text style={s.complaintSub}>Flag serious property damage, safety, or quality issue</Text>
+            </View>
+            <Pressable
+              style={[s.toggleBtn, isComplaint && s.toggleBtnActive]}
+              onPress={() => setIsComplaint(!isComplaint)}
+            >
+              <Ionicons
+                name={isComplaint ? "warning" : "warning-outline"}
+                size={16}
+                color={isComplaint ? "#ffffff" : "rgba(255,255,255,0.6)"}
+              />
+              <Text style={[s.toggleText, isComplaint && s.toggleTextActive]}>
+                {isComplaint ? "Complaint Active" : "Report"}
+              </Text>
+            </Pressable>
           </View>
+
+          {isComplaint && (
+            <View style={s.complaintOptionsWrap}>
+              <Text style={s.selectLabel}>Select primary issue:</Text>
+              {COMPLAINT_REASONS.map((reason) => (
+                <Pressable
+                  key={reason}
+                  style={[s.reasonChip, selectedComplaintReason === reason && s.reasonChipActive]}
+                  onPress={() => setSelectedComplaintReason(reason)}
+                >
+                  <Ionicons
+                    name={selectedComplaintReason === reason ? "radio-button-on" : "radio-button-off"}
+                    size={16}
+                    color={selectedComplaintReason === reason ? "#ef4444" : "#94a3b8"}
+                  />
+                  <Text style={[s.reasonText, selectedComplaintReason === reason && s.reasonTextActive]}>
+                    {reason}
+                  </Text>
+                </Pressable>
+              ))}
+              <View style={s.lockNotice}>
+                <Ionicons name="lock-closed" size={14} color="#ef4444" />
+                <Text style={s.lockNoticeText}>
+                  Submitting a complaint will freeze the vendor's profile pending Admin review.
+                </Text>
+              </View>
+            </View>
+          )}
         </Animated.View>
 
-        {/* ── Write Review ─────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(160).duration(380)} style={s.card}>
-          <Text style={s.cardTitle}>Share your thoughts (Optional)</Text>
+        {/* Compliments / Tags (if not a complaint) */}
+        {!isComplaint && (
+          <Animated.View entering={FadeInDown.delay(160).duration(380)} style={s.card}>
+            <Text style={s.cardTitle}>What did you like the most?</Text>
+            <View style={s.tagsGrid}>
+              {COMPLIMENT_TAGS.map((tag) => {
+                const active = selectedTags.includes(tag);
+                return (
+                  <Pressable
+                    key={tag}
+                    onPress={() => toggleTag(tag)}
+                    style={[s.tagChip, active && s.tagChipActive]}
+                  >
+                    <Text style={[s.tagText, active && s.tagTextActive]}>{tag}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Animated.View>
+        )}
+
+        {/* Write Review */}
+        <Animated.View entering={FadeInDown.delay(200).duration(380)} style={s.card}>
+          <Text style={s.cardTitle}>{isComplaint ? "Detailed Issue Description" : "Share your thoughts (Optional)"}</Text>
           <TextInput
             style={s.reviewInput}
-            placeholder="Tell us about the service quality, cleanliness, or recommendations..."
+            placeholder={isComplaint ? "Please describe what happened in detail..." : "Tell us about the service quality, cleanliness, or recommendations..."}
             placeholderTextColor="rgba(255,255,255,0.3)"
             multiline
             value={review}
@@ -191,38 +294,40 @@ export default function RatingFeedbackScreen({ navigation, route }: Props) {
           />
         </Animated.View>
 
-        {/* ── Tip Captain ──────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(200).duration(380)} style={s.card}>
-          <View style={s.tipHeader}>
-            <View>
-              <Text style={s.cardTitle}>Tip {vendorName}</Text>
-              <Text style={s.tipSub}>100% of the tip goes directly to your professional</Text>
+        {/* Tip Captain (if not complaint) */}
+        {!isComplaint && (
+          <Animated.View entering={FadeInDown.delay(240).duration(380)} style={s.card}>
+            <View style={s.tipHeader}>
+              <View>
+                <Text style={s.cardTitle}>Tip {vendorName}</Text>
+                <Text style={s.tipSub}>100% of the tip goes directly to your professional</Text>
+              </View>
+              <Ionicons name="heart" size={20} color="#ec4899" />
             </View>
-            <Ionicons name="heart" size={20} color="#ec4899" />
-          </View>
-          <View style={s.tipGrid}>
-            {TIPS.map((tip, i) => {
-              const active = activeTip === i;
-              return (
-                <Pressable
-                  key={tip}
-                  onPress={() => setActiveTip(i)}
-                  style={[s.tipBtn, active && s.tipBtnActive]}
-                >
-                  <Text style={[s.tipText, active && s.tipTextActive]}>{tip}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </Animated.View>
+            <View style={s.tipGrid}>
+              {TIPS.map((tip, i) => {
+                const active = activeTip === i;
+                return (
+                  <Pressable
+                    key={tip}
+                    onPress={() => setActiveTip(i)}
+                    style={[s.tipBtn, active && s.tipBtnActive]}
+                  >
+                    <Text style={[s.tipText, active && s.tipTextActive]}>{tip}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Animated.View>
+        )}
 
         <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* ── Bottom CTA ───────────────────────────────────── */}
+      {/* Bottom CTA */}
       <View style={s.cta}>
         <Pressable
-          style={[s.submitBtn, submitting && s.btnDisabled]}
+          style={[s.submitBtn, submitting && s.btnDisabled, isComplaint && { backgroundColor: "#ef4444" }]}
           onPress={handleSubmitRating}
           disabled={submitting}
         >
@@ -230,7 +335,7 @@ export default function RatingFeedbackScreen({ navigation, route }: Props) {
             <ActivityIndicator size="small" color="white" />
           ) : (
             <View style={s.submitContent}>
-              <Text style={s.submitBtnText}>Submit & View Bill</Text>
+              <Text style={s.submitBtnText}>{isComplaint ? "Submit Complaint & Lock Partner" : "Submit & View Bill"}</Text>
               <Ionicons name="arrow-forward" size={18} color="white" />
             </View>
           )}
@@ -313,6 +418,65 @@ const s = StyleSheet.create({
     fontWeight: "700",
     marginTop: 6,
   },
+
+  // Complaint
+  complaintHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  complaintSub: { fontSize: 11.5, color: "rgba(255,255,255,0.5)", marginTop: 1 },
+  toggleBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  toggleBtnActive: {
+    backgroundColor: "#dc2626",
+    borderColor: "#ef4444",
+  },
+  toggleText: { fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: "600" },
+  toggleTextActive: { color: "#ffffff", fontWeight: "700" },
+  complaintOptionsWrap: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.08)",
+    gap: 8,
+  },
+  selectLabel: { fontSize: 12, color: "rgba(255,255,255,0.6)", fontWeight: "600" },
+  reasonChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#091724",
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  reasonChipActive: {
+    borderColor: "#ef4444",
+    backgroundColor: "rgba(239,68,68,0.12)",
+  },
+  reasonText: { fontSize: 13, color: "rgba(255,255,255,0.8)", fontWeight: "500", flex: 1 },
+  reasonTextActive: { color: "#fca5a5", fontWeight: "700" },
+  lockNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(239,68,68,0.1)",
+    padding: 10,
+    borderRadius: 10,
+    marginTop: 4,
+  },
+  lockNoticeText: { fontSize: 11, color: "#fca5a5", flex: 1, lineHeight: 15 },
 
   // Tags
   tagsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },

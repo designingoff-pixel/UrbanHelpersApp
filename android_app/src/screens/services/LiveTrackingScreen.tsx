@@ -12,7 +12,7 @@ import Animated, {
   withRepeat, withSequence, withTiming, FadeInDown,
 } from "react-native-reanimated";
 import {
-  doc, onSnapshot, collection, query, where, limit,
+  doc, onSnapshot, collection, query, where, limit, addDoc, serverTimestamp,
 } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { db } from "@/services/firebase";
@@ -144,7 +144,9 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
           setCustomerCoords({ lat: data.customerLat, lng: data.customerLng });
         }
       });
-      return () => unsub();
+      
+  
+  return () => unsub();
     }
 
     // Fallback: Listen to customer's bookings and prioritize ACTIVE ones (newest first)
@@ -277,6 +279,78 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
     : { latitude: 11.0168, longitude: 76.9558, latitudeDelta: 0.05, longitudeDelta: 0.05 };
 
   // ── Call Vendor Action ───────────────────────────────────────────────────
+  // ── Emergency SOS Action ──────────────────────────────────────────────────
+  const handleCustomerSOS = () => {
+    Alert.alert(
+      "🚨 Emergency Safety SOS",
+      "Do you require immediate emergency assistance at your location?",
+      [
+        {
+          text: "Call Police (112)",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await addDoc(collection(db, "sos_alerts"), {
+                alertType: "POLICE_CUSTOMER_EMERGENCY",
+                bookingId: booking?.id || null,
+                customerId: user?.uid || null,
+                customerName: user?.displayName || "Customer",
+                customerPhone: user?.phoneNumber || "",
+                vendorName: booking?.vendorName || null,
+                vendorPhone: booking?.vendorPhone || null,
+                latitude: customerCoords?.lat || 0,
+                longitude: customerCoords?.lng || 0,
+                status: "OPEN_EMERGENCY",
+                createdAt: serverTimestamp(),
+              });
+            } catch (_) {}
+            Linking.openURL("tel:112");
+          },
+        },
+        {
+          text: "Call Ambulance (108)",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await addDoc(collection(db, "sos_alerts"), {
+                alertType: "MEDICAL_CUSTOMER_EMERGENCY",
+                bookingId: booking?.id || null,
+                customerId: user?.uid || null,
+                customerName: user?.displayName || "Customer",
+                customerPhone: user?.phoneNumber || "",
+                vendorName: booking?.vendorName || null,
+                latitude: customerCoords?.lat || 0,
+                longitude: customerCoords?.lng || 0,
+                status: "OPEN_EMERGENCY",
+                createdAt: serverTimestamp(),
+              });
+            } catch (_) {}
+            Linking.openURL("tel:108");
+          },
+        },
+        {
+          text: "24x7 Safety Helpline",
+          onPress: async () => {
+            try {
+              await addDoc(collection(db, "sos_alerts"), {
+                alertType: "SAFETY_DESK_CUSTOMER",
+                bookingId: booking?.id || null,
+                customerId: user?.uid || null,
+                customerName: user?.displayName || "Customer",
+                customerPhone: user?.phoneNumber || "",
+                vendorName: booking?.vendorName || null,
+                status: "OPEN_EMERGENCY",
+                createdAt: serverTimestamp(),
+              });
+            } catch (_) {}
+            Linking.openURL("tel:18001234567");
+          },
+        },
+        { text: "Cancel", style: "cancel" },
+      ]
+    );
+  };
+
   const handleCall = () => {
     if (!isVendorAccepted || !booking?.vendorPhone) {
       Alert.alert(
@@ -336,9 +410,17 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
           <Ionicons name="arrow-back" size={22} color="white" />
         </Pressable>
         <Text style={s.headerTitle}>Live Tracking</Text>
-        <Pressable style={s.iconBtn} onPress={() => navigation.navigate("Notifications")}>
-          <Ionicons name="notifications-outline" size={20} color="white" />
-        </Pressable>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Pressable
+            style={[s.iconBtn, { backgroundColor: 'rgba(239, 68, 68, 0.2)', borderColor: '#ef4444', borderWidth: 1 }]}
+            onPress={handleCustomerSOS}
+          >
+            <Ionicons name="warning" size={18} color="#ef4444" />
+          </Pressable>
+          <Pressable style={s.iconBtn} onPress={() => navigation.navigate("Notifications")}>
+            <Ionicons name="notifications-outline" size={20} color="white" />
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>

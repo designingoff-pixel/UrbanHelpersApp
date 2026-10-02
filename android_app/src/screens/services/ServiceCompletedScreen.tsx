@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Share,
   Alert,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -72,7 +73,7 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
   const platformFee = 29;
   const discount = booking?.discountAmount || 0;
   const taxablePortion = Math.max(0, total - platformFee + discount);
-  const gst = Math.round(taxablePortion * 0.18 / 1.18);
+  const gst = Math.round((taxablePortion * 0.18) / 1.18);
   const baseServiceFee = Math.max(0, taxablePortion - gst);
   const invoiceNo = `INV-UH-${(booking?.id || "99999").slice(-8).toUpperCase()}`;
 
@@ -190,54 +191,46 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
     th {
       background: #f1f5f9;
       text-align: left;
-      padding: 12px 14px;
+      padding: 10px 12px;
       font-size: 12px;
-      font-weight: 700;
-      color: #475569;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border-top: 1px solid #e2e8f0;
+      color: #64748b;
       border-bottom: 1px solid #e2e8f0;
     }
     td {
-      padding: 14px;
-      font-size: 13.5px;
+      padding: 12px;
+      font-size: 13px;
       border-bottom: 1px solid #f1f5f9;
-      color: #1e293b;
     }
-    .text-right {
-      text-align: right;
-    }
-    .total-section {
+    .total-box {
       margin-left: auto;
-      width: 320px;
-      margin-bottom: 30px;
+      width: 280px;
+      background: #f8fafc;
+      border-radius: 8px;
+      padding: 16px;
+      border: 1px solid #e2e8f0;
     }
     .total-row {
       display: flex;
       justify-content: space-between;
-      padding: 6px 0;
-      font-size: 13.5px;
-      color: #475569;
+      font-size: 13px;
+      margin-bottom: 8px;
     }
-    .grand-total-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 12px 0;
-      border-top: 2px solid #0f172a;
-      border-bottom: 2px solid #0f172a;
-      font-size: 17px;
+    .total-row.grand {
+      font-size: 16px;
       font-weight: 800;
       color: #065f46;
-      margin-top: 8px;
+      border-top: 2px solid #059669;
+      padding-top: 10px;
+      margin-top: 10px;
     }
     .footer {
+      margin-top: 40px;
       border-top: 1px solid #e2e8f0;
-      padding-top: 18px;
-      font-size: 11.5px;
-      color: #94a3b8;
+      padding-top: 16px;
       text-align: center;
-      line-height: 1.6;
+      font-size: 11px;
+      color: #94a3b8;
     }
   </style>
 </head>
@@ -245,253 +238,206 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
   <div class="header">
     <div>
       <h1 class="brand-title">URBAN HELPERS</h1>
-      <div class="brand-tag">Premium Home &amp; Living Services • Verified Partner Network</div>
+      <div class="brand-tag">Everyday Services, Seamlessly Delivered</div>
     </div>
     <div class="invoice-badge">
       <h2 class="invoice-title">TAX INVOICE</h2>
       <div class="invoice-no">${invoiceNo}</div>
-      <div class="paid-stamp">✓ PAID ONLINE</div>
+      <div class="paid-stamp">PAID ONLINE</div>
     </div>
   </div>
 
   <div class="grid">
     <div class="card">
-      <div class="card-title">Billed To (Customer)</div>
-      <div class="card-value-bold">${booking?.customerName || "Valued Customer"}</div>
-      <div class="card-text">${booking?.address || "Address on record"}</div>
-      <div class="card-text">Date: ${formattedDate}</div>
+      <div class="card-title">Billed To</div>
+      <div class="card-value-bold">${booking?.customerName || "Customer"}</div>
+      <div class="card-text">${booking?.address || "Address"}</div>
     </div>
     <div class="card">
-      <div class="card-title">Service Specialist</div>
-      <div class="card-value-bold">${booking?.vendorName || "Verified Specialist Captain"}</div>
-      <div class="card-text">Category: ${booking?.serviceCategory || "General Service"}</div>
-      <div class="card-text">Payment: Prepaid Online (Verified 100%)</div>
+      <div class="card-title">Service Partner</div>
+      <div class="card-value-bold">${booking?.vendorName || "Urban Captain Professional"}</div>
+      <div class="card-text">Category: ${booking?.serviceCategory || "Home Service"}</div>
+      <div class="card-text">Date: ${formattedDate}</div>
     </div>
   </div>
 
   <table>
     <thead>
       <tr>
-        <th>Description</th>
-        <th>SAC Code</th>
-        <th class="text-right">Amount</th>
+        <th>Service Description</th>
+        <th style="text-align:right;">Amount (INR)</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td>
-          <strong>${booking?.subServiceName || booking?.serviceCategory || "Professional Home Service"}</strong><br/>
-          <span style="color:#64748b; font-size:12px;">Completed with 100% Quality &amp; Safety Guarantee</span>
+          <strong>${booking?.subServiceName || booking?.serviceCategory || "Home Service"}</strong><br />
+          <span style="font-size:11px; color:#64748b;">Professional execution by verified partner</span>
         </td>
-        <td>998721</td>
-        <td class="text-right">₹${baseServiceFee}</td>
+        <td style="text-align:right;">₹${baseServiceFee}</td>
       </tr>
       <tr>
-        <td>Platform &amp; Safety Insurance Fee</td>
-        <td>998319</td>
-        <td class="text-right">₹${platformFee}</td>
+        <td>Platform &amp; Safety Convenience Fee</td>
+        <td style="text-align:right;">₹${platformFee}</td>
       </tr>
       <tr>
-        <td>Goods &amp; Services Tax (GST 18%)</td>
-        <td>GST-18</td>
-        <td class="text-right">₹${gst}</td>
+        <td>Applicable Taxes (GST 18%)</td>
+        <td style="text-align:right;">₹${gst}</td>
       </tr>
-      ${discount > 0 ? `
-      <tr style="color: #059669;">
-        <td><strong>Promo / Coupon Discount (${booking?.couponCode || "Applied"})</strong></td>
-        <td>-</td>
-        <td class="text-right"><strong>-₹${discount}</strong></td>
-      </tr>
-      ` : ""}
+      ${
+        discount > 0
+          ? `<tr>
+        <td style="color:#059669;">Promo Discount (${booking?.couponCode || "Applied"})</td>
+        <td style="text-align:right; color:#059669;">-₹${discount}</td>
+      </tr>`
+          : ""
+      }
     </tbody>
   </table>
 
-  <div class="total-section">
+  <div class="total-box">
     <div class="total-row">
-      <span>Subtotal</span>
-      <span>₹${baseServiceFee + platformFee}</span>
+      <span>Subtotal:</span>
+      <span>₹${total}</span>
     </div>
-    <div class="total-row">
-      <span>GST (CGST 9% + SGST 9%)</span>
-      <span>₹${gst}</span>
-    </div>
-    ${discount > 0 ? `
-    <div class="total-row" style="color: #059669;">
-      <span>Discount</span>
-      <span>-₹${discount}</span>
-    </div>
-    ` : ""}
-    <div class="grand-total-row">
-      <span>Grand Total Paid</span>
+    <div class="total-row grand">
+      <span>Total Paid:</span>
       <span>₹${total}</span>
     </div>
   </div>
 
   <div class="footer">
-    <strong>Urban Helpers Technologies Private Limited</strong><br/>
-    GSTIN: 33AAECU1234F1Z5 • CIN: U74999KA2024PTC123456 • HSN/SAC: 998721<br/>
-    This is a computer-generated tax invoice and requires no physical signature.<br/>
-    For support or queries, contact support@urbanhelpers.in
+    Urban Helpers Services Private Limited • HSN/SAC: 998721 • GSTIN: 33AAECU1234F1Z5<br />
+    This is a computer-generated tax receipt. For queries, contact support@urbanhelpers.app.
   </div>
 </body>
 </html>
       `;
 
-      const { uri } = await Print.printToFileAsync({ html, base64: false });
-      const targetPath = `${FileSystem.documentDirectory}UrbanHelpers_Invoice_${invoiceNo}.pdf`;
-      await FileSystem.copyAsync({ from: uri, to: targetPath });
+      const { uri } = await Print.printToFileAsync({ html });
+      const filename = `UrbanHelpers_Invoice_${bookingId || "receipt"}.pdf`;
+      const newPath = `${FileSystem.documentDirectory}${filename}`;
+      await FileSystem.moveAsync({ from: uri, to: newPath });
 
-      const isShareAvailable = await Sharing.isAvailableAsync();
-      if (isShareAvailable) {
-        await Sharing.shareAsync(targetPath, {
-          UTI: ".pdf",
-          mimeType: "application/pdf",
-          dialogTitle: `Download Urban Helpers Invoice ${invoiceNo}`,
-        });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(newPath);
       } else {
-        Alert.alert(
-          "Invoice Downloaded",
-          `Tax invoice PDF has been saved successfully:\n${targetPath}`
-        );
+        Alert.alert("Invoice Downloaded", `Saved to ${newPath}`);
       }
-    } catch (e: any) {
-      console.warn("PDF generation error:", e);
-      Alert.alert("Invoice Download", "Failed to generate PDF. Please try again.");
+    } catch (err: any) {
+      console.warn("Error printing invoice:", err);
+      Alert.alert("Download Error", "Could not generate invoice PDF: " + err.message);
     } finally {
       setDownloading(false);
     }
   };
 
-  const handleShareInvoice = async () => {
-    try {
-      const summary = `📄 URBAN HELPERS OFFICIAL TAX INVOICE\n` +
-        `----------------------------------------\n` +
-        `Invoice No : ${invoiceNo}\n` +
-        `Service    : ${booking?.subServiceName || booking?.serviceCategory}\n` +
-        `Partner    : ${booking?.vendorName || "Verified Specialist"}\n` +
-        `Date       : ${formattedDate}\n` +
-        `Address    : ${booking?.address || "On file"}\n` +
-        `----------------------------------------\n` +
-        `Base Service Fee : ₹${baseServiceFee}\n` +
-        `Safety & Platform: ₹${platformFee}\n` +
-        `Taxes & GST (18%): ₹${gst}\n` +
-        (discount > 0 ? `Promo Discount   : -₹${discount}\n` : "") +
-        `----------------------------------------\n` +
-        `GRAND TOTAL PAID : ₹${total}\n` +
-        `Payment Status   : PAID ONLINE (Verified)\n` +
-        `----------------------------------------\n` +
-        `Thank you for trusting Urban Helpers!`;
-
-      await Share.share({
-        title: `Urban Helpers Invoice ${invoiceNo}`,
-        message: summary,
-      });
-    } catch (e) {
-      console.log("[ShareInvoice] error:", e);
-    }
-  };
-
-  if (loading) {
-    return (
-      <View style={[s.root, s.center]}>
-        <ActivityIndicator size="large" color="#00bcd4" />
-        <Text style={s.loadingText}>Generating Digital Invoice…</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={s.root}>
-      {/* Top Header */}
+      {/* Header */}
       <View style={s.header}>
-        <Pressable onPress={() => navigation.navigate("HomeDashboard")} style={s.iconBtn}>
-          <Ionicons name="close" size={22} color="white" />
+        <Pressable style={s.iconBtn} onPress={() => navigation.navigate("HomeDashboard")}>
+          <Ionicons name="arrow-back" size={20} color="white" />
         </Pressable>
-        <Text style={s.headerTitle}>Invoice & Receipt</Text>
-        <Pressable onPress={handleShareInvoice} style={s.iconBtn}>
-          <Ionicons name="share-social-outline" size={20} color="white" />
-        </Pressable>
+        <Text style={s.headerTitle}>Order Receipt &amp; Summary</Text>
+        <View style={{ width: 38 }} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-        {/* Success Completion Banner */}
-        <Animated.View entering={FadeInDown.duration(350)}>
+      <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
+        {/* Success Hero Banner */}
+        <Animated.View entering={FadeInDown.duration(380)} style={s.heroBanner}>
           <LinearGradient
-            colors={["#064e3b", "#065f46", "#047857"]}
-            style={s.heroBanner}
-          >
-            <View style={s.successIconWrap}>
-              <Ionicons name="checkmark-done" size={32} color="#10b981" />
-            </View>
-            <Text style={s.heroTitle}>Service Completed Successfully!</Text>
-            <Text style={s.heroSub}>
-              Your job has been verified and settled. Here is your official tax invoice.
-            </Text>
-          </LinearGradient>
+            colors={["#065f46", "#042f2e"]}
+            style={[StyleSheet.absoluteFillObject, { borderRadius: 22 }]}
+          />
+          <View style={s.successIconWrap}>
+            <Ionicons name="checkmark-circle" size={38} color="#10b981" />
+          </View>
+          <Text style={s.heroTitle}>Service Completed Successfully</Text>
+          <Text style={s.heroSub}>
+            Your service has been completed and verified by {booking?.vendorName || "our captain"}.
+          </Text>
         </Animated.View>
 
-        {/* Official Tax Invoice Container */}
+        {/* Work Verification Photos (Before & After Proof) */}
+        {(booking?.beforePhoto || booking?.afterPhoto) && (
+          <Animated.View entering={FadeInDown.delay(60).duration(380)} style={s.photoCard}>
+            <View style={s.photoCardHeader}>
+              <Ionicons name="camera" size={16} color="#00bcd4" />
+              <Text style={s.photoCardTitle}>WORK VERIFICATION PROOF</Text>
+            </View>
+            <Text style={s.photoCardSub}>Verified photos captured by your technician before and after service</Text>
+
+            <View style={s.photoGrid}>
+              {booking.beforePhoto && (
+                <View style={s.photoCol}>
+                  <Text style={s.photoTag}>Before Service</Text>
+                  <Image source={{ uri: booking.beforePhoto }} style={s.proofImg} />
+                </View>
+              )}
+              {booking.afterPhoto && (
+                <View style={s.photoCol}>
+                  <Text style={s.photoTag}>After Service</Text>
+                  <Image source={{ uri: booking.afterPhoto }} style={s.proofImg} />
+                </View>
+              )}
+            </View>
+          </Animated.View>
+        )}
+
+        {/* Invoice Summary Card */}
         <Animated.View entering={FadeInDown.delay(100).duration(380)} style={s.invoiceCard}>
-          {/* Invoice Header */}
           <View style={s.invoiceTop}>
             <View>
               <Text style={s.brandTitle}>URBAN HELPERS</Text>
-              <Text style={s.brandSub}>TAX INVOICE / RECEIPT</Text>
+              <Text style={s.brandSub}>Tax Invoice #{invoiceNo.slice(-8)}</Text>
             </View>
             <View style={s.paidBadge}>
-              <Ionicons name="shield-checkmark" size={14} color="#10b981" />
+              <Ionicons name="checkmark-circle" size={14} color="#10b981" />
               <Text style={s.paidBadgeText}>PAID ONLINE</Text>
             </View>
           </View>
 
           <View style={s.dashDivider} />
 
-          {/* Invoice Meta */}
+          {/* Details Grid */}
           <View style={s.metaGrid}>
             <View style={s.metaCol}>
-              <Text style={s.metaLabel}>INVOICE NO.</Text>
-              <Text style={s.metaValBold}>{invoiceNo}</Text>
+              <Text style={s.metaLabel}>SERVICE CATEGORY</Text>
+              <Text style={s.metaValBold}>{booking?.serviceCategory || "Home Service"}</Text>
             </View>
-            <View style={[s.metaCol, { alignItems: "flex-end" }]}>
-              <Text style={s.metaLabel}>DATE & TIME</Text>
-              <Text style={s.metaVal}>{formattedDate}</Text>
-            </View>
-          </View>
-
-          <View style={s.metaGrid}>
             <View style={s.metaCol}>
               <Text style={s.metaLabel}>SERVICE PARTNER</Text>
-              <Text style={s.metaValBold}>{booking?.vendorName || "Verified Specialist"}</Text>
-            </View>
-            <View style={[s.metaCol, { alignItems: "flex-end" }]}>
-              <Text style={s.metaLabel}>SERVICE CATEGORY</Text>
-              <Text style={s.metaVal}>{booking?.serviceCategory || "Home Care"}</Text>
+              <Text style={s.metaValBold}>{booking?.vendorName || "Assigned Partner"}</Text>
             </View>
           </View>
 
-          {/* Customer Address */}
-          {booking?.address && (
-            <View style={{ marginTop: 10 }}>
-              <Text style={s.metaLabel}>SERVICE LOCATION</Text>
-              <Text style={s.metaVal} numberOfLines={2}>{booking.address}</Text>
+          <View style={s.metaGrid}>
+            <View style={s.metaCol}>
+              <Text style={s.metaLabel}>SCHEDULED TIME</Text>
+              <Text style={s.metaVal}>{formattedDate}</Text>
             </View>
-          )}
+            <View style={s.metaCol}>
+              <Text style={s.metaLabel}>LOCATION</Text>
+              <Text style={s.metaVal} numberOfLines={1}>{booking?.address || "Customer Address"}</Text>
+            </View>
+          </View>
 
-          {/* Rating Given Badge if already rated */}
-          {booking?.rated && (
+          {/* Star Rating Badge */}
+          {booking?.rating && (
             <View style={s.ratingBadgeWrap}>
               <View style={s.ratingStarsRow}>
                 {[1, 2, 3, 4, 5].map((st) => (
                   <Ionicons
                     key={st}
-                    name="star"
-                    size={16}
-                    color={st <= (booking.rating || 5) ? "#f59e0b" : "rgba(255,255,255,0.2)"}
+                    name={st <= booking.rating ? "star" : "star-outline"}
+                    size={14}
+                    color="#f59e0b"
                   />
                 ))}
-                <Text style={s.ratingScoreText}>{booking.rating || 5}.0 Rated</Text>
+                <Text style={s.ratingScoreText}>{booking.rating}.0 Customer Rating</Text>
               </View>
-              {booking.review ? (
+              {booking?.review ? (
                 <Text style={s.ratingReviewSnippet}>"{booking.review}"</Text>
               ) : null}
             </View>
@@ -499,32 +445,32 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
 
           <View style={s.solidDivider} />
 
-          {/* Itemized Table */}
+          {/* Line Items Table */}
           <View style={s.tableWrap}>
             <View style={s.tableHeaderRow}>
-              <Text style={s.tableHeadText}>ITEM DESCRIPTION</Text>
+              <Text style={s.tableHeadText}>ITEM / DESCRIPTION</Text>
               <Text style={s.tableHeadTextRight}>AMOUNT</Text>
             </View>
 
             <View style={s.tableItemRow}>
               <View style={{ flex: 1 }}>
-                <Text style={s.itemTitle}>{booking?.subServiceName || booking?.serviceCategory || "Service"}</Text>
-                <Text style={s.itemSub}>Includes professional labor & equipment</Text>
+                <Text style={s.itemTitle}>{booking?.subServiceName || booking?.serviceCategory || "Service Fee"}</Text>
+                <Text style={s.itemSub}>Standard Service Charge</Text>
               </View>
               <Text style={s.itemPrice}>₹{baseServiceFee}</Text>
             </View>
 
             <View style={s.tableItemRow}>
               <View style={{ flex: 1 }}>
-                <Text style={s.itemTitle}>Safety & Platform Fee</Text>
-                <Text style={s.itemSub}>Insurance & secure dispatch coverage</Text>
+                <Text style={s.itemTitle}>Platform &amp; Convenience</Text>
+                <Text style={s.itemSub}>Safety assurance &amp; support</Text>
               </View>
               <Text style={s.itemPrice}>₹{platformFee}</Text>
             </View>
 
             <View style={s.tableItemRow}>
               <View style={{ flex: 1 }}>
-                <Text style={s.itemTitle}>Taxes & GST (18%)</Text>
+                <Text style={s.itemTitle}>Taxes (GST 18%)</Text>
                 <Text style={s.itemSub}>CGST 9% + SGST 9%</Text>
               </View>
               <Text style={s.itemPrice}>₹{gst}</Text>
@@ -537,16 +483,6 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
                   <Text style={s.itemSub}>{booking?.couponCode || "Special Offer"}</Text>
                 </View>
                 <Text style={[s.itemPrice, { color: "#10b981" }]}>-₹{discount}</Text>
-              </View>
-            )}
-
-            {booking?.tip && (
-              <View style={s.tableItemRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.itemTitle}>Captain Tip</Text>
-                  <Text style={s.itemSub}>100% forwarded to partner</Text>
-                </View>
-                <Text style={s.itemPrice}>{booking.tip}</Text>
               </View>
             )}
 
@@ -626,7 +562,7 @@ const s = StyleSheet.create({
     borderRadius: 22,
     padding: 20,
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: "rgba(16,185,129,0.3)",
   },
@@ -648,6 +584,54 @@ const s = StyleSheet.create({
     textAlign: "center",
     marginTop: 6,
     lineHeight: 18,
+  },
+
+  // Photo Proof Card
+  photoCard: {
+    backgroundColor: "#102336",
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  photoCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 4,
+  },
+  photoCardTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#00bcd4",
+    letterSpacing: 0.5,
+  },
+  photoCardSub: {
+    fontSize: 11.5,
+    color: "rgba(255,255,255,0.6)",
+    marginBottom: 12,
+  },
+  photoGrid: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  photoCol: {
+    flex: 1,
+    gap: 6,
+  },
+  photoTag: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#38bdf8",
+  },
+  proofImg: {
+    width: "100%",
+    height: 120,
+    borderRadius: 12,
+    backgroundColor: "#081826",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
   },
 
   // Invoice Card
