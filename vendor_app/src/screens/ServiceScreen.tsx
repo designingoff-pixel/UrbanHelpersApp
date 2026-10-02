@@ -1,16 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Image, Modal, Alert, Dimensions,
+  Image, Modal, Alert, Dimensions, ActivityIndicator, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { store } from '../store/AppStore';
 import { Colors, Typography, Spacing, Radius } from '../theme';
-import { updateBookingStatus, updateBookingAudio } from '../services/firestoreService';
+import { updateBookingStatus, updateBookingAudio, updateBookingPhotos } from '../services/firestoreService';
+import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Audio } from 'expo-av';
+import SOSModal from '../components/SOSModal';
+import DiagnosticModal from '../components/DiagnosticModal';
+import NearbySuppliersModal from '../components/NearbySuppliersModal';
 
 const { width } = Dimensions.get('window');
 
@@ -30,292 +34,368 @@ function getDynamicChecklist(serviceType: string, serviceName: string): string[]
       'Dusting, vacuuming & deep scrubbing of floors',
       'Kitchen counter, sink & appliance degreasing',
       'Bathroom sanitation & tile descaling',
+      'Capture Before & After service proof photos',
       'Final walkthrough & customer satisfaction review',
     ];
   }
   if (text.includes('ac') || text.includes('air conditioner') || text.includes('cool')) {
     return [
-      'Inspect indoor/outdoor units & diagnostics',
+      'Inspect indoor/outdoor units & power diagnostics',
       'Deep jet cleaning of filters & condenser coils',
       'Check refrigerant gas pressure & leak detection',
       'Measure air output temperature & voltage test',
+      'Capture Before & After service proof photos',
       'Complete test run & handover to customer',
     ];
   }
-  if (text.includes('plumb') || text.includes('pipe') || text.includes('drain') || text.includes('tap') || text.includes('water')) {
+  if (text.includes('ro') || text.includes('water') || text.includes('purif')) {
     return [
-      'Inspect pipeline joints, valves & leakage points',
-      'Replace damaged washers, cartridges & seals',
-      'Clear clogged drains & test drainage velocity',
-      'Verify water pressure & seal integrity',
-      'Final inspection & water flow test with customer',
+      'Test raw inlet TDS and check water pressure',
+      'Inspect pre-filter, sediment & activated carbon cartridges',
+      'Check RO membrane rejection rate & pump PSI',
+      'Sanitize storage tank & test output water purity',
+      'Capture Before & After service proof photos',
+      'Handover verified pure water sample to customer',
     ];
   }
-  if (text.includes('electr') || text.includes('wire') || text.includes('switch') || text.includes('fan') || text.includes('light')) {
+  if (text.includes('pest') || text.includes('cockroach') || text.includes('termite')) {
     return [
-      'Check main circuit breaker & safety switches',
-      'Test wiring integrity, earthing & voltage levels',
-      'Repair / install requested electrical fixtures',
-      'Verify load balance & short-circuit safety',
-      'Final operation test & safety handover',
+      'Identify infestation hotspots & entry gaps',
+      'Chemical dilution & safety preparation check',
+      'Targeted gel baiting & crack-and-crevice perimeter spray',
+      'Safety briefing on ventilation to customer',
+      'Capture Before & After treatment photos',
     ];
   }
-  if (text.includes('ro') || text.includes('purifier') || text.includes('filter')) {
+  if (text.includes('plumb') || text.includes('pipe') || text.includes('drain') || text.includes('tap')) {
     return [
-      'Measure inlet raw water TDS & input pressure',
-      'Clean housing & replace sediment/carbon filters',
-      'Inspect RO membrane & booster pump efficiency',
-      'Measure purified water TDS & taste test',
-      'Handover test report & maintenance schedule',
-    ];
-  }
-  if (text.includes('pest') || text.includes('termite') || text.includes('cockroach') || text.includes('bedbug')) {
-    return [
-      'Inspect infestation hotspots & nesting areas',
-      'Apply odorless gel & targeted chemical barriers',
-      'Treat perimeter corners, vents & drainage points',
-      'Provide ventilation & family safety guidelines',
-      'Final inspection & warranty certificate handover',
-    ];
-  }
-  if (text.includes('paint') || text.includes('wall')) {
-    return [
-      'Inspect surface condition & masking protection',
-      'Sanding, putty application & primer base coat',
-      'Apply smooth finish coat with uniform texture',
-      'Clean floors, frames & remove masking tape',
-      'Final inspection in natural lighting with customer',
-    ];
-  }
-  if (text.includes('carpent') || text.includes('wood') || text.includes('door') || text.includes('lock')) {
-    return [
-      'Inspect measurements, wood alignment & hardware',
-      'Precision cutting, planing & joint fastening',
-      'Install locks, hinges & test smooth operation',
-      'Sand rough edges & clean wood shavings',
-      'Functional review & handover to customer',
+      'Inspect pipeline joints, valves & pressure test',
+      'Isolate main water line & disassemble faulty fittings',
+      'Replace worn washers, seals, cartridges or pipes',
+      'Re-pressurize system & verify zero leaks',
+      'Capture Before & After repair photos',
     ];
   }
 
   return [
-    'Inspect service requirements & setup tools',
-    'Execute core professional service protocol',
-    'Disinfect & clean up workspace',
-    'Verify service operation with customer',
-    'Final sign-off & customer review',
+    'Initial pre-service inspection & safety audit',
+    'Execute core service procedures with calibrated tools',
+    'Inspect and verify operational quality',
+    'Capture Before & After work verification photos',
+    'Customer demonstration & clean site handover',
   ];
 }
 
 export default function ServiceScreen({ route, navigation }: any) {
   const { jobId } = route.params;
   const [, forceUpdate] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [completeModalVisible, setCompleteModalVisible] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
+
+  // Photos state
+  const [beforePhoto, setBeforePhoto] = useState<string | null>(null);
+  const [afterPhoto, setAfterPhoto] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState<string | null>(null);
+
+  // Modals
+  const [sosVisible, setSosVisible] = useState(false);
+  const [diagVisible, setDiagVisible] = useState(false);
+  const [suppliersVisible, setSuppliersVisible] = useState(false);
+
+  // Audio recording
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  const [isAudioRecording, setIsAudioRecording] = useState(false);
 
   useEffect(() => {
-    const unsub = store.subscribe(() => forceUpdate((n) => n + 1));
-
-    const job = store.getJob(jobId);
-    if (job) updateBookingStatus(job.bookingId, 'in_progress');
-
-    // Start audio recording
-    const startAudio = async () => {
-      try {
-        await Audio.requestPermissionsAsync();
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: true,
-          playsInSilentModeIOS: true,
-        });
-        const { recording: rec } = await Audio.Recording.createAsync(
-          Audio.RecordingOptionsPresets.HIGH_QUALITY
-        );
-        setRecording(rec);
-      } catch (err: any) {
-        console.warn('Audio start error:', err);
-      }
-    };
-    startAudio();
-
-    timerRef.current = setInterval(() => {
-      if (!paused) store.tickRecording();
-    }, 1000);
-
-    return () => {
-      unsub();
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (recording) {
-        recording.stopAndUnloadAsync().catch(console.error);
-      }
-    };
+    return store.subscribe(() => forceUpdate((n) => n + 1));
   }, []);
 
+  const job = store.getJob(jobId);
+
+  // Load existing photos from job
   useEffect(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (!paused) {
-      timerRef.current = setInterval(() => store.tickRecording(), 1000);
+    if (job?.beforePhoto) setBeforePhoto(job.beforePhoto);
+    if (job?.afterPhoto) setAfterPhoto(job.afterPhoto);
+  }, [job?.beforePhoto, job?.afterPhoto]);
+
+  // Timer interval for recording seconds
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (store.isRecording) {
+      interval = setInterval(() => store.tickRecording(), 1000);
     }
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (interval) clearInterval(interval);
     };
-  }, [paused]);
+  }, [store.isRecording]);
 
-  const job = store.getJob(jobId);
+  // Dynamic checklist initialization
+  useEffect(() => {
+    if (job && (!job.checklist || job.checklist.length === 0)) {
+      const dynamicList = getDynamicChecklist(job.serviceType, job.serviceName);
+      store.updateJobStatus(job.jobId, job.status, { checklist: dynamicList });
+    }
+  }, [job?.jobId]);
+
   if (!job) return null;
 
-  const dynamicChecklist = getDynamicChecklist(job.serviceType || '', job.serviceName || '');
-  const checklistItems = job.checklist && job.checklist.length > 0 ? job.checklist : dynamicChecklist;
+  // ── Photo Picker Handler ──────────────────────────────────────────────────
+  const handlePickPhoto = async (type: 'before' | 'after') => {
+    try {
+      Alert.alert(
+        `Capture ${type === 'before' ? 'Before' : 'After'} Photo`,
+        'Choose photo source:',
+        [
+          {
+            text: 'Camera',
+            onPress: async () => {
+              const { status } = await ImagePicker.requestCameraPermissionsAsync();
+              if (status !== 'granted') {
+                Alert.alert('Permission Needed', 'Camera access is required to take verification photos.');
+                return;
+              }
+              const res = await ImagePicker.launchCameraAsync({
+                allowsEditing: true,
+                quality: 0.6,
+                base64: true,
+              });
+              if (!res.canceled && res.assets && res.assets.length > 0) {
+                savePhotoData(type, res.assets[0]);
+              }
+            },
+          },
+          {
+            text: 'Gallery',
+            onPress: async () => {
+              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+              if (status !== 'granted') {
+                Alert.alert('Permission Needed', 'Gallery access is required.');
+                return;
+              }
+              const res = await ImagePicker.launchImageLibraryAsync({
+                allowsEditing: true,
+                quality: 0.6,
+                base64: true,
+              });
+              if (!res.canceled && res.assets && res.assets.length > 0) {
+                savePhotoData(type, res.assets[0]);
+              }
+            },
+          },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+    } catch (err: any) {
+      Alert.alert('Error', err.message);
+    }
+  };
+
+  const savePhotoData = async (type: 'before' | 'after', asset: ImagePicker.ImagePickerAsset) => {
+    const dataUri = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+    setUploadingPhoto(type);
+
+    if (type === 'before') {
+      setBeforePhoto(dataUri);
+      store.updateJobPhotos(job.jobId, dataUri, undefined);
+      await updateBookingPhotos(job.jobId, { beforePhoto: dataUri });
+    } else {
+      setAfterPhoto(dataUri);
+      store.updateJobPhotos(job.jobId, undefined, dataUri);
+      await updateBookingPhotos(job.jobId, { afterPhoto: dataUri });
+    }
+
+    setUploadingPhoto(null);
+    Alert.alert('✅ Photo Saved', `${type === 'before' ? 'Before' : 'After'} service proof uploaded to booking record.`);
+  };
+
+  // ── Finish & Complete Service ─────────────────────────────────────────────
+  const handleConfirmComplete = async () => {
+    setIsFinishing(true);
+    try {
+      store.completeJob(job.jobId);
+      await updateBookingStatus(job.jobId, 'completed', store.vendorId || undefined, job.vendorEarnings);
+
+      setCompleteModalVisible(false);
+      navigation.navigate('Complete', { jobId: job.jobId });
+    } catch (err: any) {
+      Alert.alert('Error', err.message);
+    } finally {
+      setIsFinishing(false);
+    }
+  };
+
+  const checklistItems = job.checklist && job.checklist.length > 0
+    ? job.checklist
+    : getDynamicChecklist(job.serviceType, job.serviceName);
+
   const doneCount = job.checklistDone.length;
   const totalCount = checklistItems.length;
-  const progressRatio = totalCount > 0 ? doneCount / totalCount : 0;
-
-  const handleToggleItem = (item: string) => {
-    store.toggleChecklist(jobId, item);
-  };
-
-  const handleStopRecordingAndComplete = async () => {
-    Alert.alert(
-      'Stop Service Recording',
-      'Are you sure the service is complete? This will finalize your job and upload the safety recording.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Complete Job',
-          onPress: async () => {
-            if (timerRef.current) clearInterval(timerRef.current);
-            setUploading(true);
-
-            if (recording) {
-              try {
-                await recording.stopAndUnloadAsync();
-                const uri = recording.getURI();
-                if (uri && job) {
-                  const cloudinaryUrl = 'https://api.cloudinary.com/v1_1/kzqaiull/video/upload';
-                  const response = await (FileSystem as any).uploadAsync(cloudinaryUrl, uri, {
-                    httpMethod: 'POST',
-                    uploadType: (FileSystem as any).FileSystemUploadType?.MULTIPART ?? (FileSystem as any).UploadType?.MULTIPART ?? 0,
-                    fieldName: 'file',
-                    parameters: { upload_preset: 'Urban Helpers' },
-                  });
-                  if (response.status === 200) {
-                    const data = JSON.parse(response.body);
-                    await updateBookingAudio(job.bookingId, data.secure_url);
-                  }
-                }
-              } catch (err) {
-                console.warn('Upload error:', err);
-              }
-            }
-
-            store.completeJob(jobId);
-            if (job) {
-              await updateBookingStatus(
-                job.bookingId,
-                'completed',
-                store.vendorId || undefined,
-                job.vendorEarnings || 0
-              ).catch((e) => console.warn('updateBookingStatus error:', e));
-            }
-            setUploading(false);
-            navigation.navigate('Complete', { jobId });
-          },
-        },
-      ]
-    );
-  };
-
-  const vendorAvatar =
-    store.vendor.avatar ||
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80';
 
   return (
-    <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
-      {/* ── Header with Back + Mic ────────────────────────────── */}
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
-        </TouchableOpacity>
-
-        {/* Top Recording Status Pill */}
-        <View style={s.recordingStatusPill}>
-          <View style={s.recordingRedDot} />
-          <Text style={s.recordingStatusText}>RECORDING {formatTime(store.recordingSeconds)}</Text>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Top Header */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <View style={styles.activeDot} />
+          <Text style={styles.headerTitle}>ACTIVE SERVICE</Text>
         </View>
 
-        <TouchableOpacity style={s.micBtn} activeOpacity={0.7}>
-          <Ionicons name="mic-outline" size={22} color="#111827" />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={() => setSosVisible(true)} style={styles.sosHeaderBtn}>
+            <Ionicons name="warning" size={14} color="#DC2626" />
+            <Text style={styles.sosHeaderText}>SOS</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <ScrollView
-        style={s.scroll}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={s.scrollContent}
-      >
-        {/* ── Main Dark Forest Green Card ───────────────────────── */}
-        <LinearGradient
-          colors={['#0D3325', '#164E3A']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={s.heroServiceCard}
-        >
-          {/* Vendor Avatar + In Progress Title Row */}
-          <View style={s.heroCardTopRow}>
-            <View style={s.vendorAvatarWrap}>
-              <Image source={{ uri: vendorAvatar }} style={s.vendorAvatarImg} />
-            </View>
-            <View style={{ flex: 1, paddingLeft: 12 }}>
-              <Text style={s.inProgressSmall}>In Progress:</Text>
-              <Text style={s.inProgressServiceTitle}>{job.serviceName || 'Full Home Cleaning'}</Text>
-              <View style={s.customerMetaRow}>
-                <Ionicons name="person" size={13} color="rgba(255,255,255,0.8)" />
-                <Text style={s.customerMetaText}>with {job.customerName || 'Visweswaran .P'}</Text>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Service Hero Card & Timer */}
+        <View style={styles.timerCard}>
+          <LinearGradient colors={['#0D3325', '#164E3A']} style={styles.timerGrad}>
+            <View style={styles.timerRow}>
+              <View style={styles.categoryPill}>
+                <Ionicons name="construct" size={12} color="#34D399" />
+                <Text style={styles.categoryPillText}>{job.serviceType}</Text>
               </View>
+              <Text style={styles.timerDisplay}>{formatTime(store.recordingSeconds)}</Text>
+            </View>
+
+            <Text style={styles.serviceNameMain}>{job.serviceName}</Text>
+            <Text style={styles.customerSub}>Customer: {job.customerName} • {job.address}</Text>
+          </LinearGradient>
+        </View>
+
+        {/* Quick Technician Tools: Diagnostic Guide & Spare Parts Hub */}
+        <View style={styles.toolsRow}>
+          <TouchableOpacity
+            style={styles.toolBtn}
+            onPress={() => setDiagVisible(true)}
+            activeOpacity={0.8}
+          >
+            <LinearGradient colors={['#0284C7', '#0369A1']} style={styles.toolBtnGrad}>
+              <Ionicons name="hardware-chip-outline" size={18} color="#FFFFFF" />
+              <View>
+                <Text style={styles.toolBtnTitle}>Diagnostic Guide</Text>
+                <Text style={styles.toolBtnSub}>Step-by-step SOP</Text>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.toolBtn}
+            onPress={() => setSuppliersVisible(true)}
+            activeOpacity={0.8}
+          >
+            <LinearGradient colors={['#0F172A', '#334155']} style={styles.toolBtnGrad}>
+              <Ionicons name="storefront-outline" size={18} color="#60A5FA" />
+              <View>
+                <Text style={styles.toolBtnTitle}>Spare Parts Hub</Text>
+                <Text style={styles.toolBtnSub}>Find tool shops</Text>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+
+        {/* Before & After Work Verification Photos */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="camera" size={18} color="#0D3325" />
+            <Text style={styles.sectionTitle}>BEFORE &amp; AFTER WORK PROOF</Text>
+          </View>
+          <Text style={styles.sectionSub}>
+            Take clear photos before starting and after finishing the service for customer transparency and quality rating.
+          </Text>
+
+          <View style={styles.photoGrid}>
+            {/* Before Photo Box */}
+            <View style={styles.photoBox}>
+              <Text style={styles.photoBoxLabel}>1. Before Service</Text>
+              {beforePhoto ? (
+                <View style={styles.photoPreviewWrap}>
+                  <Image source={{ uri: beforePhoto }} style={styles.photoImg} />
+                  <TouchableOpacity
+                    style={styles.replaceBtn}
+                    onPress={() => handlePickPhoto('before')}
+                  >
+                    <Ionicons name="refresh" size={14} color="#FFFFFF" />
+                    <Text style={styles.replaceText}>Retake</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.photoPlaceholder}
+                  onPress={() => handlePickPhoto('before')}
+                  disabled={uploadingPhoto === 'before'}
+                >
+                  {uploadingPhoto === 'before' ? (
+                    <ActivityIndicator size="small" color="#0D3325" />
+                  ) : (
+                    <>
+                      <Ionicons name="camera-outline" size={28} color="#64748B" />
+                      <Text style={styles.photoAddText}>Take Before Photo</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* After Photo Box */}
+            <View style={styles.photoBox}>
+              <Text style={styles.photoBoxLabel}>2. After Service</Text>
+              {afterPhoto ? (
+                <View style={styles.photoPreviewWrap}>
+                  <Image source={{ uri: afterPhoto }} style={styles.photoImg} />
+                  <TouchableOpacity
+                    style={styles.replaceBtn}
+                    onPress={() => handlePickPhoto('after')}
+                  >
+                    <Ionicons name="refresh" size={14} color="#FFFFFF" />
+                    <Text style={styles.replaceText}>Retake</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.photoPlaceholder}
+                  onPress={() => handlePickPhoto('after')}
+                  disabled={uploadingPhoto === 'after'}
+                >
+                  {uploadingPhoto === 'after' ? (
+                    <ActivityIndicator size="small" color="#0D3325" />
+                  ) : (
+                    <>
+                      <Ionicons name="camera-outline" size={28} color="#64748B" />
+                      <Text style={styles.photoAddText}>Take After Photo</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
           </View>
+        </View>
 
-          {/* Safety Shield Badge Pill inside Card */}
-          <View style={s.safetyShieldPill}>
-            <Ionicons name="shield-checkmark" size={18} color="#10B981" />
-            <Text style={s.safetyShieldText}>
-              Service recording is active for transparency and safety.
-            </Text>
-          </View>
-        </LinearGradient>
-
-        {/* ── Service Checklist Card ────────────────────────────── */}
-        <View style={s.card}>
-          <View style={s.checklistHeaderRow}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Ionicons name="clipboard-outline" size={18} color="#0D3325" />
-              <Text style={s.checklistTitle}>Service Checklist</Text>
-            </View>
-            <Text style={s.checklistRatioText}>{doneCount}/{totalCount}</Text>
+        {/* Dynamic Quality Checklist */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="checkbox-outline" size={18} color="#0D3325" />
+            <Text style={styles.sectionTitle}>SERVICE CHECKLIST ({doneCount}/{totalCount})</Text>
           </View>
 
-          {/* Progress Bar */}
-          <View style={s.progressBarBg}>
-            <View style={[s.progressBarFill, { width: `${Math.max(6, progressRatio * 100)}%` }]} />
-          </View>
-
-          {/* Checklist Items */}
-          <View style={{ marginTop: 12, gap: 10 }}>
-            {checklistItems.map((item, index) => {
-              const isDone = job.checklistDone.includes(item);
+          <View style={styles.checklistWrap}>
+            {checklistItems.map((item, idx) => {
+              const isChecked = job.checklistDone.includes(item);
               return (
                 <TouchableOpacity
-                  key={`chk-${index}`}
-                  style={[s.checklistItemRow, isDone && s.checklistItemRowDone]}
-                  onPress={() => handleToggleItem(item)}
-                  activeOpacity={0.7}
+                  key={idx}
+                  style={[styles.checkItem, isChecked && styles.checkItemDone]}
+                  onPress={() => store.toggleChecklist(job.jobId, item)}
+                  activeOpacity={0.8}
                 >
                   <Ionicons
-                    name={isDone ? 'checkmark-circle' : 'ellipse-outline'}
-                    size={20}
-                    color={isDone ? '#10B981' : '#9CA3AF'}
+                    name={isChecked ? 'checkbox' : 'square-outline'}
+                    size={22}
+                    color={isChecked ? '#10B981' : '#94A3B8'}
                   />
-                  <Text style={[s.checklistItemText, isDone && s.checklistItemTextDone]}>
+                  <Text style={[styles.checkText, isChecked && styles.checkTextDone]}>
                     {item}
                   </Text>
                 </TouchableOpacity>
@@ -323,321 +403,391 @@ export default function ServiceScreen({ route, navigation }: any) {
             })}
           </View>
         </View>
-
-        {/* ── Action Buttons Row ────────────────────────────────── */}
-        <View style={s.actionsRow}>
-          {/* Pause / Resume */}
-          <TouchableOpacity
-            style={s.pauseBtn}
-            onPress={() => setPaused(!paused)}
-            activeOpacity={0.8}
-          >
-            <Ionicons name={paused ? 'play' : 'pause'} size={18} color="#111827" />
-            <Text style={s.pauseBtnText}>{paused ? 'Resume' : 'Pause'}</Text>
-          </TouchableOpacity>
-
-          {/* Stop Recording / Complete */}
-          <TouchableOpacity
-            style={s.stopBtn}
-            onPress={handleStopRecordingAndComplete}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="stop" size={18} color="#FFFFFF" />
-            <Text style={s.stopBtnText}>Stop Recording</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Bottom Decorative Trust Artwork ───────────────────── */}
-        <View style={s.bottomTrustWrap}>
-          <View style={s.houseSparkleIconWrap}>
-            <Ionicons name="home-outline" size={28} color="#0D3325" />
-            <Ionicons name="sparkles" size={14} color="#10B981" style={s.sparkleBadge} />
-          </View>
-          <Text style={s.trustMainText}>Service in Progress...</Text>
-          <Text style={s.trustSubText}>Keeping your trust, always</Text>
-        </View>
-
-        <View style={{ height: 60 }} />
       </ScrollView>
+
+      {/* Complete Service Bottom Button */}
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={styles.completeBtn}
+          onPress={() => setCompleteModalVisible(true)}
+          activeOpacity={0.85}
+        >
+          <LinearGradient colors={['#0D3325', '#164E3A']} style={styles.completeBtnGrad}>
+            <Ionicons name="checkmark-done-circle" size={22} color="#FFFFFF" />
+            <Text style={styles.completeBtnText}>Complete &amp; Finalize Service</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+
+      {/* Confirmation Modal */}
+      <Modal visible={completeModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmBox}>
+            <Ionicons name="checkmark-circle" size={54} color="#10B981" />
+            <Text style={styles.confirmTitle}>Complete Service?</Text>
+            <Text style={styles.confirmSub}>
+              Ensure all checklist steps are completed and verification photos are captured.
+            </Text>
+
+            <View style={styles.confirmActions}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setCompleteModalVisible(false)}
+                disabled={isFinishing}
+              >
+                <Text style={styles.cancelBtnText}>Back</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.confirmBtn}
+                onPress={handleConfirmComplete}
+                disabled={isFinishing}
+              >
+                {isFinishing ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.confirmBtnText}>Yes, Complete</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modals */}
+      <SOSModal visible={sosVisible} onClose={() => setSosVisible(false)} currentJobId={job.jobId} />
+      <DiagnosticModal
+        visible={diagVisible}
+        onClose={() => setDiagVisible(false)}
+        serviceCategory={job.serviceType}
+        subServiceName={job.serviceName}
+      />
+      <NearbySuppliersModal
+        visible={suppliersVisible}
+        onClose={() => setSuppliersVisible(false)}
+        serviceCategory={job.serviceType}
+        latitude={job.latitude}
+        longitude={job.longitude}
+        customerAddress={job.address}
+      />
     </SafeAreaView>
   );
 }
 
-const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F6F7F9' },
-
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F6F7F9' },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#F6F7F9',
-  },
-  backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
     backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
   },
-  recordingStatusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(13,51,37,0.85)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 16,
-  },
-  recordingRedDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#EF4444',
-  },
-  recordingStatusText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
-  micBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-
-  scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingTop: 6 },
-
-  // ── Main Hero Card ───────────────────────────────────────────────────────
-  heroServiceCard: {
-    borderRadius: 24,
-    padding: 18,
-    marginBottom: 16,
-    shadowColor: '#0D3325',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  heroCardTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  vendorAvatarWrap: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    overflow: 'hidden',
-  },
-  vendorAvatarImg: {
-    width: '100%',
-    height: '100%',
-  },
-  inProgressSmall: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '500',
-  },
-  inProgressServiceTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginTop: 1,
-  },
-  customerMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 3,
-  },
-  customerMetaText: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.85)',
-  },
-
-  safetyShieldPill: {
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
   },
-  safetyShieldText: {
-    flex: 1,
+  activeDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#10B981',
+  },
+  headerTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#0D3325',
+    letterSpacing: 0.5,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sosHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  sosHeaderText: {
     fontSize: 11,
-    color: '#FFFFFF',
-    lineHeight: 16,
-    fontWeight: '500',
+    fontWeight: '900',
+    color: '#DC2626',
   },
-
-  // ── Card ─────────────────────────────────────────────────────────────────
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+  scroll: {
     padding: 16,
-    borderWidth: 1,
-    borderColor: '#EBECEF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
-    marginBottom: 16,
+    paddingBottom: 110,
+    gap: 14,
   },
-  checklistHeaderRow: {
+  timerCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  timerGrad: {
+    padding: 18,
+    gap: 10,
+  },
+  timerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
   },
-  checklistTitle: {
-    fontSize: 15,
+  categoryPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(52, 211, 153, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  categoryPillText: {
+    fontSize: 11,
     fontWeight: '800',
-    color: '#111827',
+    color: '#34D399',
   },
-  checklistRatioText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#6B7280',
+  timerDisplay: {
+    fontSize: 18,
+    fontFamily: 'monospace',
+    fontWeight: '900',
+    color: '#FFFFFF',
   },
-  progressBarBg: {
-    height: 6,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 3,
+  serviceNameMain: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  customerSub: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  toolsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  toolBtn: {
+    flex: 1,
+    borderRadius: 14,
     overflow: 'hidden',
   },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#10B981',
-    borderRadius: 3,
-  },
-  checklistItemRow: {
+  toolBtnGrad: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#F9FAFB',
     padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
   },
-  checklistItemRowDone: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#DCFCE7',
-  },
-  checklistItemText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#374151',
-    fontWeight: '500',
-  },
-  checklistItemTextDone: {
-    color: '#10B981',
-    textDecorationLine: 'line-through',
-  },
-
-  // ── Actions Row ──────────────────────────────────────────────────────────
-  actionsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  pauseBtn: {
-    flex: 0.8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    paddingVertical: 14,
-    borderRadius: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  pauseBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  stopBtn: {
-    flex: 1.2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#EF4444',
-    paddingVertical: 14,
-    borderRadius: 18,
-    shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  stopBtnText: {
-    fontSize: 14,
+  toolBtnTitle: {
+    fontSize: 12.5,
     fontWeight: '800',
     color: '#FFFFFF',
   },
-
-  // ── Bottom Trust ─────────────────────────────────────────────────────────
-  bottomTrustWrap: {
+  toolBtnSub: {
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 1,
+  },
+  sectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 10,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
+    gap: 8,
   },
-  houseSparkleIconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#E8F8F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-    marginBottom: 8,
-  },
-  sparkleBadge: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-  },
-  trustMainText: {
-    fontSize: 14,
+  sectionTitle: {
+    fontSize: 12,
     fontWeight: '800',
-    color: '#111827',
+    color: '#0F172A',
+    letterSpacing: 0.5,
   },
-  trustSubText: {
+  sectionSub: {
+    fontSize: 11.5,
+    color: '#64748B',
+    lineHeight: 16,
+  },
+  photoGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 6,
+  },
+  photoBox: {
+    flex: 1,
+    gap: 6,
+  },
+  photoBoxLabel: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  photoPlaceholder: {
+    height: 120,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    borderStyle: 'dashed',
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+  },
+  photoAddText: {
     fontSize: 11,
-    color: '#9CA3AF',
-    marginTop: 2,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  photoPreviewWrap: {
+    height: 120,
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#0F172A',
+  },
+  photoImg: {
+    width: '100%',
+    height: '100%',
+  },
+  replaceBtn: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  replaceText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  checklistWrap: {
+    gap: 8,
+    marginTop: 4,
+  },
+  checkItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  checkItemDone: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+  },
+  checkText: {
+    fontSize: 13,
+    color: '#334155',
+    flex: 1,
+    fontWeight: '500',
+  },
+  checkTextDone: {
+    color: '#15803D',
+    textDecorationLine: 'line-through',
+    fontWeight: '600',
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  completeBtn: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  completeBtnGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 15,
+    gap: 8,
+  },
+  completeBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  confirmBox: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    gap: 10,
+  },
+  confirmTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#0F172A',
+  },
+  confirmSub: {
+    fontSize: 12.5,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+    marginTop: 10,
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  confirmBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#0D3325',
+    alignItems: 'center',
+  },
+  confirmBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });

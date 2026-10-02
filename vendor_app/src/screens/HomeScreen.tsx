@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, Image, Dimensions, ImageBackground,
+  StyleSheet, Image, Dimensions, ImageBackground, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,11 +12,24 @@ import {
   subscribeToVendorProfile,
   FirestoreBooking,
 } from '../services/firestoreService';
+import SOSModal from '../components/SOSModal';
+import CalendarModal from '../components/CalendarModal';
+import JobCard from '../components/JobCard';
 
 const { width } = Dimensions.get('window');
 
+const HOME_TABS = [
+  { key: 'requests', label: 'Requests', icon: 'flash' },
+  { key: 'upcoming', label: 'Upcoming', icon: 'calendar-outline' },
+  { key: 'active', label: 'Active', icon: 'radio' },
+  { key: 'completed', label: 'Completed', icon: 'checkmark-done' },
+];
+
 export default function HomeScreen({ navigation }: any) {
   const [, forceUpdate] = useState(0);
+  const [activeTab, setActiveTab] = useState('requests');
+  const [sosVisible, setSosVisible] = useState(false);
+  const [calendarVisible, setCalendarVisible] = useState(false);
 
   useEffect(() => {
     let unsubV: (() => void) | null = null;
@@ -54,15 +67,18 @@ export default function HomeScreen({ navigation }: any) {
   }, []);
 
   const vendor = store.vendor;
-  const assignedJobs = store.jobs.filter(
-    (j) => j.status === 'ADMIN_ASSIGNED' || j.status === 'ACCEPTED' || j.status === 'NAVIGATING' || j.status === 'ARRIVED' || j.status === 'SERVICE_STARTED'
-  );
-  const completedJobs = store.jobs.filter((j) => j.status === 'COMPLETED');
-  const todayJobsCount = completedJobs.filter((j) => j.date === 'Today').length;
-  const realTotalEarnings = completedJobs.reduce((sum, j) => sum + (j.vendorEarnings || 0), 0);
+  const isLocked = vendor.isLocked || vendor.status === 'locked';
 
-  const displayName = vendor.name || 'Viswesh';
+  const requestedJobs = store.getJobsForTab('requests');
+  const upcomingJobs = store.getJobsForTab('upcoming');
+  const activeJobs = store.getJobsForTab('active');
+  const completedJobs = store.getJobsForTab('completed');
+
+  const displayedJobs = store.getJobsForTab(activeTab);
+
+  const displayName = vendor.name || 'Vendor Captain';
   const displayRating = store.effectiveRating ? store.effectiveRating.toFixed(1) : '5.0';
+  const realTotalEarnings = completedJobs.reduce((sum, j) => sum + (j.vendorEarnings || 0), 0);
   const displayEarnings = realTotalEarnings.toLocaleString('en-IN');
 
   return (
@@ -79,539 +95,436 @@ export default function HomeScreen({ navigation }: any) {
             style={s.headerGradient}
           />
           <SafeAreaView edges={['top']} style={s.safeHeader}>
-            {/* Header Top Bar: Brand & Notification Bell */}
+            {/* Header Top Bar: Brand, Calendar & Notification Bell */}
             <View style={s.topBarRow}>
               <View style={s.brandPill}>
                 <Ionicons name="shield-checkmark" size={13} color="#0D3325" />
                 <Text style={s.brandPillText}>URBAN CAPTAIN</Text>
               </View>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('Notifications')}
-                style={s.notifBtn}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="notifications-outline" size={20} color="#111827" />
-                {store.unreadCount > 0 && <View style={s.notifRedDot} />}
-              </TouchableOpacity>
+
+              <View style={s.topActions}>
+                {/* Calendar Button */}
+                <TouchableOpacity
+                  style={s.iconButton}
+                  onPress={() => setCalendarVisible(true)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="calendar-outline" size={18} color="#0D3325" />
+                </TouchableOpacity>
+
+                {/* Notification Bell */}
+                <TouchableOpacity
+                  style={s.iconButton}
+                  onPress={() => navigation.navigate('Notifications')}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="notifications-outline" size={19} color="#0D3325" />
+                  {store.unreadCount > 0 && <View style={s.notifBadge} />}
+                </TouchableOpacity>
+              </View>
             </View>
 
-            {/* Profile Info Area */}
+            {/* Profile Greeting Row */}
             <View style={s.profileRow}>
-              {/* Avatar + Verified Badge */}
               <TouchableOpacity
-                onPress={() => navigation.navigate('Profile')}
-                style={s.avatarWrapper}
-                activeOpacity={0.85}
+                onPress={() => navigation.navigate('MainTabs', { screen: 'Profile' })}
+                style={s.avatarWrap}
               >
                 <Image
                   source={{
-                    uri: vendor.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80',
+                    uri:
+                      vendor.avatar ||
+                      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80',
                   }}
-                  style={s.avatarImg}
+                  style={s.avatar}
                 />
-                <View style={s.verifiedBadge}>
-                  <Ionicons name="checkmark" size={10} color="#FFFFFF" />
-                </View>
+                <View style={s.onlineDot} />
               </TouchableOpacity>
 
-              {/* Name & Details Column */}
-              <View style={s.profileDetailsCol}>
-                <Text style={s.greetingSub}>Good Day,</Text>
-                <View style={s.nameBadgeRow}>
-                  <Text style={s.vendorNameText} numberOfLines={1}>{displayName}</Text>
-                  <Ionicons name="checkmark-circle" size={16} color="#2563EB" />
-                </View>
+              <View style={s.nameBlock}>
+                <Text style={s.greetingText}>Welcome Back,</Text>
+                <Text style={s.captainName} numberOfLines={1}>{displayName}</Text>
+              </View>
 
-                {/* Vendor Captain Tag */}
-                <View style={s.captainTag}>
-                  <Ionicons name="star" size={12} color="#F59E0B" />
-                  <Text style={s.captainTagText}>Vendor Captain</Text>
-                  <Text style={s.captainRatingText}>★ {displayRating}</Text>
-                </View>
+              {/* Rating Badge */}
+              <View style={s.ratingBadge}>
+                <Ionicons name="star" size={14} color="#F59E0B" />
+                <Text style={s.ratingText}>{displayRating}</Text>
+              </View>
+            </View>
 
-                {/* Motivational Quote */}
-                <Text style={s.mottoText} numberOfLines={2}>
-                  "The best way to find yourself is to lose yourself in the service of others."
-                </Text>
+            {/* Stats Cards (Earnings & Completed) */}
+            <View style={s.kpiRow}>
+              <View style={s.kpiCard}>
+                <Text style={s.kpiLabel}>TOTAL EARNED</Text>
+                <Text style={s.kpiValue}>₹{displayEarnings}</Text>
+                <Text style={s.kpiSub}>80% Net Payout</Text>
+              </View>
+              <View style={s.kpiCard}>
+                <Text style={s.kpiLabel}>COMPLETED JOBS</Text>
+                <Text style={s.kpiValue}>{completedJobs.length}</Text>
+                <Text style={s.kpiSub}>Verified 5★ Quality</Text>
               </View>
             </View>
           </SafeAreaView>
         </ImageBackground>
       </View>
 
+      {/* Auto-Lock Alert Banner if Locked */}
+      {isLocked && (
+        <View style={s.lockedBanner}>
+          <Ionicons name="lock-closed" size={20} color="#DC2626" />
+          <View style={{ flex: 1 }}>
+            <Text style={s.lockedTitle}>Account Temporarily Locked</Text>
+            <Text style={s.lockedDesc}>
+              {vendor.lockReason || 'Locked due to 3 skipped service requests or customer complaint review. Contact Admin to unlock.'}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* 4 Workflow Tabs: Requests, Upcoming, Active, Completed */}
+      <View style={s.tabsWrap}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabsScroll}>
+          {HOME_TABS.map((t) => {
+            const count = store.getJobsForTab(t.key).length;
+            const isActive = activeTab === t.key;
+            return (
+              <TouchableOpacity
+                key={t.key}
+                onPress={() => setActiveTab(t.key)}
+                style={[s.tabPill, isActive && s.tabPillActive]}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name={t.icon as any}
+                  size={14}
+                  color={isActive ? '#FFFFFF' : '#475569'}
+                />
+                <Text style={[s.tabPillText, isActive && s.tabPillTextActive]}>
+                  {t.label}
+                  {count > 0 ? ` (${count})` : ''}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Jobs List for active tab */}
       <ScrollView
-        style={s.scroll}
+        style={s.contentScroll}
+        contentContainerStyle={s.contentContainer}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={s.scrollContent}
       >
-        {/* ── Stats 3-card Row ────────────────────────────────────── */}
-        <View style={s.statsRow}>
-          {/* Card 1: Today's Jobs */}
-          <View style={s.statCard}>
-            <View style={[s.statIconCircle, { backgroundColor: '#E8F8F0' }]}>
-              <Ionicons name="calendar-outline" size={16} color="#10B981" />
-            </View>
-            <Text style={s.statHeaderLabel}>TODAY'S JOBS</Text>
-            <Text style={s.statBigNumber}>{todayJobsCount}</Text>
-            <Text style={s.statFooterMuted}>{todayJobsCount > 0 ? `${todayJobsCount} Done` : 'No jobs yet'}</Text>
-          </View>
-
-          {/* Card 2: Earnings */}
-          <View style={s.statCard}>
-            <View style={[s.statIconCircle, { backgroundColor: '#E8F8F0' }]}>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#10B981' }}>₹</Text>
-            </View>
-            <Text style={s.statHeaderLabel}>EARNINGS</Text>
-            <Text style={s.statBigNumber}>₹{displayEarnings}</Text>
-            <Text style={s.statFooterMuted}>Total Payouts</Text>
-          </View>
-
-          {/* Card 3: Rating */}
-          <View style={s.statCard}>
-            <View style={[s.statIconCircle, { backgroundColor: '#F3E8FF' }]}>
-              <Ionicons name="star" size={15} color="#8B5CF6" />
-            </View>
-            <Text style={s.statHeaderLabel}>RATING</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Text style={s.statBigNumber}>{displayRating}</Text>
-              <Ionicons name="star" size={13} color="#F59E0B" />
-            </View>
-            <Text style={s.statFooterMuted}>Verified Score</Text>
-          </View>
-        </View>
-
-        {/* ── Assigned to You Section ───────────────────────────── */}
-        <View style={s.sectionHeaderRow}>
-          <Text style={s.sectionTitle}>Assigned to You</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Jobs')} activeOpacity={0.7}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Text style={s.viewAllText}>View All ({assignedJobs.length})</Text>
-              <Ionicons name="arrow-forward" size={13} color="#0D3325" />
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* Real Job Cards or Clean Empty State */}
-        {assignedJobs.length === 0 ? (
-          <View style={s.emptyAssignedCard}>
-            <View style={s.emptyIconCircle}>
-              <Ionicons name="briefcase-outline" size={26} color="#0D3325" />
-            </View>
-            <Text style={s.emptyAssignedTitle}>No Active Jobs Assigned</Text>
-            <Text style={s.emptyAssignedSub}>
-              {vendor.isOnline
-                ? "You're online! As soon as an order is assigned to you, it will appear here in real time."
-                : 'Turn on your Online switch above to start receiving customer service requests.'}
+        {displayedJobs.length === 0 ? (
+          <View style={s.emptyContainer}>
+            <Ionicons name="briefcase-outline" size={54} color="#CBD5E1" />
+            <Text style={s.emptyTitle}>No {activeTab} jobs right now</Text>
+            <Text style={s.emptySub}>
+              {activeTab === 'requests'
+                ? 'Incoming customer bookings will appear here instantly.'
+                : `You do not have any ${activeTab} bookings.`}
             </Text>
           </View>
         ) : (
-          assignedJobs.map((job) => (
-            <TouchableOpacity
+          displayedJobs.map((job) => (
+            <JobCard
               key={job.jobId}
-              style={s.jobCard}
-              activeOpacity={0.9}
-              onPress={() => navigation.navigate('JobDetails', { jobId: job.jobId })}
-            >
-              <View style={s.jobCardTop}>
-                <View style={s.jobThumbnailWrap}>
-                  <Image
-                    source={{ uri: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&q=80' }}
-                    style={s.jobThumbnailImg}
-                  />
-                </View>
-
-                <View style={{ flex: 1, paddingLeft: 12 }}>
-                  <View style={s.captainBadgePill}>
-                    <Text style={s.captainBadgePillText}>URBAN CAPTAIN</Text>
-                  </View>
-                  <Text style={s.jobTitleText}>{job.serviceName}</Text>
-                  <View style={s.jobMetaRow}>
-                    <Ionicons name="person-outline" size={13} color="#6B7280" />
-                    <Text style={s.jobCustomerName}>Customer: {job.customerName}</Text>
-                  </View>
-                  <View style={s.jobMetaRow}>
-                    <Ionicons name="location-outline" size={13} color="#6B7280" />
-                    <Text style={s.jobDistanceText}>{job.address || 'Nearby Location'}</Text>
-                  </View>
-                </View>
-
-                <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-              </View>
-
-              <View style={s.jobDivider} />
-
-              <View style={s.jobCardBottom}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Ionicons name="calendar-outline" size={14} color="#6B7280" />
-                  <Text style={s.jobDateText}>{job.date} • {job.time}</Text>
-                </View>
-                <Text style={s.jobPriceText}>₹{job.vendorEarnings}</Text>
-              </View>
-            </TouchableOpacity>
+              job={job}
+              onPress={(j) => {
+                store.setCurrentJob(j.jobId);
+                navigation.navigate('JobDetails', { jobId: j.jobId });
+              }}
+            />
           ))
         )}
-
-        <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Floating One-Tap SOS Button */}
+      <TouchableOpacity
+        style={s.floatingSOS}
+        onPress={() => setSosVisible(true)}
+        activeOpacity={0.85}
+      >
+        <LinearGradient colors={['#EF4444', '#B91C1C']} style={s.floatingSOSGrad}>
+          <Ionicons name="warning" size={20} color="#FFFFFF" />
+          <Text style={s.floatingSOSText}>SOS</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+
+      {/* Emergency SOS Modal */}
+      <SOSModal visible={sosVisible} onClose={() => setSosVisible(false)} />
+
+      {/* Schedule Calendar Modal */}
+      <CalendarModal
+        visible={calendarVisible}
+        onClose={() => setCalendarVisible(false)}
+        onSelectJob={(j) => {
+          store.setCurrentJob(j.jobId);
+          navigation.navigate('JobDetails', { jobId: j.jobId });
+        }}
+      />
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F6F7F9' },
-
-  headerContainer: {
+  root: {
+    flex: 1,
     backgroundColor: '#F6F7F9',
-    overflow: 'hidden',
+  },
+  headerContainer: {
+    backgroundColor: '#0D3325',
   },
   headerBgImage: {
     width: '100%',
-    paddingBottom: 16,
   },
   headerGradient: {
     ...StyleSheet.absoluteFillObject,
   },
   safeHeader: {
     paddingHorizontal: 16,
+    paddingBottom: 14,
   },
   topBarRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    alignItems: 'center',
+    paddingVertical: 8,
   },
   brandPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    gap: 6,
+    backgroundColor: 'rgba(13, 51, 37, 0.1)',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(13,51,37,0.15)',
+    borderColor: 'rgba(13, 51, 37, 0.2)',
   },
   brandPillText: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '900',
     color: '#0D3325',
     letterSpacing: 0.5,
   },
-  notifBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+  topActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
     elevation: 2,
     position: 'relative',
   },
-  notifRedDot: {
+  notifBadge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
+    top: 6,
+    right: 7,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: '#EF4444',
   },
-
   profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 8,
-    paddingBottom: 4,
-    gap: 14,
+    marginTop: 10,
+    marginBottom: 14,
+    gap: 12,
   },
-  avatarWrapper: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+  avatarWrap: {
     position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3,
   },
-  avatarImg: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    borderWidth: 2.5,
+  avatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 2,
     borderColor: '#FFFFFF',
   },
-  verifiedBadge: {
+  onlineDot: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#2563EB',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#10B981',
+    borderWidth: 2,
     borderColor: '#FFFFFF',
   },
-  profileDetailsCol: {
+  nameBlock: {
     flex: 1,
   },
-  greetingSub: {
-    fontSize: 12.5,
-    color: '#6B7280',
-    fontWeight: '500',
+  greetingText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
   },
-  nameBadgeRow: {
+  captainName: {
+    fontSize: 17,
+    fontWeight: '900',
+    color: '#0F172A',
+  },
+  ratingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  ratingText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#B45309',
+  },
+  kpiRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  kpiCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  kpiLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#64748B',
+    letterSpacing: 0.5,
+  },
+  kpiValue: {
+    fontSize: 19,
+    fontWeight: '900',
+    color: '#0F172A',
+    marginTop: 2,
+  },
+  kpiSub: {
+    fontSize: 10.5,
+    color: '#10B981',
+    fontWeight: '700',
+    marginTop: 1,
+  },
+  lockedBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#FEE2E2',
+    marginHorizontal: 16,
+    marginTop: 10,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  lockedTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#DC2626',
+  },
+  lockedDesc: {
+    fontSize: 11.5,
+    color: '#991B1B',
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  tabsWrap: {
+    backgroundColor: '#F6F7F9',
+    paddingVertical: 10,
+  },
+  tabsScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  tabPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 20,
+    backgroundColor: '#E2E8F0',
   },
-  vendorNameText: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  captainTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 2,
-  },
-  captainTagText: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    color: '#0D3325',
-  },
-  captainRatingText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#D97706',
-    marginLeft: 4,
-  },
-  mottoText: {
-    fontSize: 11,
-    color: '#6B7280',
-    marginTop: 3,
-    lineHeight: 15,
-    fontStyle: 'italic',
-  },
-
-  scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingTop: 10 },
-
-  onlineCard: {
+  tabPillActive: {
     backgroundColor: '#0D3325',
-    borderRadius: 20,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: '#0D3325',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 4,
   },
-  onlineIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  onlineTitle: {
-    fontSize: 14.5,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  onlineSub: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
-    marginTop: 2,
-  },
-
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 20,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  statIconCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  statHeaderLabel: {
-    fontSize: 9.5,
-    fontWeight: '800',
-    color: '#6B7280',
-    letterSpacing: 0.5,
-    marginBottom: 2,
-  },
-  statBigNumber: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 2,
-  },
-  statFooterMuted: {
-    fontSize: 10.5,
-    color: '#9CA3AF',
-  },
-
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  viewAllText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#0D3325',
-  },
-
-  emptyAssignedCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 1,
-  },
-  emptyIconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#E8F8F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  emptyAssignedTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  emptyAssignedSub: {
+  tabPillText: {
     fontSize: 12.5,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 18,
+    fontWeight: '700',
+    color: '#475569',
   },
-
-  jobCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+  tabPillTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  contentScroll: {
+    flex: 1,
+  },
+  contentContainer: {
     padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    paddingBottom: 110,
+    gap: 12,
   },
-  jobCardTop: {
-    flexDirection: 'row',
+  emptyContainer: {
     alignItems: 'center',
+    paddingVertical: 60,
+    gap: 10,
   },
-  jobThumbnailWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 14,
-    overflow: 'hidden',
-    backgroundColor: '#E5E7EB',
-  },
-  jobThumbnailImg: {
-    width: '100%',
-    height: '100%',
-  },
-  captainBadgePill: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#E8F8F0',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginBottom: 4,
-  },
-  captainBadgePillText: {
-    fontSize: 9.5,
-    fontWeight: '800',
-    color: '#059669',
-    letterSpacing: 0.5,
-  },
-  jobTitleText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 2,
-  },
-  jobMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 2,
-  },
-  jobCustomerName: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#4B5563',
-  },
-  jobDistanceText: {
-    fontSize: 11.5,
-    color: '#6B7280',
-  },
-  jobDivider: {
-    height: 1,
-    backgroundColor: '#F3F4F6',
-    marginVertical: 12,
-  },
-  jobCardBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  jobDateText: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  jobPriceText: {
+  emptyTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#0D3325',
+    color: '#475569',
+  },
+  emptySub: {
+    fontSize: 13,
+    color: '#94A3B8',
+    textAlign: 'center',
+    maxWidth: 260,
+  },
+  floatingSOS: {
+    position: 'absolute',
+    bottom: 24,
+    right: 20,
+    borderRadius: 28,
+    shadowColor: '#DC2626',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  floatingSOSGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 28,
+  },
+  floatingSOSText: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
 });

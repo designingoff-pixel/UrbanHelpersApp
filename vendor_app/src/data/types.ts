@@ -33,6 +33,8 @@ export interface Job {
   otp: string;
   checklist: string[];
   checklistDone: string[];
+  beforePhoto?: string | null;
+  afterPhoto?: string | null;
   createdAt: number;
   acceptedAt?: number;
   arrivedAt?: number;
@@ -60,6 +62,17 @@ export interface Vendor {
   serviceRadius: number;
   avatar: string;
   isVerified: boolean;
+  isLocked?: boolean;
+  status?: 'active' | 'locked' | 'suspended';
+  lockReason?: string;
+  skippedCount?: number;
+  documents?: {
+    aadhaarFront?: string;
+    aadhaarBack?: string;
+    drivingLicense?: string;
+    insurancePolicy?: string;
+    profilePhoto?: string;
+  };
 }
 
 export interface Notification {

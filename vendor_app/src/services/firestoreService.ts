@@ -1,12 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// Urban Captain Vendor App — Firestore Service
-//
-// Real-time Firestore sync with Customer app and Admin Dashboard.
-// Collections used:
-//   /bookings/{bookingId}  — booking status + OTP + customer ratings
-//   /vendors/{vendorId}    — vendor online status + live location + profile rating
-// ─────────────────────────────────────────────────────────────────────────────
-
 import {
   collection,
   doc,
@@ -16,6 +7,7 @@ import {
   serverTimestamp,
   updateDoc,
   where,
+  setDoc,
 } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -52,6 +44,8 @@ export interface FirestoreBooking {
   otp?:            string;
   customerLat?:    number;
   customerLng?:    number;
+  beforePhoto?:    string;
+  afterPhoto?:     string;
   rating?:         number;
   review?:         string;
   reviewTags?:     string[];
@@ -146,8 +140,8 @@ export async function acceptJob(
   });
 }
 
-// ── Reject a job ─────────────────────────────────────────────────────────────
-export async function rejectJob(bookingId: string): Promise<void> {
+// ── Reject / Skip a job with 3-Skip Auto-Lock enforcement ────────────────────
+export async function rejectJob(bookingId: string, vendorId?: string): Promise<{ locked: boolean; skippedCount: number }> {
   await updateDoc(doc(db, "bookings", bookingId), {
     status:     "requested",
     vendorId:   null,
@@ -155,6 +149,37 @@ export async function rejectJob(bookingId: string): Promise<void> {
     vendorImage: null,
     rejectedAt: serverTimestamp(),
   });
+
+  let locked = false;
+  let newCount = 1;
+
+  if (vendorId) {
+    try {
+      const vRef = doc(db, "vendors", vendorId);
+      const vSnap = await getDoc(vRef);
+      if (vSnap.exists()) {
+        const vData = vSnap.data();
+        newCount = (vData.skippedCount || 0) + 1;
+        const updateData: Record<string, any> = {
+          skippedCount: newCount,
+          lastSkippedAt: serverTimestamp(),
+        };
+
+        if (newCount >= 3) {
+          updateData.status = "locked";
+          updateData.isLocked = true;
+          updateData.lockReason = "Profile locked automatically due to 3 consecutive skipped service requests.";
+          locked = true;
+        }
+
+        await updateDoc(vRef, updateData);
+      }
+    } catch (err) {
+      console.warn("[rejectJob] Could not update vendor skip count:", err);
+    }
+  }
+
+  return { locked, skippedCount: newCount };
 }
 
 // ── Update booking status & sync with vendor statistics ───────────────────────
@@ -190,6 +215,7 @@ export async function updateBookingStatus(
           completedJobs: prevCompleted + 1,
           totalEarnings: prevTotal + (vendorEarnings || 0),
           todayEarnings: prevToday + (vendorEarnings || 0),
+          skippedCount: 0, // Reset skip counter on successful completion
           lastCompletedAt: serverTimestamp(),
         });
       }
@@ -197,6 +223,16 @@ export async function updateBookingStatus(
       console.warn("[updateBookingStatus] Could not update vendor doc stats:", err);
     }
   }
+}
+
+export async function updateBookingPhotos(
+  bookingId: string,
+  photos: { beforePhoto?: string | null; afterPhoto?: string | null }
+): Promise<void> {
+  const updateData: Record<string, any> = {};
+  if (photos.beforePhoto !== undefined) updateData.beforePhoto = photos.beforePhoto;
+  if (photos.afterPhoto !== undefined) updateData.afterPhoto = photos.afterPhoto;
+  await updateDoc(doc(db, "bookings", bookingId), updateData);
 }
 
 export async function updateBookingAudio(

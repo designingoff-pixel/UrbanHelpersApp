@@ -6,7 +6,7 @@ import { FirestoreBooking } from '../services/firestoreService';
 type Listener = () => void;
 
 class AppStore {
-  vendor: Vendor = { ...MOCK_VENDOR, isOnline: true };
+  vendor: Vendor = { ...MOCK_VENDOR, isOnline: true, isLocked: false, skippedCount: 0 };
   jobs: Job[] = [];
   notifications: Notification[] = [];
   currentJobId: string | null = null;
@@ -50,6 +50,19 @@ class AppStore {
     if (data.services) this.vendor.services = data.services;
     if (data.serviceArea) this.vendor.serviceArea = data.serviceArea;
     if (data.serviceRadius) this.vendor.serviceRadius = data.serviceRadius;
+    if (typeof data.skippedCount === 'number') this.vendor.skippedCount = data.skippedCount;
+    if (data.status === 'locked' || data.isLocked === true) {
+      this.vendor.isLocked = true;
+      this.vendor.status = 'locked';
+      this.vendor.lockReason = data.lockReason || 'Profile is locked due to skipped services or complaint review.';
+    } else {
+      this.vendor.isLocked = false;
+      this.vendor.status = 'active';
+      this.vendor.lockReason = undefined;
+    }
+    if (data.documents) {
+      this.vendor.documents = data.documents;
+    }
     this.notify();
   }
 
@@ -116,6 +129,8 @@ class AppStore {
         otp:                 fb.otp ?? '',
         checklist:           existing?.checklist ?? [],
         checklistDone:       existing?.checklistDone ?? [],
+        beforePhoto:         fb.beforePhoto || existing?.beforePhoto || null,
+        afterPhoto:          fb.afterPhoto || existing?.afterPhoto || null,
         createdAt:           Date.now(),
         completedAt:         completedTimestamp,
         rating:              fb.rating,
@@ -168,6 +183,14 @@ class AppStore {
     this.notify();
   }
 
+  updateJobPhotos(jobId: string, beforePhoto?: string | null, afterPhoto?: string | null) {
+    const job = this.jobs.find(j => j.jobId === jobId);
+    if (!job) return;
+    if (beforePhoto !== undefined) job.beforePhoto = beforePhoto;
+    if (afterPhoto !== undefined) job.afterPhoto = afterPhoto;
+    this.notify();
+  }
+
   toggleOnline(isOnline: boolean) {
     this.vendor.isOnline = isOnline;
     this.notify();
@@ -215,6 +238,7 @@ class AppStore {
   getJobsForTab(tab: string): Job[] {
     const map: Record<string, JobStatus[]> = {
       requests: ['NEW_REQUEST', 'ADMIN_ASSIGNED'],
+      upcoming: ['ACCEPTED', 'UPCOMING'],
       active: ['ACCEPTED', 'UPCOMING', 'NAVIGATING', 'ARRIVED', 'OTP_PENDING', 'CUSTOMER_VERIFIED', 'SERVICE_STARTED', 'RECORDING_ACTIVE', 'RECORDING_STOPPED'],
       completed: ['COMPLETED', 'REJECTED', 'CANCELLED'],
     };
