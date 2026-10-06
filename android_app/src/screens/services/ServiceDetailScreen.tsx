@@ -154,13 +154,33 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   // ── Map Location Picker Modal ──────────────────────────────────────────────
   const [showMapModal, setShowMapModal] = useState(false);
   const [isNewAddressMap, setIsNewAddressMap] = useState(false);
+  const mapRef = useRef<MapView>(null);
+  const reverseGeocodeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [mapRegion, setMapRegion] = useState<Region>({
     latitude: 11.0168,
     longitude: 76.9558,
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
+    latitudeDelta: 0.005,
+    longitudeDelta: 0.005,
   });
   const [pinCoords, setPinCoords] = useState<{ lat: number; lng: number } | null>(null);
+
+  const handleMapRegionChangeComplete = (r: Region, details?: any) => {
+    setPinCoords({ lat: r.latitude, lng: r.longitude });
+    
+    if (details?.isGesture) {
+      if (reverseGeocodeRef.current) clearTimeout(reverseGeocodeRef.current);
+      reverseGeocodeRef.current = setTimeout(async () => {
+        try {
+          setSearchingAddress(true);
+          const addrStr = await reverseGeocodeLocation(r.latitude, r.longitude);
+          setAddressText(addrStr);
+        } catch (e) {
+        } finally {
+          setSearchingAddress(false);
+        }
+      }, 600);
+    }
+  };
 
   // Load saved addresses and profile contact number on mount
   useEffect(() => {
@@ -266,6 +286,12 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
           longitudeDelta: 0.005,
         });
         setPinCoords({ lat, lng });
+        mapRef.current?.animateToRegion({
+          latitude: lat,
+          longitude: lng,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005,
+        }, 500);
         const detectedAddr = await reverseGeocodeLocation(lat, lng);
         if (detectedAddr) {
           setAddressText(detectedAddr);
@@ -311,6 +337,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 
   // Handle suggestion pick
   const handleSelectSuggestion = (item: GeocodedLocation) => {
+    if (reverseGeocodeRef.current) clearTimeout(reverseGeocodeRef.current);
     setAddressText(item.label);
     setCustomerLat(item.lat);
     setCustomerLng(item.lng);
@@ -321,6 +348,12 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       latitudeDelta: 0.005,
       longitudeDelta: 0.005,
     });
+    mapRef.current?.animateToRegion({
+      latitude: item.lat,
+      longitude: item.lng,
+      latitudeDelta: 0.005,
+      longitudeDelta: 0.005,
+    }, 500);
     setSuggestions([]);
     setShowSuggestions(false);
   };
@@ -348,59 +381,67 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   // Open Map Picker
   const handleOpenMap = async (forNewModal = false) => {
     setIsNewAddressMap(forNewModal);
+    
+    let targetLat = customerLat || 13.0827;
+    let targetLng = customerLng || 80.2707;
+    
+    if (forNewModal) {
+      targetLat = newLat || targetLat;
+      targetLng = newLng || targetLng;
+      setAddressText(newAddressText || addressText);
+    }
+
+    let fetchedCurrent = false;
+
+    if (!targetLat || !targetLng || (!customerLat && !forNewModal)) {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === "granted") {
+          const loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          targetLat = loc.coords.latitude;
+          targetLng = loc.coords.longitude;
+          fetchedCurrent = true;
+        }
+      } catch (e) {
+        console.warn("Location fetch error:", e);
+      }
+    }
+
+    setMapRegion({
+      latitude: targetLat,
+      longitude: targetLng,
+      latitudeDelta: 0.005,
+      longitudeDelta: 0.005,
+    });
+    setPinCoords({ lat: targetLat, lng: targetLng });
     setShowMapModal(true);
 
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === "granted") {
-        const loc = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-        const lat = loc.coords.latitude;
-        const lng = loc.coords.longitude;
-        setMapRegion({
-          latitude: lat,
-          longitude: lng,
-          latitudeDelta: 0.005,
-          longitudeDelta: 0.005,
-        });
-        setPinCoords({ lat, lng });
-      } else if (customerLat && customerLng) {
-        setMapRegion({
-          latitude: customerLat,
-          longitude: customerLng,
-          latitudeDelta: 0.005,
-          longitudeDelta: 0.005,
-        });
-        setPinCoords({ lat: customerLat, lng: customerLng });
-      }
-    } catch (e) {
-      console.warn("Location fetch error:", e);
+    if (fetchedCurrent) {
+      const addrStr = await reverseGeocodeLocation(targetLat, targetLng);
+      setAddressText(addrStr);
     }
   };
 
   // Confirm Map Location
   const handleConfirmLocation = async () => {
     if (pinCoords) {
-      try {
-        const addrStr = await reverseGeocodeLocation(pinCoords.lat, pinCoords.lng);
-        if (isNewAddressMap) {
-          setNewAddressText(addrStr);
-          setNewLat(pinCoords.lat);
-          setNewLng(pinCoords.lng);
-        } else {
-          setAddressText(addrStr);
-          setCustomerLat(pinCoords.lat);
-          setCustomerLng(pinCoords.lng);
-        }
-      } catch (_) {
-        if (isNewAddressMap) {
-          setNewLat(pinCoords.lat);
-          setNewLng(pinCoords.lng);
-        } else {
-          setCustomerLat(pinCoords.lat);
-          setCustomerLng(pinCoords.lng);
-        }
+      let finalAddress = addressText;
+      if (!finalAddress || finalAddress.match(/^[0-9.-]+, [0-9.-]+$/)) {
+        try {
+          finalAddress = await reverseGeocodeLocation(pinCoords.lat, pinCoords.lng);
+        } catch (_) {}
+      }
+
+      if (isNewAddressMap) {
+        setNewAddressText(finalAddress);
+        setNewLat(pinCoords.lat);
+        setNewLng(pinCoords.lng);
+      } else {
+        setAddressText(finalAddress);
+        setCustomerLat(pinCoords.lat);
+        setCustomerLng(pinCoords.lng);
       }
     }
     setShowMapModal(false);
@@ -904,25 +945,39 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       {/* Modal: Map Location Picker */}
       <Modal visible={showMapModal} transparent animationType="fade">
         <View style={s.mapModalRoot}>
-          <MapView
-            style={s.mapModalView}
-            provider={PROVIDER_GOOGLE}
-            region={mapRegion}
-            onRegionChangeComplete={(r) => {
-              setMapRegion(r);
-              setPinCoords({ lat: r.latitude, lng: r.longitude });
-            }}
-          >
-            {pinCoords && (
-              <Marker
-                coordinate={{ latitude: pinCoords.lat, longitude: pinCoords.lng }}
-                title="Service Location"
-                draggable
-                pinColor="red"
-                onDragEnd={(e) => setPinCoords({ lat: e.nativeEvent.coordinate.latitude, lng: e.nativeEvent.coordinate.longitude })}
-              />
-            )}
-          </MapView>
+          {showMapModal && (
+            <MapView
+              ref={mapRef}
+              style={s.mapModalView}
+              provider={PROVIDER_GOOGLE}
+              initialRegion={mapRegion}
+              showsUserLocation={true}
+              onRegionChangeComplete={handleMapRegionChangeComplete}
+            >
+              {pinCoords && (
+                <Marker
+                  coordinate={{ latitude: pinCoords.lat, longitude: pinCoords.lng }}
+                  title="Service Location"
+                  draggable
+                  pinColor="red"
+                  onDragEnd={(e) => {
+                    const newLat = e.nativeEvent.coordinate.latitude;
+                    const newLng = e.nativeEvent.coordinate.longitude;
+                    setPinCoords({ lat: newLat, lng: newLng });
+                    if (reverseGeocodeRef.current) clearTimeout(reverseGeocodeRef.current);
+                    reverseGeocodeRef.current = setTimeout(async () => {
+                      try {
+                        setSearchingAddress(true);
+                        const addrStr = await reverseGeocodeLocation(newLat, newLng);
+                        setAddressText(addrStr);
+                      } catch (err) {}
+                      finally { setSearchingAddress(false); }
+                    }, 200);
+                  }}
+                />
+              )}
+            </MapView>
+          )}
 
           {/* Map Header with back + inline search bar */}
           <View style={s.mapModalHeader}>
@@ -951,8 +1006,6 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                   key={`mapsug-${idx}`}
                   onPress={() => {
                     handleSelectSuggestion(item);
-                    setMapRegion({ latitude: item.lat, longitude: item.lng, latitudeDelta: 0.005, longitudeDelta: 0.005 });
-                    setPinCoords({ lat: item.lat, lng: item.lng });
                   }}
                   style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 12, gap: 10, borderBottomWidth: idx < suggestions.length - 1 ? 1 : 0, borderBottomColor: "rgba(255,255,255,0.08)", backgroundColor: pressed ? "rgba(255,255,255,0.08)" : "transparent" }]}
                 >
