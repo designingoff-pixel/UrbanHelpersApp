@@ -13,6 +13,7 @@ import {
   updateBookingStatus, notifyCustomerOTP,
   acceptJob,
   rejectJob,
+  cancelBooking,
 } from '../services/firestoreService';
 import SOSModal from '../components/SOSModal';
 import DiagnosticModal from '../components/DiagnosticModal';
@@ -142,6 +143,48 @@ export default function JobDetailsScreen({ route, navigation }: any) {
         },
       ]
     );
+  };
+
+  // ── Cancel an Accepted Job (counts toward 3-cancel block) ───────────────
+  const handleCancelJob = () => {
+    const current = store.cancelCount;
+    const remaining = store.CANCEL_LIMIT - current - 1;
+    const warningMsg =
+      current >= store.CANCEL_LIMIT - 1
+        ? `⚠️ FINAL WARNING: This is your ${store.CANCEL_LIMIT}rd cancellation. Your account will be TEMPORARILY BLOCKED from going online after this.`
+        : `Are you sure you want to cancel this booking?\n\nCancellation ${current + 1}/${store.CANCEL_LIMIT} — ${remaining} more before account block.`;
+
+    Alert.alert('Cancel Job', warningMsg, [
+      { text: 'Keep Job', style: 'cancel' },
+      {
+        text: '🚫 Cancel Booking',
+        style: 'destructive',
+        onPress: async () => {
+          setSubmitting(true);
+          try {
+            store.updateJobStatus(job.jobId, 'CANCELLED');
+            await cancelBooking(job.jobId, store.vendorId || undefined);
+            const result = store.recordCancellation();
+            if (result.blocked) {
+              Alert.alert(
+                '🔒 Account Temporarily Blocked',
+                `You have cancelled ${store.CANCEL_LIMIT} jobs in 7 days. You cannot go online until the block is lifted by Admin or the 7-day window resets.`
+              );
+            } else {
+              Alert.alert(
+                'Job Cancelled',
+                `Cancellation recorded (${result.cancelCount}/${store.CANCEL_LIMIT}). Avoid further cancellations to prevent account block.`
+              );
+            }
+            navigation.goBack();
+          } catch (err: any) {
+            Alert.alert('Error', err.message);
+          } finally {
+            setSubmitting(false);
+          }
+        },
+      },
+    ]);
   };
 
   // ── Start Navigation ─────────────────────────────────────────────────────
@@ -291,10 +334,12 @@ export default function JobDetailsScreen({ route, navigation }: any) {
             <Text style={s.addressText}>{job.address}</Text>
           </View>
 
-          <TouchableOpacity style={s.navBtn} onPress={handleOpenNavigation} activeOpacity={0.85}>
-            <Ionicons name="navigate-circle" size={20} color="#0D3325" />
-            <Text style={s.navBtnText}>Open Turn-by-Turn Voice Navigation</Text>
-          </TouchableOpacity>
+          {!['CANCELLED', 'COMPLETED', 'REJECTED'].includes(job.status) && (
+            <TouchableOpacity style={s.navBtn} onPress={handleOpenNavigation} activeOpacity={0.85}>
+              <Ionicons name="navigate-circle" size={20} color="#0D3325" />
+              <Text style={s.navBtnText}>Open Turn-by-Turn Voice Navigation</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Work Verification Photos (if completed or taken) */}
@@ -344,27 +389,49 @@ export default function JobDetailsScreen({ route, navigation }: any) {
         )}
 
         {isAccepted && (
-          <TouchableOpacity
-            style={[s.actionBtn, s.startNavBtn]}
-            onPress={handleStartNavigating}
-            disabled={submitting}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="navigate" size={18} color="#FFFFFF" />
-            <Text style={s.actionBtnText}>Start Navigation</Text>
-          </TouchableOpacity>
+          <View style={s.btnRow}>
+            <TouchableOpacity
+              style={[s.actionBtn, s.startNavBtn, { flex: 1 }]}
+              onPress={handleStartNavigating}
+              disabled={submitting}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="navigate" size={18} color="#FFFFFF" />
+              <Text style={s.actionBtnText}>Start Navigation</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.actionBtn, s.cancelBtn]}
+              onPress={handleCancelJob}
+              disabled={submitting}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="close-circle-outline" size={18} color="#DC2626" />
+              <Text style={s.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {isNavigating && (
-          <TouchableOpacity
-            style={[s.actionBtn, s.arrivedBtn]}
-            onPress={handleMarkArrived}
-            disabled={submitting}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="pin" size={18} color="#FFFFFF" />
-            <Text style={s.actionBtnText}>Mark Arrived &amp; Verify OTP</Text>
-          </TouchableOpacity>
+          <View style={s.btnRow}>
+            <TouchableOpacity
+              style={[s.actionBtn, s.arrivedBtn, { flex: 1 }]}
+              onPress={handleMarkArrived}
+              disabled={submitting}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="pin" size={18} color="#FFFFFF" />
+              <Text style={s.actionBtnText}>Mark Arrived &amp; Verify OTP</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.actionBtn, s.cancelBtn]}
+              onPress={handleCancelJob}
+              disabled={submitting}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="close-circle-outline" size={18} color="#DC2626" />
+              <Text style={s.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {isArrived && (
@@ -693,5 +760,17 @@ const s = StyleSheet.create({
   },
   serviceBtn: {
     backgroundColor: '#0D3325',
+  },
+  cancelBtn: {
+    flex: 0,
+    paddingHorizontal: 16,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1.5,
+    borderColor: '#FECACA',
+  },
+  cancelBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#DC2626',
   },
 });

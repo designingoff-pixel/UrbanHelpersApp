@@ -13,6 +13,12 @@ class AppStore {
   recordingSeconds: number = 0;
   isRecording: boolean = false;
 
+  // ── Cancellation tracking (3 cancels in 7 days → temp block) ─────────────
+  cancelCount: number = 0;          // cancellations in current 7-day window
+  cancelWeekStart: number = Date.now(); // timestamp when the current window started
+  readonly CANCEL_LIMIT = 3;        // block threshold
+  readonly CANCEL_WINDOW_MS = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
+
   // ── Firebase identity ─────────────────────────────────────────────────────
   firebaseUid: string | null = null;   // Firebase Auth UID (= vendorId in Firestore)
   vendorId: string | null = null;      // same value, explicit alias for clarity
@@ -192,8 +198,39 @@ class AppStore {
   }
 
   toggleOnline(isOnline: boolean) {
+    // Blocked vendors cannot go online
+    if (isOnline && (this.vendor.isLocked || this.cancelCount >= this.CANCEL_LIMIT)) return;
     this.vendor.isOnline = isOnline;
     this.notify();
+  }
+
+  // ── Record a vendor cancellation — auto-blocks at 3 in 7 days ────────────
+  recordCancellation(): { blocked: boolean; cancelCount: number } {
+    const now = Date.now();
+    // Reset window if 7 days have passed since it started
+    if (now - this.cancelWeekStart > this.CANCEL_WINDOW_MS) {
+      this.cancelCount = 0;
+      this.cancelWeekStart = now;
+      // If block was due to cancels (not skips), unblock
+      if (!this.vendor.isLocked || this.vendor.lockReason?.includes('cancell')) {
+        this.vendor.isLocked = false;
+        this.vendor.status = 'active';
+        this.vendor.lockReason = undefined;
+      }
+    }
+
+    this.cancelCount += 1;
+
+    if (this.cancelCount >= this.CANCEL_LIMIT) {
+      this.vendor.isLocked = true;
+      this.vendor.isOnline = false;
+      this.vendor.status = 'locked';
+      this.vendor.lockReason =
+        `Profile temporarily blocked: ${this.CANCEL_LIMIT} job cancellations recorded in 7 days. Contact Admin to unlock or wait for the 7-day window to reset.`;
+    }
+
+    this.notify();
+    return { blocked: this.cancelCount >= this.CANCEL_LIMIT, cancelCount: this.cancelCount };
   }
 
   completeJob(jobId: string) {

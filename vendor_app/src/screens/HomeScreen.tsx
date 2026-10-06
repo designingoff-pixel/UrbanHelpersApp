@@ -15,6 +15,7 @@ import {
 import SOSModal from '../components/SOSModal';
 import CalendarModal from '../components/CalendarModal';
 import JobCard from '../components/JobCard';
+import { useNewOrderSound } from '../hooks/useNewOrderSound';
 
 const { width } = Dimensions.get('window');
 
@@ -30,6 +31,9 @@ export default function HomeScreen({ navigation }: any) {
   const [activeTab, setActiveTab] = useState('requests');
   const [sosVisible, setSosVisible] = useState(false);
   const [calendarVisible, setCalendarVisible] = useState(false);
+
+  // 🔔 Play a chime whenever a new order arrives
+  useNewOrderSound();
 
   useEffect(() => {
     let unsubV: (() => void) | null = null;
@@ -80,6 +84,15 @@ export default function HomeScreen({ navigation }: any) {
   const displayRating = store.effectiveRating ? store.effectiveRating.toFixed(1) : '5.0';
   const realTotalEarnings = completedJobs.reduce((sum, j) => sum + (j.vendorEarnings || 0), 0);
   const displayEarnings = realTotalEarnings.toLocaleString('en-IN');
+
+  // Cancellation counter state
+  const cancelCount = store.cancelCount;
+  const cancelLimit = store.CANCEL_LIMIT;
+  const cancelBlocked = cancelCount >= cancelLimit;
+  const cancelWarning = cancelCount > 0 && !cancelBlocked;
+  const cancelColor = cancelBlocked ? '#DC2626' : cancelCount >= 2 ? '#D97706' : '#10B981';
+  const cancelBgColor = cancelBlocked ? '#FEF2F2' : cancelCount >= 2 ? '#FFFBEB' : '#F0FDF4';
+  const cancelBorderColor = cancelBlocked ? '#FECACA' : cancelCount >= 2 ? '#FDE68A' : '#BBF7D0';
 
   return (
     <View style={s.root}>
@@ -168,6 +181,51 @@ export default function HomeScreen({ navigation }: any) {
             </View>
           </SafeAreaView>
         </ImageBackground>
+      </View>
+
+      {/* ── Cancellation Counter Card ─────────────────────────────────────── */}
+      <View style={[s.cancelCard, { backgroundColor: cancelBgColor, borderColor: cancelBorderColor }]}>
+        <View style={s.cancelCardTop}>
+          <View style={s.cancelCardLeft}>
+            <Ionicons
+              name={cancelBlocked ? 'lock-closed' : 'close-circle-outline'}
+              size={16}
+              color={cancelColor}
+            />
+            <Text style={[s.cancelCardTitle, { color: cancelColor }]}>
+              {cancelBlocked
+                ? 'Account Blocked — Cannot Go Online'
+                : cancelCount === 0
+                ? 'Job Cancellation Limit'
+                : `Warning: ${cancelCount} Cancellation${cancelCount > 1 ? 's' : ''} This Week`}
+            </Text>
+          </View>
+          <Text style={[s.cancelCardCount, { color: cancelColor }]}>
+            {cancelCount}/{cancelLimit}
+          </Text>
+        </View>
+
+        {/* 3-segment progress bar */}
+        <View style={s.cancelSegments}>
+          {[0, 1, 2].map((i) => (
+            <View
+              key={i}
+              style={[
+                s.cancelSegment,
+                i < cancelCount && { backgroundColor: cancelColor },
+                i < cancelCount && { opacity: 1 },
+              ]}
+            />
+          ))}
+        </View>
+
+        <Text style={[s.cancelCardSub, { color: cancelColor }]}>
+          {cancelBlocked
+            ? 'You have been temporarily blocked. Contact Admin or wait 7 days to reset.'
+            : cancelCount === 0
+            ? '3 cancellations in 7 days will temporarily block your account'
+            : `${cancelLimit - cancelCount} more cancellation${cancelLimit - cancelCount > 1 ? 's' : ''} will block your account for 7 days`}
+        </Text>
       </View>
 
       {/* Auto-Lock Alert Banner if Locked */}
@@ -448,6 +506,51 @@ const s = StyleSheet.create({
     color: '#991B1B',
     lineHeight: 16,
     marginTop: 2,
+  },
+  // Cancellation counter card
+  cancelCard: {
+    marginHorizontal: 16,
+    marginTop: 10,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 8,
+  },
+  cancelCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cancelCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  cancelCardTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    flex: 1,
+  },
+  cancelCardCount: {
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  cancelSegments: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  cancelSegment: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#E2E8F0',
+    opacity: 0.5,
+  },
+  cancelCardSub: {
+    fontSize: 11,
+    fontWeight: '600',
+    lineHeight: 15,
   },
   tabsWrap: {
     backgroundColor: '#F6F7F9',

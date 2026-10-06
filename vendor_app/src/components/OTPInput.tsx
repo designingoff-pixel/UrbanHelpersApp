@@ -59,10 +59,13 @@ export default function OTPInput({ value, onChange, hasError }: Props) {
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 12, justifyContent: 'center' },
   box: {
-    width: 64, height: 72, backgroundColor: Colors.deepBlue,
-    borderRadius: Radius.DEFAULT, borderWidth: 2, borderColor: 'transparent',
-    ...Typography.displayLg, color: Colors.onSurface, textAlign: 'center',
+    width: 64, height: 72, backgroundColor: '#FFFFFF',
+    borderRadius: Radius.DEFAULT, borderWidth: 2, borderColor: '#D1D5DB',
+    ...Typography.displayLg, color: '#111827', textAlign: 'center',
+    // Shadow for depth
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06, shadowRadius: 2, elevation: 2,
   },
-  boxFilled: { borderColor: '#3b82f6' },
-  boxError: { borderColor: Colors.error },
+  boxFilled: { borderColor: '#3b82f6', backgroundColor: '#EFF6FF' },
+  boxError: { borderColor: Colors.error, backgroundColor: '#FEF2F2' },
 });

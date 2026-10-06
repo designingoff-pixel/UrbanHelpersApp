@@ -100,6 +100,20 @@ export function subscribeToNewRequests(
   return () => {};
 }
 
+// ── Vendor cancels an accepted job ────────────────────────────────────────────
+export async function cancelBooking(
+  bookingId: string,
+  vendorId?: string
+): Promise<void> {
+  await updateDoc(doc(db, "bookings", bookingId), {
+    status: "cancelled",
+    cancelledAt: serverTimestamp(),
+    cancelledBy: "vendor",
+    vendorId: vendorId ?? null,
+  });
+}
+
+
 // ── Accept a job ─────────────────────────────────────────────────────────────
 export async function acceptJob(
   bookingId: string,
