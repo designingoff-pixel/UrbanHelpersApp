@@ -26,6 +26,7 @@ import Animated, {
   FadeInDown,
   Easing,
 } from "react-native-reanimated";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { RootStackParamList } from "@/navigation/types";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -95,6 +96,19 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
   const slideRef = useRef<FlatList>(null);
   const [activeBooking, setActiveBooking] = useState<Booking | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem("@urban_health_user_profile_v2");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.avatarUri) setUserAvatar(parsed.avatarUri);
+        }
+      } catch {}
+    })();
+  }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -300,9 +314,13 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                   style={s.heroAvatarCircle}
                   onPress={() => navigation.navigate("Profile")}
                 >
-                  <LinearGradient colors={["#00c6aa", "#0f9b8e"]} style={s.avatarInner}>
-                    <Text style={s.avatarInitial}>{firstName.charAt(0).toUpperCase()}</Text>
-                  </LinearGradient>
+                  {userAvatar ? (
+                    <Image source={{ uri: userAvatar }} style={{ width: 34, height: 34, borderRadius: 17 }} />
+                  ) : (
+                    <LinearGradient colors={["#00c6aa", "#0f9b8e"]} style={s.avatarInner}>
+                      <Text style={s.avatarInitial}>{firstName.charAt(0).toUpperCase()}</Text>
+                    </LinearGradient>
+                  )}
                 </Pressable>
               </View>
             </Animated.View>

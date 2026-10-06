@@ -267,11 +267,8 @@ export default function ServiceInProgressScreen({ route, navigation }: Props) {
               </View>
             </View>
             <View style={s.proActions}>
-              <Pressable style={[s.proActionBtn, s.proActionBtnPrimary]}>
+              <Pressable style={[s.proActionBtn, s.proActionBtnPrimary]} onPress={() => Linking.openURL('tel:9876543210')}>
                 <Ionicons name="call" size={18} color="white" />
-              </Pressable>
-              <Pressable style={s.proActionBtn}>
-                <Ionicons name="chatbubble-outline" size={18} color={colors.text.secondary} />
               </Pressable>
             </View>
           </View>

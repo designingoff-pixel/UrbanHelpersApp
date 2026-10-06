@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Image,
-  Linking, Dimensions, ImageBackground,
+  Linking, Dimensions, ImageBackground, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,12 +24,19 @@ const { width } = Dimensions.get('window');
 export default function JobDetailsScreen({ route, navigation }: any) {
   const { jobId } = route.params;
   const [, forceUpdate] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [sosVisible, setSosVisible] = useState(false);
   const [diagVisible, setDiagVisible] = useState(false);
   const [suppliersVisible, setSuppliersVisible] = useState(false);
 
   useEffect(() => store.subscribe(() => forceUpdate((n) => n + 1)), []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    forceUpdate((n) => n + 1);
+    setTimeout(() => setRefreshing(false), 800);
+  };
 
   const job = store.getJob(jobId);
   if (!job) {
@@ -60,14 +67,6 @@ export default function JobDetailsScreen({ route, navigation }: any) {
         { text: 'Call', onPress: () => Linking.openURL(`tel:${phone}`) },
       ]
     );
-  };
-
-  // ── WhatsApp Message Handler ─────────────────────────────────────────────
-  const handleChatCustomer = () => {
-    const phone = (job.customerPhone || '9876543210').replace(/\D/g, '');
-    const msg = encodeURIComponent(`Hello ${job.customerName || 'Customer'}, I am your Urban Captain technician for your ${job.serviceName || 'service'} booking.`);
-    const cleanPhone = phone.length === 10 ? `91${phone}` : phone;
-    Linking.openURL(`https://wa.me/${cleanPhone}?text=${msg}`);
   };
 
   // ── Turn-by-Turn Voice Navigation ─────────────────────────────────────────
@@ -127,11 +126,12 @@ export default function JobDetailsScreen({ route, navigation }: any) {
             setSubmitting(true);
             try {
               store.updateJobStatus(job.jobId, 'REJECTED');
+              const cancelRes = store.recordCancellation();
               const res = await rejectJob(job.jobId, store.vendorId || undefined);
-              if (res.locked) {
-                Alert.alert('🔒 Account Locked', 'Your profile has been locked due to 3 consecutive skipped service requests. Please contact Admin to unlock.');
+              if (res.locked || cancelRes.blocked) {
+                Alert.alert('🔒 Account Locked', 'Your profile has been locked due to 3 skipped/cancelled service requests. Please contact Admin to unlock.');
               } else {
-                Alert.alert('Job Declined', `Request removed. (${res.skippedCount}/3 skips recorded)`);
+                Alert.alert('Job Declined', `Request removed. (${cancelRes.cancelCount}/${store.CANCEL_LIMIT} cancellations recorded)`);
               }
               navigation.goBack();
             } catch (err: any) {
@@ -238,7 +238,12 @@ export default function JobDetailsScreen({ route, navigation }: any) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={s.scroll}
+        contentContainerStyle={s.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#10B981']} />}
+      >
         {/* Status Hero Card */}
         <View style={s.heroCard}>
           <LinearGradient colors={['#0D3325', '#164E3A']} style={s.heroGrad}>
@@ -298,7 +303,7 @@ export default function JobDetailsScreen({ route, navigation }: any) {
           </TouchableOpacity>
         </View>
 
-        {/* Customer Information Card with Call & WhatsApp */}
+        {/* Customer Information Card with Direct Call Only */}
         <View style={s.card}>
           <Text style={s.cardHeading}>CUSTOMER INFORMATION</Text>
           <View style={s.customerRow}>
@@ -314,13 +319,11 @@ export default function JobDetailsScreen({ route, navigation }: any) {
               </Text>
             </View>
 
-            {/* In-App Direct Call & WhatsApp Buttons */}
+            {/* In-App Direct Call Button Only */}
             <View style={s.commActions}>
               <TouchableOpacity style={s.callBtn} onPress={handleCallCustomer} activeOpacity={0.8}>
                 <Ionicons name="call" size={16} color="#FFFFFF" />
-              </TouchableOpacity>
-              <TouchableOpacity style={s.chatBtn} onPress={handleChatCustomer} activeOpacity={0.8}>
-                <Ionicons name="logo-whatsapp" size={17} color="#FFFFFF" />
+                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12, marginLeft: 4 }}>Call</Text>
               </TouchableOpacity>
             </View>
           </View>

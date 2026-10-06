@@ -54,6 +54,8 @@ export default function RatingFeedbackScreen({ navigation, route }: Props) {
   const [review, setReview] = useState("");
   const [isComplaint, setIsComplaint] = useState(false);
   const [selectedComplaintReason, setSelectedComplaintReason] = useState(COMPLAINT_REASONS[0]);
+  const [customerChecklist, setCustomerChecklist] = useState<string[]>([]);
+  const [customerChecklistDone, setCustomerChecklistDone] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -61,7 +63,17 @@ export default function RatingFeedbackScreen({ navigation, route }: Props) {
     getDoc(doc(db, "bookings", bookingId))
       .then((snap) => {
         if (snap.exists()) {
-          setBookingData(snap.data());
+          const data = snap.data();
+          setBookingData(data);
+          const defaultList = [
+            "Quality of service executed to satisfaction",
+            "Professionalism & punctuality verified",
+            "Work area cleaned & sanitized post-service",
+            "Final demonstration & invoice confirmed",
+          ];
+          const list = (data.checklist && data.checklist.length > 0) ? data.checklist : defaultList;
+          setCustomerChecklist(list);
+          setCustomerChecklistDone(data.customerChecklistDone || data.checklistDone || list);
         }
       })
       .catch((e) => console.log("[RatingFeedback] error fetching booking:", e));
@@ -74,6 +86,12 @@ export default function RatingFeedbackScreen({ navigation, route }: Props) {
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
+
+  const toggleCustomerCheck = (item: string) => {
+    setCustomerChecklistDone((prev) =>
+      prev.includes(item) ? prev.filter((t) => t !== item) : [...prev, item]
     );
   };
 
@@ -92,6 +110,13 @@ export default function RatingFeedbackScreen({ navigation, route }: Props) {
         tags: isComplaint ? [selectedComplaintReason] : selectedTags,
         review: review.trim(),
         tip: activeTip > 0 ? TIPS[activeTip] : undefined,
+      });
+
+      // Save customer verification checklist
+      await updateDoc(doc(db, "bookings", bookingId), {
+        customerChecklistDone,
+        customerChecklist,
+        customerReviewedAt: serverTimestamp(),
       });
 
       // 2. If complaint filed or rating <= 2, register in complaints & lock vendor profile
@@ -208,6 +233,56 @@ export default function RatingFeedbackScreen({ navigation, route }: Props) {
           </View>
           <Text style={s.starSentiment}>{STAR_LABELS[stars]}</Text>
         </Animated.View>
+
+        {/* Customer Quality Checklist Verification */}
+        {customerChecklist.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(100).duration(380)} style={s.card}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <Ionicons name="checkbox" size={20} color="#10b981" />
+              <Text style={s.cardTitle}>Verify Service Steps Completed</Text>
+            </View>
+            <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 12 }}>
+              Confirm each step executed by the technician:
+            </Text>
+            <View style={{ gap: 8 }}>
+              {customerChecklist.map((item, idx) => {
+                const isChecked = customerChecklistDone.includes(item);
+                return (
+                  <Pressable
+                    key={idx}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 10,
+                      backgroundColor: isChecked ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.04)",
+                      borderWidth: 1,
+                      borderColor: isChecked ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.08)",
+                      padding: 10,
+                      borderRadius: 10,
+                    }}
+                    onPress={() => toggleCustomerCheck(item)}
+                  >
+                    <Ionicons
+                      name={isChecked ? "checkbox" : "square-outline"}
+                      size={20}
+                      color={isChecked ? "#10b981" : "rgba(255,255,255,0.4)"}
+                    />
+                    <Text
+                      style={{
+                        flex: 1,
+                        fontSize: 13,
+                        color: isChecked ? "#ffffff" : "rgba(255,255,255,0.7)",
+                        fontWeight: isChecked ? "600" : "400",
+                      }}
+                    >
+                      {item}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Animated.View>
+        )}
 
         {/* File Complaint / Issue Toggle */}
         <Animated.View entering={FadeInDown.delay(120).duration(380)} style={s.card}>

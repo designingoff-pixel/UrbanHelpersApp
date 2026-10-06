@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, Image, Dimensions, ImageBackground, Alert,
+  StyleSheet, Image, Dimensions, ImageBackground, Alert, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,7 +11,9 @@ import {
   subscribeToVendorJobs,
   subscribeToVendorProfile,
   FirestoreBooking,
+  db,
 } from '../services/firestoreService';
+import { getDoc, doc } from 'firebase/firestore';
 import SOSModal from '../components/SOSModal';
 import CalendarModal from '../components/CalendarModal';
 import JobCard from '../components/JobCard';
@@ -29,8 +31,25 @@ const HOME_TABS = [
 export default function HomeScreen({ navigation }: any) {
   const [, forceUpdate] = useState(0);
   const [activeTab, setActiveTab] = useState('requests');
+  const [refreshing, setRefreshing] = useState(false);
   const [sosVisible, setSosVisible] = useState(false);
   const [calendarVisible, setCalendarVisible] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    if (store.vendorId) {
+      try {
+        const vSnap = await getDoc(doc(db, 'vendors', store.vendorId));
+        if (vSnap.exists()) {
+          store.syncVendorProfile(vSnap.data());
+        }
+      } catch (e) {
+        console.warn('[HomeScreen] Refresh error:', e);
+      }
+    }
+    forceUpdate(n => n + 1);
+    setTimeout(() => setRefreshing(false), 700);
+  };
 
   // 🔔 Play a chime whenever a new order arrives
   useNewOrderSound();
@@ -85,8 +104,8 @@ export default function HomeScreen({ navigation }: any) {
   const realTotalEarnings = completedJobs.reduce((sum, j) => sum + (j.vendorEarnings || 0), 0);
   const displayEarnings = realTotalEarnings.toLocaleString('en-IN');
 
-  // Cancellation counter state
-  const cancelCount = store.cancelCount;
+  // Cancellation counter state (combines rolling cancellations & skips)
+  const cancelCount = Math.max(store.cancelCount, store.vendor.cancelCount || 0, store.vendor.skippedCount || 0);
   const cancelLimit = store.CANCEL_LIMIT;
   const cancelBlocked = cancelCount >= cancelLimit;
   const cancelWarning = cancelCount > 0 && !cancelBlocked;
@@ -274,6 +293,7 @@ export default function HomeScreen({ navigation }: any) {
         style={s.contentScroll}
         contentContainerStyle={s.contentContainer}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#10B981']} />}
       >
         {displayedJobs.length === 0 ? (
           <View style={s.emptyContainer}>
