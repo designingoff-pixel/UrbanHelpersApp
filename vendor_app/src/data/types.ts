@@ -44,6 +44,9 @@ export interface Job {
   completedAt?: number;
   rating?: number;
   review?: string;
+  reviewTags?: string[];
+  tip?: string;
+  audioUrl?: string;
 }
 
 export interface Vendor {
@@ -66,6 +69,7 @@ export interface Vendor {
   status?: 'active' | 'locked' | 'suspended';
   lockReason?: string;
   skippedCount?: number;
+  cancelCount?: number;
   documents?: {
     aadhaarFront?: string;
     aadhaarBack?: string;

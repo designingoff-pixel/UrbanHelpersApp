@@ -378,34 +378,35 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
     setShowSuggestions(false);
   };
 
-  // Open Map Picker
+  // Open Map Picker — always pins current GPS location first
   const handleOpenMap = async (forNewModal = false) => {
     setIsNewAddressMap(forNewModal);
-    
-    let targetLat = customerLat || 13.0827;
-    let targetLng = customerLng || 80.2707;
-    
-    if (forNewModal) {
-      targetLat = newLat || targetLat;
-      targetLng = newLng || targetLng;
-      setAddressText(newAddressText || addressText);
-    }
 
+    // Default fallback coords (Chennai)
+    let targetLat = 13.0827;
+    let targetLng = 80.2707;
     let fetchedCurrent = false;
 
-    if (!targetLat || !targetLng || (!customerLat && !forNewModal)) {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === "granted") {
-          const loc = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
-          targetLat = loc.coords.latitude;
-          targetLng = loc.coords.longitude;
-          fetchedCurrent = true;
-        }
-      } catch (e) {
-        console.warn("Location fetch error:", e);
+    // ALWAYS try to get current GPS location first when opening map
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        targetLat = loc.coords.latitude;
+        targetLng = loc.coords.longitude;
+        fetchedCurrent = true;
+      }
+    } catch (e) {
+      console.warn("Location fetch error:", e);
+      // Fall back to previously known coords if GPS fails
+      if (forNewModal) {
+        targetLat = newLat || customerLat || targetLat;
+        targetLng = newLng || customerLng || targetLng;
+      } else {
+        targetLat = customerLat || targetLat;
+        targetLng = customerLng || targetLng;
       }
     }
 

@@ -362,6 +362,71 @@ export default function JobDetailsScreen({ route, navigation }: any) {
             </View>
           </View>
         )}
+
+        {/* Customer Review Card (visible on completed jobs) */}
+        {job.status === 'COMPLETED' && job.rating && (
+          <View style={s.card}>
+            <Text style={s.cardHeading}>⭐ CUSTOMER REVIEW</Text>
+            {/* Star Rating */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              {[1,2,3,4,5].map(star => (
+                <Ionicons
+                  key={star}
+                  name={star <= job.rating! ? 'star' : 'star-outline'}
+                  size={22}
+                  color={star <= job.rating! ? '#F59E0B' : '#D1D5DB'}
+                  style={{ marginRight: 3 }}
+                />
+              ))}
+              <Text style={{ marginLeft: 8, fontSize: 15, fontWeight: '700', color: '#1F2937' }}>
+                {job.rating?.toFixed(1)} / 5
+              </Text>
+            </View>
+
+            {/* Review Text */}
+            {job.review ? (
+              <Text style={{ fontSize: 14, color: '#374151', lineHeight: 20, fontStyle: 'italic', marginBottom: 8 }}>
+                "{job.review}"
+              </Text>
+            ) : null}
+
+            {/* Review Tags */}
+            {job.reviewTags && job.reviewTags.length > 0 && (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
+                {job.reviewTags.map((tag, i) => (
+                  <View key={i} style={{ backgroundColor: '#ECFDF5', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: '#6EE7B7' }}>
+                    <Text style={{ fontSize: 12, color: '#065F46', fontWeight: '600' }}>✓ {tag}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Tip if any */}
+            {job.tip ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, backgroundColor: '#FFFBEB', borderRadius: 8, padding: 8, borderWidth: 1, borderColor: '#FCD34D' }}>
+                <Ionicons name="gift-outline" size={18} color="#B45309" />
+                <Text style={{ marginLeft: 6, fontSize: 13, color: '#B45309', fontWeight: '600' }}>
+                  Customer Tip: {job.tip}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        )}
+
+        {/* Voice Recording Proof (if audioUrl exists) */}
+        {job.audioUrl ? (
+          <View style={s.card}>
+            <Text style={s.cardHeading}>🎙 VOICE RECORDING</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDF4', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#BBF7D0' }}>
+              <Ionicons name="mic-circle" size={32} color="#16A34A" />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#166534' }}>Audio recorded during service</Text>
+                <Text style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>{job.audioUrl.substring(0, 48)}...</Text>
+              </View>
+              <Ionicons name="checkmark-circle" size={22} color="#16A34A" />
+            </View>
+          </View>
+        ) : null}
       </ScrollView>
 
       {/* Dynamic Action Bottom Bar */}

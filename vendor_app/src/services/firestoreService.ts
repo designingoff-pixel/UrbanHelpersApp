@@ -8,6 +8,7 @@ import {
   updateDoc,
   where,
   setDoc,
+  increment,
 } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -46,12 +47,18 @@ export interface FirestoreBooking {
   customerLng?:    number;
   beforePhoto?:    string;
   afterPhoto?:     string;
+  audioUrl?:       string;
   rating?:         number;
   review?:         string;
   reviewTags?:     string[];
+  tip?:            string;
   rated?:          boolean;
+  checklist?:      string[];
+  checklistDone?:  string[];
   completedAt?:    any;
   createdAt?:      any;
+  cancelledAt?:    any;
+  cancelledBy?:    string;
 }
 
 // ── JOBS: Listen for all bookings assigned to this vendor ───────────────────
@@ -111,6 +118,30 @@ export async function cancelBooking(
     cancelledBy: "vendor",
     vendorId: vendorId ?? null,
   });
+
+  if (vendorId) {
+    try {
+      await updateDoc(doc(db, "vendors", vendorId), {
+        cancelCount: increment(1),
+        lastCancelledAt: serverTimestamp(),
+      });
+    } catch (e) {
+      console.warn("[cancelBooking] Could not increment vendor cancelCount:", e);
+    }
+  }
+}
+
+// ── Vendor updates checklist items ──────────────────────────────────────────
+export async function updateBookingChecklist(
+  bookingId: string,
+  checklistDone: string[],
+  checklist?: string[]
+): Promise<void> {
+  const data: Record<string, any> = { checklistDone };
+  if (checklist && checklist.length > 0) {
+    data.checklist = checklist;
+  }
+  await updateDoc(doc(db, "bookings", bookingId), data);
 }
 
 

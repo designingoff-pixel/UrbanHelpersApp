@@ -10,6 +10,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
+import { db } from "@/services/firebase";
+import { doc, onSnapshot } from "firebase/firestore";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceInProgress">;
 
@@ -75,18 +77,33 @@ function getDynamicChecklist(serviceName: string): { label: string; icon: string
 }
 
 export default function ServiceInProgressScreen({ route, navigation }: Props) {
-  // Accept serviceName from navigation params (fallback to "Home Cleaning")
+  // Accept serviceName and bookingId from navigation params
   const serviceName: string = (route?.params as any)?.serviceName ?? "Home Cleaning";
+  const bookingId: string | undefined = (route?.params as any)?.bookingId;
   const checklist = getDynamicChecklist(serviceName);
 
-  // Simulate live vendor progress — in production this comes from Firestore real-time listener
+  // Live vendor checklist progress from Firestore
   const [vendorDoneCount, setVendorDoneCount] = useState(0);
+  const [liveChecklistDone, setLiveChecklistDone] = useState<string[]>([]);
+
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setVendorDoneCount(2); // vendor has ticked 2 items so far
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, []);
+    if (!bookingId) {
+      // Fallback demo animation if no bookingId
+      const timer = setTimeout(() => setVendorDoneCount(2), 1200);
+      return () => clearTimeout(timer);
+    }
+
+    // Real-time subscription to booking document
+    const unsub = onSnapshot(doc(db, "bookings", bookingId), (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data();
+      const done: string[] = data?.checklistDone || [];
+      setLiveChecklistDone(done);
+      setVendorDoneCount(done.length);
+    });
+
+    return () => unsub();
+  }, [bookingId]);
 
   const totalCount = checklist.length;
   const progressPct = totalCount > 0 ? Math.round((vendorDoneCount / totalCount) * 100) : 0;

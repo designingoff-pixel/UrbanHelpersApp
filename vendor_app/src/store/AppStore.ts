@@ -57,6 +57,10 @@ class AppStore {
     if (data.serviceArea) this.vendor.serviceArea = data.serviceArea;
     if (data.serviceRadius) this.vendor.serviceRadius = data.serviceRadius;
     if (typeof data.skippedCount === 'number') this.vendor.skippedCount = data.skippedCount;
+    if (typeof data.cancelCount === 'number') {
+      this.cancelCount = data.cancelCount;
+      this.vendor.cancelCount = data.cancelCount;
+    }
     if (data.status === 'locked' || data.isLocked === true) {
       this.vendor.isLocked = true;
       this.vendor.status = 'locked';
@@ -85,6 +89,30 @@ class AppStore {
     const newReqs = this.jobs.filter(j => j.status === 'NEW_REQUEST');
     const mapped = this._mapFirestore(firestoreJobs);
     this.jobs = [...mapped, ...newReqs];
+
+    // Compute rolling 7-day cancellation count from Firestore jobs
+    const now = Date.now();
+    const sevenDaysAgo = now - this.CANCEL_WINDOW_MS;
+    const recentCancels = firestoreJobs.filter(b => {
+      if (b.status !== 'cancelled') return false;
+      let cTime = now;
+      if (b.cancelledAt) {
+        cTime = b.cancelledAt.toMillis ? b.cancelledAt.toMillis() : new Date(b.cancelledAt).getTime();
+      }
+      return cTime >= sevenDaysAgo;
+    });
+
+    if (recentCancels.length > 0) {
+      this.cancelCount = Math.max(this.cancelCount, recentCancels.length);
+      this.vendor.cancelCount = this.cancelCount;
+      if (this.cancelCount >= this.CANCEL_LIMIT) {
+        this.vendor.isLocked = true;
+        this.vendor.isOnline = false;
+        this.vendor.status = 'locked';
+        this.vendor.lockReason = `Profile temporarily blocked: ${this.CANCEL_LIMIT} job cancellations recorded in 7 days. Contact Admin to unlock.`;
+      }
+    }
+
     this.notify();
   }
 
@@ -133,14 +161,17 @@ class AppStore {
         paymentStatus:       fb.paymentStatus === 'paid' ? 'PAID' : 'PENDING',
         vendorEarnings:      Math.round((fb.price || 0) * 0.8),
         otp:                 fb.otp ?? '',
-        checklist:           existing?.checklist ?? [],
-        checklistDone:       existing?.checklistDone ?? [],
+        checklist:           fb.checklist ?? existing?.checklist ?? [],
+        checklistDone:       fb.checklistDone ?? existing?.checklistDone ?? [],
         beforePhoto:         fb.beforePhoto || existing?.beforePhoto || null,
         afterPhoto:          fb.afterPhoto || existing?.afterPhoto || null,
         createdAt:           Date.now(),
         completedAt:         completedTimestamp,
         rating:              fb.rating,
         review:              fb.review,
+        reviewTags:          fb.reviewTags,
+        tip:                 fb.tip,
+        audioUrl:            fb.audioUrl || existing?.audioUrl,
       } as Job;
     });
   }
