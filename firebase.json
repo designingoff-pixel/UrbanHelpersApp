@@ -13,6 +13,12 @@
       "**/*.sh",
       "**/*.cmd",
       "**/*.exe"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
     ]
   }
 }
