@@ -719,7 +719,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 
             {/* Selected address preview */}
             {addressText.trim().length > 0 && (
-              <View style={[s.addressInputWrap, { marginTop: 8, marginBottom: 8 }]}>
+              <View style={[s.addressInputWrap, { marginTop: 8, marginBottom: 0 }]}>
                 <Ionicons name="location" size={16} color="#10b981" style={{ marginRight: 8 }} />
                 <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 13, flex: 1 }} numberOfLines={2}>
                   {addressText}
@@ -727,50 +727,13 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               </View>
             )}
 
-            {/* Search bar — live autocomplete as user types */}
-            <View style={[s.addressInputWrap, { marginTop: 0, marginBottom: 0, backgroundColor: "rgba(255,255,255,0.04)", borderWidth: 0 }]}>
-              <Ionicons name="search-outline" size={16} color="rgba(255,255,255,0.5)" style={{ marginRight: 8 }} />
-              <TextInput
-                style={[s.addressInput, s.addressInputWithIcon, { marginBottom: 0, flex: 1, paddingVertical: 10 }]}
-                placeholder="Search address..."
-                placeholderTextColor={colors.text.muted}
-                value={addressText}
-                onChangeText={(text) => {
-                  setAddressText(text);
-                }}
-                returnKeyType="search"
-              />
-              {searchingAddress && <ActivityIndicator size="small" color="#10b981" />}
-            </View>
-
             {locationErrorMsg ? (
               <Text style={{ color: "#ef4444", fontSize: 13, marginTop: 8 }}>
                 ⚠ {locationErrorMsg}
               </Text>
             ) : null}
 
-            {/* Live Autocomplete Suggestions Dropdown */}
-            {showSuggestions && suggestions.length > 0 && (
-              <View style={s.suggestionsContainer}>
-                {suggestions.map((item, idx) => (
-                  <Pressable
-                    key={`${item.label}-${idx}`}
-                    onPress={() => handleSelectSuggestion(item)}
-                    style={({ pressed }) => [
-                      s.suggestionRow,
-                      pressed && s.suggestionRowPressed,
-                    ]}
-                  >
-                    <Ionicons name="location-outline" size={18} color={category.accent} style={s.suggestionIcon} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.suggestionText} numberOfLines={2}>
-                        {item.label}
-                      </Text>
-                    </View>
-                  </Pressable>
-                ))}
-              </View>
-            )}
+
           </View>
         </Animated.View>
 
