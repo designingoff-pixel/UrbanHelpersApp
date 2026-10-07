@@ -78,11 +78,11 @@ function generateOTP(): string {
 
 /** Writes a new booking request. Matches the `Booking` shape the admin dashboard reads. */
 export async function createBooking(input: CreateBookingInput): Promise<{ bookingId: string, otp: string }> {
-  if (!input.customerPhone || input.customerPhone.replace(/[^0-9+]/g, '').length < 10) {
-    throw new Error("Missing or invalid customer phone number.");
+  if (!input.customerPhone?.trim()) {
+    throw new Error("Phone number is required");
   }
-  if (!input.address || !input.address.trim() || input.customerLat === undefined || input.customerLng === undefined) {
-    throw new Error("Missing or invalid service location.");
+  if (!input.address?.trim() || typeof input.customerLat !== 'number' || typeof input.customerLng !== 'number') {
+    throw new Error("Valid service location is required");
   }
 
   const generatedOTP = generateOTP();

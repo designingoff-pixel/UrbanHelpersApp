@@ -78,6 +78,13 @@ function generateOTP(): string {
 
 /** Writes a new booking request. Matches the `Booking` shape the admin dashboard reads. */
 export async function createBooking(input: CreateBookingInput): Promise<{ bookingId: string, otp: string }> {
+  if (!input.customerPhone?.trim()) {
+    throw new Error("Phone number is required");
+  }
+  if (!input.address?.trim() || typeof input.customerLat !== 'number' || typeof input.customerLng !== 'number') {
+    throw new Error("Valid service location is required");
+  }
+
   const generatedOTP = generateOTP();
   const docRef = await addDoc(collection(db, "bookings"), {
     ...input,

@@ -135,8 +135,14 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   const [customerLng, setCustomerLng] = useState<number | undefined>();
   const [customerPhone, setCustomerPhone] = useState(user?.phoneNumber || "");
   const [submitting, setSubmitting] = useState(false);
-  const [phoneError, setPhoneError] = useState("");
-  const [locationError, setLocationError] = useState("");
+  const [phoneErrorMsg, setPhoneErrorMsg] = useState("");
+  const [locationErrorMsg, setLocationErrorMsg] = useState("");
+
+  useEffect(() => {
+    if (addressText.trim() && customerLat && customerLng) {
+      setLocationErrorMsg("");
+    }
+  }, [addressText, customerLat, customerLng]);
 
   // ── Autocomplete / Suggestions State ───────────────────────────────────────
   const [suggestions, setSuggestions] = useState<GeocodedLocation[]>([]);
@@ -337,10 +343,10 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
     };
   }, [addressText]);
 
+  // Handle suggestion pick
   const handleSelectSuggestion = (item: GeocodedLocation) => {
     if (reverseGeocodeRef.current) clearTimeout(reverseGeocodeRef.current);
     setAddressText(item.label);
-    if (locationError) setLocationError("");
     setCustomerLat(item.lat);
     setCustomerLng(item.lng);
     setPinCoords({ lat: item.lat, lng: item.lng });
@@ -364,7 +370,6 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   const handleSelectAddressCard = (addr: SavedAddress) => {
     setSelectedAddressId(addr.id);
     setAddressText(addr.addressText);
-    if (locationError) setLocationError("");
     setFlatNo(addr.flatNo || "");
     setLandmark(addr.landmark || "");
     setCustomerLat(addr.lat);
@@ -381,35 +386,34 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
     setShowSuggestions(false);
   };
 
-  // Open Map Picker — always pins current GPS location first
+  // Open Map Picker
   const handleOpenMap = async (forNewModal = false) => {
     setIsNewAddressMap(forNewModal);
+    
+    let targetLat = customerLat || 13.0827;
+    let targetLng = customerLng || 80.2707;
+    
+    if (forNewModal) {
+      targetLat = newLat || targetLat;
+      targetLng = newLng || targetLng;
+      setAddressText(newAddressText || addressText);
+    }
 
-    // Default fallback coords (Chennai)
-    let targetLat = 13.0827;
-    let targetLng = 80.2707;
     let fetchedCurrent = false;
 
-    // ALWAYS try to get current GPS location first when opening map
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === "granted") {
-        const loc = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-        targetLat = loc.coords.latitude;
-        targetLng = loc.coords.longitude;
-        fetchedCurrent = true;
-      }
-    } catch (e) {
-      console.warn("Location fetch error:", e);
-      // Fall back to previously known coords if GPS fails
-      if (forNewModal) {
-        targetLat = newLat || customerLat || targetLat;
-        targetLng = newLng || customerLng || targetLng;
-      } else {
-        targetLat = customerLat || targetLat;
-        targetLng = customerLng || targetLng;
+    if (!targetLat || !targetLng || (!customerLat && !forNewModal)) {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === "granted") {
+          const loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          targetLat = loc.coords.latitude;
+          targetLng = loc.coords.longitude;
+          fetchedCurrent = true;
+        }
+      } catch (e) {
+        console.warn("Location fetch error:", e);
       }
     }
 
@@ -444,7 +448,6 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         setNewLng(pinCoords.lng);
       } else {
         setAddressText(finalAddress);
-        if (locationError) setLocationError("");
         setCustomerLat(pinCoords.lat);
         setCustomerLng(pinCoords.lng);
       }
@@ -507,25 +510,24 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
     }
 
     let isValid = true;
-
-    const phoneClean = customerPhone.replace(/[^0-9+]/g, '');
-    if (!phoneClean || phoneClean.length < 10) {
-      setPhoneError("Please enter your contact number.");
+    
+    // Validate phone number
+    if (!customerPhone.trim() || customerPhone.replace(/[^0-9]/g, "").length < 10) {
+      setPhoneErrorMsg("Please enter your contact number.");
       isValid = false;
     } else {
-      setPhoneError("");
+      setPhoneErrorMsg("");
     }
 
-    if (!addressText.trim() || customerLat === undefined || customerLng === undefined) {
-      setLocationError("Please select your service location.");
+    // Validate location
+    if (!addressText.trim() || !customerLat || !customerLng) {
+      setLocationErrorMsg("Please select your service location.");
       isValid = false;
     } else {
-      setLocationError("");
+      setLocationErrorMsg("");
     }
 
-    if (!isValid) {
-      return;
-    }
+    if (!isValid) return;
 
     setSubmitting(true);
     try {
@@ -677,7 +679,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         <Animated.View entering={FadeInDown.delay(100).duration(380)}>
           <View style={s.section}>
             <Text style={s.sectionTitle}>Contact Number</Text>
-            <View style={[s.inputWithIconWrap, phoneError ? { borderColor: "#ef4444" } : {}]}>
+            <View style={s.inputWithIconWrap}>
               <Ionicons name="call-outline" size={18} color={category.accent} style={s.inputIcon} />
               <TextInput
                 style={s.inputInner}
@@ -686,15 +688,15 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                 value={customerPhone}
                 onChangeText={(text) => {
                   setCustomerPhone(text);
-                  if (phoneError) setPhoneError("");
+                  if (text.trim().length >= 10) setPhoneErrorMsg("");
                 }}
                 keyboardType="phone-pad"
                 maxLength={13}
               />
             </View>
-            {phoneError ? (
-              <Text style={{ color: "#ef4444", fontSize: 12, marginTop: 8 }}>
-                ⚠ {phoneError}
+            {phoneErrorMsg ? (
+              <Text style={{ color: "#ef4444", fontSize: 13, marginTop: 8 }}>
+                ⚠ {phoneErrorMsg}
               </Text>
             ) : null}
           </View>
@@ -725,25 +727,32 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               </View>
             )}
 
+            {/* OR divider */}
+            <View style={{ flexDirection: "row", alignItems: "center", marginVertical: 10, gap: 8 }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: "rgba(255,255,255,0.1)" }} />
+              <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>OR SEARCH</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: "rgba(255,255,255,0.1)" }} />
+            </View>
+
             {/* Search bar — live autocomplete as user types */}
-            <View style={[s.addressInputWrap, { marginTop: addressText.trim().length > 0 ? 0 : 10 }, locationError ? { borderColor: "#ef4444" } : {}]}>
+            <View style={[s.addressInputWrap, { marginTop: 0 }]}>
               <Ionicons name="search-outline" size={16} color="rgba(255,255,255,0.5)" style={{ marginRight: 8 }} />
               <TextInput
                 style={[s.addressInput, s.addressInputWithIcon, { marginBottom: 0, flex: 1 }]}
-                placeholder="Search address..."
+                placeholder="Search location..."
                 placeholderTextColor={colors.text.muted}
                 value={addressText}
                 onChangeText={(text) => {
                   setAddressText(text);
-                  if (locationError) setLocationError("");
                 }}
                 returnKeyType="search"
               />
               {searchingAddress && <ActivityIndicator size="small" color="#10b981" />}
             </View>
-            {locationError ? (
-              <Text style={{ color: "#ef4444", fontSize: 12, marginTop: 4 }}>
-                ⚠ {locationError}
+
+            {locationErrorMsg ? (
+              <Text style={{ color: "#ef4444", fontSize: 13, marginTop: 8 }}>
+                ⚠ {locationErrorMsg}
               </Text>
             ) : null}
 
@@ -1013,7 +1022,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               <Ionicons name="search-outline" size={16} color="rgba(255,255,255,0.6)" />
               <TextInput
                 style={{ flex: 1, color: "white", fontSize: 14, marginLeft: 8 }}
-                placeholder="Search address..."
+                placeholder="Search location..."
                 placeholderTextColor="rgba(255,255,255,0.5)"
                 value={addressText}
                 onChangeText={(text) => setAddressText(text)}

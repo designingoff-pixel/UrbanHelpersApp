@@ -135,6 +135,14 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   const [customerLng, setCustomerLng] = useState<number | undefined>();
   const [customerPhone, setCustomerPhone] = useState(user?.phoneNumber || "");
   const [submitting, setSubmitting] = useState(false);
+  const [phoneErrorMsg, setPhoneErrorMsg] = useState("");
+  const [locationErrorMsg, setLocationErrorMsg] = useState("");
+
+  useEffect(() => {
+    if (addressText.trim() && customerLat && customerLng) {
+      setLocationErrorMsg("");
+    }
+  }, [addressText, customerLat, customerLng]);
 
   // ── Autocomplete / Suggestions State ───────────────────────────────────────
   const [suggestions, setSuggestions] = useState<GeocodedLocation[]>([]);
@@ -457,14 +465,26 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       ]);
       return;
     }
-    if (!customerPhone.trim() || customerPhone.length < 10) {
-      Alert.alert("Phone number required", "Please enter a valid 10-digit mobile number.");
-      return;
+
+    let isValid = true;
+    
+    // Validate phone number
+    if (!customerPhone.trim() || customerPhone.replace(/[^0-9]/g, "").length < 10) {
+      setPhoneErrorMsg("Please enter your contact number.");
+      isValid = false;
+    } else {
+      setPhoneErrorMsg("");
     }
-    if (!addressText.trim()) {
-      Alert.alert("Address required", "Please enter or select your service address.");
-      return;
+
+    // Validate location
+    if (!addressText.trim() || !customerLat || !customerLng) {
+      setLocationErrorMsg("Please select your service location.");
+      isValid = false;
+    } else {
+      setLocationErrorMsg("");
     }
+
+    if (!isValid) return;
 
     setSubmitting(true);
     try {
@@ -623,11 +643,19 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                 placeholder="10-digit mobile number for vendor contact"
                 placeholderTextColor={colors.text.muted}
                 value={customerPhone}
-                onChangeText={setCustomerPhone}
+                onChangeText={(text) => {
+                  setCustomerPhone(text);
+                  if (text.trim().length >= 10) setPhoneErrorMsg("");
+                }}
                 keyboardType="phone-pad"
                 maxLength={13}
               />
             </View>
+            {phoneErrorMsg ? (
+              <Text style={{ color: "#ef4444", fontSize: 13, marginTop: 8 }}>
+                ⚠ {phoneErrorMsg}
+              </Text>
+            ) : null}
           </View>
         </Animated.View>
 
@@ -678,6 +706,12 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               />
               {searchingAddress && <ActivityIndicator size="small" color="#10b981" />}
             </View>
+
+            {locationErrorMsg ? (
+              <Text style={{ color: "#ef4444", fontSize: 13, marginTop: 8 }}>
+                ⚠ {locationErrorMsg}
+              </Text>
+            ) : null}
 
             {/* Live Autocomplete Suggestions Dropdown */}
             {showSuggestions && suggestions.length > 0 && (
