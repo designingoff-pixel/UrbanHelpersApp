@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Urban Helpers â€” Control Center</title>
+  <title>Urban Helpers</title>
   <meta name="description" content="Urban Helpers Admin Control Center â€” real-time platform management dashboard.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <link rel="alternate icon" href="favicon.ico">
+  <link rel="icon" type="image/jpeg" href="logo.jpg">
+  
 
   <style>
     :root {
@@ -186,11 +186,10 @@
 
   <!-- ── Left Sidebar ── -->
   <aside class="sidebar">
-    <div class="brand-header">
-      <div class="brand-shield-icon"><i class="fa-solid fa-shield-halved"></i></div>
+    <div class="brand-header" style="display: flex; align-items: center; gap: 12px; padding: 18px 20px;">
+      <img src="logo.jpg" alt="Urban Helpers" style="width: 38px; height: 38px; border-radius: 10px; object-fit: cover; flex-shrink: 0;" />
       <div class="brand-title-wrap">
-        <span class="brand-title">Urban Helpers</span>
-        <span class="brand-sub">Control Center</span>
+        <span class="brand-title" style="font-size: 16px; font-weight: 800; color: #ffffff;">Urban Helpers</span>
       </div>
     </div>
 
@@ -301,18 +300,11 @@
 
   <!-- ── Main Wrapper ── -->
   <div class="main-wrapper">
-    <!-- Firebase status bar -->
-    <div class="firebase-status-bar disconnected" id="fbStatusBar">
-      <span class="dot"></span>
-      <span id="fbStatusText">Connecting to Firebase…</span>
-      <span style="margin-left:auto; cursor:pointer; opacity:0.6;" onclick="resetConfig()"><i class="fa-solid fa-rotate-right"></i> Change Config</span>
-    </div>
-
     <!-- Top Header -->
     <header class="top-header">
-      <div>
-        <h1 class="greeting-title" id="topGreetingTitle">Urban Helpers Control Center</h1>
-        <p class="greeting-sub" id="topGreetingSub">Loading real-time data from Firebase…</p>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <img src="logo.jpg" alt="Urban Helpers" style="width: 38px; height: 38px; border-radius: 10px; object-fit: cover;" />
+        <h1 class="greeting-title" id="topGreetingTitle" style="margin: 0; font-size: 20px; font-weight: 800; color: var(--text-dark);">Urban Helpers</h1>
       </div>
       <div class="header-actions">
         <div class="search-input-box">
@@ -353,9 +345,9 @@
           <div class="metric-card">
             <div class="metric-card-top">
               <div class="metric-icon-box"><i class="fa-solid fa-user-group"></i></div>
-              <div class="metric-growth-badge" id="metricUsersBadge">â€”</div>
+              <div class="metric-growth-badge" style="color:#10b981;">• LIVE</div>
             </div>
-            <div class="metric-val" id="metricUsers">â€”</div>
+            <div class="metric-val" id="metricUsers">0</div>
             <div class="metric-label">Total Users</div>
             <div class="metric-sub">registered accounts</div>
           </div>
@@ -363,9 +355,9 @@
           <div class="metric-card">
             <div class="metric-card-top">
               <div class="metric-icon-box"><i class="fa-solid fa-crown"></i></div>
-              <div class="metric-growth-badge">â€”</div>
+              <div class="metric-growth-badge" style="color:#10b981;">• LIVE</div>
             </div>
-            <div class="metric-val" id="metricVendors">â€”</div>
+            <div class="metric-val" id="metricVendors">0</div>
             <div class="metric-label">Active Vendors</div>
             <div class="metric-sub">service partners</div>
           </div>
@@ -373,9 +365,9 @@
           <div class="metric-card">
             <div class="metric-card-top">
               <div class="metric-icon-box"><i class="fa-solid fa-calendar-check"></i></div>
-              <div class="metric-growth-badge">â€”</div>
+              <div class="metric-growth-badge" style="color:#10b981;">• LIVE</div>
             </div>
-            <div class="metric-val" id="metricBookings">â€”</div>
+            <div class="metric-val" id="metricBookings">0</div>
             <div class="metric-label">Total Bookings</div>
             <div class="metric-sub">all time</div>
           </div>
@@ -383,9 +375,9 @@
           <div class="metric-card">
             <div class="metric-card-top">
               <div class="metric-icon-box"><i class="fa-solid fa-bag-shopping"></i></div>
-              <div class="metric-growth-badge">â€”</div>
+              <div class="metric-growth-badge" style="color:#10b981;">• LIVE</div>
             </div>
-            <div class="metric-val" id="metricOrders">â€”</div>
+            <div class="metric-val" id="metricOrders">0</div>
             <div class="metric-label">Shop Orders</div>
             <div class="metric-sub">all time</div>
           </div>
@@ -393,9 +385,9 @@
           <div class="metric-card">
             <div class="metric-card-top">
               <div class="metric-icon-box"><i class="fa-solid fa-heart-pulse"></i></div>
-              <div class="metric-growth-badge">â€”</div>
+              <div class="metric-growth-badge" style="color:#10b981;">• LIVE</div>
             </div>
-            <div class="metric-val" id="metricHealthLogs">â€”</div>
+            <div class="metric-val" id="metricHealthLogs">0</div>
             <div class="metric-label">Health Log Entries</div>
             <div class="metric-sub">all users</div>
           </div>
@@ -403,9 +395,9 @@
           <div class="metric-card">
             <div class="metric-card-top">
               <div class="metric-icon-box"><i class="fa-solid fa-bag-shopping"></i></div>
-              <div class="metric-growth-badge">â€”</div>
+              <div class="metric-growth-badge" style="color:#10b981;">• LIVE</div>
             </div>
-            <div class="metric-val" id="metricProducts">â€”</div>
+            <div class="metric-val" id="metricProducts">0</div>
             <div class="metric-label">Shop Products</div>
             <div class="metric-sub">in catalogue</div>
           </div>
@@ -413,9 +405,9 @@
           <div class="metric-card">
             <div class="metric-card-top">
               <div class="metric-icon-box"><i class="fa-solid fa-indian-rupee-sign"></i></div>
-              <div class="metric-growth-badge">â€”</div>
+              <div class="metric-growth-badge" style="color:#10b981;">• LIVE</div>
             </div>
-            <div class="metric-val" id="metricRevenue">â€”</div>
+            <div class="metric-val" id="metricRevenue">₹0</div>
             <div class="metric-label">Total Order Revenue</div>
             <div class="metric-sub">shop orders (cash)</div>
           </div>
@@ -431,54 +423,6 @@
           </div>
         </div>
 
-        <!-- Activity Feed + System Telemetry -->
-        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 18px; margin-top: 22px;">
-          <div class="admin-section-card">
-            <div class="section-head-bar">
-              <div class="section-main-title">
-                <i class="fa-solid fa-bolt" style="color: #f59e0b;"></i> Real-Time Activity Feed
-              </div>
-              <button class="btn-sm-action" onclick="loadActivityFeed()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
-            </div>
-            <div class="activity-feed-list" id="activityFeedList">
-              <div class="loading-state"><div class="spinner"></div>Loading…</div>
-            </div>
-          </div>
-
-          <div class="admin-section-card">
-            <div class="section-head-bar">
-              <div class="section-main-title">
-                <i class="fa-solid fa-server" style="color: #10b981;"></i> System Telemetry
-              </div>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 14px;">
-              <div>
-                <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; margin-bottom:4px;">
-                  <span>Firebase Cloud Store</span>
-                  <span id="fbTelemetryStatus" style="color:#10b981;">â— Connecting…</span>
-                </div>
-                <div style="height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden;"><div id="fbTelemetryBar" style="width:0%; height:100%; background:#10b981; transition:width 1s;"></div></div>
-              </div>
-              <div>
-                <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; margin-bottom:4px;">
-                  <span>Firestore Collections</span>
-                  <span id="collectionsStatus" style="color:#64748b;">â€”</span>
-                </div>
-                <div style="height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden;"><div id="collectionsBar" style="width:0%; height:100%; background:#0284c7; transition:width 1s;"></div></div>
-              </div>
-              <div>
-                <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; margin-bottom:4px;">
-                  <span>Emergency Dispatch SOS</span>
-                  <span style="color:#f59e0b;">â— Standby Ready</span>
-                </div>
-                <div style="height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden;"><div style="width:100%; height:100%; background:#f59e0b;"></div></div>
-              </div>
-              <div id="telemetryNote" style="background:#f1f5f9; padding:10px; border-radius:10px; font-size:11.5px; color:#475569; margin-top:4px;">
-                <i class="fa-solid fa-clock" style="color:#94a3b8;"></i> Awaiting Firebase connection…
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -1259,6 +1203,32 @@
     </div>
   </div>
 
+  
+  <!-- Comprehensive Booking Details & Verification Modal (Voice Record, Updated Photos, Review & Checklist) -->
+  <div class="modal-overlay" id="bookingDetailsModal" style="display:none; z-index:9999;">
+    <div class="modal-box" style="max-width:680px; max-height:90vh; overflow-y:auto; padding:24px 28px;">
+      <div class="modal-header" style="border-bottom:1px solid #e2e8f0; padding-bottom:14px; margin-bottom:18px;">
+        <div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <h3 class="modal-title" id="bdmTitle" style="font-size:18px; font-weight:800; color:#0f172a;">Booking Details</h3>
+            <span id="bdmStatusBadge" class="status-badge badge-blue">-</span>
+          </div>
+          <p id="bdmSubtitle" style="font-size:12.5px; color:#64748b; margin-top:2px;">Complete service audit: recorded voice, proof photos, customer review &amp; checklist</p>
+        </div>
+        <button class="modal-close" onclick="closeBookingDetailsModal()">&times;</button>
+      </div>
+
+      <div id="bdmContentBody">
+        <!-- Rendered dynamically by window.openBookingDetailsModal -->
+      </div>
+
+      <div style="border-top:1px solid #e2e8f0; padding-top:14px; margin-top:20px; display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:11.5px; color:#94a3b8;"><i class="fa-solid fa-shield-halved" style="color:#10b981;"></i> Verified Urban Helpers Service Record</span>
+        <button type="button" class="btn-primary-action" onclick="closeBookingDetailsModal()" style="background:#0f172a; color:#fff; border:none; padding:8px 20px; border-radius:8px; font-weight:700; cursor:pointer;">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Firebase JS SDK (v10 modular CDN) -->
   <script type="module">
     import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js';
@@ -1346,8 +1316,8 @@
         if (telNote) telNote.innerHTML = '<i class="fa-solid fa-circle-check" style="color:#10b981;"></i> Connected to Firebase project: <strong>' + DEFAULT_FIREBASE_CONFIG.projectId + '</strong>';
 
         // Update header
-        setTxt('topGreetingTitle', 'Urban Helpers Control Center');
-        setTxt('topGreetingSub', 'Live data from Firebase: ' + DEFAULT_FIREBASE_CONFIG.projectId);
+        setTxt('topGreetingTitle', 'Urban Helpers');
+        // top sub removed
 
         // Expose db globally
         window._db = db;
@@ -1450,6 +1420,7 @@
     // ─────────────────────────────────────────────
     window.loadActivityFeed = async function() {
       const list = document.getElementById('activityFeedList');
+      if (!list) return;
       list.innerHTML = '<div class="loading-state"><div class="spinner"></div>Loading…</div>';
 
       try {
@@ -2530,7 +2501,16 @@
         tb.innerHTML = list.slice(0, 20).map(b => {
           const dateStr = b.scheduledAt || (b.createdAt?.toDate ? b.createdAt.toDate().toLocaleDateString('en-IN') : 'â€”');
           return `<tr>
-            <td><strong>#${b.id.slice(-8).toUpperCase()}</strong></td>
+            <td>
+                    <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+                      <a href="javascript:void(0)" onclick="openBookingDetailsModal('${b.id}')" style="font-weight:800; color:#0f8a5f; text-decoration:none; display:inline-flex; align-items:center; gap:3px;" title="View Booking Details">
+                        #${b.id.slice(-8).toUpperCase()} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:9px; opacity:0.7;"></i>
+                      </a>
+                      ${b.audioUrl ? '<span title="Voice record attached" style="background:#eff6ff; color:#1d4ed8; padding:1px 5px; border-radius:6px; font-size:10px;"><i class="fa-solid fa-microphone"></i></span>' : ''}
+                      ${(b.beforePhoto || b.afterPhoto) ? '<span title="Proof photos attached" style="background:#f0fdf4; color:#15803d; padding:1px 5px; border-radius:6px; font-size:10px;"><i class="fa-solid fa-camera"></i></span>' : ''}
+                      ${b.rating ? '<span title="Rating: ' + b.rating + '★" style="background:#fffbeb; color:#b45309; padding:1px 5px; border-radius:6px; font-size:10px; font-weight:700;"><i class="fa-solid fa-star" style="color:#f59e0b;"></i> ' + Number(b.rating).toFixed(1) + '</span>' : ''}
+                    </div>
+                  </td>
             <td><span class="status-badge badge-blue">${b.serviceCategory || 'â€”'}</span><div style="font-size:11px;font-weight:700;margin-top:3px;">${b.subServiceName || ''}</div></td>
             <td><strong>${b.customerName || 'â€”'}</strong><div style="font-size:11px;color:#64748b;">${b.address || ''}</div></td>
             <td>${b.vendorName || 'Pending assignment'}</td>
@@ -2937,7 +2917,14 @@
                   <td><code style="background:#f1f5f9; padding:3px 7px; border-radius:6px; font-weight:800; color:#0f8a5f; font-size:12px;">${b.otp || 'â€”'}</code></td>
                   <td><strong style="color:#0f172a;">${b.priceLabel || fmtInr(b.price || 0)}</strong></td>
                   <td><span class="status-badge ${statusMap[b.status] || 'badge-yellow'}">${(b.status || 'requested').toUpperCase()}</span></td>
-                  <td>${actionBtn}</td>
+                  <td>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                      <button class="btn-sm-action" style="background:#f8fafc; color:#0f172a; border:1px solid #cbd5e1; font-weight:700; display:inline-flex; align-items:center; gap:4px; padding:5px 10px; border-radius:8px; cursor:pointer;" onclick="openBookingDetailsModal('${b.id}')" title="View details, voice record, photos & review">
+                        <i class="fa-solid fa-eye" style="color:#0284c7;"></i> View
+                      </button>
+                      ${actionBtn}
+                    </div>
+                  </td>
                 </tr>`;
               }).join('')}
             </tbody>
@@ -3765,6 +3752,316 @@
     };
 
 
+    
+    window.openBookingDetailsModal = function(bookingId) {
+      const b = _allBookings.find(x => x.id === bookingId);
+      if (!b) return;
+
+      const modal = document.getElementById('bookingDetailsModal');
+      const title = document.getElementById('bdmTitle');
+      const badge = document.getElementById('bdmStatusBadge');
+      const sub = document.getElementById('bdmSubtitle');
+      const body = document.getElementById('bdmContentBody');
+
+      const statusMap = {
+        requested: 'badge-yellow',
+        assigned: 'badge-blue',
+        accepted: 'badge-blue',
+        en_route: 'badge-blue',
+        arrived: 'badge-blue',
+        in_progress: 'badge-purple',
+        completed: 'badge-green',
+        cancelled: 'badge-red'
+      };
+
+      title.textContent = 'Booking #' + b.id.slice(-8).toUpperCase();
+      badge.className = 'status-badge ' + (statusMap[b.status] || 'badge-blue');
+      badge.textContent = (b.status || 'REQUESTED').toUpperCase();
+      sub.textContent = (b.serviceCategory || 'Service') + ' • ' + (b.subServiceName || 'Standard Package') + ' • Scheduled: ' + (b.scheduledAt || 'Immediate');
+
+      // 1. Vendor Checklist items
+      const defaultChecklist = [
+        'Initial pre-service inspection & safety audit',
+        'Execute core service procedures with calibrated tools',
+        'Inspect and verify operational quality',
+        'Before & After work verification photos',
+        'Customer demonstration & clean site handover'
+      ];
+      const checklist = (b.checklist && b.checklist.length > 0) ? b.checklist : defaultChecklist;
+      const checklistDone = Array.isArray(b.checklistDone) ? b.checklistDone : [];
+      const doneCount = checklistDone.length;
+      const totalCount = checklist.length;
+      const progressPct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+
+      // 2. Customer Checklist items
+      const custChecklist = (b.customerChecklist && b.customerChecklist.length > 0) ? b.customerChecklist : checklist;
+      const custChecklistDone = Array.isArray(b.customerChecklistDone) ? b.customerChecklistDone : [];
+      const custDoneCount = custChecklistDone.length;
+      const custTotalCount = custChecklist.length;
+      const custProgressPct = custTotalCount > 0 ? Math.round((custDoneCount / custTotalCount) * 100) : 0;
+
+      // Star rating helper
+      let starsHtml = '';
+      if (b.rating) {
+        for (let i = 0; i < 5; i++) {
+          if (i < Math.floor(b.rating)) {
+            starsHtml += '<i class="fa-solid fa-star" style="color:#f59e0b;"></i>';
+          } else if (i < b.rating) {
+            starsHtml += '<i class="fa-solid fa-star-half-stroke" style="color:#f59e0b;"></i>';
+          } else {
+            starsHtml += '<i class="fa-regular fa-star" style="color:#cbd5e1;"></i>';
+          }
+        }
+      }
+
+      body.innerHTML = [
+        '<div style="display:flex; flex-direction:column; gap:16px;">',
+
+          '<!-- 1. Customer & Tech Info Row -->',
+          '<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:14px;">',
+            '<div>',
+              '<div style="font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; text-transform:uppercase;">CUSTOMER</div>',
+              '<div style="font-size:14px; font-weight:800; color:#0f172a; margin-top:3px;">' + (b.customerName || 'Customer') + '</div>',
+              '<div style="font-size:12px; color:#475569; margin-top:2px;"><i class="fa-solid fa-phone" style="font-size:10px; color:#94a3b8;"></i> ' + (b.customerPhone || '—') + '</div>',
+              '<div style="font-size:11.5px; color:#64748b; margin-top:4px; line-height:1.3;"><i class="fa-solid fa-location-dot" style="font-size:10px; color:#ef4444;"></i> ' + (b.address || '—') + '</div>',
+            '</div>',
+            '<div>',
+              '<div style="font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; text-transform:uppercase;">ASSIGNED TECHNICIAN</div>',
+              '<div style="font-size:14px; font-weight:800; color:#0f172a; margin-top:3px;">' + (b.vendorName || '<span style="color:#f59e0b; font-style:italic;">Pending Assignment</span>') + '</div>',
+              '<div style="font-size:12px; color:#475569; margin-top:2px;">ID: <strong style="color:#0f8a5f;">' + (b.vendorId || '—') + '</strong> ' + (b.vendorPhone ? '• ' + b.vendorPhone : '') + '</div>',
+              '<div style="font-size:12px; color:#475569; margin-top:4px;">OTP: <code style="background:#e2e8f0; padding:2px 6px; border-radius:4px; font-weight:800; color:#0f8a5f;">' + (b.otp || '—') + '</code> • Price: <strong>' + (b.priceLabel || ('₹' + (b.price || 0))) + '</strong></div>',
+            '</div>',
+          '</div>',
+
+          '<!-- 2. RECORDED VOICE RECORD SECTION -->',
+          '<div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">',
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">',
+              '<div style="display:flex; align-items:center; gap:8px;">',
+                '<div style="width:28px; height:28px; border-radius:50%; background:#eff6ff; display:flex; align-items:center; justify-content:center;">',
+                  '<i class="fa-solid fa-microphone-lines" style="color:#2563eb; font-size:14px;"></i>',
+                '</div>',
+                '<div>',
+                  '<strong style="font-size:13.5px; color:#0f172a;">Recorded Voice Audio Session</strong>',
+                  '<div style="font-size:11px; color:#64748b;">Audio captured during service for safety &amp; quality review</div>',
+                '</div>',
+              '</div>',
+              (b.audioUrl 
+                ? '<span class="status-badge badge-green" style="font-size:11px;"><i class="fa-solid fa-check"></i> Audio Available</span>' 
+                : '<span class="status-badge badge-yellow" style="font-size:11px;"><i class="fa-solid fa-clock"></i> No Audio File</span>'),
+            '</div>',
+
+            (b.audioUrl ? (
+              '<div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:12px; margin-top:8px;">' +
+                '<audio controls style="width:100%; height:36px; border-radius:6px; outline:none;" src="' + b.audioUrl + '"></audio>' +
+                '<div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:11.5px;">' +
+                  '<span style="color:#15803d; font-weight:600;"><i class="fa-solid fa-shield-halved"></i> High-Fidelity Audio Log</span>' +
+                  '<a href="' + b.audioUrl + '" target="_blank" download="UrbanHelpers_VoiceRecord_' + b.id + '.m4a" style="color:#0284c7; font-weight:700; text-decoration:none;">' +
+                    '<i class="fa-solid fa-download"></i> Download Audio' +
+                  '</a>' +
+                '</div>' +
+              '</div>'
+            ) : (
+              '<div style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:10px; color:#64748b; font-size:12px;">' +
+                '<i class="fa-solid fa-circle-info" style="color:#94a3b8; font-size:16px;"></i>' +
+                '<span>Technician has not uploaded an audio recording for this booking yet.</span>' +
+              '</div>'
+            )),
+          '</div>',
+
+          '<!-- 3. UPDATED IMAGES (BEFORE & AFTER WORK PROOF) -->',
+          '<div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">',
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">',
+              '<div style="display:flex; align-items:center; gap:8px;">',
+                '<div style="width:28px; height:28px; border-radius:50%; background:#f0fdf4; display:flex; align-items:center; justify-content:center;">',
+                  '<i class="fa-solid fa-images" style="color:#16a34a; font-size:13px;"></i>',
+                '</div>',
+                '<div>',
+                  '<strong style="font-size:13.5px; color:#0f172a;">Updated Service Proof Images</strong>',
+                  '<div style="font-size:11px; color:#64748b;">Before &amp; after photos uploaded by technician from the job location</div>',
+                '</div>',
+              '</div>',
+              '<span style="font-size:11px; font-weight:700; color:#64748b;">' +
+                ((b.beforePhoto ? 1 : 0) + (b.afterPhoto ? 1 : 0)) + ' / 2 Uploaded' +
+              '</span>',
+            '</div>',
+
+            '<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:8px;">',
+              '<!-- Before Photo -->',
+              '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:10px; text-align:center;">',
+                '<div style="font-size:11px; font-weight:800; color:#1e40af; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">',
+                  '<span><i class="fa-solid fa-camera"></i> 1. BEFORE SERVICE</span>',
+                  (b.beforePhoto ? '<span style="color:#10b981;">✓ Verified</span>' : '<span style="color:#94a3b8;">Pending</span>'),
+                '</div>',
+                (b.beforePhoto ? (
+                  '<div style="position:relative; border-radius:8px; overflow:hidden;">' +
+                    '<img src="' + b.beforePhoto + '" alt="Before Service" style="width:100%; height:160px; object-fit:cover; display:block; cursor:pointer;" onclick="window.open(this.src, \'_blank\')">' +
+                    '<a href="' + b.beforePhoto + '" target="_blank" style="position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,0.65); color:#fff; font-size:10.5px; padding:3px 8px; border-radius:6px; text-decoration:none; font-weight:700;">' +
+                      '<i class="fa-solid fa-expand"></i> Zoom' +
+                    '</a>' +
+                  '</div>'
+                ) : (
+                  '<div style="height:140px; display:flex; flex-direction:column; align-items:center; justify-content:center; border:1px dashed #cbd5e1; border-radius:8px; color:#94a3b8; gap:4px;">' +
+                    '<i class="fa-regular fa-image" style="font-size:26px;"></i>' +
+                    '<span style="font-size:11.5px;">No Before photo uploaded</span>' +
+                  '</div>'
+                )),
+              '</div>',
+
+              '<!-- After Photo -->',
+              '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:10px; text-align:center;">',
+                '<div style="font-size:11px; font-weight:800; color:#15803d; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">',
+                  '<span><i class="fa-solid fa-camera-rotate"></i> 2. AFTER SERVICE</span>',
+                  (b.afterPhoto ? '<span style="color:#10b981;">✓ Verified</span>' : '<span style="color:#94a3b8;">Pending</span>'),
+                '</div>',
+                (b.afterPhoto ? (
+                  '<div style="position:relative; border-radius:8px; overflow:hidden;">' +
+                    '<img src="' + b.afterPhoto + '" alt="After Service" style="width:100%; height:160px; object-fit:cover; display:block; cursor:pointer;" onclick="window.open(this.src, \'_blank\')">' +
+                    '<a href="' + b.afterPhoto + '" target="_blank" style="position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,0.65); color:#fff; font-size:10.5px; padding:3px 8px; border-radius:6px; text-decoration:none; font-weight:700;">' +
+                      '<i class="fa-solid fa-expand"></i> Zoom' +
+                    '</a>' +
+                  '</div>'
+                ) : (
+                  '<div style="height:140px; display:flex; flex-direction:column; align-items:center; justify-content:center; border:1px dashed #cbd5e1; border-radius:8px; color:#94a3b8; gap:4px;">' +
+                    '<i class="fa-regular fa-image" style="font-size:26px;"></i>' +
+                    '<span style="font-size:11.5px;">No After photo uploaded</span>' +
+                  '</div>'
+                )),
+              '</div>',
+            '</div>',
+          '</div>',
+
+          '<!-- 4. CUSTOMER SERVICE REVIEW & RATING -->',
+          '<div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">',
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">',
+              '<div style="display:flex; align-items:center; gap:8px;">',
+                '<div style="width:28px; height:28px; border-radius:50%; background:#fffbeb; display:flex; align-items:center; justify-content:center;">',
+                  '<i class="fa-solid fa-star" style="color:#f59e0b; font-size:13px;"></i>',
+                '</div>',
+                '<div>',
+                  '<strong style="font-size:13.5px; color:#0f172a;">Customer Service Review &amp; Rating</strong>',
+                  '<div style="font-size:11px; color:#64748b;">Live rating submitted by customer, synced to vendor app</div>',
+                '</div>',
+              '</div>',
+              (b.rated || b.rating ? '<span class="status-badge badge-green" style="font-size:11px;">✓ Rated</span>' : '<span class="status-badge badge-yellow" style="font-size:11px;">Pending Rating</span>'),
+            '</div>',
+
+            ((b.rating || b.review) ? (
+              '<div style="background:#fffbeb; border:1px solid #fde68a; border-radius:12px; padding:14px; margin-top:8px;">' +
+                '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">' +
+                  '<div style="display:flex; align-items:center; gap:8px;">',
+                    '<div style="font-size:16px; display:inline-flex; gap:3px;">' + starsHtml + '</div>',
+                    '<strong style="font-size:15px; color:#92400e;">' + (b.rating ? Number(b.rating).toFixed(1) : '5.0') + ' / 5.0</strong>',
+                  '</div>',
+                  (b.tip ? (
+                    '<span style="font-size:12px; font-weight:700; background:#fef3c7; color:#b45309; padding:3px 10px; border-radius:12px; border:1px solid #fde68a;">' +
+                      '<i class="fa-solid fa-coins"></i> Cash Tip: ₹' + b.tip +
+                    '</span>'
+                  ) : '') +
+                '</div>' +
+
+                (b.review ? (
+                  '<div style="margin-top:10px; background:#ffffff; border-radius:8px; padding:10px 14px; border:1px solid #fef3c7; font-size:13px; color:#78350f; font-style:italic;">' +
+                    '"' + b.review + '"' +
+                  '</div>'
+                ) : '<div style="font-size:12px; color:#b45309; margin-top:6px; font-style:italic;">Customer rated without written comments.</div>') +
+
+                (b.reviewTags && b.reviewTags.length > 0 ? (
+                  '<div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;">' +
+                    b.reviewTags.map(t => '<span style="font-size:11px; font-weight:700; background:#ffffff; color:#b45309; padding:2px 8px; border-radius:6px; border:1px solid #fde68a;"><i class="fa-solid fa-tag" style="font-size:9px; opacity:0.7;"></i> ' + t + '</span>').join('') +
+                  '</div>'
+                ) : '') +
+              '</div>'
+            ) : (
+              '<div style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:10px; color:#64748b; font-size:12px;">' +
+                '<i class="fa-regular fa-comment-dots" style="color:#94a3b8; font-size:16px;"></i>' +
+                '<span>No customer review submitted yet. Customer is prompted upon service completion.</span>' +
+              '</div>'
+            )),
+          '</div>',
+
+          '<!-- 5. TECHNICIAN / VENDOR SERVICE CHECKLIST -->',
+          '<div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">',
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">',
+              '<div style="display:flex; align-items:center; gap:8px;">',
+                '<div style="width:28px; height:28px; border-radius:50%; background:#f0fdf4; display:flex; align-items:center; justify-content:center;">',
+                  '<i class="fa-solid fa-user-gear" style="color:#0f8a5f; font-size:13px;"></i>',
+                '</div>',
+                '<div>',
+                  '<strong style="font-size:13.5px; color:#0f172a;">1. Technician Quality Checklist</strong>',
+                  '<div style="font-size:11px; color:#64748b;">Step-by-step SOP checklist marked by vendor during service</div>',
+                '</div>',
+              '</div>',
+              '<span style="font-size:12px; font-weight:800; color:' + (doneCount === totalCount ? '#0f8a5f' : '#ea580c') + ';">' +
+                doneCount + '/' + totalCount + ' Completed (' + progressPct + '%)' +
+              '</span>',
+            '</div>',
+
+            '<div style="height:6px; width:100%; background:#e2e8f0; border-radius:3px; overflow:hidden; margin:8px 0 12px 0;">' +
+              '<div style="height:100%; width:' + progressPct + '%; background:' + (doneCount === totalCount ? '#10b981' : '#f59e0b') + '; border-radius:3px;"></div>' +
+            '</div>',
+
+            '<div style="display:flex; flex-direction:column; gap:6px;">' +
+              checklist.map((item, idx) => {
+                const label = typeof item === 'string' ? item : (item.label || 'Step ' + (idx + 1));
+                const isDone = checklistDone.includes(label);
+                return (
+                  '<div style="display:flex; align-items:center; gap:10px; padding:7px 12px; border-radius:8px; background:' + (isDone ? '#f0fdf4' : '#fef2f2') + '; border:1px solid ' + (isDone ? '#bbf7d0' : '#fecaca') + '; font-size:12px;">' +
+                    '<i class="fa-solid ' + (isDone ? 'fa-circle-check' : 'fa-circle-xmark') + '" style="color:' + (isDone ? '#10b981' : '#ef4444') + '; font-size:15px;"></i>' +
+                    '<span style="flex:1; color:' + (isDone ? '#166534' : '#991b1b') + '; font-weight:' + (isDone ? '700' : '600') + ';' + (isDone ? '' : ' text-decoration:line-through opacity:0.85;') + '">' + label + '</span>' +
+                    '<span style="font-size:10.5px; font-weight:800; padding:2px 8px; border-radius:4px; background:' + (isDone ? '#dcfce7' : '#fee2e2') + '; color:' + (isDone ? '#15803d' : '#b91c1c') + ';">' + (isDone ? '✓ Completed' : '✕ Crossed / Skipped') + '</span>' +
+                  '</div>'
+                );
+              }).join('') +
+            '</div>',
+          '</div>',
+
+          '<!-- 6. CUSTOMER VERIFICATION CHECKLIST -->',
+          '<div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">',
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">',
+              '<div style="display:flex; align-items:center; gap:8px;">',
+                '<div style="width:28px; height:28px; border-radius:50%; background:#eff6ff; display:flex; align-items:center; justify-content:center;">',
+                  '<i class="fa-solid fa-user-check" style="color:#2563eb; font-size:13px;"></i>',
+                '</div>',
+                '<div>',
+                  '<strong style="font-size:13.5px; color:#0f172a;">2. Customer Verification Checklist</strong>',
+                  '<div style="font-size:11px; color:#64748b;">Quality checklist verified directly by customer during feedback</div>',
+                '</div>',
+              '</div>',
+              '<span style="font-size:12px; font-weight:800; color:' + (custDoneCount > 0 ? '#2563eb' : '#64748b') + ';">' +
+                (custDoneCount > 0 ? (custDoneCount + '/' + custTotalCount + ' Verified (' + custProgressPct + '%)') : 'Pending Customer Review') +
+              '</span>',
+            '</div>',
+
+            '<div style="height:6px; width:100%; background:#e2e8f0; border-radius:3px; overflow:hidden; margin:8px 0 12px 0;">' +
+              '<div style="height:100%; width:' + custProgressPct + '%; background:#3b82f6; border-radius:3px;"></div>' +
+            '</div>',
+
+            '<div style="display:flex; flex-direction:column; gap:6px;">' +
+              custChecklist.map((item, idx) => {
+                const label = typeof item === 'string' ? item : (item.label || 'Step ' + (idx + 1));
+                const isDone = custChecklistDone.includes(label);
+                return (
+                  '<div style="display:flex; align-items:center; gap:10px; padding:7px 12px; border-radius:8px; background:' + (isDone ? '#eff6ff' : '#f8fafc') + '; border:1px solid ' + (isDone ? '#bfdbfe' : '#e2e8f0') + '; font-size:12px;">' +
+                    '<i class="fa-solid ' + (isDone ? 'fa-circle-check' : 'fa-circle-dot') + '" style="color:' + (isDone ? '#2563eb' : '#94a3b8') + '; font-size:15px;"></i>' +
+                    '<span style="flex:1; color:' + (isDone ? '#1e40af' : '#64748b') + '; font-weight:' + (isDone ? '700' : '500') + ';">' + label + '</span>' +
+                    '<span style="font-size:10.5px; font-weight:800; padding:2px 8px; border-radius:4px; background:' + (isDone ? '#dbeafe' : '#f1f5f9') + '; color:' + (isDone ? '#1e40af' : '#64748b') + ';">' + (isDone ? '✓ Verified by Customer' : 'Pending Verification') + '</span>' +
+                  '</div>'
+                );
+              }).join('') +
+            '</div>',
+          '</div>',
+
+        '</div>'
+      ].join('');
+
+      modal.style.display = 'flex';
+    };
+
+    window.closeBookingDetailsModal = function() {
+      const modal = document.getElementById('bookingDetailsModal');
+      if (modal) modal.style.display = 'none';
+    };
+
     window.toggleSubmenu = function(submenuId, navItemEl, sec) {
       const submenu = document.getElementById(submenuId);
       const isOpen = submenu.classList.contains('open');
@@ -3795,8 +4092,8 @@
       _currentSection = sec;
       if (sec === 'services') {
         _currentServicesSubKey = subKey;
-        document.getElementById('topGreetingTitle').textContent = 'Services';
-        document.getElementById('topGreetingSub').textContent = 'Every booking moving through the Urban Helpers marketplace.';
+        // top title stays Urban Helpers
+        // top sub removed
         renderServices(subKey);
       }
       if (sec === 'safety') renderSafety(subKey);
@@ -3838,8 +4135,8 @@
         return;
       }
 
-      document.getElementById('topGreetingTitle').textContent = titles[sec] || 'Control Center';
-      document.getElementById('topGreetingSub').textContent = 'Real-time data from Firebase • Section: ' + sec.toUpperCase();
+      // top title stays Urban Helpers
+      // top sub removed
       if (sec === 'shop') renderAdminProducts();
       if (sec === 'orders') { _allOrders = []; renderOrders(); }
       if (sec === 'users') renderUsers();

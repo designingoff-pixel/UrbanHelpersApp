@@ -16,6 +16,7 @@ import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from "@expo/vector-ico
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/services/firebase";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -189,7 +190,15 @@ export default function ProfileScreen({ navigation }: Props) {
         quality: 0.8,
       });
       if (!res.canceled && res.assets && res.assets.length > 0) {
-        setEditAvatarUri(res.assets[0].uri);
+        const asset = res.assets[0];
+        try {
+          const b64 = await FileSystem.readAsStringAsync(asset.uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          setEditAvatarUri(`data:image/jpeg;base64,${b64}`);
+        } catch {
+          setEditAvatarUri(asset.uri);
+        }
       }
     } catch (e) {
       console.warn("Image picker error:", e);
@@ -209,7 +218,15 @@ export default function ProfileScreen({ navigation }: Props) {
         quality: 0.8,
       });
       if (!res.canceled && res.assets && res.assets.length > 0) {
-        setEditAvatarUri(res.assets[0].uri);
+        const asset = res.assets[0];
+        try {
+          const b64 = await FileSystem.readAsStringAsync(asset.uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          setEditAvatarUri(`data:image/jpeg;base64,${b64}`);
+        } catch {
+          setEditAvatarUri(asset.uri);
+        }
       }
     } catch (e) {
       console.warn("Camera error:", e);

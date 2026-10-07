@@ -13,6 +13,12 @@ class AppStore {
   recordingSeconds: number = 0;
   isRecording: boolean = false;
 
+  // ── Cancellation tracking (3 cancels in 7 days → temp block) ─────────────
+  cancelCount: number = 0;          // cancellations in current 7-day window
+  cancelWeekStart: number = Date.now(); // timestamp when the current window started
+  readonly CANCEL_LIMIT = 3;        // block threshold
+  readonly CANCEL_WINDOW_MS = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
+
   // ── Firebase identity ─────────────────────────────────────────────────────
   firebaseUid: string | null = null;   // Firebase Auth UID (= vendorId in Firestore)
   vendorId: string | null = null;      // same value, explicit alias for clarity
@@ -51,6 +57,10 @@ class AppStore {
     if (data.serviceArea) this.vendor.serviceArea = data.serviceArea;
     if (data.serviceRadius) this.vendor.serviceRadius = data.serviceRadius;
     if (typeof data.skippedCount === 'number') this.vendor.skippedCount = data.skippedCount;
+    if (typeof data.cancelCount === 'number') {
+      this.cancelCount = data.cancelCount;
+      this.vendor.cancelCount = data.cancelCount;
+    }
     if (data.status === 'locked' || data.isLocked === true) {
       this.vendor.isLocked = true;
       this.vendor.status = 'locked';
@@ -79,6 +89,30 @@ class AppStore {
     const newReqs = this.jobs.filter(j => j.status === 'NEW_REQUEST');
     const mapped = this._mapFirestore(firestoreJobs);
     this.jobs = [...mapped, ...newReqs];
+
+    // Compute rolling 7-day cancellation count from Firestore jobs
+    const now = Date.now();
+    const sevenDaysAgo = now - this.CANCEL_WINDOW_MS;
+    const recentCancels = firestoreJobs.filter(b => {
+      if (b.status !== 'cancelled') return false;
+      let cTime = now;
+      if (b.cancelledAt) {
+        cTime = b.cancelledAt.toMillis ? b.cancelledAt.toMillis() : new Date(b.cancelledAt).getTime();
+      }
+      return cTime >= sevenDaysAgo;
+    });
+
+    if (recentCancels.length > 0) {
+      this.cancelCount = Math.max(this.cancelCount, recentCancels.length);
+      this.vendor.cancelCount = this.cancelCount;
+      if (this.cancelCount >= this.CANCEL_LIMIT) {
+        this.vendor.isLocked = true;
+        this.vendor.isOnline = false;
+        this.vendor.status = 'locked';
+        this.vendor.lockReason = `Profile temporarily blocked: ${this.CANCEL_LIMIT} job cancellations recorded in 7 days. Contact Admin to unlock.`;
+      }
+    }
+
     this.notify();
   }
 
@@ -127,14 +161,17 @@ class AppStore {
         paymentStatus:       fb.paymentStatus === 'paid' ? 'PAID' : 'PENDING',
         vendorEarnings:      Math.round((fb.price || 0) * 0.8),
         otp:                 fb.otp ?? '',
-        checklist:           existing?.checklist ?? [],
-        checklistDone:       existing?.checklistDone ?? [],
+        checklist:           fb.checklist ?? existing?.checklist ?? [],
+        checklistDone:       fb.checklistDone ?? existing?.checklistDone ?? [],
         beforePhoto:         fb.beforePhoto || existing?.beforePhoto || null,
         afterPhoto:          fb.afterPhoto || existing?.afterPhoto || null,
         createdAt:           Date.now(),
         completedAt:         completedTimestamp,
         rating:              fb.rating,
         review:              fb.review,
+        reviewTags:          fb.reviewTags,
+        tip:                 fb.tip,
+        audioUrl:            fb.audioUrl || existing?.audioUrl,
       } as Job;
     });
   }
@@ -192,8 +229,39 @@ class AppStore {
   }
 
   toggleOnline(isOnline: boolean) {
+    // Blocked vendors cannot go online
+    if (isOnline && (this.vendor.isLocked || this.cancelCount >= this.CANCEL_LIMIT)) return;
     this.vendor.isOnline = isOnline;
     this.notify();
+  }
+
+  // ── Record a vendor cancellation — auto-blocks at 3 in 7 days ────────────
+  recordCancellation(): { blocked: boolean; cancelCount: number } {
+    const now = Date.now();
+    // Reset window if 7 days have passed since it started
+    if (now - this.cancelWeekStart > this.CANCEL_WINDOW_MS) {
+      this.cancelCount = 0;
+      this.cancelWeekStart = now;
+      // If block was due to cancels (not skips), unblock
+      if (!this.vendor.isLocked || this.vendor.lockReason?.includes('cancell')) {
+        this.vendor.isLocked = false;
+        this.vendor.status = 'active';
+        this.vendor.lockReason = undefined;
+      }
+    }
+
+    this.cancelCount += 1;
+
+    if (this.cancelCount >= this.CANCEL_LIMIT) {
+      this.vendor.isLocked = true;
+      this.vendor.isOnline = false;
+      this.vendor.status = 'locked';
+      this.vendor.lockReason =
+        `Profile temporarily blocked: ${this.CANCEL_LIMIT} job cancellations recorded in 7 days. Contact Admin to unlock or wait for the 7-day window to reset.`;
+    }
+
+    this.notify();
+    return { blocked: this.cancelCount >= this.CANCEL_LIMIT, cancelCount: this.cancelCount };
   }
 
   completeJob(jobId: string) {

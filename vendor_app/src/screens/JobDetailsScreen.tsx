@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Image,
-  Linking, Dimensions, ImageBackground,
+  Linking, Dimensions, ImageBackground, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,6 +13,7 @@ import {
   updateBookingStatus, notifyCustomerOTP,
   acceptJob,
   rejectJob,
+  cancelBooking,
 } from '../services/firestoreService';
 import SOSModal from '../components/SOSModal';
 import DiagnosticModal from '../components/DiagnosticModal';
@@ -23,12 +24,19 @@ const { width } = Dimensions.get('window');
 export default function JobDetailsScreen({ route, navigation }: any) {
   const { jobId } = route.params;
   const [, forceUpdate] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [sosVisible, setSosVisible] = useState(false);
   const [diagVisible, setDiagVisible] = useState(false);
   const [suppliersVisible, setSuppliersVisible] = useState(false);
 
   useEffect(() => store.subscribe(() => forceUpdate((n) => n + 1)), []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    forceUpdate((n) => n + 1);
+    setTimeout(() => setRefreshing(false), 800);
+  };
 
   const job = store.getJob(jobId);
   if (!job) {
@@ -59,14 +67,6 @@ export default function JobDetailsScreen({ route, navigation }: any) {
         { text: 'Call', onPress: () => Linking.openURL(`tel:${phone}`) },
       ]
     );
-  };
-
-  // ── WhatsApp Message Handler ─────────────────────────────────────────────
-  const handleChatCustomer = () => {
-    const phone = (job.customerPhone || '9876543210').replace(/\D/g, '');
-    const msg = encodeURIComponent(`Hello ${job.customerName || 'Customer'}, I am your Urban Captain technician for your ${job.serviceName || 'service'} booking.`);
-    const cleanPhone = phone.length === 10 ? `91${phone}` : phone;
-    Linking.openURL(`https://wa.me/${cleanPhone}?text=${msg}`);
   };
 
   // ── Turn-by-Turn Voice Navigation ─────────────────────────────────────────
@@ -126,11 +126,12 @@ export default function JobDetailsScreen({ route, navigation }: any) {
             setSubmitting(true);
             try {
               store.updateJobStatus(job.jobId, 'REJECTED');
+              const cancelRes = store.recordCancellation();
               const res = await rejectJob(job.jobId, store.vendorId || undefined);
-              if (res.locked) {
-                Alert.alert('🔒 Account Locked', 'Your profile has been locked due to 3 consecutive skipped service requests. Please contact Admin to unlock.');
+              if (res.locked || cancelRes.blocked) {
+                Alert.alert('🔒 Account Locked', 'Your profile has been locked due to 3 skipped/cancelled service requests. Please contact Admin to unlock.');
               } else {
-                Alert.alert('Job Declined', `Request removed. (${res.skippedCount}/3 skips recorded)`);
+                Alert.alert('Job Declined', `Request removed. (${cancelRes.cancelCount}/${store.CANCEL_LIMIT} cancellations recorded)`);
               }
               navigation.goBack();
             } catch (err: any) {
@@ -142,6 +143,48 @@ export default function JobDetailsScreen({ route, navigation }: any) {
         },
       ]
     );
+  };
+
+  // ── Cancel an Accepted Job (counts toward 3-cancel block) ───────────────
+  const handleCancelJob = () => {
+    const current = store.cancelCount;
+    const remaining = store.CANCEL_LIMIT - current - 1;
+    const warningMsg =
+      current >= store.CANCEL_LIMIT - 1
+        ? `⚠️ FINAL WARNING: This is your ${store.CANCEL_LIMIT}rd cancellation. Your account will be TEMPORARILY BLOCKED from going online after this.`
+        : `Are you sure you want to cancel this booking?\n\nCancellation ${current + 1}/${store.CANCEL_LIMIT} — ${remaining} more before account block.`;
+
+    Alert.alert('Cancel Job', warningMsg, [
+      { text: 'Keep Job', style: 'cancel' },
+      {
+        text: '🚫 Cancel Booking',
+        style: 'destructive',
+        onPress: async () => {
+          setSubmitting(true);
+          try {
+            store.updateJobStatus(job.jobId, 'CANCELLED');
+            await cancelBooking(job.jobId, store.vendorId || undefined);
+            const result = store.recordCancellation();
+            if (result.blocked) {
+              Alert.alert(
+                '🔒 Account Temporarily Blocked',
+                `You have cancelled ${store.CANCEL_LIMIT} jobs in 7 days. You cannot go online until the block is lifted by Admin or the 7-day window resets.`
+              );
+            } else {
+              Alert.alert(
+                'Job Cancelled',
+                `Cancellation recorded (${result.cancelCount}/${store.CANCEL_LIMIT}). Avoid further cancellations to prevent account block.`
+              );
+            }
+            navigation.goBack();
+          } catch (err: any) {
+            Alert.alert('Error', err.message);
+          } finally {
+            setSubmitting(false);
+          }
+        },
+      },
+    ]);
   };
 
   // ── Start Navigation ─────────────────────────────────────────────────────
@@ -195,7 +238,12 @@ export default function JobDetailsScreen({ route, navigation }: any) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={s.scroll}
+        contentContainerStyle={s.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#10B981']} />}
+      >
         {/* Status Hero Card */}
         <View style={s.heroCard}>
           <LinearGradient colors={['#0D3325', '#164E3A']} style={s.heroGrad}>
@@ -255,7 +303,7 @@ export default function JobDetailsScreen({ route, navigation }: any) {
           </TouchableOpacity>
         </View>
 
-        {/* Customer Information Card with Call & WhatsApp */}
+        {/* Customer Information Card with Direct Call Only */}
         <View style={s.card}>
           <Text style={s.cardHeading}>CUSTOMER INFORMATION</Text>
           <View style={s.customerRow}>
@@ -271,13 +319,11 @@ export default function JobDetailsScreen({ route, navigation }: any) {
               </Text>
             </View>
 
-            {/* In-App Direct Call & WhatsApp Buttons */}
+            {/* In-App Direct Call Button Only */}
             <View style={s.commActions}>
               <TouchableOpacity style={s.callBtn} onPress={handleCallCustomer} activeOpacity={0.8}>
                 <Ionicons name="call" size={16} color="#FFFFFF" />
-              </TouchableOpacity>
-              <TouchableOpacity style={s.chatBtn} onPress={handleChatCustomer} activeOpacity={0.8}>
-                <Ionicons name="logo-whatsapp" size={17} color="#FFFFFF" />
+                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12, marginLeft: 4 }}>Call</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -291,10 +337,12 @@ export default function JobDetailsScreen({ route, navigation }: any) {
             <Text style={s.addressText}>{job.address}</Text>
           </View>
 
-          <TouchableOpacity style={s.navBtn} onPress={handleOpenNavigation} activeOpacity={0.85}>
-            <Ionicons name="navigate-circle" size={20} color="#0D3325" />
-            <Text style={s.navBtnText}>Open Turn-by-Turn Voice Navigation</Text>
-          </TouchableOpacity>
+          {!['CANCELLED', 'COMPLETED', 'REJECTED'].includes(job.status) && (
+            <TouchableOpacity style={s.navBtn} onPress={handleOpenNavigation} activeOpacity={0.85}>
+              <Ionicons name="navigate-circle" size={20} color="#0D3325" />
+              <Text style={s.navBtnText}>Open Turn-by-Turn Voice Navigation</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Work Verification Photos (if completed or taken) */}
@@ -317,6 +365,71 @@ export default function JobDetailsScreen({ route, navigation }: any) {
             </View>
           </View>
         )}
+
+        {/* Customer Review Card (visible on completed jobs) */}
+        {job.status === 'COMPLETED' && job.rating && (
+          <View style={s.card}>
+            <Text style={s.cardHeading}>⭐ CUSTOMER REVIEW</Text>
+            {/* Star Rating */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              {[1,2,3,4,5].map(star => (
+                <Ionicons
+                  key={star}
+                  name={star <= job.rating! ? 'star' : 'star-outline'}
+                  size={22}
+                  color={star <= job.rating! ? '#F59E0B' : '#D1D5DB'}
+                  style={{ marginRight: 3 }}
+                />
+              ))}
+              <Text style={{ marginLeft: 8, fontSize: 15, fontWeight: '700', color: '#1F2937' }}>
+                {job.rating?.toFixed(1)} / 5
+              </Text>
+            </View>
+
+            {/* Review Text */}
+            {job.review ? (
+              <Text style={{ fontSize: 14, color: '#374151', lineHeight: 20, fontStyle: 'italic', marginBottom: 8 }}>
+                "{job.review}"
+              </Text>
+            ) : null}
+
+            {/* Review Tags */}
+            {job.reviewTags && job.reviewTags.length > 0 && (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
+                {job.reviewTags.map((tag, i) => (
+                  <View key={i} style={{ backgroundColor: '#ECFDF5', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: '#6EE7B7' }}>
+                    <Text style={{ fontSize: 12, color: '#065F46', fontWeight: '600' }}>✓ {tag}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Tip if any */}
+            {job.tip ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, backgroundColor: '#FFFBEB', borderRadius: 8, padding: 8, borderWidth: 1, borderColor: '#FCD34D' }}>
+                <Ionicons name="gift-outline" size={18} color="#B45309" />
+                <Text style={{ marginLeft: 6, fontSize: 13, color: '#B45309', fontWeight: '600' }}>
+                  Customer Tip: {job.tip}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        )}
+
+        {/* Voice Recording Proof (if audioUrl exists) */}
+        {job.audioUrl ? (
+          <View style={s.card}>
+            <Text style={s.cardHeading}>🎙 VOICE RECORDING</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDF4', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#BBF7D0' }}>
+              <Ionicons name="mic-circle" size={32} color="#16A34A" />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#166534' }}>Audio recorded during service</Text>
+                <Text style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>{job.audioUrl.substring(0, 48)}...</Text>
+              </View>
+              <Ionicons name="checkmark-circle" size={22} color="#16A34A" />
+            </View>
+          </View>
+        ) : null}
       </ScrollView>
 
       {/* Dynamic Action Bottom Bar */}
@@ -344,27 +457,49 @@ export default function JobDetailsScreen({ route, navigation }: any) {
         )}
 
         {isAccepted && (
-          <TouchableOpacity
-            style={[s.actionBtn, s.startNavBtn]}
-            onPress={handleStartNavigating}
-            disabled={submitting}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="navigate" size={18} color="#FFFFFF" />
-            <Text style={s.actionBtnText}>Start Navigation</Text>
-          </TouchableOpacity>
+          <View style={s.btnRow}>
+            <TouchableOpacity
+              style={[s.actionBtn, s.startNavBtn, { flex: 1 }]}
+              onPress={handleStartNavigating}
+              disabled={submitting}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="navigate" size={18} color="#FFFFFF" />
+              <Text style={s.actionBtnText}>Start Navigation</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.actionBtn, s.cancelBtn]}
+              onPress={handleCancelJob}
+              disabled={submitting}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="close-circle-outline" size={18} color="#DC2626" />
+              <Text style={s.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {isNavigating && (
-          <TouchableOpacity
-            style={[s.actionBtn, s.arrivedBtn]}
-            onPress={handleMarkArrived}
-            disabled={submitting}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="pin" size={18} color="#FFFFFF" />
-            <Text style={s.actionBtnText}>Mark Arrived &amp; Verify OTP</Text>
-          </TouchableOpacity>
+          <View style={s.btnRow}>
+            <TouchableOpacity
+              style={[s.actionBtn, s.arrivedBtn, { flex: 1 }]}
+              onPress={handleMarkArrived}
+              disabled={submitting}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="pin" size={18} color="#FFFFFF" />
+              <Text style={s.actionBtnText}>Mark Arrived &amp; Verify OTP</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.actionBtn, s.cancelBtn]}
+              onPress={handleCancelJob}
+              disabled={submitting}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="close-circle-outline" size={18} color="#DC2626" />
+              <Text style={s.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {isArrived && (
@@ -693,5 +828,17 @@ const s = StyleSheet.create({
   },
   serviceBtn: {
     backgroundColor: '#0D3325',
+  },
+  cancelBtn: {
+    flex: 0,
+    paddingHorizontal: 16,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1.5,
+    borderColor: '#FECACA',
+  },
+  cancelBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#DC2626',
   },
 });

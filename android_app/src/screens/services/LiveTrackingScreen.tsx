@@ -577,9 +577,6 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
               <Pressable style={s.proBtn} onPress={handleCall}>
                 <Ionicons name="call" size={20} color="white" />
               </Pressable>
-              <Pressable style={s.proBtn} onPress={handleMessage}>
-                <Ionicons name="chatbubble-ellipses" size={20} color="white" />
-              </Pressable>
             </View>
           </LinearGradient>
         </Animated.View>

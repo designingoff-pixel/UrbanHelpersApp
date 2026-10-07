@@ -66,6 +66,30 @@ export default function ProfileScreen({ navigation }: any) {
       onPress: () => setSosVisible(true),
     },
     {
+      icon: 'star-half-outline',
+      label: 'Customer Reviews & Ratings',
+      sub: `Average rating: ${ratingStr} ★ · View all feedback`,
+      onPress: () => {
+        const completedJobs = store.jobs.filter(j => j.status === 'COMPLETED' && j.rating);
+        if (completedJobs.length === 0) {
+          Alert.alert('No Reviews Yet', 'You will receive customer reviews once you complete your first job. Keep up the great work!');
+          return;
+        }
+        const reviewText = completedJobs.slice(0, 5).map((j, idx) => {
+          const stars = '⭐'.repeat(Math.round(j.rating || 0));
+          const comment = j.review ? `"${j.review}"` : '(No comment)';
+          const tags = j.reviewTags?.join(', ');
+          return `${idx + 1}. ${stars} for ${j.serviceName}\n${comment}${tags ? `\nTags: ${tags}` : ''}`;
+        }).join('\n\n');
+        Alert.alert(
+          `Your Reviews (${ratingStr} ★ avg)`,
+          reviewText + (completedJobs.length > 5 ? `\n\n...and ${completedJobs.length - 5} more reviews` : ''),
+        );
+      },
+      badge: `${ratingStr}★`,
+      badgeColor: '#F59E0B',
+    },
+    {
       icon: 'help-circle-outline',
       label: 'Support & Help Desk',
       sub: 'Call 1800-123-4567 or email admin',

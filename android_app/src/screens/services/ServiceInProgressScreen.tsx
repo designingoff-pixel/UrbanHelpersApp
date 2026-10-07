@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { ScrollView, Text, View, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -10,22 +10,103 @@ import Animated, {
 } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
+import { db } from "@/services/firebase";
+import { doc, onSnapshot } from "firebase/firestore";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceInProgress">;
 
-const TASKS = [
-  { label: "Living Room", icon: "home-outline" as const, status: "Completed", done: true },
-  { label: "Bedroom",     icon: "bed-outline" as const,  status: "Completed", done: true },
-  { label: "Kitchen",     icon: "flame-outline" as const,status: "In Progress...", active: true },
-  { label: "Bathroom",    icon: "water-outline" as const,status: "Pending", pending: true },
-];
+// ── Service-aware checklist (mirrors vendor app logic) ───────────────────────
+function getDynamicChecklist(serviceName: string): { label: string; icon: string }[] {
+  const text = serviceName.toLowerCase();
 
-export default function ServiceInProgressScreen({ navigation }: Props) {
-  // Animated progress ring — strokes from 283 (0%) toward 99 (65%)
-  const progress = useSharedValue(283);
+  if (text.includes("clean") || text.includes("maid") || text.includes("housekeep")) {
+    return [
+      { label: "Inspect rooms, surfaces & high-touch areas", icon: "search-outline" },
+      { label: "Dusting, vacuuming & deep scrubbing of floors", icon: "brush-outline" },
+      { label: "Kitchen counter, sink & appliance degreasing", icon: "flame-outline" },
+      { label: "Bathroom sanitation & tile descaling", icon: "water-outline" },
+      { label: "Before & After service proof photos", icon: "camera-outline" },
+      { label: "Final walkthrough & customer satisfaction review", icon: "checkmark-done-outline" },
+    ];
+  }
+  if (text.includes("ac") || text.includes("air conditioner") || text.includes("cool")) {
+    return [
+      { label: "Inspect indoor/outdoor units & power diagnostics", icon: "hardware-chip-outline" },
+      { label: "Deep jet cleaning of filters & condenser coils", icon: "construct-outline" },
+      { label: "Check refrigerant gas pressure & leak detection", icon: "thermometer-outline" },
+      { label: "Measure air output temperature & voltage test", icon: "flash-outline" },
+      { label: "Before & After service proof photos", icon: "camera-outline" },
+      { label: "Complete test run & handover to customer", icon: "checkmark-done-outline" },
+    ];
+  }
+  if (text.includes("ro") || text.includes("water") || text.includes("purif")) {
+    return [
+      { label: "Test raw inlet TDS and check water pressure", icon: "analytics-outline" },
+      { label: "Inspect pre-filter, sediment & carbon cartridges", icon: "filter-outline" },
+      { label: "Check RO membrane rejection rate & pump PSI", icon: "water-outline" },
+      { label: "Sanitize storage tank & test output purity", icon: "shield-checkmark-outline" },
+      { label: "Before & After service proof photos", icon: "camera-outline" },
+      { label: "Handover verified pure water sample", icon: "checkmark-done-outline" },
+    ];
+  }
+  if (text.includes("pest") || text.includes("cockroach") || text.includes("termite")) {
+    return [
+      { label: "Identify infestation hotspots & entry gaps", icon: "search-outline" },
+      { label: "Chemical dilution & safety preparation", icon: "flask-outline" },
+      { label: "Gel baiting & crack-and-crevice perimeter spray", icon: "information-circle-outline" },
+      { label: "Safety briefing on ventilation to customer", icon: "megaphone-outline" },
+      { label: "Before & After treatment photos", icon: "camera-outline" },
+    ];
+  }
+  if (text.includes("plumb") || text.includes("pipe") || text.includes("drain") || text.includes("tap")) {
+    return [
+      { label: "Inspect pipeline joints, valves & pressure test", icon: "analytics-outline" },
+      { label: "Isolate main water line & disassemble fittings", icon: "construct-outline" },
+      { label: "Replace worn washers, seals, cartridges or pipes", icon: "build-outline" },
+      { label: "Re-pressurize system & verify zero leaks", icon: "checkmark-circle-outline" },
+      { label: "Before & After repair photos", icon: "camera-outline" },
+    ];
+  }
+  return [
+    { label: "Initial pre-service inspection & safety audit", icon: "search-outline" },
+    { label: "Execute core service procedures with calibrated tools", icon: "construct-outline" },
+    { label: "Inspect and verify operational quality", icon: "eye-outline" },
+    { label: "Before & After work verification photos", icon: "camera-outline" },
+    { label: "Customer demonstration & clean site handover", icon: "checkmark-done-outline" },
+  ];
+}
+
+export default function ServiceInProgressScreen({ route, navigation }: Props) {
+  // Accept serviceName and bookingId from navigation params
+  const serviceName: string = (route?.params as any)?.serviceName ?? "Home Cleaning";
+  const bookingId: string | undefined = (route?.params as any)?.bookingId;
+  const checklist = getDynamicChecklist(serviceName);
+
+  // Live vendor checklist progress from Firestore
+  const [vendorDoneCount, setVendorDoneCount] = useState(0);
+  const [liveChecklistDone, setLiveChecklistDone] = useState<string[]>([]);
+
   useEffect(() => {
-    progress.value = withTiming(99, { duration: 1800, easing: Easing.out(Easing.cubic) });
-  }, []);
+    if (!bookingId) {
+      // Fallback demo animation if no bookingId
+      const timer = setTimeout(() => setVendorDoneCount(2), 1200);
+      return () => clearTimeout(timer);
+    }
+
+    // Real-time subscription to booking document
+    const unsub = onSnapshot(doc(db, "bookings", bookingId), (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data();
+      const done: string[] = data?.checklistDone || [];
+      setLiveChecklistDone(done);
+      setVendorDoneCount(done.length);
+    });
+
+    return () => unsub();
+  }, [bookingId]);
+
+  const totalCount = checklist.length;
+  const progressPct = totalCount > 0 ? Math.round((vendorDoneCount / totalCount) * 100) : 0;
 
   // Pulsing active task dot
   const pulse = useSharedValue(1);
@@ -52,26 +133,26 @@ export default function ServiceInProgressScreen({ navigation }: Props) {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 
-        {/* ── Hero with progress ring ───────────────────────── */}
+        {/* ── Hero with progress ──────────────────────────── */}
         <Animated.View entering={FadeInDown.duration(380)}>
           <LinearGradient colors={["#14b8a6", "#06b6d4", "#0ea5e9"]} style={s.hero}>
             <View style={s.heroTop}>
-              <View>
-                <Text style={s.heroTitle}>Cleaning Started</Text>
-                <Text style={s.heroSub}>Deep Home Cleaning</Text>
+              <View style={{ flex: 1, marginRight: 12 }}>
+                <Text style={s.heroTitle}>{serviceName}</Text>
+                <Text style={s.heroSub}>Service is underway — quality in progress</Text>
               </View>
               <View style={s.etaBadge}>
                 <Ionicons name="time-outline" size={14} color="white" />
-                <Text style={s.etaText}>ETA 1hr 20m</Text>
+                <Text style={s.etaText}>{vendorDoneCount}/{totalCount} Done</Text>
               </View>
             </View>
 
-            {/* Progress Ring (SVG-like using View) */}
+            {/* Progress Ring */}
             <View style={s.ringWrap}>
               <View style={s.ringOuter}>
                 <View style={s.ringInner}>
                   <LinearGradient colors={["#0ea5e9", "#14b8a6"]} style={s.ringCenter}>
-                    <Text style={s.ringPct}>65%</Text>
+                    <Text style={s.ringPct}>{progressPct}%</Text>
                     <Text style={s.ringLabel}>Completed</Text>
                   </LinearGradient>
                 </View>
@@ -80,50 +161,92 @@ export default function ServiceInProgressScreen({ navigation }: Props) {
           </LinearGradient>
         </Animated.View>
 
-        {/* ── Task Timeline ─────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(100).duration(380)} style={s.timelineCard}>
-          <Text style={s.sectionTitle}>Current Progress</Text>
-          {TASKS.map((task, i) => (
-            <View key={task.label} style={[s.taskRow, i < TASKS.length - 1 && { marginBottom: 16 }]}>
-              {/* Timeline line */}
-              {i < TASKS.length - 1 && (
-                <View style={[s.taskLine, task.done && s.taskLineDone]} />
-              )}
+        {/* ── Service Quality Checklist (Customer View) ──── */}
+        <Animated.View entering={FadeInDown.delay(100).duration(380)} style={s.checkCard}>
+          <View style={s.sectionHeaderRow}>
+            <Ionicons name="checkbox-outline" size={18} color="#14b8a6" />
+            <Text style={s.sectionTitle}>
+              Service Quality Checklist ({vendorDoneCount}/{totalCount})
+            </Text>
+          </View>
+          <Text style={s.sectionSubtitle}>
+            Our technician verifies each step — your quality guarantee
+          </Text>
 
-              {/* Dot */}
-              {task.active ? (
-                <View style={s.activeDotWrap}>
-                  <Animated.View style={[s.activeDotRing, pulseStyle]} />
-                  <View style={s.activeDot} />
-                </View>
-              ) : (
-                <View style={[s.taskDot, task.done && s.taskDotDone, task.pending && s.taskDotPending]}>
-                  {task.done && <Ionicons name="checkmark" size={13} color="white" />}
-                </View>
-              )}
+          <View style={s.checklistWrap}>
+            {checklist.map((item, i) => {
+              const isDone = i < vendorDoneCount;
+              const isActive = i === vendorDoneCount;
+              const isPending = i > vendorDoneCount;
+              return (
+                <Animated.View
+                  key={i}
+                  entering={FadeInDown.delay(120 + i * 60).duration(350)}
+                  style={[
+                    s.checkItem,
+                    isDone && s.checkItemDone,
+                    isActive && s.checkItemActive,
+                    isPending && s.checkItemPending,
+                  ]}
+                >
+                  {/* Status icon */}
+                  <View style={[
+                    s.checkIcon,
+                    isDone && s.checkIconDone,
+                    isActive && s.checkIconActive,
+                  ]}>
+                    {isDone ? (
+                      <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                    ) : isActive ? (
+                      <Animated.View style={pulseStyle}>
+                        <Ionicons name="ellipsis-horizontal" size={14} color="#0ea5e9" />
+                      </Animated.View>
+                    ) : (
+                      <Ionicons name="ellipse-outline" size={14} color={colors.text.muted} />
+                    )}
+                  </View>
 
-              {/* Card */}
-              <View style={[
-                s.taskCard,
-                task.active && s.taskCardActive,
-                task.pending && s.taskCardPending,
-              ]}>
-                <View style={[s.taskIconWrap, task.done && s.taskIconDone, task.active && s.taskIconActive]}>
-                  <Ionicons name={task.icon} size={20} color={task.done ? "#14b8a6" : task.active ? "#0ea5e9" : colors.text.muted} />
-                </View>
-                <View>
-                  <Text style={[s.taskLabel, task.active && s.taskLabelActive]}>{task.label}</Text>
-                  <Text style={[s.taskStatus, task.active && s.taskStatusActive, task.done && s.taskStatusDone]}>
-                    {task.status}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          ))}
+                  {/* Label */}
+                  <View style={s.checkContent}>
+                    <Text style={[
+                      s.checkLabel,
+                      isDone && s.checkLabelDone,
+                      isActive && s.checkLabelActive,
+                    ]}>
+                      {item.label}
+                    </Text>
+                    <Text style={[
+                      s.checkStatus,
+                      isDone && s.checkStatusDone,
+                      isActive && s.checkStatusActive,
+                    ]}>
+                      {isDone
+                        ? "✓ Verified by technician"
+                        : isActive
+                        ? "In progress..."
+                        : "Pending"}
+                    </Text>
+                  </View>
+
+                  {/* Right badge */}
+                  {isDone && (
+                    <View style={s.doneBadge}>
+                      <Text style={s.doneBadgeText}>Done</Text>
+                    </View>
+                  )}
+                  {isActive && (
+                    <View style={s.activeBadge}>
+                      <Text style={s.activeBadgeText}>Active</Text>
+                    </View>
+                  )}
+                </Animated.View>
+              );
+            })}
+          </View>
         </Animated.View>
 
-        {/* ── Professional Card ────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(180).duration(380)} style={s.proCard}>
+        {/* ── Professional Card ─────────────────────────── */}
+        <Animated.View entering={FadeInDown.delay(200).duration(380)} style={s.proCard}>
           <Text style={s.sectionTitle}>Your Professional</Text>
           <View style={s.proRow}>
             <View style={s.proAvatarWrap}>
@@ -144,11 +267,8 @@ export default function ServiceInProgressScreen({ navigation }: Props) {
               </View>
             </View>
             <View style={s.proActions}>
-              <Pressable style={[s.proActionBtn, s.proActionBtnPrimary]}>
+              <Pressable style={[s.proActionBtn, s.proActionBtnPrimary]} onPress={() => Linking.openURL('tel:9876543210')}>
                 <Ionicons name="call" size={18} color="white" />
-              </Pressable>
-              <Pressable style={s.proActionBtn}>
-                <Ionicons name="chatbubble-outline" size={18} color={colors.text.secondary} />
               </Pressable>
             </View>
           </View>
@@ -157,7 +277,7 @@ export default function ServiceInProgressScreen({ navigation }: Props) {
         <View style={{ height: 110 }} />
       </ScrollView>
 
-      {/* ── Bottom CTA ───────────────────────────────────────── */}
+      {/* ── Bottom CTA ──────────────────────────────────── */}
       <View style={s.cta}>
         <Pressable
           style={s.ctaBtn}
@@ -187,8 +307,8 @@ const s = StyleSheet.create({
   // Hero
   hero: { borderRadius: 28, padding: 24, marginBottom: 16, overflow: "hidden" },
   heroTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 },
-  heroTitle: { fontSize: 22, fontWeight: "700", color: "white" },
-  heroSub: { fontSize: 13, color: "rgba(255,255,255,0.75)", marginTop: 4 },
+  heroTitle: { fontSize: 20, fontWeight: "700", color: "white" },
+  heroSub: { fontSize: 12, color: "rgba(255,255,255,0.75)", marginTop: 4 },
   etaBadge: {
     flexDirection: "row", alignItems: "center", gap: 6,
     backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 20,
@@ -197,7 +317,7 @@ const s = StyleSheet.create({
   },
   etaText: { fontSize: 12, fontWeight: "600", color: "white" },
 
-  // Ring (using nested Views as circle border)
+  // Ring
   ringWrap: { alignItems: "center", marginVertical: 8 },
   ringOuter: {
     width: 160, height: 160, borderRadius: 80,
@@ -211,48 +331,56 @@ const s = StyleSheet.create({
   ringPct: { fontSize: 30, fontWeight: "700", color: "white" },
   ringLabel: { fontSize: 12, color: "rgba(255,255,255,0.8)" },
 
-  // Timeline
-  timelineCard: {
+  // Checklist Card
+  checkCard: {
     backgroundColor: colors.surface.container, borderRadius: 24, padding: 20,
     marginBottom: 14, borderWidth: 1, borderColor: colors.glass.border,
   },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: colors.text.primary, marginBottom: 16 },
-  taskRow: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingLeft: 4, minHeight: 60 },
-  taskLine: {
-    position: "absolute", left: 15, top: 28, width: 2, height: 32,
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-  taskLineDone: { backgroundColor: "#14b8a6" },
-  activeDotWrap: { width: 24, height: 24, justifyContent: "center", alignItems: "center", flexShrink: 0, marginTop: 2 },
-  activeDotRing: { position: "absolute", width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: "#0ea5e9" },
-  activeDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: "#0ea5e9" },
-  taskDot: {
-    width: 24, height: 24, borderRadius: 12, flexShrink: 0, marginTop: 2,
-    backgroundColor: colors.surface.containerHighest,
-    borderWidth: 2, borderColor: "rgba(255,255,255,0.15)",
-    justifyContent: "center", alignItems: "center",
-  },
-  taskDotDone: { backgroundColor: "#14b8a6", borderColor: "#14b8a6" },
-  taskDotPending: { opacity: 0.4 },
-  taskCard: {
-    flex: 1, flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: colors.surface.containerHigh, borderRadius: 18, padding: 14,
+  sectionHeaderRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
+  sectionTitle: { fontSize: 15, fontWeight: "700", color: colors.text.primary },
+  sectionSubtitle: { fontSize: 12, color: colors.text.muted, marginBottom: 16, lineHeight: 17 },
+  checklistWrap: { gap: 10 },
+  checkItem: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: colors.surface.containerHigh,
+    borderRadius: 16, padding: 14,
     borderWidth: 1, borderColor: colors.glass.border,
   },
-  taskCardActive: { backgroundColor: "rgba(14,165,233,0.1)", borderColor: "rgba(14,165,233,0.3)" },
-  taskCardPending: { opacity: 0.45 },
-  taskIconWrap: {
-    width: 40, height: 40, borderRadius: 20,
+  checkItemDone: {
+    backgroundColor: "rgba(20,184,166,0.08)",
+    borderColor: "rgba(20,184,166,0.3)",
+  },
+  checkItemActive: {
+    backgroundColor: "rgba(14,165,233,0.08)",
+    borderColor: "rgba(14,165,233,0.35)",
+  },
+  checkItemPending: { opacity: 0.4 },
+  checkIcon: {
+    width: 32, height: 32, borderRadius: 16,
     backgroundColor: colors.surface.containerHighest,
     justifyContent: "center", alignItems: "center",
+    borderWidth: 1.5, borderColor: colors.glass.border,
+    flexShrink: 0,
   },
-  taskIconDone: { backgroundColor: "rgba(20,184,166,0.15)" },
-  taskIconActive: { backgroundColor: "rgba(14,165,233,0.15)" },
-  taskLabel: { fontSize: 14, fontWeight: "600", color: colors.text.primary },
-  taskLabelActive: { color: "#0ea5e9" },
-  taskStatus: { fontSize: 12, color: colors.text.muted, marginTop: 2 },
-  taskStatusActive: { color: "#0ea5e9" },
-  taskStatusDone: { color: "#14b8a6" },
+  checkIconDone: { backgroundColor: "#14b8a6", borderColor: "#14b8a6" },
+  checkIconActive: { backgroundColor: "rgba(14,165,233,0.15)", borderColor: "#0ea5e9" },
+  checkContent: { flex: 1 },
+  checkLabel: { fontSize: 13, fontWeight: "500", color: colors.text.primary, lineHeight: 18 },
+  checkLabelDone: { color: "#14b8a6", fontWeight: "600" },
+  checkLabelActive: { color: "#0ea5e9", fontWeight: "600" },
+  checkStatus: { fontSize: 11, color: colors.text.muted, marginTop: 2 },
+  checkStatusDone: { color: "#14b8a6" },
+  checkStatusActive: { color: "#0ea5e9" },
+  doneBadge: {
+    backgroundColor: "rgba(20,184,166,0.15)", borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  doneBadgeText: { fontSize: 10, fontWeight: "700", color: "#14b8a6" },
+  activeBadge: {
+    backgroundColor: "rgba(14,165,233,0.15)", borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  activeBadgeText: { fontSize: 10, fontWeight: "700", color: "#0ea5e9" },
 
   // Pro card
   proCard: {

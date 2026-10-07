@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { store } from '../store/AppStore';
 import { Colors, Typography, Spacing, Radius } from '../theme';
-import { updateBookingStatus, updateBookingAudio, updateBookingPhotos } from '../services/firestoreService';
+import { updateBookingStatus, updateBookingAudio, updateBookingPhotos, updateBookingChecklist } from '../services/firestoreService';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Audio } from 'expo-av';
@@ -102,9 +102,14 @@ export default function ServiceScreen({ route, navigation }: any) {
   const [diagVisible, setDiagVisible] = useState(false);
   const [suppliersVisible, setSuppliersVisible] = useState(false);
 
-  // Audio recording
+  // Audio recording & playback
   const recordingRef = useRef<Audio.Recording | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
   const [isAudioRecording, setIsAudioRecording] = useState(false);
+  const [recordingDurationSecs, setRecordingDurationSecs] = useState(0);
+  const [audioUri, setAudioUri] = useState<string | null>(null);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [savingAudio, setSavingAudio] = useState(false);
 
   useEffect(() => {
     return store.subscribe(() => forceUpdate((n) => n + 1));
@@ -112,22 +117,37 @@ export default function ServiceScreen({ route, navigation }: any) {
 
   const job = store.getJob(jobId);
 
-  // Load existing photos from job
+  // Load existing photos and audio from job
   useEffect(() => {
     if (job?.beforePhoto) setBeforePhoto(job.beforePhoto);
     if (job?.afterPhoto) setAfterPhoto(job.afterPhoto);
-  }, [job?.beforePhoto, job?.afterPhoto]);
+    if (job?.audioUrl) setAudioUri(job.audioUrl);
+  }, [job?.beforePhoto, job?.afterPhoto, job?.audioUrl]);
 
-  // Timer interval for recording seconds
+  // Audio recording duration timer
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-    if (store.isRecording) {
-      interval = setInterval(() => store.tickRecording(), 1000);
+    if (isAudioRecording) {
+      interval = setInterval(() => {
+        setRecordingDurationSecs((s) => s + 1);
+      }, 1000);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [store.isRecording]);
+  }, [isAudioRecording]);
+
+  // Clean up sound on unmount
+  useEffect(() => {
+    return () => {
+      if (soundRef.current) {
+        soundRef.current.unloadAsync().catch(() => {});
+      }
+      if (recordingRef.current) {
+        recordingRef.current.stopAndUnloadAsync().catch(() => {});
+      }
+    };
+  }, []);
 
   // Dynamic checklist initialization
   useEffect(() => {
@@ -208,12 +228,104 @@ export default function ServiceScreen({ route, navigation }: any) {
     Alert.alert('✅ Photo Saved', `${type === 'before' ? 'Before' : 'After'} service proof uploaded to booking record.`);
   };
 
+  // ── Audio Recording Handlers ──────────────────────────────────────────────
+  const handleStartAudioRecording = async () => {
+    try {
+      const perm = await Audio.requestPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Microphone Access Needed', 'Please allow microphone access to record audio proof of service.');
+        return;
+      }
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      recordingRef.current = recording;
+      setIsAudioRecording(true);
+      setRecordingDurationSecs(0);
+    } catch (e: any) {
+      console.warn('Start recording error:', e);
+      Alert.alert('Recording Error', e.message || 'Could not start voice recording.');
+    }
+  };
+
+  const handleStopAudioRecording = async () => {
+    if (!recordingRef.current) return;
+    setSavingAudio(true);
+    try {
+      await recordingRef.current.stopAndUnloadAsync();
+      const uri = recordingRef.current.getURI();
+      recordingRef.current = null;
+      setIsAudioRecording(false);
+
+      if (uri) {
+        const base64Audio = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const dataUri = `data:audio/m4a;base64,${base64Audio}`;
+        setAudioUri(dataUri);
+        job.audioUrl = dataUri;
+        await updateBookingAudio(job.jobId, dataUri);
+        Alert.alert('🎙️ Voice Note Saved', 'Voice recording attached to booking record.');
+      }
+    } catch (e: any) {
+      console.warn('Stop recording error:', e);
+      Alert.alert('Error', 'Failed to save recording.');
+    } finally {
+      setSavingAudio(false);
+    }
+  };
+
+  const handleTogglePlayback = async () => {
+    if (!audioUri) return;
+    try {
+      if (isPlayingAudio && soundRef.current) {
+        await soundRef.current.stopAsync();
+        setIsPlayingAudio(false);
+        return;
+      }
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+      }
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: audioUri },
+        { shouldPlay: true }
+      );
+      soundRef.current = sound;
+      setIsPlayingAudio(true);
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setIsPlayingAudio(false);
+        }
+      });
+    } catch (e: any) {
+      console.warn('Audio playback error:', e);
+      Alert.alert('Playback Error', 'Could not play voice recording.');
+    }
+  };
+
+  // ── Dynamic Checklist Handler with Firestore Sync ──────────────────────────
+  const handleToggleCheckItem = async (item: string) => {
+    store.toggleChecklist(job.jobId, item);
+    forceUpdate((n) => n + 1);
+    try {
+      await updateBookingChecklist(job.jobId, job.checklistDone, checklistItems);
+    } catch (err) {
+      console.warn('Checklist sync error:', err);
+    }
+  };
+
   // ── Finish & Complete Service ─────────────────────────────────────────────
   const handleConfirmComplete = async () => {
     setIsFinishing(true);
     try {
       store.completeJob(job.jobId);
       await updateBookingStatus(job.jobId, 'completed', store.vendorId || undefined, job.vendorEarnings);
+      await updateBookingChecklist(job.jobId, job.checklistDone, checklistItems);
 
       setCompleteModalVisible(false);
       navigation.navigate('Complete', { jobId: job.jobId });
@@ -373,6 +485,80 @@ export default function ServiceScreen({ route, navigation }: any) {
           </View>
         </View>
 
+        {/* Voice Recording Verification Card */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="mic-outline" size={18} color="#0D3325" />
+            <Text style={styles.sectionTitle}>VOICE RECORDING PROOF</Text>
+          </View>
+          <Text style={styles.sectionSub}>
+            Record an audio summary or customer confirmation before completion.
+          </Text>
+
+          <View style={styles.audioRecordBox}>
+            {isAudioRecording ? (
+              <View style={styles.recordingActiveWrap}>
+                <View style={styles.recordingPulseDot} />
+                <Text style={styles.recordingTimerText}>
+                  Recording: {formatTime(recordingDurationSecs)}
+                </Text>
+                <TouchableOpacity
+                  style={styles.stopRecordingBtn}
+                  onPress={handleStopAudioRecording}
+                  disabled={savingAudio}
+                >
+                  {savingAudio ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Ionicons name="stop-circle" size={18} color="#FFFFFF" />
+                      <Text style={styles.stopRecordingBtnText}>Stop &amp; Save</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            ) : audioUri ? (
+              <View style={styles.audioSavedWrap}>
+                <View style={styles.audioSavedInfo}>
+                  <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                  <Text style={styles.audioSavedText}>Voice proof recorded &amp; attached</Text>
+                </View>
+                <View style={styles.audioActionsRow}>
+                  <TouchableOpacity
+                    style={styles.playAudioBtn}
+                    onPress={handleTogglePlayback}
+                  >
+                    <Ionicons
+                      name={isPlayingAudio ? 'pause' : 'play'}
+                      size={16}
+                      color="#0D3325"
+                    />
+                    <Text style={styles.playAudioText}>
+                      {isPlayingAudio ? 'Pause' : 'Play Proof'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.rerecordBtn}
+                    onPress={handleStartAudioRecording}
+                  >
+                    <Ionicons name="refresh" size={14} color="#64748B" />
+                    <Text style={styles.rerecordText}>Re-record</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.startRecordBtn}
+                onPress={handleStartAudioRecording}
+              >
+                <Ionicons name="mic" size={20} color="#FFFFFF" />
+                <Text style={styles.startRecordText}>Start Voice Recording</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
         {/* Dynamic Quality Checklist */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
@@ -387,7 +573,7 @@ export default function ServiceScreen({ route, navigation }: any) {
                 <TouchableOpacity
                   key={idx}
                   style={[styles.checkItem, isChecked && styles.checkItemDone]}
-                  onPress={() => store.toggleChecklist(job.jobId, item)}
+                  onPress={() => handleToggleCheckItem(item)}
                   activeOpacity={0.8}
                 >
                   <Ionicons
@@ -677,6 +863,115 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  audioRecordBox: {
+    marginTop: 8,
+  },
+  startRecordBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#0D3325',
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  startRecordText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  recordingActiveWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    padding: 12,
+    borderRadius: 12,
+  },
+  recordingPulseDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#DC2626',
+  },
+  recordingTimerText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#DC2626',
+    flex: 1,
+    marginLeft: 8,
+  },
+  stopRecordingBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  stopRecordingBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  audioSavedWrap: {
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    padding: 12,
+    borderRadius: 12,
+    gap: 10,
+  },
+  audioSavedInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  audioSavedText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#15803D',
+  },
+  audioActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  playAudioBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#DCFCE7',
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+  },
+  playAudioText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0D3325',
+  },
+  rerecordBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  rerecordText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
   },
   checklistWrap: {
     gap: 8,

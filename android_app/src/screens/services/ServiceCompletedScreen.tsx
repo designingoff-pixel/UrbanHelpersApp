@@ -306,6 +306,23 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
     </div>
   </div>
 
+  ${(booking?.beforePhoto || booking?.afterPhoto) ? `
+  <div style="margin-top: 28px; border-top: 1px solid #e2e8f0; padding-top: 18px;">
+    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #64748b; margin-bottom: 12px;">Verified Service Proof Photos</div>
+    <div style="display: flex; gap: 16px;">
+      ${booking?.beforePhoto ? `
+      <div style="flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; text-align: center;">
+        <div style="font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 6px;">BEFORE SERVICE</div>
+        <img src="${booking.beforePhoto}" style="width: 100%; max-height: 160px; object-fit: cover; border-radius: 6px;" />
+      </div>` : ''}
+      ${booking?.afterPhoto ? `
+      <div style="flex: 1; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px; text-align: center;">
+        <div style="font-size: 11px; font-weight: 700; color: #15803d; margin-bottom: 6px;">AFTER SERVICE</div>
+        <img src="${booking.afterPhoto}" style="width: 100%; max-height: 160px; object-fit: cover; border-radius: 6px;" />
+      </div>` : ''}
+    </div>
+  </div>` : ''}
+
   <div class="footer">
     Urban Helpers Services Private Limited • HSN/SAC: 998721 • GSTIN: 33AAECU1234F1Z5<br />
     This is a computer-generated tax receipt. For queries, contact support@urbanhelpers.app.
