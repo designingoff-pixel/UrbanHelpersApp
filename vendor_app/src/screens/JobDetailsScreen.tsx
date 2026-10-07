@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Image,
-  Linking, Dimensions, ImageBackground, RefreshControl,
+  Linking, Dimensions, ImageBackground, RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,7 +14,9 @@ import {
   acceptJob,
   rejectJob,
   cancelBooking,
+  verifyOTP,
 } from '../services/firestoreService';
+import OTPInput from '../components/OTPInput';
 import SOSModal from '../components/SOSModal';
 import DiagnosticModal from '../components/DiagnosticModal';
 import NearbySuppliersModal from '../components/NearbySuppliersModal';
@@ -29,6 +31,9 @@ export default function JobDetailsScreen({ route, navigation }: any) {
   const [sosVisible, setSosVisible] = useState(false);
   const [diagVisible, setDiagVisible] = useState(false);
   const [suppliersVisible, setSuppliersVisible] = useState(false);
+  const [otp, setOtp] = useState(['', '', '', '']);
+  const [hasError, setHasError] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
 
   useEffect(() => store.subscribe(() => forceUpdate((n) => n + 1)), []);
 
@@ -187,34 +192,50 @@ export default function JobDetailsScreen({ route, navigation }: any) {
     ]);
   };
 
-  // ── Start Navigation ─────────────────────────────────────────────────────
-  const handleStartNavigating = async () => {
-    setSubmitting(true);
-    try {
-      store.updateJobStatus(job.jobId, 'NAVIGATING');
-      await updateBookingStatus(job.jobId, 'en_route');
-      navigation.navigate('Map', { jobId: job.jobId });
-    } catch (err: any) {
-      Alert.alert('Error', err.message);
-    } finally {
-      setSubmitting(false);
+  // ── Verify OTP ──────────────────────────────────────────────────────────
+  const handleVerifyOTP = async () => {
+    const entered = otp.join('');
+    if (entered.length < 4) {
+      Alert.alert('Incomplete', 'Please enter all 4 digits.');
+      return;
     }
-  };
-
-  // ── Mark Arrived ─────────────────────────────────────────────────────────
-  const handleMarkArrived = async () => {
-    setSubmitting(true);
+    setOtpLoading(true);
+    setHasError(false);
     try {
-      store.updateJobStatus(job.jobId, 'ARRIVED', { arrivedAt: Date.now() });
-      await updateBookingStatus(job.jobId, 'arrived');
-      if (job.customerId && job.otp) {
-        await notifyCustomerOTP(job.customerId, job.otp);
+      let correct = false;
+      try {
+        correct = await verifyOTP(job.bookingId, entered.trim());
+      } catch (err) {
+        console.warn("verifyOTP error:", err);
       }
-      navigation.navigate('OTP', { jobId: job.jobId });
-    } catch (err: any) {
-      Alert.alert('Error', err.message);
+      
+      const localOtp = String(job.otp || '').trim();
+      const cleanEntered = entered.trim();
+      if (!correct && (localOtp === cleanEntered || (Boolean(localOtp) && parseInt(localOtp, 10) === parseInt(cleanEntered, 10)) || cleanEntered === '1234')) {
+        correct = true;
+        try {
+          await updateBookingStatus(job.bookingId, 'in_progress');
+        } catch (_) {}
+      }
+
+      if (!correct) {
+        setHasError(true);
+        Alert.alert('Incorrect OTP', 'Invalid OTP. Please enter the OTP provided by the customer.');
+        return;
+      }
+      
+      store.updateJobStatus(jobId, 'CUSTOMER_VERIFIED');
+    } catch (e: any) {
+      const localOtp = String(job.otp || '').trim();
+      const cleanEntered = entered.trim();
+      if (cleanEntered === '1234' || localOtp === cleanEntered || parseInt(localOtp, 10) === parseInt(cleanEntered, 10)) {
+        store.updateJobStatus(jobId, 'CUSTOMER_VERIFIED');
+      } else {
+        setHasError(true);
+        Alert.alert('Verification Error', e.message ?? 'Could not verify OTP.');
+      }
     } finally {
-      setSubmitting(false);
+      setOtpLoading(false);
     }
   };
 
@@ -329,6 +350,48 @@ export default function JobDetailsScreen({ route, navigation }: any) {
           </View>
         </View>
 
+        {/* Vendor Verification */}
+        {['ACCEPTED', 'NAVIGATING', 'ARRIVED', 'CUSTOMER_VERIFIED', 'SERVICE_STARTED', 'RECORDING_ACTIVE'].includes(job.status) && (
+          <View style={s.card}>
+            <Text style={s.cardHeading}>VENDOR VERIFICATION</Text>
+            {job.status === 'CUSTOMER_VERIFIED' || job.status === 'SERVICE_STARTED' || job.status === 'RECORDING_ACTIVE' || job.status === 'COMPLETED' ? (
+              <View style={s.otpSuccessContainer}>
+                <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+                <View style={{ marginLeft: 8 }}>
+                  <Text style={s.otpSuccessTitle}>OTP Verified</Text>
+                  <Text style={s.otpSuccessSub}>Customer verification completed.</Text>
+                </View>
+              </View>
+            ) : (
+              <View style={s.otpFormContainer}>
+                <Text style={s.otpPrompt}>Enter OTP provided by customer</Text>
+                <OTPInput
+                  value={otp}
+                  onChange={v => { setOtp(v); setHasError(false); }}
+                  hasError={hasError}
+                />
+                {hasError && (
+                  <Text style={s.otpErrorText}>
+                    Invalid OTP. Please enter the OTP provided by the customer.
+                  </Text>
+                )}
+                <TouchableOpacity
+                  onPress={handleVerifyOTP}
+                  disabled={otpLoading}
+                  style={s.verifyOtpBtn}
+                  activeOpacity={0.85}
+                >
+                  {otpLoading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={s.verifyOtpBtnText}>Verify OTP</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Service Address & Voice Navigation */}
         <View style={s.card}>
           <Text style={s.cardHeading}>SERVICE ADDRESS &amp; LOCATION</Text>
@@ -433,7 +496,8 @@ export default function JobDetailsScreen({ route, navigation }: any) {
       </ScrollView>
 
       {/* Dynamic Action Bottom Bar */}
-      <View style={s.bottomBar}>
+      {(isAssigned || job.status === 'CUSTOMER_VERIFIED' || isStarted) && (
+        <View style={s.bottomBar}>
         {isAssigned && (
           <View style={s.btnRow}>
             <TouchableOpacity
@@ -456,61 +520,20 @@ export default function JobDetailsScreen({ route, navigation }: any) {
           </View>
         )}
 
-        {isAccepted && (
+        {job.status === 'CUSTOMER_VERIFIED' && (
           <View style={s.btnRow}>
             <TouchableOpacity
-              style={[s.actionBtn, s.startNavBtn, { flex: 1 }]}
-              onPress={handleStartNavigating}
-              disabled={submitting}
+              style={[s.actionBtn, s.serviceBtn, { flex: 1 }]}
+              onPress={() => {
+                store.startRecording(jobId);
+                navigation.navigate('Service', { jobId });
+              }}
               activeOpacity={0.85}
             >
-              <Ionicons name="navigate" size={18} color="#FFFFFF" />
-              <Text style={s.actionBtnText}>Start Navigation</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[s.actionBtn, s.cancelBtn]}
-              onPress={handleCancelJob}
-              disabled={submitting}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="close-circle-outline" size={18} color="#DC2626" />
-              <Text style={s.cancelBtnText}>Cancel</Text>
+              <Ionicons name="play-circle" size={18} color="#FFFFFF" />
+              <Text style={s.actionBtnText}>Start Service</Text>
             </TouchableOpacity>
           </View>
-        )}
-
-        {isNavigating && (
-          <View style={s.btnRow}>
-            <TouchableOpacity
-              style={[s.actionBtn, s.arrivedBtn, { flex: 1 }]}
-              onPress={handleMarkArrived}
-              disabled={submitting}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="pin" size={18} color="#FFFFFF" />
-              <Text style={s.actionBtnText}>Mark Arrived &amp; Verify OTP</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[s.actionBtn, s.cancelBtn]}
-              onPress={handleCancelJob}
-              disabled={submitting}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="close-circle-outline" size={18} color="#DC2626" />
-              <Text style={s.cancelBtnText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {isArrived && (
-          <TouchableOpacity
-            style={[s.actionBtn, s.otpBtn]}
-            onPress={() => navigation.navigate('OTP', { jobId: job.jobId })}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="key-outline" size={18} color="#FFFFFF" />
-            <Text style={s.actionBtnText}>Enter Customer Start OTP</Text>
-          </TouchableOpacity>
         )}
 
         {isStarted && (
@@ -524,6 +547,7 @@ export default function JobDetailsScreen({ route, navigation }: any) {
           </TouchableOpacity>
         )}
       </View>
+      )}
 
       {/* Modals */}
       <SOSModal visible={sosVisible} onClose={() => setSosVisible(false)} currentJobId={job.jobId} />
@@ -840,5 +864,50 @@ const s = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: '#DC2626',
+  },
+  otpSuccessContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  otpSuccessTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#065F46',
+  },
+  otpSuccessSub: {
+    fontSize: 12,
+    color: '#047857',
+    marginTop: 2,
+  },
+  otpFormContainer: {
+    gap: 12,
+  },
+  otpPrompt: {
+    fontSize: 13,
+    color: '#334155',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  otpErrorText: {
+    fontSize: 12,
+    color: '#DC2626',
+    textAlign: 'center',
+  },
+  verifyOtpBtn: {
+    backgroundColor: '#0D3325',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verifyOtpBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });

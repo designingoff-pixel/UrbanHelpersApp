@@ -65,10 +65,10 @@ const STATUS_LABELS: Record<string, string> = {
   requested:   "Booking Confirmed",
   assigned:    "Professional Assigned",
   en_route:    "On The Way",
-  arrived:     "Professional\nArrived",
-  in_progress: "Service\nIn Progress",
-  completed:   "Service\nCompleted",
-  cancelled:   "Service\nCancelled",
+  arrived:     "Professional Arrived",
+  in_progress: "Service In Progress",
+  completed:   "Service Completed",
+  cancelled:   "Booking Cancelled",
 };
 
 const HERO_TITLES: Partial<Record<BookingStatus, string>> = {
@@ -93,16 +93,48 @@ const STATUS_COLORS: Record<string, [string, string]> = {
   cancelled:   ["#dc2626", "#991b1b"], // red
 };
 
-function buildSteps(status: BookingStatus, etaText: string) {
+function buildSteps(status: BookingStatus, etaText: string, booking: LiveBooking | null) {
   const effectiveStatus = status === "accepted" ? "assigned" : status;
+  
+  if (status === "cancelled") {
+    return [{
+      label: STATUS_LABELS.cancelled,
+      done: false,
+      active: true,
+      subtext: "Your booking has been cancelled.",
+    }];
+  }
+
   const idx = STATUS_ORDER.indexOf(effectiveStatus as BookingStatus);
-  return STATUS_ORDER.map((s, i) => ({
-    label:  STATUS_LABELS[s],
-    done:   i < idx,
-    active: i === idx,
-    time:   i === idx && s === "en_route" ? etaText
-          : i === idx ? "Now" : i === 0 ? "Confirmed" : "",
-  }));
+  
+  if (idx === -1) {
+    return [{
+      label: "Booking status unavailable",
+      done: false,
+      active: true,
+      subtext: "Status could not be determined.",
+    }];
+  }
+
+  return STATUS_ORDER.map((s, i) => {
+    let subtext = "";
+    if (s === "requested") subtext = "Your booking has been confirmed.";
+    else if (s === "assigned") subtext = booking?.vendorName ? `${booking.vendorName} has been assigned.` : "Your professional has been assigned.";
+    else if (s === "en_route") subtext = etaText ? `Estimated arrival: ${etaText}` : "Your professional is on the way.";
+    else if (s === "arrived") subtext = "Your professional has arrived.";
+    else if (s === "in_progress") subtext = "Your service is currently in progress.";
+    else if (s === "completed") subtext = "Your service has been completed.";
+    
+    const isDone = i < idx || (status === "completed" && i === idx);
+    const isActive = i === idx && status !== "completed";
+
+    return {
+      label:  STATUS_LABELS[s],
+      done:   isDone,
+      active: isActive,
+      subtext: (isDone || isActive) ? subtext : "",
+    };
+  });
 }
 
 export default function LiveTrackingScreen({ navigation, route }: Props) {
@@ -185,9 +217,10 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
 
   // Subscribe to Vendor's live location ONLY when vendor is assigned / accepted
   const isVendorAccepted = !!booking?.vendorId && booking.status !== "requested";
+  const isTrackingActive = isVendorAccepted && booking?.status !== "completed" && booking?.status !== "cancelled";
 
   useEffect(() => {
-    if (!isVendorAccepted || !booking?.vendorId) {
+    if (!isTrackingActive || !booking?.vendorId) {
       setVendorCoords(null);
       return;
     }
@@ -205,11 +238,11 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
       }
     });
     return () => unsub();
-  }, [isVendorAccepted, booking?.vendorId]);
+  }, [isTrackingActive, booking?.vendorId]);
 
   // Recalculate ETA and Distance when vendor moves
   useEffect(() => {
-    if (!vendorCoords || !customerCoords || !isVendorAccepted) {
+    if (!vendorCoords || !customerCoords || !isTrackingActive) {
       setEtaText("");
       setDistanceText("");
       return;
@@ -217,7 +250,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
     const km = getDistanceKm(vendorCoords.lat, vendorCoords.lng, customerCoords.lat, customerCoords.lng);
     setEtaText(formatETA(Math.max(1, Math.round((km / 25) * 60))));
     setDistanceText(formatDistance(km));
-  }, [vendorCoords, customerCoords, isVendorAccepted]);
+  }, [vendorCoords, customerCoords, isTrackingActive]);
 
   // Fit map viewport
   useEffect(() => {
@@ -270,7 +303,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
   }, [booking?.status, booking?.id, booking?.rated]);
 
   const status = booking?.status ?? "requested";
-  const steps = buildSteps(status as BookingStatus, etaText);
+  const steps = buildSteps(status as BookingStatus, etaText, booking);
   const initials = (booking?.vendorName ?? "UH").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
 
   // Map Region: Centers on customer location
@@ -601,9 +634,9 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
                 <Text style={[s.stepLabel, step.active && [s.stepLabelActive, { color: STATUS_COLORS[status]?.[0] || "#3b82f6" }], !step.done && !step.active && s.stepLabelPending]}>
                   {step.label}
                 </Text>
-                {step.time ? (
-                  <Text style={[s.stepTime, step.active && [s.stepTimeActive, { color: STATUS_COLORS[status]?.[0] || "#3b82f6" }]]}>
-                    {step.time}
+                {step.subtext ? (
+                  <Text style={[s.stepSubtext, step.active && s.stepSubtextActive]}>
+                    {step.subtext}
                   </Text>
                 ) : null}
               </View>
@@ -841,8 +874,8 @@ const s = StyleSheet.create({
   stepLabel: { fontSize: 14, fontWeight: "600", color: colors.text.secondary },
   stepLabelActive: { fontWeight: "700" },
   stepLabelPending: { opacity: 0.4 },
-  stepTime: { fontSize: 12, color: colors.text.muted, marginTop: 2 },
-  stepTimeActive: {},
+  stepSubtext: { fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 4 },
+  stepSubtextActive: { color: "rgba(255,255,255,0.95)", fontWeight: "500" },
 
   infoRow: { flexDirection: "row", gap: 12, marginBottom: 8 },
   infoCard: { flex: 1, borderRadius: 24, padding: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
