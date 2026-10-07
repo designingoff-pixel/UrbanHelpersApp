@@ -676,7 +676,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 
             {/* Selected address preview */}
             {addressText.trim().length > 0 && (
-              <View style={[s.addressInputWrap, { marginTop: 10 }]}>
+              <View style={[s.addressInputWrap, { marginTop: 8, marginBottom: 8 }]}>
                 <Ionicons name="location" size={16} color="#10b981" style={{ marginRight: 8 }} />
                 <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 13, flex: 1 }} numberOfLines={2}>
                   {addressText}
@@ -684,19 +684,12 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               </View>
             )}
 
-            {/* OR divider */}
-            <View style={{ flexDirection: "row", alignItems: "center", marginVertical: 10, gap: 8 }}>
-              <View style={{ flex: 1, height: 1, backgroundColor: "rgba(255,255,255,0.1)" }} />
-              <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>OR SEARCH</Text>
-              <View style={{ flex: 1, height: 1, backgroundColor: "rgba(255,255,255,0.1)" }} />
-            </View>
-
             {/* Search bar — live autocomplete as user types */}
-            <View style={[s.addressInputWrap, { marginTop: 0 }]}>
+            <View style={[s.addressInputWrap, { marginTop: 0, marginBottom: 0, backgroundColor: "rgba(255,255,255,0.04)", borderWidth: 0 }]}>
               <Ionicons name="search-outline" size={16} color="rgba(255,255,255,0.5)" style={{ marginRight: 8 }} />
               <TextInput
-                style={[s.addressInput, s.addressInputWithIcon, { marginBottom: 0, flex: 1 }]}
-                placeholder="Search location..."
+                style={[s.addressInput, s.addressInputWithIcon, { marginBottom: 0, flex: 1, paddingVertical: 10 }]}
+                placeholder="Search address..."
                 placeholderTextColor={colors.text.muted}
                 value={addressText}
                 onChangeText={(text) => {
