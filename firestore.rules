@@ -2,74 +2,28 @@ rules_version = '2';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Urban Helpers — Firestore Security Rules
-//
-// ROOT CAUSE FIX: The bookings collection had no rule allowing authenticated
-// customers to update their own booking. This blocked the cancelBooking()
-// function in bookingService.ts which calls updateDoc() with:
-//   { status: "cancelled", cancellationReason, cancelledAt, cancelledBy }
-//
-// ACCESS MODEL FOR bookings:
-//   • Public (unauthenticated) READ   — admin web needs this
-//   • Authenticated CREATE            — customerId must equal caller uid
-//   • Authenticated UPDATE            — cancellation ONLY (see isValidCancellationUpdate)
-//   • DELETE                          — denied (client SDK)
 // ─────────────────────────────────────────────────────────────────────────────
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Helper functions ──────────────────────────────────────────────────────
-
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Ownership check uses resource.data (server-side) so the frontend
-    // cannot spoof the customerId field.
-    function isBookingOwner() {
-      return isSignedIn() && resource.data.customerId == request.auth.uid;
-    }
-
-    // Valid cancellation update:
-    //   (a) New status must be exactly "cancelled"
-    //   (b) Current status must not already be "cancelled" or "completed"
-    //   (c) Only the four cancellation fields may be changed — no other
-    //       booking field (price, otp, address, paymentStatus, etc.) may differ
-    function isValidCancellationUpdate() {
-      let allowedFields = ['status', 'cancellationReason', 'cancelledAt', 'cancelledBy'];
-      let changedKeys   = request.resource.data.diff(resource.data).affectedKeys();
-      return
-        request.resource.data.status == 'cancelled'
-        && resource.data.status != 'cancelled'
-        && resource.data.status != 'completed'
-        && changedKeys.hasOnly(allowedFields);
-    }
-
     // ── bookings ──────────────────────────────────────────────────────────────
     match /bookings/{bookingId} {
-      // Public READ required for admin web & vendor apps
-      allow read: if true;
-
-      // Customer creates booking
-      allow create: if isSignedIn() || true;
-
-      // Customer cancellation or Admin/Vendor assignment & status updates
-      allow update: if true;
-
-      // No client-side deletes
-      allow delete: if false;
+      allow read, write: if true;
     }
 
     // ── vendors ────────────────────────────────────────────────────────────────
     match /vendors/{vendorId} {
-      // Admin web registers vendors, and Vendor app reads/authenticates by Vendor ID
       allow read, write: if true;
     }
 
     // ── users ─────────────────────────────────────────────────────────────────
     match /users/{userId} {
-      allow read: if true;
-      allow write: if isSignedIn() && request.auth.uid == userId;
+      allow read, write: if true;
     }
 
     // ── serviceCategories ─────────────────────────────────────────────────────
@@ -82,32 +36,43 @@ service cloud.firestore {
     }
 
     // ── shop_products ─────────────────────────────────────────────────────────
-    // Admin web uses unauthenticated client writes
     match /shop_products/{docId} {
-      allow read: if true;
-      allow write: if true;
+      allow read, write: if true;
     }
 
     // ── shop_orders ───────────────────────────────────────────────────────────
-    // Admin web updates order status without authentication
     match /shop_orders/{docId} {
-      allow read: if true;
-      allow write: if true;
+      allow read, write: if true;
+    }
+
+    // ── sos_alerts ────────────────────────────────────────────────────────────
+    match /sos_alerts/{docId} {
+      allow read, write: if true;
+    }
+
+    // ── complaints ────────────────────────────────────────────────────────────
+    match /complaints/{docId} {
+      allow read, write: if true;
+    }
+
+    // ── fitness_videos ────────────────────────────────────────────────────────
+    match /fitness_videos/{docId} {
+      allow read, write: if true;
     }
 
     // ── health_logs ───────────────────────────────────────────────────────────
     match /health_logs/{docId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if true;
     }
 
     // ── health_records ────────────────────────────────────────────────────────
     match /health_records/{docId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if true;
     }
 
-    // ── Catch-all: deny everything not explicitly listed ──────────────────────
+    // ── Catch-all ─────────────────────────────────────────────────────────────
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if true;
     }
   }
 }

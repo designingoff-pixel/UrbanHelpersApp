@@ -4121,8 +4121,7 @@
 
       if (sec === 'services') {
         _currentServicesSubKey = 'bookings';
-        document.getElementById('topGreetingTitle').textContent = 'Services';
-        document.getElementById('topGreetingSub').textContent = 'Every booking moving through the Urban Helpers marketplace.';
+        const tgt = document.getElementById('topGreetingTitle'); if (tgt) tgt.textContent = 'Urban Helpers';
         // activate bookings subitem in sidebar
         const sub = document.getElementById('servicesSubmenu');
         if (sub) {
