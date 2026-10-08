@@ -8,7 +8,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { store } from '../store/AppStore';
 import { Colors, Typography, Spacing, Radius } from '../theme';
-import { updateBookingStatus, updateBookingAudio, updateBookingPhotos, updateBookingChecklist } from '../services/firestoreService';
+import { updateBookingStatus, updateBookingAudio, updateBookingPhotos, updateBookingChecklist, db } from '../services/firestoreService';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Audio } from 'expo-av';
@@ -123,6 +124,43 @@ export default function ServiceScreen({ route, navigation }: any) {
     if (job?.afterPhoto) setAfterPhoto(job.afterPhoto);
     if (job?.audioUrl) setAudioUri(job.audioUrl);
   }, [job?.beforePhoto, job?.afterPhoto, job?.audioUrl]);
+
+  // Auto-start recording continuously on service start
+  useEffect(() => {
+    let active = true;
+    async function startAutoRecording() {
+      try {
+        const perm = await Audio.requestPermissionsAsync();
+        if (!perm.granted) {
+          console.warn('[ServiceScreen] Microphone permission not granted');
+          return;
+        }
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+        });
+
+        if (recordingRef.current) return;
+        const { recording } = await Audio.Recording.createAsync(
+          Audio.RecordingOptionsPresets.HIGH_QUALITY
+        );
+        if (active) {
+          recordingRef.current = recording;
+          setIsAudioRecording(true);
+        } else {
+          await recording.stopAndUnloadAsync();
+        }
+      } catch (err) {
+        console.warn('[ServiceScreen] Auto recording init err:', err);
+      }
+    }
+
+    startAutoRecording();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Audio recording duration timer
   useEffect(() => {
@@ -323,9 +361,47 @@ export default function ServiceScreen({ route, navigation }: any) {
   const handleConfirmComplete = async () => {
     setIsFinishing(true);
     try {
+      let finalAudioDataUri: string | null = audioUri || job.audioUrl || null;
+      if (recordingRef.current) {
+        try {
+          await recordingRef.current.stopAndUnloadAsync();
+          const uri = recordingRef.current.getURI();
+          recordingRef.current = null;
+          setIsAudioRecording(false);
+          if (uri) {
+            const base64Audio = await FileSystem.readAsStringAsync(uri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            finalAudioDataUri = `data:audio/m4a;base64,${base64Audio}`;
+            setAudioUri(finalAudioDataUri);
+          }
+        } catch (audioErr) {
+          console.warn('Final audio capture error:', audioErr);
+        }
+      }
+
+      const currentBefore = beforePhoto || job.beforePhoto || null;
+      const currentAfter = afterPhoto || job.afterPhoto || null;
+
       store.completeJob(job.jobId);
+      if (finalAudioDataUri) job.audioUrl = finalAudioDataUri;
+      if (currentBefore) job.beforePhoto = currentBefore;
+      if (currentAfter) job.afterPhoto = currentAfter;
+
+      // Update booking directly in Firestore with all completed data bundled together
+      await updateDoc(doc(db, 'bookings', job.jobId), {
+        status: 'completed',
+        completedAt: serverTimestamp(),
+        paymentStatus: 'paid',
+        beforePhoto: currentBefore,
+        afterPhoto: currentAfter,
+        audioUrl: finalAudioDataUri,
+        checklistDone: job.checklistDone,
+        checklist: checklistItems,
+      });
+
+      // Also trigger stats update in firestoreService
       await updateBookingStatus(job.jobId, 'completed', store.vendorId || undefined, job.vendorEarnings);
-      await updateBookingChecklist(job.jobId, job.checklistDone, checklistItems);
 
       setCompleteModalVisible(false);
       navigation.navigate('Complete', { jobId: job.jobId });
