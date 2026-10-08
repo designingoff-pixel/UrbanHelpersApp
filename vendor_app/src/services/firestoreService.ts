@@ -64,12 +64,36 @@ export interface FirestoreBooking {
 // ── JOBS: Listen for all bookings assigned to this vendor ───────────────────
 export function subscribeToVendorJobs(
   vendorId: string,
-  onChange:  (bookings: FirestoreBooking[]) => void
+  onChange: (bookings: FirestoreBooking[]) => void,
+  alternateIds: (string | undefined | null)[] = []
 ) {
-  const q = query(
-    collection(db, "bookings"),
-    where("vendorId", "==", vendorId)
-  );
+  const idSet = new Set<string>();
+  const clean = (vendorId || '').trim();
+  if (clean) {
+    idSet.add(clean);
+    idSet.add(clean.toUpperCase());
+    idSet.add(clean.toLowerCase());
+  }
+  alternateIds.forEach((alt) => {
+    if (alt && typeof alt === 'string') {
+      const c = alt.trim();
+      if (c) {
+        idSet.add(c);
+        idSet.add(c.toUpperCase());
+        idSet.add(c.toLowerCase());
+      }
+    }
+  });
+
+  const ids = Array.from(idSet).slice(0, 10);
+  if (ids.length === 0) {
+    onChange([]);
+    return () => {};
+  }
+
+  const q = ids.length === 1
+    ? query(collection(db, "bookings"), where("vendorId", "==", ids[0]))
+    : query(collection(db, "bookings"), where("vendorId", "in", ids));
 
   return onSnapshot(
     q,

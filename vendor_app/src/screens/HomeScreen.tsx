@@ -57,14 +57,24 @@ export default function HomeScreen({ navigation }: any) {
   useEffect(() => {
     let unsubV: (() => void) | null = null;
     let unsubP: (() => void) | null = null;
+    let currentSubscribedId = '';
 
     const startSubscriptions = (uid: string) => {
+      if (!uid || uid === currentSubscribedId) return;
+      currentSubscribedId = uid;
+
       if (unsubV) unsubV();
       if (unsubP) unsubP();
 
+      const altIds = [
+        store.vendor.docId,
+        store.vendor.mobile,
+        store.firebaseUid,
+      ].filter(Boolean) as string[];
+
       unsubV = subscribeToVendorJobs(uid, (jobs) => {
         store.syncAssignedJobs(jobs);
-      });
+      }, altIds);
 
       unsubP = subscribeToVendorProfile(uid, (profileData) => {
         store.syncVendorProfile(profileData);
@@ -77,7 +87,7 @@ export default function HomeScreen({ navigation }: any) {
 
     const unsubStore = store.subscribe(() => {
       forceUpdate((n) => n + 1);
-      if (!unsubV && store.vendorId) {
+      if (store.vendorId && store.vendorId !== currentSubscribedId) {
         startSubscriptions(store.vendorId);
       }
     });

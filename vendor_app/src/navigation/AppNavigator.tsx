@@ -75,18 +75,23 @@ function CustomTabBar({ activeTab, onTabPress }: { activeTab: string; onTabPress
 function MainTabsScreen({ navigation }: any) {
   const [activeTab, setActiveTab] = useState('Home');
 
-  const handleTabPress = (name: string) => {
-    setActiveTab(name);
-  };
-
-  const ActiveScreen = TAB_SCREENS[activeTab] ?? HomeScreen;
-
   return (
     <View style={{ flex: 1, backgroundColor: '#F6F7F9' }}>
       <View style={{ flex: 1 }}>
-        <ActiveScreen navigation={navigation} route={{ params: {} }} />
+        <View style={{ flex: 1, display: activeTab === 'Home' ? 'flex' : 'none' }}>
+          <HomeScreen navigation={navigation} route={{ params: {} }} />
+        </View>
+        <View style={{ flex: 1, display: activeTab === 'Jobs' ? 'flex' : 'none' }}>
+          <JobsScreen navigation={navigation} route={{ params: {} }} />
+        </View>
+        <View style={{ flex: 1, display: activeTab === 'Earnings' ? 'flex' : 'none' }}>
+          <EarningsScreen navigation={navigation} route={{ params: {} }} />
+        </View>
+        <View style={{ flex: 1, display: activeTab === 'Profile' ? 'flex' : 'none' }}>
+          <ProfileScreen navigation={navigation} route={{ params: {} }} />
+        </View>
       </View>
-      <CustomTabBar activeTab={activeTab} onTabPress={handleTabPress} />
+      <CustomTabBar activeTab={activeTab} onTabPress={setActiveTab} />
     </View>
   );
 }

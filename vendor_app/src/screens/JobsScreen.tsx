@@ -25,17 +25,32 @@ export default function JobsScreen({ navigation }: any) {
 
   useEffect(() => {
     let unsub: (() => void) | null = null;
+    let currentSubscribedId = '';
+
     const startSub = (uid: string) => {
+      if (!uid || uid === currentSubscribedId) return;
+      currentSubscribedId = uid;
+
       if (unsub) unsub();
+      const altIds = [
+        store.vendor.docId,
+        store.vendor.mobile,
+        store.firebaseUid,
+      ].filter(Boolean) as string[];
+
       unsub = subscribeToVendorJobs(uid, (jobs) => {
         store.syncAssignedJobs(jobs);
-      });
+      }, altIds);
     };
+
     if (store.vendorId) startSub(store.vendorId);
     const unsubStore = store.subscribe(() => {
       forceUpdate((n) => n + 1);
-      if (!unsub && store.vendorId) startSub(store.vendorId);
+      if (store.vendorId && store.vendorId !== currentSubscribedId) {
+        startSub(store.vendorId);
+      }
     });
+
     return () => {
       unsubStore();
       unsub?.();
