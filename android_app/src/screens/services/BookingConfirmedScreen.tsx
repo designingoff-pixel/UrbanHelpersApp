@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from "react";
 import {
   View, Text, Pressable, StyleSheet,
-  ScrollView, Platform, Image, Alert,
+  ScrollView, Platform, Image, Alert, Linking, ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Animated, {
   useSharedValue, useAnimatedStyle,
-  withSpring, withDelay, withTiming,
+  withSpring, withDelay, withTiming, withRepeat, withSequence,
   FadeInDown, FadeIn,
 } from "react-native-reanimated";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/services/firebase";
 import { RootStackParamList } from "@/navigation/types";
 import { useTheme } from "@/context/ThemeContext";
 import { SERVICE_CATEGORIES } from "./servicesData";
@@ -34,17 +36,34 @@ const FEATURES = [
 export default function BookingConfirmedScreen({ navigation, route }: Props) {
   const { isDark, colors: themeColors } = useTheme();
   const params = (route.params || {}) as any;
-  const bookingData = params.booking || {};
+  const initialBookingData = params.booking || {};
 
-  const bookingId = params.bookingId || bookingData.bookingId || bookingData.id || "AP4" + Math.random().toString(36).substring(2, 7).toUpperCase();
-  const rawOtp = params.otp || bookingData.otp || "5461";
-  const categoryId = params.categoryId || bookingData.serviceId || "cleaning";
-  const subServiceId = params.subServiceId || bookingData.subServiceId || "cl-general";
+  const bookingId = params.bookingId || initialBookingData.bookingId || initialBookingData.id || "AP4" + Math.random().toString(36).substring(2, 7).toUpperCase();
+  const [booking, setBooking] = useState<any>(initialBookingData);
+
+  // Live Firestore subscription for real-time vendor assignment updates
+  useEffect(() => {
+    if (!bookingId) return;
+    try {
+      const unsub = onSnapshot(doc(db, "bookings", bookingId), (docSnap) => {
+        if (docSnap.exists()) {
+          setBooking((prev: any) => ({ ...prev, ...docSnap.data() }));
+        }
+      });
+      return () => unsub();
+    } catch (err) {
+      console.warn("Firestore subscription error in BookingConfirmed:", err);
+    }
+  }, [bookingId]);
+
+  const rawOtp = booking.otp || params.otp || initialBookingData.otp || "5461";
+  const categoryId = params.categoryId || booking.serviceId || initialBookingData.serviceId || "cleaning";
+  const subServiceId = params.subServiceId || booking.subServiceId || initialBookingData.subServiceId || "cl-general";
 
   const category =
     SERVICE_CATEGORIES.find((c) => c.id === categoryId) || {
       id: "cleaning",
-      name: bookingData.serviceCategory || "Cleaning",
+      name: booking.serviceCategory || initialBookingData.serviceCategory || "Cleaning",
       icon: "sparkles",
       accent: TEAL,
       subServices: [],
@@ -53,17 +72,18 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
   const sub =
     category.subServices?.find((s) => s.id === subServiceId) || {
       id: subServiceId,
-      name: bookingData.subServiceName || "Home Deep Cleaning",
-      price: bookingData.priceLabel || "₹600",
-      duration: bookingData.duration || "5 hrs",
+      name: booking.subServiceName || initialBookingData.subServiceName || "Home Deep Cleaning",
+      price: booking.priceLabel || initialBookingData.priceLabel || "₹600",
+      duration: booking.duration || initialBookingData.duration || "5 hrs",
       description: "Complete service package",
     };
 
   const [copied, setCopied] = useState(false);
 
   const bookingDateStr =
+    booking.scheduledAt ||
     params.scheduledDate ||
-    bookingData.scheduledAt ||
+    initialBookingData.scheduledAt ||
     (params.dayIndex !== undefined && DAYS[params.dayIndex]
       ? `${DAYS[params.dayIndex]}, Aug ${DATES[params.dayIndex]}`
       : new Date().toLocaleDateString("en-US", {
@@ -76,6 +96,9 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
   const ring1Scale = useSharedValue(0.6);
   const ring1Op    = useSharedValue(0);
 
+  // Pulse animation for searching vendor state
+  const pulseAnim = useSharedValue(1);
+
   useEffect(() => {
     ring1Op.value    = withTiming(1, { duration: 320 });
     ring1Scale.value = withSpring(1, { damping: 16, stiffness: 180 });
@@ -83,12 +106,19 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
     sealScale.value  = withDelay(120, withSpring(1, { damping: 13, stiffness: 220 }));
     checkScale.value = withDelay(280, withSpring(1, { damping: 11, stiffness: 260 }));
 
+    pulseAnim.value = withRepeat(
+      withSequence(withTiming(1.08, { duration: 900 }), withTiming(1, { duration: 900 })),
+      -1,
+      true
+    );
+
     sendBookingConfirmation(category.name, sub.name, bookingDateStr, undefined, rawOtp);
   }, []);
 
   const ring1Style  = useAnimatedStyle(() => ({ transform: [{ scale: ring1Scale.value }], opacity: ring1Op.value }));
   const sealStyle   = useAnimatedStyle(() => ({ transform: [{ scale: sealScale.value }] }));
   const checkStyle  = useAnimatedStyle(() => ({ transform: [{ scale: checkScale.value }] }));
+  const searchingPulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulseAnim.value }] }));
 
   const copyBookingId = () => {
     setCopied(true);
@@ -106,6 +136,12 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
   };
   const textPrimary = { color: isDark ? "#FFFFFF" : "#0F172A" };
   const textSecondary = { color: isDark ? "#94A3B8" : "#64748B" };
+
+  const isVendorAssigned = Boolean(booking?.vendorId);
+  const vendorName = booking?.vendorName || "Assigned Partner";
+  const vendorRating = booking?.vendorRating || "4.9";
+  const vendorImage = booking?.vendorImage;
+  const vendorPhone = booking?.vendorPhone;
 
   return (
     <View style={[s.root, bgStyle]}>
@@ -246,33 +282,65 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
           </View>
         </Animated.View>
 
-        {/* 5. Assigned Professional Preview Card */}
-        <Animated.View entering={FadeInDown.delay(340).duration(400)} style={[s.proCard, cardBgStyle]}>
-          <View style={s.proAvatarContainer}>
-            <Image
-              source={require("../../../assets/technician_ramesh.png")}
-              style={s.proAvatar}
-              resizeMode="cover"
-            />
-            <View style={s.proBadgeCheck}>
-              <Ionicons name="checkmark-circle" size={18} color="#22c55e" />
-            </View>
-          </View>
-          <View style={s.proInfo}>
-            <View style={s.proNameRow}>
-              <Text style={[s.proName, textPrimary]}>Ramesh Kumar</Text>
-              <View style={s.ratingBadge}>
-                <Ionicons name="star" size={12} color="#f59e0b" />
-                <Text style={s.ratingText}>4.8</Text>
+        {/* 5. Assigned Professional Preview Card (Dynamic: Finding vs Assigned) */}
+        {isVendorAssigned ? (
+          <Animated.View entering={FadeInDown.delay(340).duration(400)} style={[s.proCard, cardBgStyle]}>
+            <View style={s.proAvatarContainer}>
+              {vendorImage ? (
+                <Image
+                  source={{ uri: vendorImage }}
+                  style={s.proAvatar}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={[s.proAvatar, s.proAvatarFallback, { backgroundColor: TEAL + "20" }]}>
+                  <Ionicons name="person" size={26} color={TEAL} />
+                </View>
+              )}
+              <View style={s.proBadgeCheck}>
+                <Ionicons name="checkmark-circle" size={18} color="#22c55e" />
               </View>
             </View>
-            <Text style={[s.proSkill, textSecondary]}>Senior {category.name} Partner</Text>
-            <View style={s.proVerifiedRow}>
-              <Ionicons name="shield-checkmark-outline" size={13} color="#22c55e" />
-              <Text style={s.proVerifiedText}>Verified & Background Checked</Text>
+            <View style={s.proInfo}>
+              <View style={s.proNameRow}>
+                <Text style={[s.proName, textPrimary]} numberOfLines={1}>{vendorName}</Text>
+                <View style={s.ratingBadge}>
+                  <Ionicons name="star" size={12} color="#f59e0b" />
+                  <Text style={s.ratingText}>{vendorRating}</Text>
+                </View>
+              </View>
+              <Text style={[s.proSkill, textSecondary]}>Senior {category.name} Partner</Text>
+              <View style={s.proVerifiedRow}>
+                <Ionicons name="shield-checkmark-outline" size={13} color="#22c55e" />
+                <Text style={s.proVerifiedText}>Verified & Background Checked</Text>
+              </View>
             </View>
-          </View>
-        </Animated.View>
+            {vendorPhone ? (
+              <Pressable
+                onPress={() => Linking.openURL(`tel:${vendorPhone}`)}
+                style={s.proCallBtn}
+              >
+                <Ionicons name="call" size={18} color="#0D9488" />
+              </Pressable>
+            ) : null}
+          </Animated.View>
+        ) : (
+          <Animated.View entering={FadeInDown.delay(340).duration(400)} style={[s.findingProCard, cardBgStyle]}>
+            <Animated.View style={[s.findingIconBox, searchingPulseStyle]}>
+              <Ionicons name="search" size={22} color={TEAL} />
+            </Animated.View>
+            <View style={s.findingInfo}>
+              <View style={s.findingBadgeRow}>
+                <Text style={s.findingBadgeText}>ASSIGNING PROFESSIONAL</Text>
+                <ActivityIndicator size="small" color={TEAL} />
+              </View>
+              <Text style={[s.findingTitle, textPrimary]}>Finding nearest verified expert</Text>
+              <Text style={[s.findingSub, textSecondary]}>
+                We are allocating the top-rated specialist in your area. You will be notified instantly!
+              </Text>
+            </View>
+          </Animated.View>
+        )}
 
         {/* 6. Why Urban Helpers (4 Pills Grid) */}
         <Animated.View entering={FadeInDown.delay(420).duration(400)} style={s.featuresGrid}>
@@ -645,6 +713,10 @@ const s = StyleSheet.create({
     borderWidth: 2,
     borderColor: TEAL,
   },
+  proAvatarFallback: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
   proBadgeCheck: {
     position: "absolute",
     bottom: -2,
@@ -691,6 +763,61 @@ const s = StyleSheet.create({
     fontSize: 11,
     color: "#22c55e",
     fontWeight: "600",
+  },
+  proCallBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,188,212,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(0,188,212,0.25)",
+  },
+
+  // Finding Professional Card
+  findingProCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 16,
+    gap: 14,
+  },
+  findingIconBox: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "rgba(0,188,212,0.14)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "rgba(0,188,212,0.35)",
+  },
+  findingInfo: {
+    flex: 1,
+  },
+  findingBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 4,
+  },
+  findingBadgeText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: TEAL,
+    letterSpacing: 1.2,
+  },
+  findingTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 3,
+  },
+  findingSub: {
+    fontSize: 11.5,
+    lineHeight: 16,
   },
 
   // Features Grid

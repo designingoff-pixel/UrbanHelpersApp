@@ -15,7 +15,8 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import MapView, { Marker, PROVIDER_GOOGLE, Region } from "react-native-maps";
 import * as Location from "expo-location";
@@ -27,7 +28,7 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceDetail">;
-const { width, height } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 
 export default function ServiceDetailScreen({ navigation, route }: Props) {
   const { categoryId, subServiceId } = route.params;
@@ -48,12 +49,12 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 
   // User input states
   const [contactNumber, setContactNumber] = useState(
-    activeUser?.phoneNumber || "9487823299"
+    activeUser?.phoneNumber || ""
   );
   const [isEditingPhone, setIsEditingPhone] = useState(false);
 
   const [serviceAddress, setServiceAddress] = useState(
-    "142, Orchid Greens, 2nd Cross, Sector 4"
+    "142, Orchid Greens, 2nd Cross, Sector 4, Bangalore"
   );
   const [addressCoords, setAddressCoords] = useState<{ latitude: number; longitude: number }>({
     latitude: 12.9141,
@@ -99,7 +100,9 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
           const snap = await getDoc(doc(db, "users", uid));
           if (snap.exists()) {
             const d = snap.data();
-            if (d.phone || d.mobile) setContactNumber(d.phone || d.mobile);
+            if (d.phone || d.mobile || d.phoneNumber) {
+              setContactNumber(d.phone || d.mobile || d.phoneNumber);
+            }
             if (d.address || d.deliveryAddress) {
               setServiceAddress(d.address || d.deliveryAddress);
               setDraggedAddress(d.address || d.deliveryAddress);
@@ -118,8 +121,8 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
-          "Permission Required",
-          "Location permission is needed to automatically find your doorstep."
+          "Location Permission",
+          "Please enable location access to automatically find your doorstep."
         );
         setMapLoading(false);
         return;
@@ -139,7 +142,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       setMapRegion(newRegion);
       mapRef.current?.animateToRegion(newRegion, 800);
 
-      // Reverse geocode to get address text
+      // Reverse geocode to get formatted address text
       const reverse = await Location.reverseGeocodeAsync({
         latitude: loc.coords.latitude,
         longitude: loc.coords.longitude,
@@ -156,7 +159,8 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
           .filter(Boolean)
           .join(", ");
 
-        setDraggedAddress(formatted || `${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`);
+        const finalAddr = formatted || `${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`;
+        setDraggedAddress(finalAddr);
         setAddressCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
       }
     } catch (err) {
@@ -226,11 +230,11 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 
   const handleConfirmBooking = async () => {
     if (!contactNumber.trim()) {
-      Alert.alert("Phone Required", "Please enter a contact number for confirmation.");
+      Alert.alert("Phone Required", "Please enter your contact number for booking confirmation.");
       return;
     }
     if (!serviceAddress.trim()) {
-      Alert.alert("Address Required", "Please specify the service address.");
+      Alert.alert("Address Required", "Please select or type the service address.");
       return;
     }
 
@@ -239,7 +243,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       const bookingId = "AP4" + Math.random().toString(36).substring(2, 7).toUpperCase();
       const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
       const uid = activeUser?.uid || `guest_${Date.now()}`;
-      const custName = activeUser?.displayName || "Customer";
+      const custName = activeUser?.displayName || (activeUser?.email ? activeUser.email.split("@")[0] : "Customer");
       const scheduledDateTimeStr = `${bookingDate} at ${bookingTime}`;
 
       const bookingPayload = {
@@ -262,8 +266,9 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         otp: otpCode,
         status: "requested",
         vendorId: null,
-        vendorName: "Pending Assignment",
-        vendorPhone: "+91 98765 43210",
+        vendorName: null,
+        vendorPhone: null,
+        vendorImage: null,
         scheduledAt: scheduledDateTimeStr,
         bookingDate,
         bookingTime,
@@ -328,13 +333,46 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* ── 1. Hero Promo Banner Card ───────────────────────────────── */}
+        {/* ── 1. Hero Promo Card (Beautiful rendered banner tailored for any service) ── */}
         <View style={styles.heroBannerCard}>
-          <Image
-            source={require("../../../assets/booking_hero_restroom.png")}
-            style={styles.heroBannerImg}
-            resizeMode="cover"
-          />
+          <LinearGradient
+            colors={["#E0F2FE", "#F0FDFA", "#E6FFFA"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.heroBannerGradient}
+          >
+            <View style={styles.heroBannerTextCol}>
+              <Text style={styles.heroSmallTag}>PROFESSIONAL {category.name.toUpperCase()} SERVICE</Text>
+              <Text style={styles.heroMainHeading}>
+                Sparkling {selectedSub.name.split(" ")[0]},{"\n"}Happier Spaces
+              </Text>
+              <Text style={styles.heroSubText}>
+                We take care of your space so you can focus on what matters.
+              </Text>
+
+              {/* 3 Value Inset Badges */}
+              <View style={styles.heroBadgesRow}>
+                <View style={styles.heroBadgeItem}>
+                  <Ionicons name="shield-checkmark" size={12} color="#0D9488" />
+                  <Text style={styles.heroBadgeText}>Hygienic</Text>
+                </View>
+                <View style={styles.heroBadgeItem}>
+                  <Ionicons name="leaf" size={12} color="#0D9488" />
+                  <Text style={styles.heroBadgeText}>Eco-Friendly</Text>
+                </View>
+                <View style={styles.heroBadgeItem}>
+                  <Ionicons name="star" size={12} color="#0D9488" />
+                  <Text style={styles.heroBadgeText}>Trusted Staff</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.heroBannerIconCol}>
+              <View style={styles.heroIconBubble}>
+                <Ionicons name={category.icon as any || "sparkles"} size={36} color="#0D9488" />
+              </View>
+            </View>
+          </LinearGradient>
         </View>
 
         {/* ── 2. Service Summary Card (Matching Design) ───────────────── */}
@@ -376,23 +414,27 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.addressCardTitle}>Service Address</Text>
-              <Text style={styles.addressCardSub} numberOfLines={1}>
-                {serviceAddress}
-              </Text>
+              <Text style={styles.addressCardSub}>Select your location on map</Text>
             </View>
           </View>
 
           {/* Interactive Map Graphic Card */}
           <View style={styles.mapGraphicCard}>
-            <Image
-              source={require("../../../assets/booking_map_card_bg.png")}
-              style={styles.mapGraphicImg}
-              resizeMode="cover"
+            <LinearGradient
+              colors={["#EFF6FF", "#ECFDF5", "#F0FDFA"]}
+              style={StyleSheet.absoluteFill}
             />
+
+            {/* Subtle Grid / Street Vector Lines */}
+            <View style={styles.vectorMapLines}>
+              <View style={styles.mapRoad1} />
+              <View style={styles.mapRoad2} />
+              <View style={styles.mapRoad3} />
+            </View>
 
             {/* Centered Map Pin */}
             <View style={styles.mapCenterPin}>
-              <Ionicons name="location" size={28} color="#0F766E" />
+              <Ionicons name="location" size={32} color="#0F766E" />
             </View>
 
             {/* Clickable Select on Map Button */}
@@ -404,6 +446,17 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               <Ionicons name="map-outline" size={16} color="#0F172A" style={{ marginRight: 6 }} />
               <Text style={styles.selectOnMapText}>Select on Map</Text>
               <Ionicons name="chevron-forward" size={14} color="#0F172A" style={{ marginLeft: 4 }} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Selected Address Displayed Directly Below the Map */}
+          <View style={styles.selectedAddressBelowMap}>
+            <Ionicons name="navigate-circle-outline" size={18} color="#0D9488" style={{ marginTop: 2 }} />
+            <Text style={styles.selectedAddressBelowText} numberOfLines={2}>
+              {serviceAddress}
+            </Text>
+            <TouchableOpacity onPress={handleOpenMapPicker}>
+              <Text style={styles.changeAddressLink}>Change</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -428,6 +481,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                 onChangeText={setContactNumber}
                 onBlur={() => setIsEditingPhone(false)}
                 keyboardType="phone-pad"
+                placeholder="Enter mobile"
                 style={styles.phoneInputActive}
                 autoFocus
               />
@@ -437,7 +491,9 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                 onPress={() => setIsEditingPhone(true)}
               >
                 <Ionicons name="call-outline" size={15} color="#0F172A" style={{ marginRight: 8 }} />
-                <Text style={styles.phoneTextMain}>{contactNumber}</Text>
+                <Text style={styles.phoneTextMain} numberOfLines={1}>
+                  {contactNumber || "Add phone number"}
+                </Text>
                 <Ionicons name="pencil" size={14} color="#64748B" style={{ marginLeft: "auto" }} />
               </TouchableOpacity>
             )}
@@ -559,7 +615,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
             <TouchableOpacity onPress={() => setMapModalVisible(false)} style={styles.mapCloseBtn}>
               <Ionicons name="close" size={24} color="#0F172A" />
             </TouchableOpacity>
-            <Text style={styles.mapModalHeaderTitle}>Choose Delivery Location</Text>
+            <Text style={styles.mapModalHeaderTitle}>Select Delivery Doorstep</Text>
             <View style={{ width: 40 }} />
           </View>
 
@@ -680,7 +736,6 @@ const styles = StyleSheet.create({
   // 1. Hero Promo Banner
   heroBannerCard: {
     width: "100%",
-    height: 140,
     borderRadius: 20,
     overflow: "hidden",
     marginBottom: 12,
@@ -689,10 +744,70 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 6,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
   },
-  heroBannerImg: {
-    width: "100%",
-    height: "100%",
+  heroBannerGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+  },
+  heroBannerTextCol: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  heroSmallTag: {
+    fontSize: 9.5,
+    fontWeight: "800",
+    color: "#0D9488",
+    letterSpacing: 0.8,
+    marginBottom: 3,
+  },
+  heroMainHeading: {
+    fontSize: 17,
+    fontWeight: "900",
+    color: "#0F172A",
+    lineHeight: 22,
+    marginBottom: 4,
+  },
+  heroSubText: {
+    fontSize: 11,
+    color: "#64748B",
+    lineHeight: 15,
+    marginBottom: 10,
+  },
+  heroBadgesRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  heroBadgeItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#CCFBF1",
+  },
+  heroBadgeText: {
+    fontSize: 9.5,
+    fontWeight: "700",
+    color: "#0F766E",
+  },
+  heroBannerIconCol: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  heroIconBubble: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#CCFBF1",
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   // 2. Service Summary Card
@@ -815,7 +930,7 @@ const styles = StyleSheet.create({
   },
   mapGraphicCard: {
     width: "100%",
-    height: 135,
+    height: 125,
     borderRadius: 16,
     overflow: "hidden",
     position: "relative",
@@ -824,13 +939,39 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
-  mapGraphicImg: {
-    width: "100%",
-    height: "100%",
+  vectorMapLines: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.35,
+  },
+  mapRoad1: {
+    position: "absolute",
+    top: 30,
+    left: -20,
+    right: -20,
+    height: 12,
+    backgroundColor: "#CBD5E1",
+    transform: [{ rotate: "-15deg" }],
+  },
+  mapRoad2: {
+    position: "absolute",
+    bottom: 25,
+    left: -20,
+    right: -20,
+    height: 10,
+    backgroundColor: "#CBD5E1",
+    transform: [{ rotate: "10deg" }],
+  },
+  mapRoad3: {
+    position: "absolute",
+    left: "40%",
+    top: -20,
+    bottom: -20,
+    width: 10,
+    backgroundColor: "#CBD5E1",
   },
   mapCenterPin: {
     position: "absolute",
-    top: 24,
+    top: 20,
     alignSelf: "center",
   },
   selectOnMapFloatingBtn: {
@@ -855,6 +996,30 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     fontWeight: "800",
     color: "#0F172A",
+  },
+  selectedAddressBelowMap: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
+    padding: 10,
+    marginTop: 10,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  selectedAddressBelowText: {
+    flex: 1,
+    fontSize: 12,
+    color: "#1E293B",
+    fontWeight: "600",
+    lineHeight: 17,
+  },
+  changeAddressLink: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#0D9488",
+    marginLeft: 4,
   },
 
   // 4. Two Column Cards
@@ -923,6 +1088,7 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     fontWeight: "800",
     color: "#0F172A",
+    flex: 1,
   },
   phoneInputActive: {
     backgroundColor: "#FFFFFF",
