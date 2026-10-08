@@ -28,7 +28,7 @@ import { getDailyActivityTotals } from "@/services/healthLogService";
 type Props = NativeStackScreenProps<RootStackParamList, "Profile">;
 const { width: SW } = Dimensions.get("window");
 
-const PROFILE_STORAGE_KEY = "@urban_health_user_profile_v2";
+const getStorageKey = (uid?: string | null) => uid ? `@customer_profile_${uid}` : "@customer_profile_guest";
 
 interface UserProfileData {
   username: string;
@@ -83,7 +83,7 @@ export default function ProfileScreen({ navigation }: Props) {
   };
 
   // Profile data
-  const defaultUsername = user?.displayName || (user?.email ? user.email.split("@")[0] : "vichuvisweswaran82");
+  const defaultUsername = user?.displayName || (user?.email ? user.email.split("@")[0] : "Customer");
   const defaultEmail = user?.email || "";
   const defaultPhone = user?.phoneNumber || "";
 
@@ -91,11 +91,11 @@ export default function ProfileScreen({ navigation }: Props) {
     username: defaultUsername,
     email: defaultEmail,
     phone: defaultPhone,
-    age: "24",
-    gender: "Male",
-    height: "174 cm",
-    weight: "68 kg",
-    dob: "28 Jan 2001",
+    age: "",
+    gender: "Not Set",
+    height: "",
+    weight: "",
+    dob: "",
     activityLevel: 2,
     avatarIndex: 0,
     avatarUri: null,
@@ -125,7 +125,7 @@ export default function ProfileScreen({ navigation }: Props) {
         let merged = { ...profile };
 
         // 1. Try local storage
-        const raw = await AsyncStorage.getItem(PROFILE_STORAGE_KEY);
+        const raw = await AsyncStorage.getItem(getStorageKey(user?.uid));
         if (raw) {
           const parsed = JSON.parse(raw);
           merged = { ...merged, ...parsed };
@@ -265,7 +265,7 @@ export default function ProfileScreen({ navigation }: Props) {
     setProfile(updated);
     setEditModalVisible(false);
     try {
-      await AsyncStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(updated));
+      await AsyncStorage.setItem(getStorageKey(user?.uid), JSON.stringify(updated));
       if (user?.uid) {
         await setDoc(
           doc(db, "users", user.uid),
