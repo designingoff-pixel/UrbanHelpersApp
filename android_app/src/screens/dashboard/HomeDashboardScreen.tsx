@@ -44,6 +44,9 @@ import { BleManager } from "@/services/ble/BleManager";
 import { WearableHealthData } from "@/services/ble/types";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { auth, db } from "@/services/firebase";
+import { doc, getDoc } from "firebase/firestore";
 import {
   getDailyNutritionTotals,
   getMedications,
@@ -201,6 +204,33 @@ export default function HomeDashboardScreen({ navigation }: Props) {
   const [syncedBannerVisible, setSyncedBannerVisible] = useState(false);
   const [pointsEarned, setPointsEarned] = useState(85);
   const [pointsClaimed, setPointsClaimed] = useState(false);
+  const [userCoins, setUserCoins] = useState(100);
+
+  useEffect(() => {
+    async function loadUserCoins() {
+      try {
+        const activeUid = user?.uid || auth.currentUser?.uid;
+        const key = activeUid ? `@customer_points_${activeUid}` : "@customer_points_guest";
+        const stored = await AsyncStorage.getItem(key);
+        if (stored) {
+          const val = parseInt(stored, 10);
+          if (!isNaN(val)) setUserCoins(val);
+        }
+        if (activeUid) {
+          const snap = await getDoc(doc(db, "users", activeUid));
+          if (snap.exists()) {
+            const d = snap.data();
+            const pts = d.rewardPoints ?? d.coins;
+            if (pts !== undefined && typeof pts === "number") {
+              setUserCoins(pts);
+              await AsyncStorage.setItem(key, String(pts));
+            }
+          }
+        }
+      } catch (_) {}
+    }
+    loadUserCoins();
+  }, [user?.uid]);
 
   // Modals for options
   const [rateModalVisible, setRateModalVisible] = useState(false);
@@ -532,7 +562,7 @@ export default function HomeDashboardScreen({ navigation }: Props) {
                       <Ionicons name="sparkles" size={9} color="#000000" />
                       <Text style={s.sidebarTierText}>ELITE</Text>
                     </LinearGradient>
-                    <Text style={s.sidebarCoinsText}>🪙 1,200</Text>
+                    <Text style={s.sidebarCoinsText}>🪙 {userCoins.toLocaleString()}</Text>
                   </View>
                 </View>
               </View>

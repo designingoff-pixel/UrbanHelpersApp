@@ -18,12 +18,15 @@ import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
+import { useAuth } from "@/context/AuthContext";
+import { auth, db } from "@/services/firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Points">;
 const { width: SW } = Dimensions.get("window");
 
-const STORAGE_KEY_POINTS = "@urban_health_reward_points_v1";
-const STORAGE_KEY_LOGS = "@urban_health_reward_logs_v1";
+const getPointsKey = (uid?: string | null) => uid ? `@customer_points_${uid}` : "@customer_points_guest";
+const getLogsKey = (uid?: string | null) => uid ? `@customer_points_logs_${uid}` : "@customer_points_logs_guest";
 
 interface EarnAction {
   id: string;
@@ -114,29 +117,20 @@ interface RewardActivity {
 }
 
 export default function PointsScreen({ navigation }: Props) {
-  const [points, setPoints] = useState(1370);
-  const [earnedTotal, setEarnedTotal] = useState(1750);
-  const [redeemedTotal, setRedeemedTotal] = useState(500);
+  const { user } = useAuth();
+  const activeUid = user?.uid || auth.currentUser?.uid;
+
+  const [points, setPoints] = useState(100);
+  const [earnedTotal, setEarnedTotal] = useState(100);
+  const [redeemedTotal, setRedeemedTotal] = useState(0);
   const [expiringPoints, setExpiringPoints] = useState(0);
 
   const [activities, setActivities] = useState<RewardActivity[]>([
     {
-      id: "act-1",
-      title: "Completed Daily Walking Goal",
-      time: "Today, 10:45 AM",
-      points: 10,
-    },
-    {
-      id: "act-2",
-      title: "Hydration Milestone Reached",
-      time: "Yesterday, 6:30 PM",
-      points: 20,
-    },
-    {
-      id: "act-3",
-      title: "Medication Adherence Streak",
-      time: "Sep 16, 9:00 AM",
-      points: 15,
+      id: "act-welcome",
+      title: "Welcome Bonus Credited",
+      time: "Joined",
+      points: 100,
     },
   ]);
 
@@ -147,23 +141,49 @@ export default function PointsScreen({ navigation }: Props) {
   useEffect(() => {
     async function loadData() {
       try {
-        const stored = await AsyncStorage.getItem(STORAGE_KEY_POINTS);
+        let currentPts = 100;
+        const stored = await AsyncStorage.getItem(getPointsKey(activeUid));
         if (stored) {
           const val = parseInt(stored, 10);
-          if (!isNaN(val)) setPoints(val);
+          if (!isNaN(val)) {
+            currentPts = val;
+            setPoints(val);
+          }
+        }
+
+        const storedLogs = await AsyncStorage.getItem(getLogsKey(activeUid));
+        if (storedLogs) {
+          try {
+            const parsed = JSON.parse(storedLogs);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setActivities(parsed);
+            }
+          } catch (_) {}
+        }
+
+        if (activeUid) {
+          const userSnap = await getDoc(doc(db, "users", activeUid));
+          if (userSnap.exists()) {
+            const d = userSnap.data();
+            const firestorePoints = d.rewardPoints ?? d.coins;
+            if (firestorePoints !== undefined && typeof firestorePoints === "number") {
+              setPoints(firestorePoints);
+              await AsyncStorage.setItem(getPointsKey(activeUid), String(firestorePoints));
+            }
+          }
         }
       } catch (e) {
         console.log("Error loading reward points:", e);
       }
     }
     loadData();
-  }, []);
+  }, [activeUid]);
 
   const addPoints = async (amount: number, reason: string) => {
     const updated = points + amount;
     setPoints(updated);
     setEarnedTotal((prev) => prev + amount);
-    await AsyncStorage.setItem(STORAGE_KEY_POINTS, String(updated));
+    await AsyncStorage.setItem(getPointsKey(activeUid), String(updated));
 
     const newAct: RewardActivity = {
       id: `act_${Date.now()}`,
@@ -171,7 +191,25 @@ export default function PointsScreen({ navigation }: Props) {
       time: "Just now",
       points: amount,
     };
-    setActivities((prev) => [newAct, ...prev]);
+    const updatedActivities = [newAct, ...activities];
+    setActivities(updatedActivities);
+    await AsyncStorage.setItem(getLogsKey(activeUid), JSON.stringify(updatedActivities));
+
+    if (activeUid) {
+      try {
+        await setDoc(
+          doc(db, "users", activeUid),
+          {
+            rewardPoints: updated,
+            coins: updated,
+            updatedAt: new Date().toISOString(),
+          },
+          { merge: true }
+        );
+      } catch (e) {
+        console.warn("Firestore points sync error:", e);
+      }
+    }
   };
 
   const handleAction = async (action: EarnAction) => {

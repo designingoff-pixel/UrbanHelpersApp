@@ -67,26 +67,39 @@ export default function CreateProfileScreen({ navigation, route }: Props) {
 
     setLoading(true);
     try {
-      const uid = user?.uid || `guest_${Date.now()}`;
+      const activeUser = auth.currentUser;
+      const uid = activeUser?.uid || user?.uid || `guest_${Date.now()}`;
+      const nowIso = new Date().toISOString();
+
       const profileData = {
         uid,
+        id: uid,
         name: cleanName,
         displayName: cleanName,
+        username: cleanName,
         email: email.trim(),
         phone: phone.trim(),
+        mobile: phone.trim(),
         gender,
         dob: dob.trim(),
         address: address.trim(),
+        deliveryAddress: address.trim(),
         emergencyPhone: emergencyPhone.trim(),
+        rewardPoints: 100,
+        coins: 100,
         profileCompleted: true,
-        updatedAt: serverTimestamp(),
+        role: "customer",
+        updatedAt: nowIso,
+        createdAt: nowIso,
       };
 
-      if (user?.uid) {
-        await setDoc(doc(db, "users", user.uid), profileData, { merge: true });
+      if (activeUser?.uid || user?.uid) {
+        const targetUid = activeUser?.uid || user?.uid!;
+        await setDoc(doc(db, "users", targetUid), profileData, { merge: true });
       }
 
       await AsyncStorage.setItem(`@customer_profile_${uid}`, JSON.stringify(profileData));
+      await AsyncStorage.setItem(`@customer_points_${uid}`, "100");
       await AsyncStorage.setItem("@customer_logged_in", "true");
 
       setIsSuccess(true);

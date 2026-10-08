@@ -1701,6 +1701,9 @@
             name: name,
             email: u.email || '-',
             phone: u.phone || u.mobile || '-',
+            address: u.address || u.deliveryAddress || null,
+            emergencyPhone: u.emergencyPhone || null,
+            rewardPoints: u.rewardPoints ?? u.coins ?? 100,
             photoURL: u.photoURL || null,
             isGoogle: isGoogle,
             age: u.age || null,
@@ -1923,15 +1926,21 @@
             <div style="font-size:13px; font-weight:600; color:#0f172a; margin-top:2px;">${u.phone || 'Not provided'}</div>
           </div>
           <div>
-            <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Auth Provider</div>
-            <div style="font-size:13px; font-weight:700; color:#0f172a; margin-top:2px;">
-              ${u.isGoogle ? '<i class="fa-brands fa-google" style="color:#ea4335; margin-right:4px;"></i> Google Account' : '<i class="fa-solid fa-envelope" style="color:#0284c7; margin-right:4px;"></i> Email / Password'}
-            </div>
+            <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Delivery / Service Address</div>
+            <div style="font-size:12.5px; font-weight:600; color:#0f172a; margin-top:2px;">${u.address || 'Not specified'}</div>
           </div>
           <div>
-            <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Account Status</div>
-            <div style="font-size:13px; font-weight:700; color:#10b981; margin-top:2px;">
-              <span class="status-badge badge-green">Active Member</span>
+            <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Emergency Contact</div>
+            <div style="font-size:12.5px; font-weight:600; color:#e11d48; margin-top:2px;">${u.emergencyPhone || 'Not provided'}</div>
+          </div>
+          <div>
+            <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Reward Coins Balance</div>
+            <div style="font-size:13px; font-weight:800; color:#d97706; margin-top:2px;">🪙 ${u.rewardPoints || 100} Coins</div>
+          </div>
+          <div>
+            <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Auth Provider &amp; Status</div>
+            <div style="font-size:13px; font-weight:700; color:#0f172a; margin-top:2px;">
+              ${u.isGoogle ? '<i class="fa-brands fa-google" style="color:#ea4335; margin-right:4px;"></i> Google' : '<i class="fa-solid fa-envelope" style="color:#0284c7; margin-right:4px;"></i> Email'} · <span class="status-badge badge-green" style="font-size:10px;">Active</span>
             </div>
           </div>
         </div>
