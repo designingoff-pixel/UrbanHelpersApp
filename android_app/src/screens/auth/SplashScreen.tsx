@@ -11,8 +11,7 @@ import {
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth, db } from "@/services/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { auth } from "@/services/firebase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Splash">;
@@ -22,62 +21,60 @@ export default function SplashScreen({ navigation }: Props) {
   const progressAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // 1. Animate progress bar smoothly from 0% to 100% over 2.8 seconds
+    // 1. Animate progress bar smoothly from 0% to 100% over 2.2 seconds
     Animated.timing(progressAnim, {
       toValue: 1,
-      duration: 2800,
+      duration: 2200,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
 
-    let targetRoute: keyof RootStackParamList = "Welcome";
-    let isTargetDetermined = false;
+    let isMounted = true;
 
     // 2. Perform authentication and profile check in background
-    const resolveAuth = async () => {
+    (async () => {
+      const minDisplayPromise = new Promise((resolve) => setTimeout(resolve, 2200));
+
+      let determinedRoute: keyof RootStackParamList = "Welcome";
+
       try {
         const isLocalLoggedIn = await AsyncStorage.getItem("@customer_logged_in");
-        
-        return new Promise<void>((resolve) => {
-          const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-            unsubscribe();
-            if (firebaseUser) {
-              try {
-                const uSnap = await getDoc(doc(db, "users", firebaseUser.uid));
-                if (uSnap.exists() && uSnap.data().profileCompleted) {
-                  targetRoute = "ServicesDashboard";
-                } else {
-                  targetRoute = "ServicesDashboard";
-                }
-              } catch (_) {
-                targetRoute = "ServicesDashboard";
+        const currentFirebaseUser = auth.currentUser;
+
+        if (currentFirebaseUser || isLocalLoggedIn === "true") {
+          determinedRoute = "ServicesDashboard";
+        } else {
+          // Wait for onAuthStateChanged briefly (up to 1.2s)
+          determinedRoute = await new Promise<keyof RootStackParamList>((resolve) => {
+            const timeout = setTimeout(() => resolve("Welcome"), 1200);
+            const unsub = onAuthStateChanged(auth, (u) => {
+              clearTimeout(timeout);
+              unsub();
+              if (u) {
+                resolve("ServicesDashboard");
+              } else {
+                resolve("Welcome");
               }
-            } else if (isLocalLoggedIn === "true") {
-              targetRoute = "ServicesDashboard";
-            } else {
-              targetRoute = "Welcome";
-            }
-            isTargetDetermined = true;
-            resolve();
+            });
           });
-        });
+        }
       } catch (_) {
-        targetRoute = "Welcome";
-        isTargetDetermined = true;
+        determinedRoute = "Welcome";
       }
+
+      await minDisplayPromise;
+
+      if (isMounted) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: determinedRoute }],
+        });
+      }
+    })();
+
+    return () => {
+      isMounted = false;
     };
-
-    resolveAuth();
-
-    // 3. Hold splash screen for a solid 3.0 seconds so the branding is clearly enjoyed
-    const timer = setTimeout(() => {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: targetRoute }],
-      });
-    }, 3000);
-
-    return () => clearTimeout(timer);
   }, [navigation]);
 
   const progressWidth = progressAnim.interpolate({

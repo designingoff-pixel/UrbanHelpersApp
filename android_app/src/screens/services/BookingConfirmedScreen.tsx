@@ -12,7 +12,7 @@ import Animated, {
   FadeInDown, FadeIn,
 } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
-import { colors } from "@/theme/colors";
+import { useTheme } from "@/context/ThemeContext";
 import { SERVICE_CATEGORIES } from "./servicesData";
 import { sendBookingConfirmation } from "@/services/notificationService";
 
@@ -32,18 +32,40 @@ const FEATURES = [
 ];
 
 export default function BookingConfirmedScreen({ navigation, route }: Props) {
-  const { bookingId, otp, categoryId, subServiceId, dayIndex, scheduledDate } =
-    route.params;
+  const { isDark, colors: themeColors } = useTheme();
+  const params = (route.params || {}) as any;
+  const bookingData = params.booking || {};
 
-  const category = SERVICE_CATEGORIES.find((c) => c.id === categoryId);
-  const sub      = category?.subServices.find((s) => s.id === subServiceId);
+  const bookingId = params.bookingId || bookingData.bookingId || bookingData.id || "AP4" + Math.random().toString(36).substring(2, 7).toUpperCase();
+  const rawOtp = params.otp || bookingData.otp || "5461";
+  const categoryId = params.categoryId || bookingData.serviceId || "cleaning";
+  const subServiceId = params.subServiceId || bookingData.subServiceId || "cl-general";
+
+  const category =
+    SERVICE_CATEGORIES.find((c) => c.id === categoryId) || {
+      id: "cleaning",
+      name: bookingData.serviceCategory || "Cleaning",
+      icon: "sparkles",
+      accent: TEAL,
+      subServices: [],
+    };
+
+  const sub =
+    category.subServices?.find((s) => s.id === subServiceId) || {
+      id: subServiceId,
+      name: bookingData.subServiceName || "Home Deep Cleaning",
+      price: bookingData.priceLabel || "₹600",
+      duration: bookingData.duration || "5 hrs",
+      description: "Complete service package",
+    };
 
   const [copied, setCopied] = useState(false);
 
   const bookingDateStr =
-    scheduledDate ||
-    (dayIndex !== undefined && DAYS[dayIndex]
-      ? `${DAYS[dayIndex]}, Aug ${DATES[dayIndex]}`
+    params.scheduledDate ||
+    bookingData.scheduledAt ||
+    (params.dayIndex !== undefined && DAYS[params.dayIndex]
+      ? `${DAYS[params.dayIndex]}, Aug ${DATES[params.dayIndex]}`
       : new Date().toLocaleDateString("en-US", {
           weekday: "short", month: "short", day: "numeric", year: "numeric",
         }));
@@ -61,9 +83,7 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
     sealScale.value  = withDelay(120, withSpring(1, { damping: 13, stiffness: 220 }));
     checkScale.value = withDelay(280, withSpring(1, { damping: 11, stiffness: 260 }));
 
-    if (category && sub) {
-      sendBookingConfirmation(category.name, sub.name, bookingDateStr, undefined, otp);
-    }
+    sendBookingConfirmation(category.name, sub.name, bookingDateStr, undefined, rawOtp);
   }, []);
 
   const ring1Style  = useAnimatedStyle(() => ({ transform: [{ scale: ring1Scale.value }], opacity: ring1Op.value }));
@@ -75,29 +95,30 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
     setTimeout(() => setCopied(false), 2500);
   };
 
-  if (!category || !sub) return null;
-
   const accent  = category.accent || TEAL;
   const shortId = `#${bookingId.slice(-8).toUpperCase()}`;
-  const otpDigits = otp.split("");
+  const otpDigits = String(rawOtp).slice(0, 4).split("");
+
+  const bgStyle = { backgroundColor: isDark ? "#081826" : "#F4F6F9" };
+  const cardBgStyle = {
+    backgroundColor: isDark ? "#0D2135" : "#FFFFFF",
+    borderColor: isDark ? "rgba(0,188,212,0.18)" : "#E2E8F0",
+  };
+  const textPrimary = { color: isDark ? "#FFFFFF" : "#0F172A" };
+  const textSecondary = { color: isDark ? "#94A3B8" : "#64748B" };
 
   return (
-    <View style={s.root}>
-      <LinearGradient
-        colors={["#081826", "#0c2338", "#081826"]}
-        style={StyleSheet.absoluteFill}
-      />
-
+    <View style={[s.root, bgStyle]}>
       {/* Top Header */}
-      <View style={s.header}>
+      <View style={[s.header, { backgroundColor: isDark ? "#081826" : "#FFFFFF", borderBottomColor: isDark ? "rgba(255,255,255,0.06)" : "#E2E8F0" }]}>
         <Pressable
           onPress={() => navigation.navigate("HomeDashboard")}
-          style={s.headerBtn}
+          style={[s.headerBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "#F1F5F9" }]}
           accessibilityLabel="Back to Home"
         >
-          <Ionicons name="arrow-back" size={22} color="#fff" />
+          <Ionicons name="arrow-back" size={22} color={isDark ? "#fff" : "#0f172a"} />
         </Pressable>
-        <Text style={s.headerTitle}>Booking Confirmed</Text>
+        <Text style={[s.headerTitle, textPrimary]}>Booking Confirmed</Text>
         <View style={s.headerRightPlaceholder} />
       </View>
 
@@ -122,8 +143,8 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
 
         {/* 2. Heading Texts */}
         <Animated.View entering={FadeInDown.delay(100).duration(400)} style={s.headingBlock}>
-          <Text style={s.title}>Booking Confirmed!</Text>
-          <Text style={s.subtitle}>
+          <Text style={[s.title, textPrimary]}>Booking Confirmed!</Text>
+          <Text style={[s.subtitle, textSecondary]}>
             Your service has been scheduled. Our verified professional will arrive on time.
           </Text>
         </Animated.View>
@@ -138,32 +159,32 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
         </Animated.View>
 
         {/* 4. Booking Pass Summary Card */}
-        <Animated.View entering={FadeInDown.delay(260).duration(400)} style={s.passCard}>
+        <Animated.View entering={FadeInDown.delay(260).duration(400)} style={[s.passCard, cardBgStyle]}>
           {/* Header Row */}
           <View style={s.passHeader}>
             <View style={s.passTag}>
               <Ionicons name="sparkles" size={13} color={TEAL} />
               <Text style={s.passTagText}>SERVICE DETAILS</Text>
             </View>
-            <Text style={s.passPrice}>{sub.price}</Text>
+            <Text style={[s.passPrice, textPrimary]}>{sub.price}</Text>
           </View>
 
           {/* Service Info */}
           <View style={s.serviceRow}>
             <View style={[s.serviceIconBox, { backgroundColor: accent + "25" }]}>
-              <Ionicons name={category.icon as any} size={26} color={accent} />
+              <Ionicons name={category.icon as any || "sparkles"} size={26} color={accent} />
             </View>
             <View style={s.serviceDetails}>
-              <Text style={s.serviceName}>{sub.name}</Text>
-              <Text style={s.serviceCat}>{category.name}</Text>
+              <Text style={[s.serviceName, textPrimary]}>{sub.name}</Text>
+              <Text style={[s.serviceCat, textSecondary]}>{category.name}</Text>
             </View>
           </View>
 
           {/* Perforated Line */}
           <View style={s.perfContainer}>
-            <View style={[s.perfNib, s.perfNibLeft]} />
+            <View style={[s.perfNib, s.perfNibLeft, { backgroundColor: isDark ? "#081826" : "#F4F6F9" }]} />
             <View style={s.perfDash} />
-            <View style={[s.perfNib, s.perfNibRight]} />
+            <View style={[s.perfNib, s.perfNibRight, { backgroundColor: isDark ? "#081826" : "#F4F6F9" }]} />
           </View>
 
           {/* Date, Time & Duration Grid */}
@@ -173,7 +194,7 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
                 <Ionicons name="calendar-outline" size={14} color={TEAL} />
                 <Text style={s.metaLabel}>SCHEDULED DATE</Text>
               </View>
-              <Text style={s.metaVal}>{bookingDateStr}</Text>
+              <Text style={[s.metaVal, textPrimary]}>{bookingDateStr}</Text>
             </View>
             <View style={s.metaDivider} />
             <View style={s.metaCol}>
@@ -181,24 +202,24 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
                 <Ionicons name="time-outline" size={14} color="#f59e0b" />
                 <Text style={s.metaLabel}>DURATION</Text>
               </View>
-              <Text style={s.metaVal}>{sub.duration}</Text>
+              <Text style={[s.metaVal, textPrimary]}>{sub.duration}</Text>
             </View>
           </View>
 
           {/* OTP Section (4 digits) */}
-          <View style={s.otpSection}>
+          <View style={[s.otpSection, { backgroundColor: isDark ? "rgba(0,188,212,0.08)" : "#F0FDFA", borderColor: isDark ? "rgba(0,188,212,0.25)" : "#99F6E4" }]}>
             <View style={s.otpHeader}>
               <Ionicons name="shield-checkmark" size={14} color={TEAL} />
               <Text style={s.otpHeading}>START-SERVICE OTP</Text>
             </View>
             <View style={s.otpDigitsRow}>
               {otpDigits.map((digit, i) => (
-                <View key={i} style={s.otpDigitBox}>
-                  <Text style={s.otpDigit}>{digit}</Text>
+                <View key={i} style={[s.otpDigitBox, { backgroundColor: isDark ? "rgba(0,188,212,0.15)" : "#CCFBF1", borderColor: isDark ? "rgba(0,188,212,0.35)" : "#5EEAD4" }]}>
+                  <Text style={[s.otpDigit, { color: isDark ? "#fff" : "#0F766E" }]}>{digit}</Text>
                 </View>
               ))}
             </View>
-            <Text style={s.otpNotice}>
+            <Text style={[s.otpNotice, textSecondary]}>
               Share this 4-digit code with the technician only when they arrive at your location.
             </Text>
           </View>
@@ -207,11 +228,11 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
           <View style={s.bookingIdRow}>
             <View>
               <Text style={s.bookingIdTitle}>BOOKING ID</Text>
-              <Text style={s.bookingIdVal}>{shortId}</Text>
+              <Text style={[s.bookingIdVal, textPrimary]}>{shortId}</Text>
             </View>
             <Pressable
               onPress={copyBookingId}
-              style={({ pressed }) => [s.copyBtn, { opacity: pressed ? 0.7 : 1 }]}
+              style={({ pressed }) => [s.copyBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#F1F5F9", borderColor: isDark ? "rgba(255,255,255,0.1)" : "#E2E8F0", opacity: pressed ? 0.7 : 1 }]}
             >
               <Ionicons
                 name={copied ? "checkmark-circle" : "copy-outline"}
@@ -226,7 +247,7 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
         </Animated.View>
 
         {/* 5. Assigned Professional Preview Card */}
-        <Animated.View entering={FadeInDown.delay(340).duration(400)} style={s.proCard}>
+        <Animated.View entering={FadeInDown.delay(340).duration(400)} style={[s.proCard, cardBgStyle]}>
           <View style={s.proAvatarContainer}>
             <Image
               source={require("../../../assets/technician_ramesh.png")}
@@ -239,13 +260,13 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
           </View>
           <View style={s.proInfo}>
             <View style={s.proNameRow}>
-              <Text style={s.proName}>Ramesh Kumar</Text>
+              <Text style={[s.proName, textPrimary]}>Ramesh Kumar</Text>
               <View style={s.ratingBadge}>
                 <Ionicons name="star" size={12} color="#f59e0b" />
                 <Text style={s.ratingText}>4.8</Text>
               </View>
             </View>
-            <Text style={s.proSkill}>Senior {category.name} Partner</Text>
+            <Text style={[s.proSkill, textSecondary]}>Senior {category.name} Partner</Text>
             <View style={s.proVerifiedRow}>
               <Ionicons name="shield-checkmark-outline" size={13} color="#22c55e" />
               <Text style={s.proVerifiedText}>Verified & Background Checked</Text>
@@ -256,13 +277,13 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
         {/* 6. Why Urban Helpers (4 Pills Grid) */}
         <Animated.View entering={FadeInDown.delay(420).duration(400)} style={s.featuresGrid}>
           {FEATURES.map((item, idx) => (
-            <View key={idx} style={s.featureCard}>
+            <View key={idx} style={[s.featureCard, { backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "#FFFFFF", borderColor: isDark ? "rgba(255,255,255,0.06)" : "#E2E8F0" }]}>
               <View style={s.featureIconCircle}>
                 <Ionicons name={item.icon as any} size={18} color={TEAL} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.featureTitle}>{item.title}</Text>
-                <Text style={s.featureDesc}>{item.desc}</Text>
+                <Text style={[s.featureTitle, textPrimary]}>{item.title}</Text>
+                <Text style={[s.featureDesc, textSecondary]}>{item.desc}</Text>
               </View>
             </View>
           ))}
@@ -293,11 +314,11 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
           </Pressable>
 
           <Pressable
-            style={({ pressed }) => [s.secondaryBtn, { opacity: pressed ? 0.75 : 1 }]}
+            style={({ pressed }) => [s.secondaryBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#F1F5F9", borderColor: isDark ? "rgba(255,255,255,0.1)" : "#CBD5E1", opacity: pressed ? 0.75 : 1 }]}
             onPress={() => navigation.navigate("HomeDashboard")}
           >
-            <Ionicons name="home-outline" size={18} color="#94a3b8" />
-            <Text style={s.secondaryBtnText}>Back to Home</Text>
+            <Ionicons name="home-outline" size={18} color={isDark ? "#94a3b8" : "#475569"} />
+            <Text style={[s.secondaryBtnText, { color: isDark ? "#94a3b8" : "#475569" }]}>Back to Home</Text>
           </Pressable>
         </Animated.View>
 
@@ -310,7 +331,6 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
 const s = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#081826",
   },
   header: {
     flexDirection: "row",
@@ -319,19 +339,18 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: Platform.OS === "ios" ? 54 : 44,
     paddingBottom: 12,
+    borderBottomWidth: 1,
   },
   headerBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.1)",
     alignItems: "center",
     justifyContent: "center",
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#fff",
   },
   headerRightPlaceholder: {
     width: 40,
@@ -384,14 +403,12 @@ const s = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: "800",
-    color: "#fff",
     textAlign: "center",
     letterSpacing: -0.4,
     marginBottom: 6,
   },
   subtitle: {
     fontSize: 13,
-    color: "#94a3b8",
     textAlign: "center",
     lineHeight: 19,
   },
@@ -414,17 +431,15 @@ const s = StyleSheet.create({
 
   // Pass Card
   passCard: {
-    backgroundColor: "#0d2135",
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: "rgba(0,188,212,0.18)",
     padding: 18,
     marginBottom: 16,
-    elevation: 8,
+    elevation: 4,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
   },
   passHeader: {
     flexDirection: "row",
@@ -450,7 +465,6 @@ const s = StyleSheet.create({
   passPrice: {
     fontSize: 20,
     fontWeight: "800",
-    color: "#fff",
   },
   serviceRow: {
     flexDirection: "row",
@@ -471,12 +485,10 @@ const s = StyleSheet.create({
   serviceName: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#fff",
     marginBottom: 2,
   },
   serviceCat: {
     fontSize: 12,
-    color: "#94a3b8",
   },
 
   // Perforation
@@ -491,7 +503,6 @@ const s = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: "#081826",
     position: "absolute",
     zIndex: 2,
   },
@@ -502,7 +513,7 @@ const s = StyleSheet.create({
     height: 1,
     borderTopWidth: 1,
     borderStyle: "dashed",
-    borderColor: "rgba(255,255,255,0.12)",
+    borderColor: "rgba(148, 163, 184, 0.3)",
     marginHorizontal: 16,
   },
 
@@ -529,19 +540,16 @@ const s = StyleSheet.create({
   metaVal: {
     fontSize: 13.5,
     fontWeight: "700",
-    color: "#fff",
   },
   metaDivider: {
     width: 1,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(148, 163, 184, 0.2)",
     marginHorizontal: 14,
   },
 
   // OTP
   otpSection: {
-    backgroundColor: "rgba(0,188,212,0.08)",
     borderWidth: 1,
-    borderColor: "rgba(0,188,212,0.25)",
     borderRadius: 16,
     padding: 14,
     alignItems: "center",
@@ -568,20 +576,16 @@ const s = StyleSheet.create({
     width: 44,
     height: 48,
     borderRadius: 10,
-    backgroundColor: "rgba(0,188,212,0.15)",
     borderWidth: 1,
-    borderColor: "rgba(0,188,212,0.35)",
     alignItems: "center",
     justifyContent: "center",
   },
   otpDigit: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#fff",
   },
   otpNotice: {
     fontSize: 11,
-    color: "#94a3b8",
     textAlign: "center",
     lineHeight: 16,
     marginTop: 2,
@@ -604,19 +608,16 @@ const s = StyleSheet.create({
   bookingIdVal: {
     fontSize: 17,
     fontWeight: "800",
-    color: "#fff",
     letterSpacing: 0.8,
   },
   copyBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "rgba(255,255,255,0.06)",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
   },
   copyBtnText: {
     fontSize: 12,
@@ -628,10 +629,8 @@ const s = StyleSheet.create({
   proCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#0f273d",
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
     padding: 14,
     marginBottom: 16,
     gap: 14,
@@ -650,7 +649,6 @@ const s = StyleSheet.create({
     position: "absolute",
     bottom: -2,
     right: -2,
-    backgroundColor: "#0f273d",
     borderRadius: 9,
   },
   proInfo: {
@@ -665,7 +663,6 @@ const s = StyleSheet.create({
   proName: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#fff",
   },
   ratingBadge: {
     flexDirection: "row",
@@ -683,7 +680,6 @@ const s = StyleSheet.create({
   },
   proSkill: {
     fontSize: 12,
-    color: "#94a3b8",
     marginBottom: 4,
   },
   proVerifiedRow: {
@@ -705,9 +701,7 @@ const s = StyleSheet.create({
   featureCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.03)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
     borderRadius: 14,
     padding: 12,
     gap: 12,
@@ -723,12 +717,10 @@ const s = StyleSheet.create({
   featureTitle: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#fff",
     marginBottom: 1,
   },
   featureDesc: {
     fontSize: 11,
-    color: "#64748b",
   },
 
   // Actions
@@ -764,15 +756,12 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
     borderRadius: 16,
     paddingVertical: 14,
   },
   secondaryBtnText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#94a3b8",
   },
 });

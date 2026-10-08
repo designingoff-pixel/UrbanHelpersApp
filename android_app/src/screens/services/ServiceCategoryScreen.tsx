@@ -9,12 +9,14 @@ import {
   Image,
   TextInput,
   TouchableOpacity,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import { useServiceCategories } from "@/services/firestoreServices";
+import { useTheme } from "@/context/ThemeContext";
 import { SERVICE_CATEGORIES, SubService } from "./servicesData";
 import { getSubServiceImageSource } from "@/assets/serviceImages";
 
@@ -32,6 +34,8 @@ const SUB_FILTERS = [
 export default function ServiceCategoryScreen({ navigation, route }: Props) {
   const { categoryId } = route.params;
   const { categories } = useServiceCategories();
+  const { isDark, colors } = useTheme();
+
   const staticCategory = SERVICE_CATEGORIES.find((c) => c.id === categoryId);
   const firestoreCategory = categories.find((c) => c.id === categoryId);
 
@@ -93,16 +97,24 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
 
   if (!category) {
     return (
-      <View style={styles.root}>
-        <Text style={{ color: "white", padding: 24 }}>Category not found.</Text>
+      <View style={[styles.root, { backgroundColor: isDark ? "#081826" : "#F4F6F9" }]}>
+        <Text style={{ color: isDark ? "#fff" : "#000", padding: 24 }}>Category not found.</Text>
       </View>
     );
   }
 
+  const bgStyle = { backgroundColor: isDark ? "#081826" : "#F4F6F9" };
+  const cardBgStyle = {
+    backgroundColor: isDark ? "#0D2135" : "#FFFFFF",
+    borderColor: isDark ? "rgba(0,188,212,0.18)" : "#E2E8F0",
+  };
+  const textPrimary = { color: isDark ? "#FFFFFF" : "#0F172A" };
+  const textSecondary = { color: isDark ? "#94A3B8" : "#64748B" };
+
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, bgStyle]}>
       {/* ── Top Header Bar ────────────────────────────────────────────── */}
-      <SafeAreaView edges={["top"]} style={styles.headerSafeArea}>
+      <SafeAreaView edges={["top"]} style={[styles.headerSafeArea, { backgroundColor: isDark ? "#081826" : "#0F766E" }]}>
         <View style={styles.headerBar}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIconBtn}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
@@ -114,9 +126,6 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
               style={styles.headerRoundBtn}
             >
               <Ionicons name="search" size={18} color="#FFFFFF" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.headerRoundBtn}>
-              <Ionicons name="options-outline" size={18} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         </View>
@@ -145,7 +154,7 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* ── Hero Banner Card (Matching Design 1) ────────────────────── */}
+        {/* ── Hero Banner Card (Accurately Aligned & Proportionate) ───── */}
         <View style={styles.heroBannerCard}>
           <Image
             source={require("../../../assets/category_banner_cleaning.png")}
@@ -166,16 +175,41 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
               <TouchableOpacity
                 key={f.id}
                 onPress={() => setActiveFilter(f.id)}
-                style={[styles.pillBtn, isActive && styles.pillBtnActive]}
+                style={[
+                  styles.pillBtn,
+                  {
+                    backgroundColor: isActive
+                      ? "#0F766E"
+                      : isDark
+                      ? "#0D2135"
+                      : "#FFFFFF",
+                    borderColor: isActive
+                      ? "#0F766E"
+                      : isDark
+                      ? "rgba(255,255,255,0.1)"
+                      : "#E2E8F0",
+                  },
+                ]}
                 activeOpacity={0.8}
               >
                 <Ionicons
                   name={f.icon as any}
                   size={16}
-                  color={isActive ? "#FFFFFF" : "#0F766E"}
+                  color={isActive ? "#FFFFFF" : isDark ? "#00BCD4" : "#0F766E"}
                   style={{ marginRight: 6 }}
                 />
-                <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
+                <Text
+                  style={[
+                    styles.pillText,
+                    {
+                      color: isActive
+                        ? "#FFFFFF"
+                        : isDark
+                        ? "#00BCD4"
+                        : "#0F766E",
+                    },
+                  ]}
+                >
                   {f.label}
                 </Text>
               </TouchableOpacity>
@@ -188,8 +222,8 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
           {subServices.length === 0 ? (
             <View style={styles.emptyWrap}>
               <Ionicons name="search-outline" size={40} color="#94A3B8" />
-              <Text style={styles.emptyTitle}>No services found</Text>
-              <Text style={styles.emptySub}>Try clearing search or choosing "All".</Text>
+              <Text style={[styles.emptyTitle, textPrimary]}>No services found</Text>
+              <Text style={[styles.emptySub, textSecondary]}>Try clearing search or choosing "All".</Text>
             </View>
           ) : (
             subServices.map((sub: SubService) => {
@@ -198,47 +232,59 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
               const slashedPrice = `₹${origPriceNum + 200}`;
 
               return (
-                <View key={sub.id} style={styles.serviceCard}>
-                  {/* Left: Square Photo */}
+                <TouchableOpacity
+                  key={sub.id}
+                  style={[styles.serviceCard, cardBgStyle]}
+                  activeOpacity={0.88}
+                  onPress={() =>
+                    navigation.navigate("ServiceDetail", {
+                      categoryId: category.id,
+                      subServiceId: sub.id,
+                    })
+                  }
+                >
+                  {/* Left: Service Thumbnail Image */}
                   <View style={styles.cardImgWrap}>
-                    <Image source={imgSource} style={styles.cardImg} resizeMode="cover" />
-                    {sub.popular && (
-                      <View style={styles.popularBadge}>
-                        <Ionicons name="star" size={10} color="#92400E" />
-                        <Text style={styles.popularBadgeText}>Most Popular</Text>
-                      </View>
-                    )}
+                    <Image
+                      source={imgSource}
+                      style={styles.cardImg}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.popularBadge}>
+                      <Ionicons name="star" size={9} color="#92400E" />
+                      <Text style={styles.popularBadgeText}>4.8</Text>
+                    </View>
                   </View>
 
                   {/* Middle: Details */}
                   <View style={styles.cardDetails}>
-                    <Text style={styles.cardTitle} numberOfLines={1}>
+                    <Text style={[styles.cardTitle, textPrimary]} numberOfLines={1}>
                       {sub.name}
                     </Text>
-                    <Text style={styles.cardDesc} numberOfLines={2}>
+                    <Text style={[styles.cardDesc, textSecondary]} numberOfLines={2}>
                       {sub.description}
                     </Text>
 
                     <View style={styles.cardMetaRow}>
                       <View style={styles.metaItem}>
-                        <Ionicons name="time-outline" size={13} color="#64748B" />
-                        <Text style={styles.metaText}>{sub.duration}</Text>
+                        <Ionicons name="time-outline" size={13} color={textSecondary.color} />
+                        <Text style={[styles.metaText, textSecondary]}>{sub.duration}</Text>
                       </View>
                       <View style={styles.metaItem}>
-                        <Ionicons name="star" size={13} color="#F59E0B" />
-                        <Text style={styles.metaText}>4.8 (1.2k)</Text>
+                        <Ionicons name="shield-checkmark-outline" size={13} color="#059669" />
+                        <Text style={[styles.metaText, { color: "#059669" }]}>Safe & Eco</Text>
                       </View>
                     </View>
 
                     {/* Price Row */}
                     <View style={styles.priceRow}>
-                      <Text style={styles.priceMain}>{sub.price}</Text>
+                      <Text style={[styles.priceMain, { color: isDark ? "#00BCD4" : "#0F766E" }]}>{sub.price}</Text>
                       <Text style={styles.priceSlashed}>{slashedPrice}</Text>
                     </View>
                   </View>
 
-                  {/* Right: Book Now Button */}
-                  <View style={styles.cardRightCol}>
+                  {/* Right: Book Now Action */}
+                  <View style={styles.bookNowBtnCol}>
                     <TouchableOpacity
                       style={styles.bookNowBtn}
                       onPress={() =>
@@ -247,17 +293,40 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
                           subServiceId: sub.id,
                         })
                       }
-                      activeOpacity={0.88}
                     >
                       <Text style={styles.bookNowText}>Book Now</Text>
-                      <Ionicons name="arrow-forward" size={13} color="#FFFFFF" style={{ marginLeft: 3 }} />
+                      <Ionicons name="arrow-forward" size={12} color="#FFFFFF" />
                     </TouchableOpacity>
                   </View>
-                </View>
+                </TouchableOpacity>
               );
             })
           )}
         </View>
+
+        {/* ── Included Benefits Guarantee Card ────────────────────────── */}
+        <View style={[styles.guaranteeCard, { backgroundColor: isDark ? "#0A1F30" : "#F0FDF4", borderColor: isDark ? "rgba(0,188,212,0.2)" : "#BBF7D0" }]}>
+          <View style={styles.guaranteeHeader}>
+            <Ionicons name="shield-checkmark" size={20} color="#059669" />
+            <Text style={[styles.guaranteeTitle, { color: isDark ? "#fff" : "#166534" }]}>Urban Helpers Guarantee</Text>
+          </View>
+          <View style={styles.benefitsRow}>
+            <View style={styles.benefitItem}>
+              <Ionicons name="checkmark-circle" size={14} color="#059669" />
+              <Text style={[styles.benefitText, textSecondary]}>100% Verified Staff</Text>
+            </View>
+            <View style={styles.benefitItem}>
+              <Ionicons name="checkmark-circle" size={14} color="#059669" />
+              <Text style={[styles.benefitText, textSecondary]}>No Hidden Fees</Text>
+            </View>
+            <View style={styles.benefitItem}>
+              <Ionicons name="checkmark-circle" size={14} color="#059669" />
+              <Text style={[styles.benefitText, textSecondary]}>Re-service Policy</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
@@ -266,30 +335,30 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#F1F5F9",
   },
   headerSafeArea: {
-    backgroundColor: "#0B2238",
+    paddingBottom: 4,
   },
   headerBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: Platform.OS === "ios" ? 6 : 10,
+    paddingBottom: 10,
   },
   headerIconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.15)",
     justifyContent: "center",
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "800",
     color: "#FFFFFF",
-    letterSpacing: -0.3,
   },
   headerRightActions: {
     flexDirection: "row",
@@ -297,10 +366,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   headerRoundBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "rgba(255, 255, 255, 0.14)",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.15)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -310,83 +379,75 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 14,
     marginHorizontal: 16,
-    marginBottom: 12,
-    paddingHorizontal: 14,
-    height: 42,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    height: 44,
   },
   searchInput: {
     flex: 1,
-    fontSize: 13.5,
+    fontSize: 14,
     color: "#0F172A",
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 24,
   },
+
+  // Hero Banner Card
   heroBannerCard: {
     marginHorizontal: 16,
-    marginTop: 14,
-    borderRadius: 24,
+    marginTop: 10,
+    marginBottom: 14,
+    height: 145,
+    borderRadius: 20,
     overflow: "hidden",
-    height: 185,
-    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "rgba(0,188,212,0.25)",
     elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
   },
   heroBannerImg: {
     width: "100%",
     height: "100%",
   },
+
+  // Pills
   pillsRow: {
     paddingHorizontal: 16,
-    paddingVertical: 14,
     gap: 8,
+    paddingBottom: 14,
   },
   pillBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  pillBtnActive: {
-    backgroundColor: "#0F766E",
-    borderColor: "#0F766E",
   },
   pillText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#0F766E",
   },
-  pillTextActive: {
-    color: "#FFFFFF",
-  },
+
+  // Service Cards
   cardsContainer: {
     paddingHorizontal: 16,
     gap: 12,
   },
   serviceCard: {
     flexDirection: "row",
-    backgroundColor: "#FFFFFF",
     borderRadius: 20,
     padding: 12,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#E2E8F0",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 5,
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
     elevation: 2,
   },
   cardImgWrap: {
-    width: 92,
-    height: 92,
+    width: 86,
+    height: 86,
     borderRadius: 16,
     overflow: "hidden",
     position: "relative",
@@ -421,12 +482,10 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 15,
     fontWeight: "800",
-    color: "#0F172A",
     marginBottom: 2,
   },
   cardDesc: {
     fontSize: 11.5,
-    color: "#64748B",
     lineHeight: 16,
     marginBottom: 6,
   },
@@ -443,7 +502,6 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 11,
-    color: "#64748B",
     fontWeight: "600",
   },
   priceRow: {
@@ -454,49 +512,82 @@ const styles = StyleSheet.create({
   priceMain: {
     fontSize: 16,
     fontWeight: "900",
-    color: "#0F766E",
   },
   priceSlashed: {
-    fontSize: 12,
+    fontSize: 11.5,
     color: "#94A3B8",
     textDecorationLine: "line-through",
-    fontWeight: "600",
   },
-  cardRightCol: {
+  bookNowBtnCol: {
     justifyContent: "center",
-    alignItems: "flex-end",
+    alignItems: "center",
   },
   bookNowBtn: {
-    backgroundColor: "#0F766E",
+    backgroundColor: "#0056D2",
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 18,
+    borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
-    shadowColor: "#0F766E",
+    gap: 4,
+    shadowColor: "#0056D2",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
   bookNowText: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: "800",
   },
+
+  // Guarantee Card
+  guaranteeCard: {
+    marginHorizontal: 16,
+    marginTop: 18,
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+  },
+  guaranteeHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 10,
+  },
+  guaranteeTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  benefitsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  benefitItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  benefitText: {
+    fontSize: 11.5,
+    fontWeight: "600",
+  },
+
+  // Empty
   emptyWrap: {
     alignItems: "center",
-    paddingVertical: 40,
+    paddingVertical: 36,
   },
   emptyTitle: {
     fontSize: 16,
-    fontWeight: "800",
-    color: "#334155",
-    marginTop: 10,
+    fontWeight: "700",
+    marginTop: 8,
   },
   emptySub: {
-    fontSize: 13,
-    color: "#94A3B8",
+    fontSize: 12,
     marginTop: 4,
   },
 });

@@ -11,6 +11,8 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Modal,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,28 +20,23 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import { SERVICE_CATEGORIES, SubService } from "./servicesData";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { auth, db } from "@/services/firebase";
-import { collection, doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceDetail">;
 const { width } = Dimensions.get("window");
 
-const SUB_FILTERS = [
-  { id: "all", label: "All", icon: "home" },
-  { id: "bathroom", label: "Bathroom", icon: "water" },
-  { id: "kitchen", label: "Kitchen", icon: "restaurant" },
-  { id: "windows", label: "Windows", icon: "grid" },
-  { id: "deep", label: "Deep Clean", icon: "sparkles" },
-];
-
 export default function ServiceDetailScreen({ navigation, route }: Props) {
   const { categoryId, subServiceId } = route.params;
   const { user } = useAuth();
+  const { isDark, colors } = useTheme();
   const activeUser = auth.currentUser || user;
 
-  const category = SERVICE_CATEGORIES.find((c) => c.id === categoryId) || SERVICE_CATEGORIES[0];
-  const initialSub =
+  const category =
+    SERVICE_CATEGORIES.find((c) => c.id === categoryId) || SERVICE_CATEGORIES[0];
+  const selectedSub =
     category.subServices.find((s) => s.id === subServiceId) ||
     category.subServices[0] || {
       id: "cl-general",
@@ -48,9 +45,6 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       duration: "5 hrs",
       description: "Professional cleaning for a healthier, safer and fresher home.",
     };
-
-  const [selectedSub, setSelectedSub] = useState<SubService>(initialSub);
-  const [activeFilter, setActiveFilter] = useState("all");
 
   // User input states
   const [contactNumber, setContactNumber] = useState(
@@ -62,6 +56,8 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
     "CVFF+5H9, Morur, Tamil Nadu"
   );
   const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [customAddressInput, setCustomAddressInput] = useState(serviceAddress);
 
   const [bookingDate, setBookingDate] = useState("Thu, Oct 8, 2026");
   const [bookingTime, setBookingTime] = useState("10:00 AM");
@@ -82,13 +78,19 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
           if (raw) {
             const p = JSON.parse(raw);
             if (p.phone && p.phone.trim()) setContactNumber(p.phone);
-            if (p.address && p.address.trim()) setServiceAddress(p.address);
+            if (p.address && p.address.trim()) {
+              setServiceAddress(p.address);
+              setCustomAddressInput(p.address);
+            }
           }
           const snap = await getDoc(doc(db, "users", uid));
           if (snap.exists()) {
             const d = snap.data();
             if (d.phone || d.mobile) setContactNumber(d.phone || d.mobile);
-            if (d.address || d.deliveryAddress) setServiceAddress(d.address || d.deliveryAddress);
+            if (d.address || d.deliveryAddress) {
+              setServiceAddress(d.address || d.deliveryAddress);
+              setCustomAddressInput(d.address || d.deliveryAddress);
+            }
           }
         }
       } catch (_) {}
@@ -119,6 +121,13 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
     }
   };
 
+  const handleSaveCustomAddress = () => {
+    if (customAddressInput.trim()) {
+      setServiceAddress(customAddressInput.trim());
+    }
+    setShowLocationModal(false);
+  };
+
   const handleConfirmBooking = async () => {
     if (!contactNumber.trim()) {
       Alert.alert("Phone Required", "Please enter a contact number for confirmation.");
@@ -135,6 +144,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
       const uid = activeUser?.uid || `guest_${Date.now()}`;
       const custName = activeUser?.displayName || "Customer";
+      const scheduledDateTimeStr = `${bookingDate} at ${bookingTime}`;
 
       const bookingPayload = {
         id: bookingId,
@@ -156,7 +166,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         vendorId: null,
         vendorName: "Pending Assignment",
         vendorPhone: "+91 98765 43210",
-        scheduledAt: `${bookingDate} at ${bookingTime}`,
+        scheduledAt: scheduledDateTimeStr,
         bookingDate,
         bookingTime,
         duration: selectedSub.duration || "5 hrs",
@@ -179,9 +189,13 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         await AsyncStorage.setItem(localKey, JSON.stringify(list));
       } catch (_) {}
 
-      // 3. Navigate directly to BookingConfirmedScreen
+      // 3. Navigate to BookingConfirmedScreen with all required params
       navigation.navigate("BookingConfirmed", {
         bookingId,
+        otp: otpCode,
+        categoryId: category.id,
+        subServiceId: selectedSub.id,
+        scheduledDate: scheduledDateTimeStr,
         booking: bookingPayload,
       } as any);
     } catch (e: any) {
@@ -191,14 +205,24 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
     }
   };
 
+  const bgStyle = { backgroundColor: isDark ? "#081826" : "#F4F6F9" };
+  const cardBgStyle = {
+    backgroundColor: isDark ? "#0D2135" : "#FFFFFF",
+    borderColor: isDark ? "rgba(0,188,212,0.2)" : "#E2E8F0",
+  };
+  const textPrimary = { color: isDark ? "#FFFFFF" : "#0F172A" };
+  const textSecondary = { color: isDark ? "#94A3B8" : "#64748B" };
+
   return (
-    <View style={styles.root}>
-      {/* ── Top Dark Gradient Header ──────────────────────────────────── */}
-      <SafeAreaView edges={["top"]} style={styles.headerSafe}>
+    <View style={[styles.root, bgStyle]}>
+      {/* ── Top Header Bar ────────────────────────────────────────────── */}
+      <SafeAreaView edges={["top"]} style={[styles.headerSafe, { backgroundColor: isDark ? "#051320" : "#0F766E" }]}>
         <View style={styles.headerBar}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBackBtn}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
+          <Text style={styles.headerBarTitle}>{selectedSub.name}</Text>
+          <View style={{ width: 40 }} />
         </View>
 
         <View style={styles.headerHeroWrap}>
@@ -215,11 +239,11 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         contentContainerStyle={styles.scrollContent}
       >
         {/* ── Service Summary Card (Matching Design 3) ────────────────── */}
-        <View style={styles.serviceHeroCard}>
+        <View style={[styles.serviceHeroCard, cardBgStyle]}>
           <View style={styles.serviceHeroTop}>
             <View style={styles.serviceIconContainer}>
-              <View style={styles.serviceIconCircle}>
-                <Ionicons name="home" size={28} color="#0056D2" />
+              <View style={[styles.serviceIconCircle, { backgroundColor: isDark ? "rgba(0,188,212,0.15)" : "#E0F2FE" }]}>
+                <Ionicons name={category.icon as any || "home"} size={28} color={isDark ? "#00BCD4" : "#0284C7"} />
               </View>
               <View style={styles.heroPopularBadge}>
                 <Ionicons name="star" size={10} color="#92400E" />
@@ -228,8 +252,8 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
             </View>
 
             <View style={styles.serviceHeroInfo}>
-              <Text style={styles.serviceHeroTitle}>{selectedSub.name}</Text>
-              <Text style={styles.serviceHeroDesc}>{selectedSub.description}</Text>
+              <Text style={[styles.serviceHeroTitle, textPrimary]}>{selectedSub.name}</Text>
+              <Text style={[styles.serviceHeroDesc, textSecondary]}>{selectedSub.description}</Text>
 
               {/* 3 Badges */}
               <View style={styles.heroBadgesRow}>
@@ -248,125 +272,81 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               </View>
             </View>
 
-            {/* Right: Starts from Price & Duration */}
+            {/* Right: Price & Duration */}
             <View style={styles.serviceHeroPriceCol}>
               <Text style={styles.startsFromLabel}>Starts from</Text>
               <View style={styles.priceWithArrow}>
-                <Text style={styles.heroPriceMain}>₹{basePriceNum}</Text>
+                <Text style={[styles.heroPriceMain, { color: isDark ? "#00BCD4" : "#0F766E" }]}>₹{basePriceNum}</Text>
                 <Text style={styles.heroPriceSlashed}>₹{originalPrice}</Text>
-                <Ionicons name="chevron-forward" size={16} color="#0F766E" />
               </View>
-              <View style={styles.durationTag}>
-                <Ionicons name="time-outline" size={12} color="#64748B" />
-                <Text style={styles.durationTagText}>{selectedSub.duration}</Text>
+              <View style={[styles.durationTag, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#F1F5F9" }]}>
+                <Ionicons name="time-outline" size={12} color={isDark ? "#94A3B8" : "#64748B"} />
+                <Text style={[styles.durationTagText, textSecondary]}>{selectedSub.duration}</Text>
               </View>
             </View>
           </View>
         </View>
 
-        {/* ── Sub-Category Pills ──────────────────────────────────────── */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.pillsRow}
-        >
-          {SUB_FILTERS.map((f) => {
-            const isActive = activeFilter === f.id;
-            return (
-              <TouchableOpacity
-                key={f.id}
-                onPress={() => {
-                  setActiveFilter(f.id);
-                  if (f.id === "all") setSelectedSub(category.subServices[0] || initialSub);
-                  else if (f.id === "bathroom")
-                    setSelectedSub(
-                      category.subServices.find((s) => s.id.includes("restroom")) || initialSub
-                    );
-                  else if (f.id === "kitchen")
-                    setSelectedSub(
-                      category.subServices.find((s) => s.id.includes("kitchen")) || initialSub
-                    );
-                  else if (f.id === "windows")
-                    setSelectedSub(
-                      category.subServices.find((s) => s.id.includes("window")) || initialSub
-                    );
-                  else if (f.id === "deep")
-                    setSelectedSub(
-                      category.subServices.find((s) => s.id.includes("full") || s.id.includes("tank")) ||
-                        initialSub
-                    );
-                }}
-                style={[styles.pillBtn, isActive && styles.pillBtnActive]}
-                activeOpacity={0.8}
-              >
-                <Ionicons
-                  name={f.icon as any}
-                  size={15}
-                  color={isActive ? "#FFFFFF" : "#0F766E"}
-                  style={{ marginRight: 6 }}
-                />
-                <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
-                  {f.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        {/* ── Quick Service Header ────────────────────────────────────── */}
+        {/* ── Quick Service Banner ────────────────────────────────────── */}
         <View style={styles.quickServiceHeaderRow}>
           <View style={styles.quickServiceTitleWrap}>
             <View style={styles.lightningIconWrap}>
               <Ionicons name="flash" size={16} color="#059669" />
             </View>
             <View>
-              <Text style={styles.quickServiceTitle}>Quick Service</Text>
-              <Text style={styles.quickServiceSub}>Book in just a few taps</Text>
+              <Text style={[styles.quickServiceTitle, textPrimary]}>Quick Service</Text>
+              <Text style={[styles.quickServiceSub, textSecondary]}>Book in just a few taps</Text>
             </View>
           </View>
           <Text style={styles.quickServiceDoodle}>Your clean is our priority 🌿</Text>
         </View>
 
-        {/* ── Location Map Selection Card ─────────────────────────────── */}
-        <View style={styles.locationSelectionCard}>
+        {/* ── Location Map Selection Card (Correctly Aligned Address) ───── */}
+        <View style={[styles.locationSelectionCard, cardBgStyle]}>
           <View style={styles.locationCardLeft}>
-            <View style={styles.locationPinIconWrap}>
-              <Ionicons name="location" size={20} color="#0056D2" />
+            <View style={[styles.locationPinIconWrap, { backgroundColor: isDark ? "rgba(0,188,212,0.15)" : "#E0F2FE" }]}>
+              <Ionicons name="location" size={20} color={isDark ? "#00BCD4" : "#0284C7"} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.locationCardTitle}>Service Address</Text>
-              <Text style={styles.locationCardSub}>
-                Select the location where you want the service
+              <Text style={[styles.locationCardTitle, textPrimary]}>Service Address</Text>
+              {/* Formatted address placed directly under title */}
+              <Text style={[styles.currentAddressText, { color: isDark ? "#E2E8F0" : "#1E293B" }]} numberOfLines={2}>
+                {serviceAddress}
+              </Text>
+              <Text style={[styles.locationCardSub, textSecondary]}>
+                We will send the professional to this doorstep
               </Text>
               <TouchableOpacity
-                style={styles.selectMapBtn}
-                onPress={() => setIsEditingAddress(true)}
+                style={[styles.selectMapBtn, { backgroundColor: isDark ? "rgba(0,188,212,0.1)" : "#F0FDF4", borderColor: isDark ? "rgba(0,188,212,0.3)" : "#BBF7D0" }]}
+                onPress={() => setShowLocationModal(true)}
               >
-                <Ionicons name="map-outline" size={16} color="#0056D2" style={{ marginRight: 6 }} />
-                <Text style={styles.selectMapBtnText}>Select Location on Map</Text>
-                <Ionicons name="chevron-forward" size={14} color="#0056D2" style={{ marginLeft: 4 }} />
+                <Ionicons name="map-outline" size={16} color={isDark ? "#00BCD4" : "#059669"} style={{ marginRight: 6 }} />
+                <Text style={[styles.selectMapBtnText, { color: isDark ? "#00BCD4" : "#059669" }]}>Change / Select on Map</Text>
+                <Ionicons name="chevron-forward" size={14} color={isDark ? "#00BCD4" : "#059669"} style={{ marginLeft: 4 }} />
               </TouchableOpacity>
             </View>
           </View>
 
-          <Image
-            source={require("../../../assets/service_map_preview.png")}
-            style={styles.mapGraphicPreview}
-            resizeMode="contain"
-          />
+          <View style={styles.mapGraphicPreviewWrap}>
+            <Image
+              source={require("../../../assets/service_map_preview.png")}
+              style={styles.mapGraphicPreview}
+              resizeMode="cover"
+            />
+          </View>
         </View>
 
         {/* ── Two Columns: Contact Number + Select Date & Time ────────── */}
         <View style={styles.twoColRow}>
           {/* Contact Number Card */}
-          <View style={styles.halfCard}>
+          <View style={[styles.halfCard, cardBgStyle]}>
             <View style={styles.cardHeaderRow}>
-              <View style={[styles.roundIconWrap, { backgroundColor: "#DCFCE7" }]}>
+              <View style={[styles.roundIconWrap, { backgroundColor: isDark ? "rgba(34,197,94,0.15)" : "#DCFCE7" }]}>
                 <Ionicons name="call" size={16} color="#15803D" />
               </View>
               <View style={{ flex: 1, marginLeft: 8 }}>
-                <Text style={styles.halfCardTitle}>Contact Number</Text>
-                <Text style={styles.halfCardSub}>We will contact you</Text>
+                <Text style={[styles.halfCardTitle, textPrimary]}>Contact Number</Text>
+                <Text style={[styles.halfCardSub, textSecondary]}>We will contact you</Text>
               </View>
             </View>
 
@@ -376,50 +356,51 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                 onChangeText={setContactNumber}
                 onBlur={() => setIsEditingPhone(false)}
                 keyboardType="phone-pad"
-                style={styles.phoneInputField}
+                style={[styles.phoneInputField, { color: isDark ? "#fff" : "#000", backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#F8FAFC" }]}
                 autoFocus
               />
             ) : (
               <TouchableOpacity
-                style={styles.phonePillBtn}
+                style={[styles.phonePillBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#F8FAFC", borderColor: isDark ? "rgba(255,255,255,0.1)" : "#E2E8F0" }]}
                 onPress={() => setIsEditingPhone(true)}
               >
-                <Ionicons name="call-outline" size={14} color="#0F172A" style={{ marginRight: 6 }} />
-                <Text style={styles.phonePillText}>{contactNumber}</Text>
-                <Ionicons name="pencil-outline" size={14} color="#64748B" style={{ marginLeft: "auto" }} />
+                <Ionicons name="call-outline" size={14} color={isDark ? "#00BCD4" : "#0F172A"} style={{ marginRight: 6 }} />
+                <Text style={[styles.phonePillText, textPrimary]}>{contactNumber}</Text>
+                <Ionicons name="pencil-outline" size={14} color={textSecondary.color} style={{ marginLeft: "auto" }} />
               </TouchableOpacity>
             )}
           </View>
 
           {/* Date & Time Card */}
-          <View style={styles.halfCard}>
+          <View style={[styles.halfCard, cardBgStyle]}>
             <View style={styles.cardHeaderRow}>
-              <View style={[styles.roundIconWrap, { backgroundColor: "#EDE9FE" }]}>
+              <View style={[styles.roundIconWrap, { backgroundColor: isDark ? "rgba(168,85,247,0.15)" : "#EDE9FE" }]}>
                 <Ionicons name="calendar" size={16} color="#7C3AED" />
               </View>
               <View style={{ flex: 1, marginLeft: 8 }}>
-                <Text style={styles.halfCardTitle}>Select Date & Time</Text>
-                <Text style={styles.halfCardSub}>Preferred schedule</Text>
+                <Text style={[styles.halfCardTitle, textPrimary]}>Schedule Slot</Text>
+                <Text style={[styles.halfCardSub, textSecondary]}>Preferred arrival</Text>
               </View>
             </View>
 
             <TouchableOpacity
-              style={styles.scheduleRowBtn}
+              style={[styles.scheduleRowBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#F8FAFC", borderColor: isDark ? "rgba(255,255,255,0.1)" : "#E2E8F0" }]}
               onPress={() => {
                 Alert.alert("Select Date", "Choose service appointment day:", [
-                  { text: "Today (Oct 8)", onPress: () => setBookingDate("Thu, Oct 8, 2026") },
-                  { text: "Tomorrow (Oct 9)", onPress: () => setBookingDate("Fri, Oct 9, 2026") },
-                  { text: "Saturday (Oct 10)", onPress: () => setBookingDate("Sat, Oct 10, 2026") },
+                  { text: "Today", onPress: () => setBookingDate("Today") },
+                  { text: "Tomorrow", onPress: () => setBookingDate("Tomorrow") },
+                  { text: "Saturday", onPress: () => setBookingDate("Saturday") },
+                  { text: "Sunday", onPress: () => setBookingDate("Sunday") },
                 ]);
               }}
             >
-              <Ionicons name="calendar-outline" size={14} color="#64748B" style={{ marginRight: 6 }} />
-              <Text style={styles.scheduleRowText}>{bookingDate}</Text>
-              <Ionicons name="chevron-forward" size={14} color="#94A3B8" style={{ marginLeft: "auto" }} />
+              <Ionicons name="calendar-outline" size={14} color={isDark ? "#00BCD4" : "#64748B"} style={{ marginRight: 6 }} />
+              <Text style={[styles.scheduleRowText, textPrimary]} numberOfLines={1}>{bookingDate}</Text>
+              <Ionicons name="chevron-forward" size={14} color={textSecondary.color} style={{ marginLeft: "auto" }} />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.scheduleRowBtn, { marginTop: 6 }]}
+              style={[styles.scheduleRowBtn, { marginTop: 6, backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#F8FAFC", borderColor: isDark ? "rgba(255,255,255,0.1)" : "#E2E8F0" }]}
               onPress={() => {
                 Alert.alert("Select Time Slot", "Choose preferred arrival time:", [
                   { text: "09:00 AM - 11:00 AM", onPress: () => setBookingTime("10:00 AM") },
@@ -428,22 +409,22 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                 ]);
               }}
             >
-              <Ionicons name="time-outline" size={14} color="#64748B" style={{ marginRight: 6 }} />
-              <Text style={styles.scheduleRowText}>{bookingTime}</Text>
-              <Ionicons name="chevron-forward" size={14} color="#94A3B8" style={{ marginLeft: "auto" }} />
+              <Ionicons name="time-outline" size={14} color={isDark ? "#00BCD4" : "#64748B"} style={{ marginRight: 6 }} />
+              <Text style={[styles.scheduleRowText, textPrimary]} numberOfLines={1}>{bookingTime}</Text>
+              <Ionicons name="chevron-forward" size={14} color={textSecondary.color} style={{ marginLeft: "auto" }} />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* ── Coupon Code Card ────────────────────────────────────────── */}
-        <View style={styles.couponCard}>
+        <View style={[styles.couponCard, cardBgStyle]}>
           <View style={styles.couponLeft}>
-            <View style={styles.couponIconCircle}>
+            <View style={[styles.couponIconCircle, { backgroundColor: isDark ? "rgba(124,58,237,0.18)" : "#EDE9FE" }]}>
               <Ionicons name="pricetag" size={18} color="#7C3AED" />
             </View>
             <View style={{ marginLeft: 10 }}>
-              <Text style={styles.couponTitle}>Have a Coupon Code?</Text>
-              <Text style={styles.couponSub}>Apply and get exclusive discounts</Text>
+              <Text style={[styles.couponTitle, textPrimary]}>Have a Coupon Code?</Text>
+              <Text style={[styles.couponSub, textSecondary]}>Apply URBAN50 for ₹50 off</Text>
             </View>
           </View>
 
@@ -451,80 +432,103 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
             <TextInput
               value={couponCode}
               onChangeText={setCouponCode}
-              placeholder="Enter coupon code"
-              placeholderTextColor="#94A3B8"
+              placeholder="e.g. URBAN50"
+              placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
               autoCapitalize="characters"
-              style={styles.couponInput}
-              editable={!couponApplied}
+              style={[styles.couponInputField, { color: isDark ? "#fff" : "#000", backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#F8FAFC", borderColor: isDark ? "rgba(255,255,255,0.12)" : "#E2E8F0" }]}
             />
             <TouchableOpacity
-              style={[styles.couponApplyBtn, couponApplied && styles.couponAppliedBtn]}
+              style={[styles.couponApplyBtn, couponApplied && { backgroundColor: "#059669" }]}
               onPress={handleApplyCoupon}
-              disabled={couponApplied}
             >
-              <Text style={styles.couponApplyText}>{couponApplied ? "Applied" : "Apply"}</Text>
+              <Text style={styles.couponApplyText}>{couponApplied ? "APPLIED" : "APPLY"}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* ── Selected Address Preview ────────────────────────────────── */}
-        <View style={styles.addressPreviewCard}>
-          <Ionicons name="location" size={20} color="#0056D2" style={{ marginRight: 10 }} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.addressPreviewLabel}>Service Address</Text>
-            {isEditingAddress ? (
-              <TextInput
-                value={serviceAddress}
-                onChangeText={setServiceAddress}
-                onBlur={() => setIsEditingAddress(false)}
-                style={styles.addressInputField}
-                autoFocus
-              />
-            ) : (
-              <Text style={styles.addressPreviewText} numberOfLines={2}>
-                {serviceAddress}
-              </Text>
-            )}
-          </View>
-          <TouchableOpacity onPress={() => setIsEditingAddress(!isEditingAddress)}>
-            <Ionicons name="pencil-outline" size={18} color="#64748B" />
-          </TouchableOpacity>
-        </View>
+        <View style={{ height: 110 }} />
       </ScrollView>
 
       {/* ── Sticky Bottom Checkout Bar ───────────────────────────────── */}
-      <SafeAreaView edges={["bottom"]} style={styles.bottomBarSafe}>
-        <View style={styles.bottomBarContainer}>
-          <View style={styles.bottomPriceCol}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <Text style={styles.bottomPriceLabel}>Total Amount</Text>
-              <Ionicons name="information-circle-outline" size={14} color="#94A3B8" />
-            </View>
-            <Text style={styles.bottomPriceAmount}>₹{finalPrice}</Text>
+      <View style={[styles.bottomBar, { backgroundColor: isDark ? "rgba(8,24,38,0.96)" : "#FFFFFF", borderTopColor: isDark ? "rgba(255,255,255,0.08)" : "#E2E8F0" }]}>
+        <View style={styles.bottomPriceCol}>
+          <Text style={styles.totalPriceLabel}>Total Amount</Text>
+          <View style={styles.bottomPriceRow}>
+            <Text style={[styles.bottomPriceMain, { color: isDark ? "#00BCD4" : "#0F766E" }]}>₹{finalPrice}</Text>
+            <Text style={styles.bottomPriceOrig}>₹{originalPrice}</Text>
           </View>
-
-          <View style={styles.bottomSecurityCol}>
-            <Ionicons name="shield-checkmark" size={16} color="#059669" />
-            <Text style={styles.bottomSecurityText}>Secure & Safe{"\n"}Payment</Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.confirmBtn}
-            onPress={handleConfirmBooking}
-            disabled={loading}
-            activeOpacity={0.88}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <>
-                <Text style={styles.confirmBtnText}>Confirm Booking</Text>
-                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
-              </>
-            )}
-          </TouchableOpacity>
         </View>
-      </SafeAreaView>
+
+        <TouchableOpacity
+          style={styles.confirmBookingBtn}
+          onPress={handleConfirmBooking}
+          disabled={loading}
+          activeOpacity={0.88}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <>
+              <Text style={styles.confirmBtnText}>Confirm Booking</Text>
+              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* ── Interactive Location Picker Modal ────────────────────────── */}
+      <Modal visible={showLocationModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: isDark ? "#0D2135" : "#FFFFFF" }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, textPrimary]}>Select Service Address</Text>
+              <TouchableOpacity onPress={() => setShowLocationModal(false)}>
+                <Ionicons name="close" size={24} color={textPrimary.color} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.modalSub, textSecondary]}>
+              Type your full address or select from quick saved locations:
+            </Text>
+
+            <TextInput
+              value={customAddressInput}
+              onChangeText={setCustomAddressInput}
+              placeholder="House/Flat No, Street, Landmark, City..."
+              placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+              style={[styles.modalInput, { color: isDark ? "#fff" : "#000", backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#F8FAFC", borderColor: isDark ? "rgba(255,255,255,0.12)" : "#E2E8F0" }]}
+              multiline
+              numberOfLines={3}
+            />
+
+            {/* Quick Presets */}
+            <View style={styles.presetsRow}>
+              <TouchableOpacity
+                style={[styles.presetChip, { backgroundColor: isDark ? "rgba(0,188,212,0.12)" : "#E0F2FE" }]}
+                onPress={() => setCustomAddressInput("142, Orchid Greens, 2nd Cross, HSR Layout, Sector 4")}
+              >
+                <Ionicons name="home-outline" size={14} color={isDark ? "#00BCD4" : "#0284C7"} />
+                <Text style={[styles.presetChipText, { color: isDark ? "#00BCD4" : "#0284C7" }]}>Home (HSR Layout)</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.presetChip, { backgroundColor: isDark ? "rgba(16,185,129,0.12)" : "#DCFCE7" }]}
+                onPress={() => setCustomAddressInput("CVFF+5H9, Morur, Tamil Nadu")}
+              >
+                <Ionicons name="navigate-outline" size={14} color="#059669" />
+                <Text style={[styles.presetChipText, { color: "#059669" }]}>Current GPS Location</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.modalSaveBtn}
+              onPress={handleSaveCustomAddress}
+            >
+              <Text style={styles.modalSaveBtnText}>Save Address & Continue</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -532,53 +536,63 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#F1F5F9",
   },
   headerSafe: {
-    backgroundColor: "#0B2238",
+    paddingBottom: 4,
   },
   headerBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: Platform.OS === "ios" ? 8 : 12,
+    paddingBottom: 6,
   },
   headerBackBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.15)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  headerBarTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
   headerHeroWrap: {
     width: "100%",
-    height: 120,
+    height: 90,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
   headerHeroImg: {
-    width: "98%",
+    width: "100%",
     height: "100%",
   },
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 110,
   },
+
+  // Service Hero Card
   serviceHeroCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
+    borderRadius: 22,
     padding: 16,
-    marginBottom: 14,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    marginBottom: 16,
     elevation: 3,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.1,
     shadowRadius: 6,
   },
   serviceHeroTop: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
   },
   serviceIconContainer: {
     alignItems: "center",
@@ -588,41 +602,37 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 16,
-    backgroundColor: "#EFF6FF",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#DBEAFE",
+    marginBottom: 4,
   },
   heroPopularBadge: {
     backgroundColor: "#FEF3C7",
-    paddingHorizontal: 4,
+    paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 8,
     flexDirection: "row",
     alignItems: "center",
-    gap: 2,
-    marginTop: 4,
+    gap: 3,
   },
   heroPopularBadgeText: {
-    fontSize: 7.5,
+    fontSize: 9,
     fontWeight: "800",
     color: "#92400E",
   },
   serviceHeroInfo: {
     flex: 1,
+    paddingRight: 6,
   },
   serviceHeroTitle: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#0F172A",
     marginBottom: 2,
   },
   serviceHeroDesc: {
-    fontSize: 11,
-    color: "#64748B",
-    lineHeight: 15,
-    marginBottom: 6,
+    fontSize: 12,
+    lineHeight: 16,
+    marginBottom: 8,
   },
   heroBadgesRow: {
     flexDirection: "row",
@@ -633,23 +643,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
-    backgroundColor: "#ECFDF5",
+    backgroundColor: "#DCFCE7",
     paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
   heroBadgeText: {
     fontSize: 9.5,
     fontWeight: "700",
-    color: "#059669",
+    color: "#166534",
   },
   serviceHeroPriceCol: {
     alignItems: "flex-end",
-    marginLeft: 8,
   },
   startsFromLabel: {
-    fontSize: 10.5,
-    color: "#64748B",
+    fontSize: 10,
+    color: "#94A3B8",
     fontWeight: "600",
   },
   priceWithArrow: {
@@ -659,56 +668,35 @@ const styles = StyleSheet.create({
     marginVertical: 2,
   },
   heroPriceMain: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "900",
-    color: "#0F766E",
   },
   heroPriceSlashed: {
-    fontSize: 11.5,
+    fontSize: 12,
     color: "#94A3B8",
     textDecorationLine: "line-through",
   },
   durationTag: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginTop: 2,
   },
   durationTagText: {
-    fontSize: 11,
-    color: "#64748B",
+    fontSize: 10.5,
     fontWeight: "600",
   },
-  pillsRow: {
-    gap: 8,
-    marginBottom: 16,
-  },
-  pillBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  pillBtnActive: {
-    backgroundColor: "#0F766E",
-    borderColor: "#0F766E",
-  },
-  pillText: {
-    fontSize: 12.5,
-    fontWeight: "700",
-    color: "#0F766E",
-  },
-  pillTextActive: {
-    color: "#FFFFFF",
-  },
+
+  // Quick Service Header
   quickServiceHeaderRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    justifyContent: "space-between",
+    marginBottom: 12,
+    marginTop: 4,
   },
   quickServiceTitleWrap: {
     flexDirection: "row",
@@ -718,7 +706,7 @@ const styles = StyleSheet.create({
   lightningIconWrap: {
     width: 28,
     height: 28,
-    borderRadius: 8,
+    borderRadius: 14,
     backgroundColor: "#DCFCE7",
     justifyContent: "center",
     alignItems: "center",
@@ -726,72 +714,82 @@ const styles = StyleSheet.create({
   quickServiceTitle: {
     fontSize: 15,
     fontWeight: "800",
-    color: "#0F172A",
   },
   quickServiceSub: {
     fontSize: 11,
-    color: "#64748B",
   },
   quickServiceDoodle: {
     fontSize: 11,
-    fontStyle: "italic",
     color: "#059669",
     fontWeight: "600",
   },
+
+  // Location Card
   locationSelectionCard: {
     flexDirection: "row",
-    backgroundColor: "#FFFFFF",
     borderRadius: 20,
     padding: 14,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    alignItems: "center",
     marginBottom: 14,
+    alignItems: "center",
+    gap: 10,
   },
   locationCardLeft: {
     flex: 1,
     flexDirection: "row",
     alignItems: "flex-start",
+    gap: 10,
   },
   locationPinIconWrap: {
     width: 36,
     height: 36,
-    borderRadius: 12,
-    backgroundColor: "#EFF6FF",
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 10,
+    marginTop: 2,
   },
   locationCardTitle: {
     fontSize: 14,
     fontWeight: "800",
-    color: "#0F172A",
+    marginBottom: 2,
+  },
+  currentAddressText: {
+    fontSize: 13,
+    fontWeight: "700",
+    lineHeight: 18,
+    marginBottom: 2,
   },
   locationCardSub: {
     fontSize: 11,
-    color: "#64748B",
-    marginVertical: 4,
+    marginBottom: 8,
   },
   selectMapBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#EFF6FF",
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 12,
+    borderRadius: 10,
+    borderWidth: 1,
     alignSelf: "flex-start",
-    marginTop: 4,
   },
   selectMapBtnText: {
     fontSize: 11.5,
     fontWeight: "700",
-    color: "#0056D2",
+  },
+  mapGraphicPreviewWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(0,188,212,0.25)",
   },
   mapGraphicPreview: {
-    width: 110,
-    height: 75,
-    marginLeft: 8,
+    width: "100%",
+    height: "100%",
   },
+
+  // Two columns
   twoColRow: {
     flexDirection: "row",
     gap: 10,
@@ -799,11 +797,9 @@ const styles = StyleSheet.create({
   },
   halfCard: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
     borderRadius: 18,
     padding: 12,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
   },
   cardHeaderRow: {
     flexDirection: "row",
@@ -813,66 +809,55 @@ const styles = StyleSheet.create({
   roundIconWrap: {
     width: 30,
     height: 30,
-    borderRadius: 10,
+    borderRadius: 15,
     justifyContent: "center",
     alignItems: "center",
   },
   halfCardTitle: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: "800",
-    color: "#0F172A",
   },
   halfCardSub: {
-    fontSize: 9.5,
-    color: "#64748B",
+    fontSize: 10,
+  },
+  phoneInputField: {
+    height: 38,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    fontSize: 13,
+    fontWeight: "700",
   },
   phonePillBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
+    height: 38,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    borderWidth: 1,
   },
   phonePillText: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: "700",
-    color: "#0F172A",
-  },
-  phoneInputField: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#0F172A",
-    backgroundColor: "#F8FAFC",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#0056D2",
-    paddingHorizontal: 8,
-    paddingVertical: 6,
   },
   scheduleRowBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
+    height: 36,
     borderRadius: 10,
+    paddingHorizontal: 10,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    paddingHorizontal: 8,
-    paddingVertical: 6,
   },
   scheduleRowText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#0F172A",
+    fontSize: 11.5,
+    fontWeight: "700",
+    flex: 1,
   },
+
+  // Coupon Card
   couponCard: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 18,
     padding: 14,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
     marginBottom: 14,
   },
   couponLeft: {
@@ -881,138 +866,164 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   couponIconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    backgroundColor: "#F3E8FF",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
   },
   couponTitle: {
     fontSize: 13.5,
     fontWeight: "800",
-    color: "#0F172A",
   },
   couponSub: {
     fontSize: 11,
-    color: "#64748B",
   },
   couponInputWrap: {
     flexDirection: "row",
-    alignItems: "center",
     gap: 8,
   },
-  couponInput: {
+  couponInputField: {
     flex: 1,
-    height: 40,
-    backgroundColor: "#F8FAFC",
+    height: 42,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
     paddingHorizontal: 12,
-    fontSize: 12.5,
-    color: "#0F172A",
+    fontSize: 13,
+    fontWeight: "700",
   },
   couponApplyBtn: {
-    backgroundColor: "#0F766E",
-    paddingHorizontal: 16,
-    height: 40,
+    backgroundColor: "#7C3AED",
     borderRadius: 12,
+    paddingHorizontal: 16,
     justifyContent: "center",
     alignItems: "center",
   },
-  couponAppliedBtn: {
-    backgroundColor: "#059669",
-  },
   couponApplyText: {
     color: "#FFFFFF",
-    fontSize: 12.5,
-    fontWeight: "700",
+    fontSize: 12,
+    fontWeight: "800",
   },
-  addressPreviewCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  addressPreviewLabel: {
-    fontSize: 10.5,
-    fontWeight: "700",
-    color: "#64748B",
-    textTransform: "uppercase",
-  },
-  addressPreviewText: {
-    fontSize: 12.5,
-    fontWeight: "700",
-    color: "#0F172A",
-    marginTop: 2,
-  },
-  addressInputField: {
-    fontSize: 12.5,
-    fontWeight: "700",
-    color: "#0F172A",
-    borderBottomWidth: 1,
-    borderBottomColor: "#0056D2",
-    paddingVertical: 2,
-  },
-  bottomBarSafe: {
+
+  // Bottom Checkout Bar
+  bottomBar: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "#0B2238",
-  },
-  bottomBarContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === "ios" ? 34 : 20,
+    borderTopWidth: 1,
+    elevation: 10,
   },
   bottomPriceCol: {
-    justifyContent: "center",
+    flex: 1,
   },
-  bottomPriceLabel: {
+  totalPriceLabel: {
     fontSize: 11,
     color: "#94A3B8",
     fontWeight: "600",
   },
-  bottomPriceAmount: {
-    fontSize: 20,
-    fontWeight: "900",
-    color: "#FFFFFF",
-  },
-  bottomSecurityCol: {
+  bottomPriceRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "baseline",
     gap: 6,
   },
-  bottomSecurityText: {
-    fontSize: 10,
-    color: "#94A3B8",
-    fontWeight: "600",
-    lineHeight: 13,
+  bottomPriceMain: {
+    fontSize: 22,
+    fontWeight: "900",
   },
-  confirmBtn: {
-    backgroundColor: "#10B981",
-    paddingHorizontal: 18,
-    height: 46,
-    borderRadius: 16,
+  bottomPriceOrig: {
+    fontSize: 13,
+    color: "#94A3B8",
+    textDecorationLine: "line-through",
+  },
+  confirmBookingBtn: {
+    backgroundColor: "#0056D2",
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 22,
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#10B981",
+    shadowColor: "#0056D2",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
   confirmBtnText: {
-    color: "#0F172A",
-    fontSize: 14.5,
-    fontWeight: "900",
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "800",
+  },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: Platform.OS === "ios" ? 38 : 24,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+  },
+  modalSub: {
+    fontSize: 12,
+    marginBottom: 14,
+  },
+  modalInput: {
+    height: 80,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 12,
+    fontSize: 13.5,
+    textAlignVertical: "top",
+    marginBottom: 14,
+  },
+  presetsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 18,
+  },
+  presetChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  presetChipText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  modalSaveBtn: {
+    backgroundColor: "#0056D2",
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalSaveBtnText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "800",
   },
 });

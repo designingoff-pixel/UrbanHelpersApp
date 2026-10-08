@@ -17,10 +17,10 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { db } from "@/services/firebase";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { cancelBooking } from "@/services/bookingService";
 import { sendServiceCompletedNotification } from "@/services/notificationService";
 import { RootStackParamList } from "@/navigation/types";
-import { colors } from "@/theme/colors";
 import {
   getDistanceKm, formatETA, formatDistance,
 } from "@/services/locationService";
@@ -69,6 +69,7 @@ const TRACKING_STEPS = [
 
 export default function LiveTrackingScreen({ navigation, route }: Props) {
   const { user } = useAuth();
+  const { isDark, colors: themeColors } = useTheme();
   const routeBookingId = route.params?.bookingId;
   const mapRef = useRef<MapView>(null);
 
@@ -274,29 +275,32 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
     ? { latitude: customerCoords.lat, longitude: customerCoords.lng, latitudeDelta: 0.012, longitudeDelta: 0.012 }
     : { latitude: 11.0168, longitude: 76.9558, latitudeDelta: 0.05, longitudeDelta: 0.05 };
 
-  return (
-    <View style={s.root}>
-      <LinearGradient
-        colors={["#081826", "#0c2338", "#081826"]}
-        style={StyleSheet.absoluteFill}
-      />
+  const bgStyle = { backgroundColor: isDark ? "#081826" : "#F4F6F9" };
+  const cardBgStyle = {
+    backgroundColor: isDark ? "#0D2135" : "#FFFFFF",
+    borderColor: isDark ? "rgba(0,188,212,0.18)" : "#E2E8F0",
+  };
+  const textPrimary = { color: isDark ? "#FFFFFF" : "#0F172A" };
+  const textSecondary = { color: isDark ? "#94A3B8" : "#64748B" };
 
+  return (
+    <View style={[s.root, bgStyle]}>
       {/* Header */}
-      <View style={s.header}>
+      <View style={[s.header, { backgroundColor: isDark ? "#081826" : "#FFFFFF", borderBottomColor: isDark ? "rgba(255,255,255,0.06)" : "#E2E8F0" }]}>
         <Pressable
           onPress={() => navigation.goBack()}
-          style={s.headerBtn}
+          style={[s.headerBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#F1F5F9" }]}
           accessibilityLabel="Go back"
         >
-          <Ionicons name="arrow-back" size={22} color="#fff" />
+          <Ionicons name="arrow-back" size={22} color={isDark ? "#fff" : "#0f172a"} />
         </Pressable>
         <View style={s.headerCenter}>
-          <Text style={s.headerTitle}>Live Tracking</Text>
+          <Text style={[s.headerTitle, textPrimary]}>Live Tracking</Text>
           <Text style={s.headerSubtitle}>Your service is on the way</Text>
         </View>
         <View style={s.headerRight}>
           <Pressable
-            style={[s.headerBtn, { backgroundColor: "rgba(239, 68, 68, 0.2)", borderColor: "#ef4444", borderWidth: 1 }]}
+            style={[s.headerBtn, { backgroundColor: "rgba(239, 68, 68, 0.15)", borderColor: "#ef4444", borderWidth: 1 }]}
             onPress={handleCustomerSOS}
           >
             <Ionicons name="warning" size={17} color="#ef4444" />
@@ -311,7 +315,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
         {/* 1. Professional Gradient Card */}
         <Animated.View entering={FadeInDown.duration(380)} style={s.proCard}>
           <LinearGradient
-            colors={["#0f2e46", "#091f33"]}
+            colors={isDark ? ["#0f2e46", "#091f33"] : ["#0F766E", "#0D5E58"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={s.proCardGradient}
@@ -355,7 +359,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
         </Animated.View>
 
         {/* 2. Stepper Timeline (Horizontal with 4 milestones) */}
-        <Animated.View entering={FadeInDown.delay(100).duration(380)} style={s.stepperCard}>
+        <Animated.View entering={FadeInDown.delay(100).duration(380)} style={[s.stepperCard, cardBgStyle]}>
           <View style={s.stepperRow}>
             {TRACKING_STEPS.map((step, idx) => {
               const st = getStepState(step.key);
@@ -378,8 +382,8 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
                         <Ionicons name="checkmark" size={14} color="#fff" />
                       </View>
                     ) : (
-                      <View style={s.pendingCircle}>
-                        <Ionicons name={step.icon as any} size={13} color="#64748b" />
+                      <View style={[s.pendingCircle, { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#F1F5F9", borderColor: isDark ? "rgba(255,255,255,0.15)" : "#CBD5E1" }]}>
+                        <Ionicons name={step.icon as any} size={13} color="#94A3B8" />
                       </View>
                     )}
 
@@ -388,6 +392,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
                       <View
                         style={[
                           s.connectingLine,
+                          { backgroundColor: isDark ? "rgba(255,255,255,0.12)" : "#E2E8F0" },
                           isDone && s.connectingLineDone,
                         ]}
                       />
@@ -398,8 +403,9 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
                   <Text
                     style={[
                       s.stepLabel,
-                      isActive && s.stepLabelActive,
-                      isDone && s.stepLabelDone,
+                      { color: isDark ? "#64748b" : "#94A3B8" },
+                      isActive && [s.stepLabelActive, { color: isDark ? TEAL : "#0F766E" }],
+                      isDone && [s.stepLabelDone, textPrimary],
                     ]}
                     numberOfLines={2}
                   >
@@ -488,36 +494,36 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
         </Animated.View>
 
         {/* 4. Booking Summary & OTP Card */}
-        <Animated.View entering={FadeInDown.delay(260).duration(380)} style={s.detailCard}>
+        <Animated.View entering={FadeInDown.delay(260).duration(380)} style={[s.detailCard, cardBgStyle]}>
           <View style={s.detailHeader}>
             <View>
-              <Text style={s.detailTitle}>Booking Reference</Text>
-              <Text style={s.detailRef}>#{booking?.id?.slice(-8).toUpperCase() || "AP4AB0H3"}</Text>
+              <Text style={[s.detailTitle, textSecondary]}>Booking Reference</Text>
+              <Text style={[s.detailRef, textPrimary]}>#{booking?.id?.slice(-8).toUpperCase() || "AP4AB0H3"}</Text>
             </View>
             {booking?.otp && (
-              <View style={s.otpChip}>
-                <Text style={s.otpChipLabel}>OTP</Text>
-                <Text style={s.otpChipValue}>{booking.otp}</Text>
+              <View style={[s.otpChip, { backgroundColor: isDark ? "rgba(0,188,212,0.14)" : "#E0F2FE", borderColor: isDark ? "rgba(0,188,212,0.3)" : "#7DD3FC" }]}>
+                <Text style={[s.otpChipLabel, { color: isDark ? TEAL : "#0284C7" }]}>OTP</Text>
+                <Text style={[s.otpChipValue, { color: isDark ? "#fff" : "#0284C7" }]}>{booking.otp}</Text>
               </View>
             )}
           </View>
 
-          <View style={s.addressRow}>
+          <View style={[s.addressRow, { borderTopColor: isDark ? "rgba(255,255,255,0.06)" : "#E2E8F0" }]}>
             <Ionicons name="location-outline" size={16} color={TEAL} />
-            <Text style={s.addressText} numberOfLines={2}>
+            <Text style={[s.addressText, textSecondary]} numberOfLines={2}>
               {booking?.address || "142, Orchid Greens, 2nd Cross, HSR Layout, Sector 4"}
             </Text>
           </View>
         </Animated.View>
 
         {/* 5. Need to Make Changes / Help Card */}
-        <Animated.View entering={FadeInDown.delay(340).duration(380)} style={s.helpCard}>
+        <Animated.View entering={FadeInDown.delay(340).duration(380)} style={[s.helpCard, { backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "#FFFFFF", borderColor: isDark ? "rgba(255,255,255,0.06)" : "#E2E8F0" }]}>
           <View style={s.helpIconWrap}>
             <Ionicons name="gift-outline" size={20} color={TEAL} />
           </View>
           <View style={s.helpContent}>
-            <Text style={s.helpTitle}>Need to make changes?</Text>
-            <Text style={s.helpSub}>Reschedule slot or update special instructions</Text>
+            <Text style={[s.helpTitle, textPrimary]}>Need to make changes?</Text>
+            <Text style={[s.helpSub, textSecondary]}>Reschedule slot or update special instructions</Text>
           </View>
           <Pressable
             onPress={() => {
@@ -539,7 +545,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
       </ScrollView>
 
       {/* Sticky Bottom Actions */}
-      <View style={s.bottomCtaBar}>
+      <View style={[s.bottomCtaBar, { backgroundColor: isDark ? "rgba(8,24,38,0.96)" : "#FFFFFF", borderTopColor: isDark ? "rgba(255,255,255,0.08)" : "#E2E8F0" }]}>
         {booking?.status === "completed" ? (
           <Pressable
             style={s.rateBtn}
@@ -573,7 +579,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
 
             {booking && booking.status !== "cancelled" && (
               <Pressable
-                style={s.cancelBtn}
+                style={[s.cancelBtn, { backgroundColor: isDark ? "rgba(239,68,68,0.12)" : "#FEF2F2" }]}
                 onPress={() => {
                   Alert.alert(
                     "Cancel Service?",
@@ -611,7 +617,6 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
 const s = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#081826",
   },
   header: {
     flexDirection: "row",
@@ -620,12 +625,12 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: Platform.OS === "ios" ? 52 : 42,
     paddingBottom: 14,
+    borderBottomWidth: 1,
   },
   headerBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.08)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -635,7 +640,6 @@ const s = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#fff",
   },
   headerSubtitle: {
     fontSize: 12,
@@ -649,7 +653,7 @@ const s = StyleSheet.create({
   },
   scroll: {
     paddingHorizontal: 16,
-    paddingTop: 6,
+    paddingTop: 10,
   },
 
   // 1. Professional Card
@@ -657,13 +661,11 @@ const s = StyleSheet.create({
     borderRadius: 22,
     overflow: "hidden",
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "rgba(0,188,212,0.22)",
-    elevation: 8,
+    elevation: 4,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
   },
   proCardGradient: {
     flexDirection: "row",
@@ -679,7 +681,7 @@ const s = StyleSheet.create({
     height: 58,
     borderRadius: 29,
     borderWidth: 2,
-    borderColor: TEAL,
+    borderColor: "#FFFFFF",
   },
   onlineBadge: {
     position: "absolute",
@@ -710,7 +712,7 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "rgba(245,158,11,0.15)",
+    backgroundColor: "rgba(245,158,11,0.2)",
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 10,
@@ -722,7 +724,7 @@ const s = StyleSheet.create({
   },
   proSubtitle: {
     fontSize: 12.5,
-    color: "#94a3b8",
+    color: "rgba(255,255,255,0.8)",
     marginBottom: 4,
   },
   verifiedRow: {
@@ -733,28 +735,22 @@ const s = StyleSheet.create({
   verifiedText: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#22c55e",
+    color: "#4ade80",
   },
   callCircleBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: TEAL,
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
     elevation: 6,
-    shadowColor: TEAL,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
   },
 
   // 2. Stepper Card
   stepperCard: {
-    backgroundColor: "#0d2135",
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
     paddingVertical: 18,
     paddingHorizontal: 12,
     marginBottom: 16,
@@ -781,7 +777,6 @@ const s = StyleSheet.create({
     right: "-50%",
     top: 15,
     height: 2,
-    backgroundColor: "rgba(255,255,255,0.12)",
     zIndex: 1,
   },
   connectingLineDone: {
@@ -822,26 +817,21 @@ const s = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 2,
   },
   stepLabel: {
     fontSize: 10,
-    color: "#64748b",
     textAlign: "center",
     lineHeight: 14,
     paddingHorizontal: 2,
   },
   stepLabelActive: {
-    color: TEAL,
     fontWeight: "700",
   },
   stepLabelDone: {
-    color: "#e2e8f0",
     fontWeight: "600",
   },
 
@@ -854,7 +844,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(0,188,212,0.2)",
     position: "relative",
-    elevation: 8,
+    elevation: 6,
   },
   map: {
     width: "100%",
@@ -889,7 +879,7 @@ const s = StyleSheet.create({
     top: 12,
     left: 14,
     right: 14,
-    backgroundColor: "rgba(8,24,38,0.9)",
+    backgroundColor: "rgba(8,24,38,0.92)",
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 9,
@@ -916,7 +906,7 @@ const s = StyleSheet.create({
     bottom: 12,
     left: 14,
     right: 14,
-    backgroundColor: "rgba(8,24,38,0.92)",
+    backgroundColor: "rgba(8,24,38,0.94)",
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -953,10 +943,8 @@ const s = StyleSheet.create({
 
   // 4. Detail Card
   detailCard: {
-    backgroundColor: "#0d2135",
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
     padding: 16,
     marginBottom: 14,
   },
@@ -969,23 +957,19 @@ const s = StyleSheet.create({
   detailTitle: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#64748b",
     letterSpacing: 1,
     textTransform: "uppercase",
   },
   detailRef: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#fff",
     marginTop: 2,
   },
   otpChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "rgba(0,188,212,0.14)",
     borderWidth: 1,
-    borderColor: "rgba(0,188,212,0.3)",
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 10,
@@ -993,26 +977,22 @@ const s = StyleSheet.create({
   otpChipLabel: {
     fontSize: 10,
     fontWeight: "800",
-    color: TEAL,
   },
   otpChipValue: {
     fontSize: 14,
     fontWeight: "800",
-    color: "#fff",
     letterSpacing: 2,
   },
   addressRow: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 8,
-    paddingTop: 6,
+    paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.06)",
   },
   addressText: {
     flex: 1,
     fontSize: 12,
-    color: "#94a3b8",
     lineHeight: 17,
   },
 
@@ -1020,10 +1000,8 @@ const s = StyleSheet.create({
   helpCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.03)",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
     padding: 14,
     gap: 12,
     marginBottom: 20,
@@ -1042,12 +1020,10 @@ const s = StyleSheet.create({
   helpTitle: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#fff",
     marginBottom: 2,
   },
   helpSub: {
     fontSize: 11,
-    color: "#64748b",
   },
   manageLink: {
     fontSize: 12.5,
@@ -1064,9 +1040,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: Platform.OS === "ios" ? 34 : 20,
-    backgroundColor: "rgba(8,24,38,0.96)",
     borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.08)",
   },
   ctaRow: {
     flexDirection: "row",
@@ -1100,7 +1074,6 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    backgroundColor: "rgba(239,68,68,0.12)",
     borderWidth: 1.5,
     borderColor: "#ef4444",
     borderRadius: 16,
