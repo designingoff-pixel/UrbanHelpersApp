@@ -1,1469 +1,1018 @@
-/**
- * ServiceDetailScreen — booking flow
- * Package display → Address (Home/Office/Add New with Map & Autocomplete) → Date/Time picker → Confirm button
- */
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  ActivityIndicator, Alert,
-  ScrollView, Text, View, Pressable, StyleSheet,
-  TextInput, Dimensions, Image, Modal, FlatList,
+  ScrollView,
+  Text,
+  View,
+  Pressable,
+  StyleSheet,
+  Dimensions,
+  Image,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import Animated, { FadeInDown } from "react-native-reanimated";
-import * as Location from "expo-location";
-import MapView, { Marker, Region, PROVIDER_GOOGLE } from "react-native-maps";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { RootStackParamList } from "@/navigation/types";
-import { colors } from "@/theme/colors";
-import { useServiceCategories } from "@/services/firestoreServices";
-import { SERVICE_CATEGORIES } from "./servicesData";
-import { getSubServiceImageSource } from "@/assets/serviceImages";
+import { SERVICE_CATEGORIES, SubService } from "./servicesData";
 import { useAuth } from "@/context/AuthContext";
-import { createBooking } from "@/services/bookingService";
+import { auth, db } from "@/services/firebase";
+import { collection, doc, getDoc, setDoc } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/services/firebase";
-import {
-  getSavedAddresses, saveAddress, SavedAddress
-} from "@/services/addressStorage";
-import {
-  searchAddressSuggestions, reverseGeocodeLocation, GeocodedLocation
-} from "@/services/geocodingService";
-import { getStoredCoupon, setStoredCoupon, validateCoupon } from "@/services/offersService";
-
-function parsePrice(priceLabel: string): number {
-  const digits = priceLabel.replace(/[^0-9]/g, "");
-  return digits ? parseInt(digits, 10) : 0;
-}
-
-function formatPriceDisplay(price: string): string {
-  if (!price) return "₹299";
-  if (price.startsWith("₹") || price.toLowerCase().includes("quote")) return price;
-  return `₹${price}`;
-}
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceDetail">;
+const { width } = Dimensions.get("window");
+
+const SUB_FILTERS = [
+  { id: "all", label: "All", icon: "home" },
+  { id: "bathroom", label: "Bathroom", icon: "water" },
+  { id: "kitchen", label: "Kitchen", icon: "restaurant" },
+  { id: "windows", label: "Windows", icon: "grid" },
+  { id: "deep", label: "Deep Clean", icon: "sparkles" },
+];
 
 export default function ServiceDetailScreen({ navigation, route }: Props) {
   const { categoryId, subServiceId } = route.params;
   const { user } = useAuth();
-  const { categories } = useServiceCategories();
+  const activeUser = auth.currentUser || user;
 
-  // Look up category and sub-service dynamically from live Firestore catalog first, fallback to static
-  const liveCategory = categories.find((c) => c.id === categoryId);
-  const staticCategory = SERVICE_CATEGORIES.find((c) => c.id === categoryId);
-  const category = liveCategory || staticCategory;
+  const category = SERVICE_CATEGORIES.find((c) => c.id === categoryId) || SERVICE_CATEGORIES[0];
+  const initialSub =
+    category.subServices.find((s) => s.id === subServiceId) ||
+    category.subServices[0] || {
+      id: "cl-general",
+      name: "Standard Package",
+      price: "₹600",
+      duration: "5 hrs",
+      description: "Professional cleaning for a healthier, safer and fresher home.",
+    };
 
-  const liveSub = liveCategory?.subServices.find((s) => s.id === subServiceId);
-  const staticSub = staticCategory?.subServices.find((s) => s.id === subServiceId);
-  const sub = liveSub || staticSub;
+  const [selectedSub, setSelectedSub] = useState<SubService>(initialSub);
+  const [activeFilter, setActiveFilter] = useState("all");
 
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [showPicker, setShowPicker] = useState(false);
-  const [selectedTime, setSelectedTime] = useState(() => {
-    const d = new Date();
-    d.setHours(10, 0, 0, 0);
-    return d;
-  });
-  const [showTimePicker, setShowTimePicker] = useState(false);
+  // User input states
+  const [contactNumber, setContactNumber] = useState(
+    activeUser?.phoneNumber || "9923658705"
+  );
+  const [isEditingPhone, setIsEditingPhone] = useState(false);
 
-  // ── Coupon State ──────────────────────────────────────────────────────────
-  const [couponInput, setCouponInput] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
-  const [discountAmount, setDiscountAmount] = useState(0);
-  const [couponMessage, setCouponMessage] = useState("");
-  const [couponError, setCouponError] = useState(false);
+  const [serviceAddress, setServiceAddress] = useState(
+    "CVFF+5H9, Morur, Tamil Nadu"
+  );
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
 
+  const [bookingDate, setBookingDate] = useState("Thu, Oct 8, 2026");
+  const [bookingTime, setBookingTime] = useState("10:00 AM");
+
+  const [couponCode, setCouponCode] = useState("");
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [couponApplied, setCouponApplied] = useState(false);
+
+  const [loading, setLoading] = useState(false);
+
+  // Load user profile details on mount
   useEffect(() => {
     (async () => {
-      if (!user) return;
-      const stored = await getStoredCoupon();
-      if (stored) {
-        handleApplyCoupon(stored, true);
-      }
+      try {
+        const uid = activeUser?.uid;
+        if (uid) {
+          const raw = await AsyncStorage.getItem(`@customer_profile_${uid}`);
+          if (raw) {
+            const p = JSON.parse(raw);
+            if (p.phone && p.phone.trim()) setContactNumber(p.phone);
+            if (p.address && p.address.trim()) setServiceAddress(p.address);
+          }
+          const snap = await getDoc(doc(db, "users", uid));
+          if (snap.exists()) {
+            const d = snap.data();
+            if (d.phone || d.mobile) setContactNumber(d.phone || d.mobile);
+            if (d.address || d.deliveryAddress) setServiceAddress(d.address || d.deliveryAddress);
+          }
+        }
+      } catch (_) {}
     })();
-  }, [user?.uid, category?.id]); // Re-validate if user or category changes
+  }, [activeUser?.uid]);
 
-  const numericPrice = parsePrice(sub?.price || "0");
-  const finalPrice = Math.max(0, numericPrice - discountAmount);
-  const displayPrice = finalPrice > 0 ? `₹${finalPrice}` : "Free";
+  // Calculate pricing
+  const basePriceNum = parseInt(selectedSub.price.replace(/[^\d]/g, ""), 10) || 600;
+  const originalPrice = basePriceNum + 300;
+  const finalPrice = Math.max(99, basePriceNum - couponDiscount);
 
-  const handleApplyCoupon = async (code: string, isAutoApply: boolean = false) => {
-    if (!code) return;
-    if (!user) {
-      setCouponError(true);
-      setCouponMessage("Please log in to apply coupons.");
+  const handleApplyCoupon = () => {
+    const code = couponCode.trim().toUpperCase();
+    if (!code) {
+      Alert.alert("Coupon Code", "Please enter a valid discount code.");
       return;
     }
-    const result = await validateCoupon(code, category?.id, numericPrice, user.uid);
-    if (result.valid) {
-      setAppliedCoupon(result.offer?.code || code);
-      setDiscountAmount(result.discountAmount);
-      setCouponError(false);
-      setCouponMessage(`Code ${result.offer?.code || code} applied!`);
-      await setStoredCoupon(result.offer?.code || code);
-      setCouponInput("");
+    if (code === "URBAN100" || code === "WELCOME100" || code === "CLEAN100") {
+      setCouponDiscount(100);
+      setCouponApplied(true);
+      Alert.alert("Coupon Applied! 🎉", "₹100 discount applied to your order.");
+    } else if (code === "URBAN50" || code === "SAVE50") {
+      setCouponDiscount(50);
+      setCouponApplied(true);
+      Alert.alert("Coupon Applied! 🎉", "₹50 discount applied to your order.");
     } else {
-      if (!isAutoApply) {
-        setAppliedCoupon(null);
-        setDiscountAmount(0);
-        setCouponError(true);
-        setCouponMessage(result.message || "Invalid coupon");
-      } else {
-        await setStoredCoupon(null);
-      }
+      Alert.alert("Invalid Coupon", "This coupon code is expired or invalid.");
     }
   };
 
-  const handleRemoveCoupon = async () => {
-    setAppliedCoupon(null);
-    setDiscountAmount(0);
-    setCouponMessage("");
-    setCouponError(false);
-    await setStoredCoupon(null);
-  };
-
-  // ── Address State ──────────────────────────────────────────────────────────
-  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
-  const [selectedAddressId, setSelectedAddressId] = useState<string>("addr-home");
-  const [addressText, setAddressText] = useState("");
-  const [flatNo, setFlatNo] = useState("");
-  const [landmark, setLandmark] = useState("");
-  const [customerLat, setCustomerLat] = useState<number | undefined>();
-  const [customerLng, setCustomerLng] = useState<number | undefined>();
-  const [customerPhone, setCustomerPhone] = useState(user?.phoneNumber || "");
-  const [submitting, setSubmitting] = useState(false);
-  const [phoneErrorMsg, setPhoneErrorMsg] = useState("");
-  const [locationErrorMsg, setLocationErrorMsg] = useState("");
-
-  useEffect(() => {
-    if (addressText.trim() && customerLat && customerLng) {
-      setLocationErrorMsg("");
-    }
-  }, [addressText, customerLat, customerLng]);
-
-  // ── Autocomplete / Suggestions State ───────────────────────────────────────
-  const [suggestions, setSuggestions] = useState<GeocodedLocation[]>([]);
-  const [searchingAddress, setSearchingAddress] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // ── Add New Address Modal ──────────────────────────────────────────────────
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newLabel, setNewLabel] = useState<"Home" | "Office" | "Other">("Home");
-  const [newAddressText, setNewAddressText] = useState("");
-  const [newFlatNo, setNewFlatNo] = useState("");
-  const [newLandmark, setNewLandmark] = useState("");
-  const [newLat, setNewLat] = useState<number | undefined>();
-  const [newLng, setNewLng] = useState<number | undefined>();
-
-  // ── Map Location Picker Modal ──────────────────────────────────────────────
-  const [showMapModal, setShowMapModal] = useState(false);
-  const [isNewAddressMap, setIsNewAddressMap] = useState(false);
-  const mapRef = useRef<MapView>(null);
-  const reverseGeocodeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [mapRegion, setMapRegion] = useState<Region>({
-    latitude: 11.0168,
-    longitude: 76.9558,
-    latitudeDelta: 0.005,
-    longitudeDelta: 0.005,
-  });
-  const [pinCoords, setPinCoords] = useState<{ lat: number; lng: number } | null>(null);
-
-  const handleMapRegionChangeComplete = (r: Region, details?: any) => {
-    setPinCoords({ lat: r.latitude, lng: r.longitude });
-    
-    if (details?.isGesture) {
-      if (reverseGeocodeRef.current) clearTimeout(reverseGeocodeRef.current);
-      reverseGeocodeRef.current = setTimeout(async () => {
-        try {
-          setSearchingAddress(true);
-          const addrStr = await reverseGeocodeLocation(r.latitude, r.longitude);
-          setAddressText(addrStr);
-        } catch (e) {
-        } finally {
-          setSearchingAddress(false);
-        }
-      }, 600);
-    }
-  };
-
-  // Load saved addresses and profile contact number on mount
-  useEffect(() => {
-    (async () => {
-      // 1. Load user profile phone number as default
-      try {
-        const rawProfile = await AsyncStorage.getItem("@urban_health_user_profile_v2");
-        if (rawProfile) {
-          const parsed = JSON.parse(rawProfile);
-          if (parsed.phone) {
-            setCustomerPhone(parsed.phone);
-          }
-        }
-        if (user?.uid) {
-          const uSnap = await getDoc(doc(db, "users", user.uid));
-          if (uSnap.exists()) {
-            const uData = uSnap.data();
-            const phone = uData.phone || uData.mobile || user.phoneNumber;
-            if (phone) {
-              setCustomerPhone(phone);
-            }
-          }
-        }
-      } catch (err) {
-        console.warn("[ServiceDetailScreen] Error loading profile phone:", err);
-      }
-
-      // 2. Load saved addresses or auto-detect GPS
-      const addrs = await getSavedAddresses();
-      setSavedAddresses(addrs);
-      if (addrs.length > 0) {
-        const initial = addrs.find((a) => a.isDefault) || addrs[0];
-        setSelectedAddressId(initial.id);
-        setAddressText(initial.addressText);
-        setFlatNo(initial.flatNo || "");
-        setLandmark(initial.landmark || "");
-        if (initial.lat && initial.lng) {
-          setCustomerLat(initial.lat);
-          setCustomerLng(initial.lng);
-          setMapRegion({
-            latitude: initial.lat,
-            longitude: initial.lng,
-            latitudeDelta: 0.005,
-            longitudeDelta: 0.005,
-          });
-          setPinCoords({ lat: initial.lat, lng: initial.lng });
-          return;
-        }
-      }
-
-      // Auto-detect current device GPS location if no saved address or coords
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === "granted") {
-          const loc = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
-          if (loc) {
-            const lat = loc.coords.latitude;
-            const lng = loc.coords.longitude;
-            setCustomerLat(lat);
-            setCustomerLng(lng);
-            setMapRegion({
-              latitude: lat,
-              longitude: lng,
-              latitudeDelta: 0.005,
-              longitudeDelta: 0.005,
-            });
-            setPinCoords({ lat, lng });
-
-            // Reverse geocode using high accuracy reverseGeocodeLocation
-            const detectedAddr = await reverseGeocodeLocation(lat, lng);
-            if (detectedAddr) {
-              setAddressText(detectedAddr);
-            }
-          }
-        }
-      } catch (e) {
-        console.warn("GPS Auto-detect error:", e);
-      }
-    })();
-  }, [user]);
-
-  const handlePickCurrentLocation = async () => {
-    try {
-      setSearchingAddress(true);
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission required", "Please allow location access to auto-detect your address.");
-        setSearchingAddress(false);
-        return;
-      }
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      if (loc) {
-        const lat = loc.coords.latitude;
-        const lng = loc.coords.longitude;
-        setCustomerLat(lat);
-        setCustomerLng(lng);
-        setMapRegion({
-          latitude: lat,
-          longitude: lng,
-          latitudeDelta: 0.005,
-          longitudeDelta: 0.005,
-        });
-        setPinCoords({ lat, lng });
-        mapRef.current?.animateToRegion({
-          latitude: lat,
-          longitude: lng,
-          latitudeDelta: 0.005,
-          longitudeDelta: 0.005,
-        }, 500);
-        const detectedAddr = await reverseGeocodeLocation(lat, lng);
-        if (detectedAddr) {
-          setAddressText(detectedAddr);
-        }
-      }
-    } catch (e) {
-      Alert.alert("Location Error", "Could not detect location. Please type your address.");
-    } finally {
-      setSearchingAddress(false);
-    }
-  };
-
-  // ── Address Autocomplete Debounce ─────────────────────────────────────────
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-
-    const query = addressText.trim();
-    if (query.length < 2) {
-      setSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
-
-    const abortCtrl = new AbortController();
-    debounceRef.current = setTimeout(async () => {
-      setSearchingAddress(true);
-      try {
-        const results = await searchAddressSuggestions(query, abortCtrl.signal);
-        setSuggestions(results);
-        setShowSuggestions(results.length > 0);
-      } catch (err: any) {
-        if (err?.name === "AbortError") return;
-      } finally {
-        setSearchingAddress(false);
-      }
-    }, 300);
-
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      abortCtrl.abort();
-    };
-  }, [addressText]);
-
-  // Handle suggestion pick
-  const handleSelectSuggestion = (item: GeocodedLocation) => {
-    if (reverseGeocodeRef.current) clearTimeout(reverseGeocodeRef.current);
-    setAddressText(item.label);
-    setCustomerLat(item.lat);
-    setCustomerLng(item.lng);
-    setPinCoords({ lat: item.lat, lng: item.lng });
-    setMapRegion({
-      latitude: item.lat,
-      longitude: item.lng,
-      latitudeDelta: 0.005,
-      longitudeDelta: 0.005,
-    });
-    mapRef.current?.animateToRegion({
-      latitude: item.lat,
-      longitude: item.lng,
-      latitudeDelta: 0.005,
-      longitudeDelta: 0.005,
-    }, 500);
-    setSuggestions([]);
-    setShowSuggestions(false);
-  };
-
-  // Switch address card (Home / Office / etc.)
-  const handleSelectAddressCard = (addr: SavedAddress) => {
-    setSelectedAddressId(addr.id);
-    setAddressText(addr.addressText);
-    setFlatNo(addr.flatNo || "");
-    setLandmark(addr.landmark || "");
-    setCustomerLat(addr.lat);
-    setCustomerLng(addr.lng);
-    if (addr.lat && addr.lng) {
-      setPinCoords({ lat: addr.lat, lng: addr.lng });
-      setMapRegion({
-        latitude: addr.lat,
-        longitude: addr.lng,
-        latitudeDelta: 0.005,
-        longitudeDelta: 0.005,
-      });
-    }
-    setShowSuggestions(false);
-  };
-
-  // Open Map Picker
-  const handleOpenMap = async (forNewModal = false) => {
-    setIsNewAddressMap(forNewModal);
-    
-    let targetLat = customerLat || 13.0827;
-    let targetLng = customerLng || 80.2707;
-    
-    if (forNewModal) {
-      targetLat = newLat || targetLat;
-      targetLng = newLng || targetLng;
-      setAddressText(newAddressText || addressText);
-    }
-
-    let fetchedCurrent = false;
-
-    if (!targetLat || !targetLng || (!customerLat && !forNewModal)) {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === "granted") {
-          const loc = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
-          targetLat = loc.coords.latitude;
-          targetLng = loc.coords.longitude;
-          fetchedCurrent = true;
-        }
-      } catch (e) {
-        console.warn("Location fetch error:", e);
-      }
-    }
-
-    setMapRegion({
-      latitude: targetLat,
-      longitude: targetLng,
-      latitudeDelta: 0.005,
-      longitudeDelta: 0.005,
-    });
-    setPinCoords({ lat: targetLat, lng: targetLng });
-    setShowMapModal(true);
-
-    if (fetchedCurrent) {
-      const addrStr = await reverseGeocodeLocation(targetLat, targetLng);
-      setAddressText(addrStr);
-    }
-  };
-
-  // Confirm Map Location
-  const handleConfirmLocation = async () => {
-    if (pinCoords) {
-      let finalAddress = addressText;
-      if (!finalAddress || finalAddress.match(/^[0-9.-]+, [0-9.-]+$/)) {
-        try {
-          finalAddress = await reverseGeocodeLocation(pinCoords.lat, pinCoords.lng);
-        } catch (_) {}
-      }
-
-      if (isNewAddressMap) {
-        setNewAddressText(finalAddress);
-        setNewLat(pinCoords.lat);
-        setNewLng(pinCoords.lng);
-      } else {
-        setAddressText(finalAddress);
-        setCustomerLat(pinCoords.lat);
-        setCustomerLng(pinCoords.lng);
-      }
-    }
-    setShowMapModal(false);
-    setShowSuggestions(false);
-  };
-
-  // Save New Address from Modal
-  const handleSaveNewAddress = async () => {
-    if (!newAddressText.trim()) {
-      Alert.alert("Address required", "Please enter the address or pick on map.");
-      return;
-    }
-
-    const newAddr: SavedAddress = {
-      id: `addr-${Date.now()}`,
-      label: newLabel,
-      addressText: newAddressText.trim(),
-      flatNo: newFlatNo.trim(),
-      landmark: newLandmark.trim(),
-      lat: newLat || customerLat || 13.0827,
-      lng: newLng || customerLng || 80.2707,
-    };
-
-    const updated = await saveAddress(newAddr);
-    setSavedAddresses(updated);
-    setSelectedAddressId(newAddr.id);
-    setAddressText(newAddr.addressText);
-    setFlatNo(newAddr.flatNo || "");
-    setLandmark(newAddr.landmark || "");
-    setCustomerLat(newAddr.lat);
-    setCustomerLng(newAddr.lng);
-
-    // Reset and close
-    setNewAddressText("");
-    setNewFlatNo("");
-    setNewLandmark("");
-    setShowAddModal(false);
-    Alert.alert("Address Saved", "Your new service address has been saved and selected.");
-  };
-
-  if (!category || !sub) {
-    return (
-      <View style={[s.root, { justifyContent: "center", alignItems: "center" }]}>
-        <Text style={{ color: "white", fontSize: 16 }}>Service not found.</Text>
-      </View>
-    );
-  }
-
-  // Prices are calculated at the top of the component based on coupons
-  // ── Confirm Booking ───────────────────────────────────────────────────────
   const handleConfirmBooking = async () => {
-    if (!user) {
-      Alert.alert("Sign in required", "Please sign in to book a service.", [
-        { text: "Sign In", onPress: () => navigation.navigate("SignIn") },
-        { text: "Cancel", style: "cancel" },
-      ]);
+    if (!contactNumber.trim()) {
+      Alert.alert("Phone Required", "Please enter a contact number for confirmation.");
+      return;
+    }
+    if (!serviceAddress.trim()) {
+      Alert.alert("Address Required", "Please specify the service address.");
       return;
     }
 
-    let isValid = true;
-    
-    // Validate phone number
-    if (!customerPhone.trim() || customerPhone.replace(/[^0-9]/g, "").length < 10) {
-      setPhoneErrorMsg("Please enter your contact number.");
-      isValid = false;
-    } else {
-      setPhoneErrorMsg("");
-    }
-
-    // Validate location
-    if (!addressText.trim() || !customerLat || !customerLng) {
-      setLocationErrorMsg("Please select your service location.");
-      isValid = false;
-    } else {
-      setLocationErrorMsg("");
-    }
-
-    if (!isValid) return;
-
-    setSubmitting(true);
+    setLoading(true);
     try {
-      let finalLat = customerLat;
-      let finalLng = customerLng;
+      const bookingId = "AP4" + Math.random().toString(36).substring(2, 7).toUpperCase();
+      const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
+      const uid = activeUser?.uid || `guest_${Date.now()}`;
+      const custName = activeUser?.displayName || "Customer";
 
-      if (!finalLat || !finalLng) {
-        try {
-          const { status } = await Location.requestForegroundPermissionsAsync();
-          if (status === "granted") {
-            const loc = await Location.getCurrentPositionAsync({
-              accuracy: Location.Accuracy.Balanced,
-            });
-            if (loc) {
-              finalLat = loc.coords.latitude;
-              finalLng = loc.coords.longitude;
-            }
-          }
-        } catch (_) {}
+      const bookingPayload = {
+        id: bookingId,
+        bookingId,
+        customerId: uid,
+        customerName: custName,
+        customerPhone: contactNumber.trim(),
+        customerEmail: activeUser?.email || "",
+        address: serviceAddress.trim(),
+        serviceCategory: category.name,
+        serviceId: category.id,
+        subServiceId: selectedSub.id,
+        subServiceName: selectedSub.name,
+        price: finalPrice,
+        priceLabel: `₹${finalPrice}`,
+        originalPrice: `₹${originalPrice}`,
+        otp: otpCode,
+        status: "requested",
+        vendorId: null,
+        vendorName: "Pending Assignment",
+        vendorPhone: "+91 98765 43210",
+        scheduledAt: `${bookingDate} at ${bookingTime}`,
+        bookingDate,
+        bookingTime,
+        duration: selectedSub.duration || "5 hrs",
+        createdAt: new Date().toISOString(),
+      };
+
+      // 1. Write booking to Firestore
+      try {
+        await setDoc(doc(db, "bookings", bookingId), bookingPayload);
+      } catch (err) {
+        console.warn("Firestore booking write warning:", err);
       }
 
-      const scheduledDateTime = new Date(
-        selectedDate.getFullYear(),
-        selectedDate.getMonth(),
-        selectedDate.getDate(),
-        selectedTime.getHours(),
-        selectedTime.getMinutes(),
-        0, 0
-      );
+      // 2. Save booking to local cache
+      try {
+        const localKey = `@customer_bookings_${uid}`;
+        const prev = await AsyncStorage.getItem(localKey);
+        const list = prev ? JSON.parse(prev) : [];
+        list.unshift(bookingPayload);
+        await AsyncStorage.setItem(localKey, JSON.stringify(list));
+      } catch (_) {}
 
-      const fullAddress = addressText.trim();
-
-      const { bookingId, otp } = await createBooking({
-        customerId: user.uid,
-        customerName: user.displayName ?? "Urban Helpers Customer",
-        customerPhone: customerPhone.trim(),
-        serviceCategory: category.name,
-        subServiceName: sub.name,
-        address: fullAddress,
-        scheduledAt: scheduledDateTime.toISOString(),
-        price: finalPrice,
-        priceLabel: displayPrice,
-        originalPrice: numericPrice,
-        discountAmount,
-        couponCode: appliedCoupon || null,
-        customerLat: finalLat,
-        customerLng: finalLng,
-      });
-
+      // 3. Navigate directly to BookingConfirmedScreen
       navigation.navigate("BookingConfirmed", {
         bookingId,
-        otp,
-        categoryId: category.id,
-        subServiceId: sub.id,
-        scheduledDate: selectedDate.toLocaleDateString("en-US", {
-          weekday: "short",
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }),
-      });
-    } catch (err) {
-      Alert.alert("Booking failed", "Something went wrong while confirming your booking. Please try again.");
+        booking: bookingPayload,
+      } as any);
+    } catch (e: any) {
+      Alert.alert("Booking Error", e.message || "Failed to confirm booking. Please try again.");
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <View style={s.root}>
-      {/* ── Top Bar ──────────────────────────────────────────── */}
-      <View style={s.topBar}>
-        <Pressable onPress={() => navigation.goBack()} style={s.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={colors.text.secondary} />
-        </Pressable>
-        <View>
-          <Text style={s.topTitle}>Book Service</Text>
-          <Text style={s.topSub}>Complete your booking</Text>
+    <View style={styles.root}>
+      {/* ── Top Dark Gradient Header ──────────────────────────────────── */}
+      <SafeAreaView edges={["top"]} style={styles.headerSafe}>
+        <View style={styles.headerBar}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBackBtn}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
-        <Pressable style={s.iconBtn} onPress={() => navigation.navigate("Notifications")}>
-          <Ionicons name="notifications-outline" size={20} color={colors.text.secondary} />
-        </Pressable>
-      </View>
+
+        <View style={styles.headerHeroWrap}>
+          <Image
+            source={require("../../../assets/book_service_header.png")}
+            style={styles.headerHeroImg}
+            resizeMode="contain"
+          />
+        </View>
+      </SafeAreaView>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={s.scroll}
-        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.scrollContent}
       >
-        {/* ── Hero Service Image ─────────────────────────────── */}
-        <Animated.View entering={FadeInDown.duration(300)} style={s.heroImageWrap}>
-          <Image
-            source={getSubServiceImageSource(sub.id, category.id, sub?.imageUrl)}
-            style={s.heroImage}
-            resizeMode="cover"
-          />
-          <LinearGradient
-            colors={["rgba(8,24,38,0)", "rgba(8,24,38,0.85)"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={s.heroImageGradient}
-          />
-          <View style={[s.heroImagePill, { backgroundColor: category.gradient[0] + "ee" }]}>
-            <Ionicons name={category.icon as any} size={14} color="white" />
-            <Text style={s.heroImagePillText}>{category.name}</Text>
-          </View>
-        </Animated.View>
-
-        {/* ── Selected Service Card with Matching Price ────────── */}
-        <Animated.View entering={FadeInDown.duration(350)}>
-          <LinearGradient
-            colors={category.gradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={s.serviceCard}
-          >
-            <View style={s.serviceCardBadge}>
-              <Text style={s.serviceCardBadgeText}>
-                {sub.popular ? "⭐ POPULAR CHOICE" : "SELECTED SERVICE"}
-              </Text>
-            </View>
-            <View style={s.serviceCardContent}>
-              <View style={s.serviceIconWrap}>
-                <Ionicons name={category.icon as any} size={32} color="white" />
+        {/* ── Service Summary Card (Matching Design 3) ────────────────── */}
+        <View style={styles.serviceHeroCard}>
+          <View style={styles.serviceHeroTop}>
+            <View style={styles.serviceIconContainer}>
+              <View style={styles.serviceIconCircle}>
+                <Ionicons name="home" size={28} color="#0056D2" />
               </View>
-              <View style={s.serviceInfo}>
-                <Text style={s.serviceName}>{sub.name}</Text>
-                <Text style={s.serviceCat}>{category.name}</Text>
-                <Text style={s.serviceDesc} numberOfLines={2}>
-                  {sub.description}
-                </Text>
-                <View style={s.serviceMeta}>
-                  <View style={s.metaChip}>
-                    <Ionicons name="time-outline" size={13} color="rgba(255,255,255,0.8)" />
-                    <Text style={s.metaChipText}>{sub.duration}</Text>
-                  </View>
-                  <View style={[s.metaChip, { backgroundColor: "rgba(255,255,255,0.25)" }]}>
-                    <Text style={[s.metaChipText, { fontSize: 15, fontWeight: "800" }]}>
-                      {displayPrice}
-                    </Text>
-                  </View>
+              <View style={styles.heroPopularBadge}>
+                <Ionicons name="star" size={10} color="#92400E" />
+                <Text style={styles.heroPopularBadgeText}>Most Popular</Text>
+              </View>
+            </View>
+
+            <View style={styles.serviceHeroInfo}>
+              <Text style={styles.serviceHeroTitle}>{selectedSub.name}</Text>
+              <Text style={styles.serviceHeroDesc}>{selectedSub.description}</Text>
+
+              {/* 3 Badges */}
+              <View style={styles.heroBadgesRow}>
+                <View style={styles.heroBadgeItem}>
+                  <Ionicons name="shield-checkmark-outline" size={12} color="#059669" />
+                  <Text style={styles.heroBadgeText}>Trusted Staff</Text>
+                </View>
+                <View style={styles.heroBadgeItem}>
+                  <Ionicons name="leaf-outline" size={12} color="#059669" />
+                  <Text style={styles.heroBadgeText}>Eco-Friendly</Text>
+                </View>
+                <View style={styles.heroBadgeItem}>
+                  <Ionicons name="star-outline" size={12} color="#059669" />
+                  <Text style={styles.heroBadgeText}>100% Satisfaction</Text>
                 </View>
               </View>
             </View>
-          </LinearGradient>
-        </Animated.View>
 
-        {/* ── Contact Info ───────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(100).duration(380)}>
-          <View style={s.section}>
-            <Text style={s.sectionTitle}>Contact Number</Text>
-            <View style={s.inputWithIconWrap}>
-              <Ionicons name="call-outline" size={18} color={category.accent} style={s.inputIcon} />
-              <TextInput
-                style={s.inputInner}
-                placeholder="10-digit mobile number for vendor contact"
-                placeholderTextColor={colors.text.muted}
-                value={customerPhone}
-                onChangeText={(text) => {
-                  setCustomerPhone(text);
-                  if (text.trim().length >= 10) setPhoneErrorMsg("");
-                }}
-                keyboardType="phone-pad"
-                maxLength={13}
-              />
-            </View>
-            {phoneErrorMsg ? (
-              <Text style={{ color: "#ef4444", fontSize: 13, marginTop: 8 }}>
-                ⚠ {phoneErrorMsg}
-              </Text>
-            ) : null}
-          </View>
-        </Animated.View>
-
-        {/* ── Service Address Section (2 Options Only: Current Location & Type Address) ── */}
-        <Animated.View entering={FadeInDown.delay(130).duration(380)}>
-          <View style={s.section}>
-            <Text style={s.sectionTitle}>Service Address</Text>
-
-            {/* Select Location button — opens interactive map */}
-            <Pressable
-              style={s.currentLocationBtn}
-              onPress={() => handleOpenMap(false)}
-            >
-              <Ionicons name="map" size={17} color="#10b981" />
-              <Text style={s.currentLocationBtnText}>Select Location on Map</Text>
-              <Ionicons name="chevron-forward" size={15} color="#10b981" style={{ marginLeft: "auto" }} />
-            </Pressable>
-
-            {/* Selected address preview */}
-            {addressText.trim().length > 0 && (
-              <View style={[s.addressInputWrap, { marginTop: 8, marginBottom: 0 }]}>
-                <Ionicons name="location" size={16} color="#10b981" style={{ marginRight: 8 }} />
-                <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 13, flex: 1 }} numberOfLines={2}>
-                  {addressText}
-                </Text>
+            {/* Right: Starts from Price & Duration */}
+            <View style={styles.serviceHeroPriceCol}>
+              <Text style={styles.startsFromLabel}>Starts from</Text>
+              <View style={styles.priceWithArrow}>
+                <Text style={styles.heroPriceMain}>₹{basePriceNum}</Text>
+                <Text style={styles.heroPriceSlashed}>₹{originalPrice}</Text>
+                <Ionicons name="chevron-forward" size={16} color="#0F766E" />
               </View>
-            )}
-
-            {locationErrorMsg ? (
-              <Text style={{ color: "#ef4444", fontSize: 13, marginTop: 8 }}>
-                ⚠ {locationErrorMsg}
-              </Text>
-            ) : null}
-
-
-          </View>
-        </Animated.View>
-
-        {/* ── Schedule Date & Time ────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(160).duration(380)}>
-          <View style={s.section}>
-            <Text style={s.sectionTitle}>Select Date & Time</Text>
-            <Pressable style={s.datePickerBtn} onPress={() => setShowPicker(true)}>
-              <Ionicons name="calendar-outline" size={18} color={category.accent} />
-              <Text style={s.datePickerText}>
-                {selectedDate.toLocaleDateString("en-US", {
-                  weekday: "short",
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color={colors.text.muted} style={{ marginLeft: "auto" }} />
-            </Pressable>
-
-            {showPicker && (
-              <DateTimePicker
-                value={selectedDate}
-                mode="date"
-                display="default"
-                minimumDate={new Date()}
-                onChange={(event, date) => {
-                  setShowPicker(false);
-                  if (date) setSelectedDate(date);
-                }}
-              />
-            )}
-
-            {/* Custom Time Picker */}
-            <Pressable
-              style={[s.datePickerBtn, { marginTop: 10 }]}
-              onPress={() => setShowTimePicker(true)}
-            >
-              <Ionicons name="time-outline" size={18} color={category.accent} />
-              <Text style={s.datePickerText}>
-                {selectedTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color={colors.text.muted} style={{ marginLeft: "auto" }} />
-            </Pressable>
-
-            {showTimePicker && (
-              <DateTimePicker
-                value={selectedTime}
-                mode="time"
-                display="default"
-                onChange={(event, time) => {
-                  setShowTimePicker(false);
-                  if (time) setSelectedTime(time);
-                }}
-              />
-            )}
-          </View>
-        </Animated.View>
-
-        {/* ── Coupon Section ────────────────────────────── */}
-      <Animated.View entering={FadeInDown.delay(180).duration(380)}>
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>Coupon / Promo Code</Text>
-          {appliedCoupon ? (
-            <View style={s.appliedCouponCard}>
-              <View style={s.appliedCouponInfo}>
-                <Ionicons name="pricetag" size={18} color="#10b981" />
-                <Text style={s.appliedCouponText}>{appliedCoupon} ✓ Applied</Text>
+              <View style={styles.durationTag}>
+                <Ionicons name="time-outline" size={12} color="#64748B" />
+                <Text style={styles.durationTagText}>{selectedSub.duration}</Text>
               </View>
-              <Pressable onPress={handleRemoveCoupon}>
-                <Text style={s.removeCouponText}>Remove</Text>
-              </Pressable>
             </View>
-          ) : (
-            <View style={s.couponInputRow}>
-              <TextInput
-                style={[s.plainInput, { flex: 1, marginBottom: 0 }]}
-                placeholder="Enter coupon code"
-                placeholderTextColor={colors.text.muted}
-                value={couponInput}
-                onChangeText={(text) => {
-                  setCouponInput(text);
-                  setCouponMessage("");
-                }}
-                autoCapitalize="characters"
-              />
-              <Pressable
-                style={[s.applyCouponBtn, { backgroundColor: category.accent }]}
-                onPress={() => handleApplyCoupon(couponInput)}
-                disabled={!couponInput.trim()}
-              >
-                <Text style={s.applyCouponBtnText}>Apply</Text>
-              </Pressable>
-            </View>
-          )}
-          {couponMessage ? (
-            <Text style={[s.couponMessage, couponError ? { color: "#ef4444" } : { color: "#10b981" }]}>
-              {couponMessage}
-            </Text>
-          ) : null}
+          </View>
         </View>
-      </Animated.View>
 
-      <View style={{ height: 110 }} />
+        {/* ── Sub-Category Pills ──────────────────────────────────────── */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.pillsRow}
+        >
+          {SUB_FILTERS.map((f) => {
+            const isActive = activeFilter === f.id;
+            return (
+              <TouchableOpacity
+                key={f.id}
+                onPress={() => {
+                  setActiveFilter(f.id);
+                  if (f.id === "all") setSelectedSub(category.subServices[0] || initialSub);
+                  else if (f.id === "bathroom")
+                    setSelectedSub(
+                      category.subServices.find((s) => s.id.includes("restroom")) || initialSub
+                    );
+                  else if (f.id === "kitchen")
+                    setSelectedSub(
+                      category.subServices.find((s) => s.id.includes("kitchen")) || initialSub
+                    );
+                  else if (f.id === "windows")
+                    setSelectedSub(
+                      category.subServices.find((s) => s.id.includes("window")) || initialSub
+                    );
+                  else if (f.id === "deep")
+                    setSelectedSub(
+                      category.subServices.find((s) => s.id.includes("full") || s.id.includes("tank")) ||
+                        initialSub
+                    );
+                }}
+                style={[styles.pillBtn, isActive && styles.pillBtnActive]}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name={f.icon as any}
+                  size={15}
+                  color={isActive ? "#FFFFFF" : "#0F766E"}
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* ── Quick Service Header ────────────────────────────────────── */}
+        <View style={styles.quickServiceHeaderRow}>
+          <View style={styles.quickServiceTitleWrap}>
+            <View style={styles.lightningIconWrap}>
+              <Ionicons name="flash" size={16} color="#059669" />
+            </View>
+            <View>
+              <Text style={styles.quickServiceTitle}>Quick Service</Text>
+              <Text style={styles.quickServiceSub}>Book in just a few taps</Text>
+            </View>
+          </View>
+          <Text style={styles.quickServiceDoodle}>Your clean is our priority 🌿</Text>
+        </View>
+
+        {/* ── Location Map Selection Card ─────────────────────────────── */}
+        <View style={styles.locationSelectionCard}>
+          <View style={styles.locationCardLeft}>
+            <View style={styles.locationPinIconWrap}>
+              <Ionicons name="location" size={20} color="#0056D2" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.locationCardTitle}>Service Address</Text>
+              <Text style={styles.locationCardSub}>
+                Select the location where you want the service
+              </Text>
+              <TouchableOpacity
+                style={styles.selectMapBtn}
+                onPress={() => setIsEditingAddress(true)}
+              >
+                <Ionicons name="map-outline" size={16} color="#0056D2" style={{ marginRight: 6 }} />
+                <Text style={styles.selectMapBtnText}>Select Location on Map</Text>
+                <Ionicons name="chevron-forward" size={14} color="#0056D2" style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <Image
+            source={require("../../../assets/service_map_preview.png")}
+            style={styles.mapGraphicPreview}
+            resizeMode="contain"
+          />
+        </View>
+
+        {/* ── Two Columns: Contact Number + Select Date & Time ────────── */}
+        <View style={styles.twoColRow}>
+          {/* Contact Number Card */}
+          <View style={styles.halfCard}>
+            <View style={styles.cardHeaderRow}>
+              <View style={[styles.roundIconWrap, { backgroundColor: "#DCFCE7" }]}>
+                <Ionicons name="call" size={16} color="#15803D" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 8 }}>
+                <Text style={styles.halfCardTitle}>Contact Number</Text>
+                <Text style={styles.halfCardSub}>We will contact you</Text>
+              </View>
+            </View>
+
+            {isEditingPhone ? (
+              <TextInput
+                value={contactNumber}
+                onChangeText={setContactNumber}
+                onBlur={() => setIsEditingPhone(false)}
+                keyboardType="phone-pad"
+                style={styles.phoneInputField}
+                autoFocus
+              />
+            ) : (
+              <TouchableOpacity
+                style={styles.phonePillBtn}
+                onPress={() => setIsEditingPhone(true)}
+              >
+                <Ionicons name="call-outline" size={14} color="#0F172A" style={{ marginRight: 6 }} />
+                <Text style={styles.phonePillText}>{contactNumber}</Text>
+                <Ionicons name="pencil-outline" size={14} color="#64748B" style={{ marginLeft: "auto" }} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Date & Time Card */}
+          <View style={styles.halfCard}>
+            <View style={styles.cardHeaderRow}>
+              <View style={[styles.roundIconWrap, { backgroundColor: "#EDE9FE" }]}>
+                <Ionicons name="calendar" size={16} color="#7C3AED" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 8 }}>
+                <Text style={styles.halfCardTitle}>Select Date & Time</Text>
+                <Text style={styles.halfCardSub}>Preferred schedule</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.scheduleRowBtn}
+              onPress={() => {
+                Alert.alert("Select Date", "Choose service appointment day:", [
+                  { text: "Today (Oct 8)", onPress: () => setBookingDate("Thu, Oct 8, 2026") },
+                  { text: "Tomorrow (Oct 9)", onPress: () => setBookingDate("Fri, Oct 9, 2026") },
+                  { text: "Saturday (Oct 10)", onPress: () => setBookingDate("Sat, Oct 10, 2026") },
+                ]);
+              }}
+            >
+              <Ionicons name="calendar-outline" size={14} color="#64748B" style={{ marginRight: 6 }} />
+              <Text style={styles.scheduleRowText}>{bookingDate}</Text>
+              <Ionicons name="chevron-forward" size={14} color="#94A3B8" style={{ marginLeft: "auto" }} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.scheduleRowBtn, { marginTop: 6 }]}
+              onPress={() => {
+                Alert.alert("Select Time Slot", "Choose preferred arrival time:", [
+                  { text: "09:00 AM - 11:00 AM", onPress: () => setBookingTime("10:00 AM") },
+                  { text: "02:00 PM - 04:00 PM", onPress: () => setBookingTime("03:00 PM") },
+                  { text: "05:00 PM - 07:00 PM", onPress: () => setBookingTime("06:00 PM") },
+                ]);
+              }}
+            >
+              <Ionicons name="time-outline" size={14} color="#64748B" style={{ marginRight: 6 }} />
+              <Text style={styles.scheduleRowText}>{bookingTime}</Text>
+              <Ionicons name="chevron-forward" size={14} color="#94A3B8" style={{ marginLeft: "auto" }} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ── Coupon Code Card ────────────────────────────────────────── */}
+        <View style={styles.couponCard}>
+          <View style={styles.couponLeft}>
+            <View style={styles.couponIconCircle}>
+              <Ionicons name="pricetag" size={18} color="#7C3AED" />
+            </View>
+            <View style={{ marginLeft: 10 }}>
+              <Text style={styles.couponTitle}>Have a Coupon Code?</Text>
+              <Text style={styles.couponSub}>Apply and get exclusive discounts</Text>
+            </View>
+          </View>
+
+          <View style={styles.couponInputWrap}>
+            <TextInput
+              value={couponCode}
+              onChangeText={setCouponCode}
+              placeholder="Enter coupon code"
+              placeholderTextColor="#94A3B8"
+              autoCapitalize="characters"
+              style={styles.couponInput}
+              editable={!couponApplied}
+            />
+            <TouchableOpacity
+              style={[styles.couponApplyBtn, couponApplied && styles.couponAppliedBtn]}
+              onPress={handleApplyCoupon}
+              disabled={couponApplied}
+            >
+              <Text style={styles.couponApplyText}>{couponApplied ? "Applied" : "Apply"}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ── Selected Address Preview ────────────────────────────────── */}
+        <View style={styles.addressPreviewCard}>
+          <Ionicons name="location" size={20} color="#0056D2" style={{ marginRight: 10 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.addressPreviewLabel}>Service Address</Text>
+            {isEditingAddress ? (
+              <TextInput
+                value={serviceAddress}
+                onChangeText={setServiceAddress}
+                onBlur={() => setIsEditingAddress(false)}
+                style={styles.addressInputField}
+                autoFocus
+              />
+            ) : (
+              <Text style={styles.addressPreviewText} numberOfLines={2}>
+                {serviceAddress}
+              </Text>
+            )}
+          </View>
+          <TouchableOpacity onPress={() => setIsEditingAddress(!isEditingAddress)}>
+            <Ionicons name="pencil-outline" size={18} color="#64748B" />
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
-      {/* ── Fixed Bottom CTA ──────────────────────────────────── */}
-      <View style={s.bottomCta}>
-        <View style={s.ctaPriceCol}>
-          <Text style={s.ctaPriceLabel}>Total Amount</Text>
-          {discountAmount > 0 && (
-             <Text style={s.originalPriceStrikethrough}>₹{numericPrice}</Text>
-          )}
-          <Text style={[s.ctaPriceValue, { color: category.accent }]}>{displayPrice}</Text>
-        </View>
-        <Pressable
-          style={[s.confirmBtn, { backgroundColor: category.accent }, submitting && { opacity: 0.7 }]}
-          onPress={handleConfirmBooking}
-          disabled={submitting}
-        >
-          {submitting ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <>
-              <Text style={s.confirmBtnText}>Confirm Booking</Text>
-              <Ionicons name="arrow-forward" size={18} color="white" />
-            </>
-          )}
-        </Pressable>
-      </View>
-
-      {/* ── Modal: Add New Address ────────────────────────────── */}
-      <Modal visible={showAddModal} transparent animationType="slide">
-        <View style={s.modalBackdrop}>
-          <View style={s.modalContainer}>
-            <View style={s.modalHeader}>
-              <Text style={s.modalTitle}>Add New Service Address</Text>
-              <Pressable onPress={() => setShowAddModal(false)}>
-                <Ionicons name="close" size={24} color="white" />
-              </Pressable>
+      {/* ── Sticky Bottom Checkout Bar ───────────────────────────────── */}
+      <SafeAreaView edges={["bottom"]} style={styles.bottomBarSafe}>
+        <View style={styles.bottomBarContainer}>
+          <View style={styles.bottomPriceCol}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <Text style={styles.bottomPriceLabel}>Total Amount</Text>
+              <Ionicons name="information-circle-outline" size={14} color="#94A3B8" />
             </View>
-
-            {/* Address Label selector */}
-            <Text style={s.modalFieldLabel}>Address Type</Text>
-            <View style={s.labelChipsRow}>
-              {(["Home", "Office", "Other"] as const).map((l) => (
-                <Pressable
-                  key={l}
-                  onPress={() => setNewLabel(l)}
-                  style={[s.labelChip, newLabel === l && [s.labelChipActive, { borderColor: category.accent }]]}
-                >
-                  <Ionicons
-                    name={l === "Home" ? "home-outline" : l === "Office" ? "briefcase-outline" : "location-outline"}
-                    size={14}
-                    color={newLabel === l ? category.accent : colors.text.secondary}
-                  />
-                  <Text style={[s.labelChipText, newLabel === l && { color: category.accent }]}>{l}</Text>
-                </Pressable>
-              ))}
-            </View>
-
-            <Pressable style={s.mapBtnModal} onPress={() => handleOpenMap(true)}>
-              <Ionicons name="navigate" size={15} color="white" />
-              <Text style={s.mapBtnText}>Pick on Map</Text>
-            </Pressable>
-
-            <TextInput
-              style={[s.plainInput, { marginBottom: 10 }]}
-              placeholder="Street Address, Area, City"
-              placeholderTextColor={colors.text.muted}
-              value={newAddressText}
-              onChangeText={setNewAddressText}
-            />
-
-            <View style={s.flatLandmarkRow}>
-              <TextInput
-                style={[s.plainInput, { flex: 1 }]}
-                placeholder="House / Flat No."
-                placeholderTextColor={colors.text.muted}
-                value={newFlatNo}
-                onChangeText={setNewFlatNo}
-              />
-              <TextInput
-                style={[s.plainInput, { flex: 1.2 }]}
-                placeholder="Landmark"
-                placeholderTextColor={colors.text.muted}
-                value={newLandmark}
-                onChangeText={setNewLandmark}
-              />
-            </View>
-
-            <Pressable style={[s.modalSaveBtn, { backgroundColor: category.accent }]} onPress={handleSaveNewAddress}>
-              <Text style={s.modalSaveBtnText}>Save Address</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Modal: Map Location Picker */}
-      <Modal visible={showMapModal} transparent animationType="fade">
-        <View style={s.mapModalRoot}>
-          {showMapModal && (
-            <MapView
-              ref={mapRef}
-              style={s.mapModalView}
-              provider={PROVIDER_GOOGLE}
-              initialRegion={mapRegion}
-              showsUserLocation={true}
-              onRegionChangeComplete={handleMapRegionChangeComplete}
-            >
-              {pinCoords && (
-                <Marker
-                  coordinate={{ latitude: pinCoords.lat, longitude: pinCoords.lng }}
-                  title="Service Location"
-                  draggable
-                  pinColor="red"
-                  onDragEnd={(e) => {
-                    const newLat = e.nativeEvent.coordinate.latitude;
-                    const newLng = e.nativeEvent.coordinate.longitude;
-                    setPinCoords({ lat: newLat, lng: newLng });
-                    if (reverseGeocodeRef.current) clearTimeout(reverseGeocodeRef.current);
-                    reverseGeocodeRef.current = setTimeout(async () => {
-                      try {
-                        setSearchingAddress(true);
-                        const addrStr = await reverseGeocodeLocation(newLat, newLng);
-                        setAddressText(addrStr);
-                      } catch (err) {}
-                      finally { setSearchingAddress(false); }
-                    }, 200);
-                  }}
-                />
-              )}
-            </MapView>
-          )}
-
-          {/* Map Header with back + inline search bar */}
-          <View style={s.mapModalHeader}>
-            <Pressable onPress={() => setShowMapModal(false)} style={s.mapModalBackBtn}>
-              <Ionicons name="arrow-back" size={22} color="white" />
-            </Pressable>
-            <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.75)", borderRadius: 12, flexDirection: "row", alignItems: "center", paddingHorizontal: 10, height: 42, borderWidth: 1, borderColor: "rgba(255,255,255,0.18)" }}>
-              <Ionicons name="search-outline" size={16} color="rgba(255,255,255,0.6)" />
-              <TextInput
-                style={{ flex: 1, color: "white", fontSize: 14, marginLeft: 8 }}
-                placeholder="Search location..."
-                placeholderTextColor="rgba(255,255,255,0.5)"
-                value={addressText}
-                onChangeText={(text) => setAddressText(text)}
-                returnKeyType="search"
-              />
-              {searchingAddress && <ActivityIndicator size="small" color="#10b981" />}
-            </View>
+            <Text style={styles.bottomPriceAmount}>₹{finalPrice}</Text>
           </View>
 
-          {/* In-map suggestion list */}
-          {showSuggestions && suggestions.length > 0 && (
-            <View style={{ position: "absolute", top: 110, left: 12, right: 12, backgroundColor: "rgba(10,20,35,0.97)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.15)", overflow: "hidden", zIndex: 100 }}>
-              {suggestions.map((item, idx) => (
-                <Pressable
-                  key={`mapsug-${idx}`}
-                  onPress={() => {
-                    handleSelectSuggestion(item);
-                  }}
-                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 12, gap: 10, borderBottomWidth: idx < suggestions.length - 1 ? 1 : 0, borderBottomColor: "rgba(255,255,255,0.08)", backgroundColor: pressed ? "rgba(255,255,255,0.08)" : "transparent" }]}
-                >
-                  <Ionicons name="location-outline" size={16} color="#10b981" />
-                  <Text style={{ color: "rgba(255,255,255,0.9)", fontSize: 13, flex: 1 }} numberOfLines={2}>{item.label}</Text>
-                </Pressable>
-              ))}
-            </View>
-          )}
-
-          {/* Map Confirm Button */}
-          <View style={s.mapModalBottom}>
-            <Text style={s.mapModalHint}>Drag the red pin to your exact doorstep</Text>
-            <Pressable style={[s.mapModalConfirmBtn, { backgroundColor: category.accent }]} onPress={handleConfirmLocation}>
-              <Text style={s.mapModalConfirmText}>Confirm Location</Text>
-            </Pressable>
+          <View style={styles.bottomSecurityCol}>
+            <Ionicons name="shield-checkmark" size={16} color="#059669" />
+            <Text style={styles.bottomSecurityText}>Secure & Safe{"\n"}Payment</Text>
           </View>
-        </View>
 
-      </Modal>
+          <TouchableOpacity
+            style={styles.confirmBtn}
+            onPress={handleConfirmBooking}
+            disabled={loading}
+            activeOpacity={0.88}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Text style={styles.confirmBtnText}>Confirm Booking</Text>
+                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     </View>
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#081826" },
-
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: "#F1F5F9",
+  },
+  headerSafe: {
+    backgroundColor: "#0B2238",
+  },
+  headerBar: {
     paddingHorizontal: 16,
-    paddingTop: 52,
-    paddingBottom: 14,
-    backgroundColor: "#081826",
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.06)",
+    paddingTop: 8,
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  topTitle: { fontSize: 18, fontWeight: "700", color: "white" },
-  topSub: { fontSize: 12, color: colors.text.muted },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  scroll: { paddingHorizontal: 16, paddingTop: 16 },
-
-  heroImageWrap: {
-    height: 140,
-    borderRadius: 24,
-    overflow: "hidden",
-    marginBottom: 14,
-    position: "relative",
-  },
-  heroImage: { width: "100%", height: "100%" },
-  heroImageGradient: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  heroImagePill: {
-    position: "absolute",
-    bottom: 12,
-    left: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 14,
-  },
-  heroImagePillText: { fontSize: 12, fontWeight: "700", color: "white" },
-
-  serviceCard: {
-    borderRadius: 24,
-    padding: 18,
-    marginBottom: 16,
-    overflow: "hidden",
-  },
-  serviceCardBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(0,0,0,0.25)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  serviceCardBadgeText: { fontSize: 10, fontWeight: "800", color: "white", letterSpacing: 0.5 },
-  serviceCardContent: { flexDirection: "row", gap: 14, alignItems: "center" },
-  serviceIconWrap: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  serviceInfo: { flex: 1 },
-  serviceName: { fontSize: 17, fontWeight: "800", color: "white" },
-  serviceCat: { fontSize: 12, color: "rgba(255,255,255,0.8)", marginBottom: 4 },
-  serviceDesc: { fontSize: 12, color: "rgba(255,255,255,0.85)", lineHeight: 16 },
-  serviceMeta: { flexDirection: "row", gap: 10, marginTop: 8 },
-  metaChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "rgba(0,0,0,0.2)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  metaChipText: { fontSize: 12, fontWeight: "700", color: "white" },
-
-  section: {
-    backgroundColor: colors.surface.container,
-    borderRadius: 22,
-    padding: 16,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: colors.glass.border,
-  },
-  sectionHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  sectionTitle: { fontSize: 15, fontWeight: "700", color: "white", marginBottom: 10 },
-  addAddressHeaderBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
-  addAddressHeaderText: { fontSize: 12, fontWeight: "700" },
-
-  inputWithIconWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    paddingHorizontal: 14,
-  },
-  inputIcon: { marginRight: 10 },
-  inputInner: {
-    flex: 1,
-    height: 48,
-    color: "white",
-    fontSize: 14,
-  },
-
-  // Address Cards Scroll
-  addressCardsScroll: { gap: 10, paddingBottom: 12 },
-  addressCard: {
-    width: 160,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 16,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-  },
-  addressCardActive: {
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderWidth: 1.5,
-  },
-  addressCardHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 },
-  addressCardLabel: { fontSize: 13, fontWeight: "700", color: colors.text.secondary },
-  addressCardText: { fontSize: 11, color: colors.text.muted, lineHeight: 15 },
-
-  addNewCard: {
-    justifyContent: "center",
-    alignItems: "center",
-    borderStyle: "dashed",
-    borderColor: "rgba(255,255,255,0.25)",
-  },
-  addNewCardText: { fontSize: 12, fontWeight: "700", marginTop: 4 },
-
-  currentLocationBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "rgba(16,185,129,0.12)",
-    borderWidth: 1.5,
-    borderColor: "#10b981",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    marginBottom: 4,
-  },
-  currentLocationBtnText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#10b981",
-  },
-
-  mapBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 14,
-    paddingVertical: 10,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
-  },
-  mapBtnText: { fontSize: 13, fontWeight: "700", color: "white" },
-
-  addressInputWrap: { position: "relative", marginBottom: 10, flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 16, paddingHorizontal: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" },
-  addressInput: {
-    backgroundColor: "transparent",
-    borderRadius: 16,
-    paddingHorizontal: 2,
-    paddingVertical: 12,
-    color: "white",
-    fontSize: 13,
-    flex: 1,
-  },
-  addressInputWithIcon: { paddingRight: 40 },
-  addressInputStatusIcon: { position: "absolute", right: 14, top: 14 },
-  plainInput: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: "white",
-    fontSize: 13,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-  },
-
-  suggestionsContainer: {
-    backgroundColor: "#0d2136",
-    borderRadius: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
-    overflow: "hidden",
-  },
-  suggestionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.06)",
-  },
-  suggestionRowPressed: { backgroundColor: "rgba(255,255,255,0.1)" },
-  suggestionIcon: { marginRight: 10 },
-  suggestionText: { fontSize: 13, color: "white" },
-
-  flatLandmarkRow: { flexDirection: "row", gap: 10 },
-
-  datePickerBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    marginBottom: 12,
-  },
-  datePickerText: { fontSize: 14, fontWeight: "600", color: "white" },
-
-  timeSlotsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  timeSlotChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-  },
-  timeSlotActive: { backgroundColor: "rgba(255,255,255,0.12)", borderWidth: 1.5 },
-  timeSlotText: { fontSize: 12, fontWeight: "600", color: colors.text.muted },
-
-  bottomCta: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    paddingBottom: 28,
-    backgroundColor: "rgba(8,24,38,0.96)",
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.08)",
-  },
-  ctaPriceCol: {},
-  ctaPriceLabel: { fontSize: 11, color: colors.text.muted },
-  ctaPriceValue: { fontSize: 22, fontWeight: "800" },
-  confirmBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 22,
-    paddingVertical: 14,
-    borderRadius: 18,
-  },
-  confirmBtnText: { fontSize: 15, fontWeight: "700", color: "white" },
-
-  // Add New Address Modal
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.75)",
-    justifyContent: "flex-end",
-  },
-  modalContainer: {
-    backgroundColor: "#0b2034",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 20,
-    paddingBottom: 36,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  modalTitle: { fontSize: 17, fontWeight: "700", color: "white" },
-  modalFieldLabel: { fontSize: 12, fontWeight: "600", color: colors.text.muted, marginBottom: 8 },
-  labelChipsRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
-  labelChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-  },
-  labelChipActive: { backgroundColor: "rgba(255,255,255,0.15)", borderWidth: 1.5 },
-  labelChipText: { fontSize: 12, fontWeight: "600", color: colors.text.secondary },
-  mapBtnModal: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 12,
-    paddingVertical: 9,
-    marginBottom: 12,
-  },
-  modalSaveBtn: {
-    borderRadius: 16,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginTop: 16,
-  },
-  modalSaveBtnText: { fontSize: 15, fontWeight: "700", color: "white" },
-
-  // Map Modal
-  mapModalRoot: { flex: 1, backgroundColor: "#081826" },
-  mapModalView: { flex: 1 },
-  mapModalHeader: {
-    position: "absolute",
-    top: 50,
-    left: 16,
-    right: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "rgba(8,24,38,0.85)",
-    padding: 10,
-    borderRadius: 20,
-  },
-  mapModalBackBtn: {
+  headerBackBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: "rgba(255,255,255,0.15)",
     justifyContent: "center",
     alignItems: "center",
   },
-  mapModalTitle: { fontSize: 16, fontWeight: "700", color: "white" },
-  mapModalBottom: {
-    position: "absolute",
-    bottom: 30,
-    left: 16,
-    right: 16,
-    backgroundColor: "rgba(8,24,38,0.9)",
+  headerHeroWrap: {
+    width: "100%",
+    height: 120,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerHeroImg: {
+    width: "98%",
+    height: "100%",
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 110,
+  },
+  serviceHeroCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
     padding: 16,
-    borderRadius: 22,
+    marginBottom: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    borderColor: "#E2E8F0",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
   },
-  mapModalHint: { fontSize: 12, color: colors.text.muted, textAlign: "center", marginBottom: 12 },
-  mapModalConfirmBtn: { borderRadius: 16, paddingVertical: 14, alignItems: "center" },
-  mapModalConfirmText: { fontSize: 15, fontWeight: "700", color: "white" },
-
-  // Coupon Section Styles
-  couponInputRow: {
+  serviceHeroTop: {
     flexDirection: "row",
-    gap: 12,
+    alignItems: "center",
   },
-  applyCouponBtn: {
-    paddingHorizontal: 20,
+  serviceIconContainer: {
+    alignItems: "center",
+    marginRight: 12,
+  },
+  serviceIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: "#EFF6FF",
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 12,
-    height: 52,
+    borderWidth: 1,
+    borderColor: "#DBEAFE",
   },
-  applyCouponBtnText: {
-    color: "#ffffff",
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  appliedCouponCard: {
+  heroPopularBadge: {
+    backgroundColor: "#FEF3C7",
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 6,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "rgba(16, 185, 129, 0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(16, 185, 129, 0.3)",
-    padding: 14,
-    borderRadius: 12,
+    gap: 2,
+    marginTop: 4,
   },
-  appliedCouponInfo: {
+  heroPopularBadgeText: {
+    fontSize: 7.5,
+    fontWeight: "800",
+    color: "#92400E",
+  },
+  serviceHeroInfo: {
+    flex: 1,
+  },
+  serviceHeroTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#0F172A",
+    marginBottom: 2,
+  },
+  serviceHeroDesc: {
+    fontSize: 11,
+    color: "#64748B",
+    lineHeight: 15,
+    marginBottom: 6,
+  },
+  heroBadgesRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  heroBadgeItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "#ECFDF5",
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  heroBadgeText: {
+    fontSize: 9.5,
+    fontWeight: "700",
+    color: "#059669",
+  },
+  serviceHeroPriceCol: {
+    alignItems: "flex-end",
+    marginLeft: 8,
+  },
+  startsFromLabel: {
+    fontSize: 10.5,
+    color: "#64748B",
+    fontWeight: "600",
+  },
+  priceWithArrow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginVertical: 2,
+  },
+  heroPriceMain: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#0F766E",
+  },
+  heroPriceSlashed: {
+    fontSize: 11.5,
+    color: "#94A3B8",
+    textDecorationLine: "line-through",
+  },
+  durationTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  durationTagText: {
+    fontSize: 11,
+    color: "#64748B",
+    fontWeight: "600",
+  },
+  pillsRow: {
+    gap: 8,
+    marginBottom: 16,
+  },
+  pillBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  pillBtnActive: {
+    backgroundColor: "#0F766E",
+    borderColor: "#0F766E",
+  },
+  pillText: {
+    fontSize: 12.5,
+    fontWeight: "700",
+    color: "#0F766E",
+  },
+  pillTextActive: {
+    color: "#FFFFFF",
+  },
+  quickServiceHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  quickServiceTitleWrap: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
-  appliedCouponText: {
-    color: "#10b981",
-    fontWeight: "700",
-    fontSize: 14,
+  lightningIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: "#DCFCE7",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  removeCouponText: {
-    color: colors.text.muted,
-    fontSize: 13,
+  quickServiceTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  quickServiceSub: {
+    fontSize: 11,
+    color: "#64748B",
+  },
+  quickServiceDoodle: {
+    fontSize: 11,
+    fontStyle: "italic",
+    color: "#059669",
     fontWeight: "600",
-    textDecorationLine: "underline",
   },
-  couponMessage: {
-    marginTop: 8,
-    fontSize: 13,
-    fontWeight: "500",
+  locationSelectionCard: {
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    alignItems: "center",
+    marginBottom: 14,
   },
-  originalPriceStrikethrough: {
-    color: colors.text.muted,
-    textDecorationLine: "line-through",
-    fontSize: 13,
-    marginBottom: 2,
+  locationCardLeft: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  locationPinIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: "#EFF6FF",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  locationCardTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  locationCardSub: {
+    fontSize: 11,
+    color: "#64748B",
+    marginVertical: 4,
+  },
+  selectMapBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#EFF6FF",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    alignSelf: "flex-start",
+    marginTop: 4,
+  },
+  selectMapBtnText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: "#0056D2",
+  },
+  mapGraphicPreview: {
+    width: 110,
+    height: 75,
+    marginLeft: 8,
+  },
+  twoColRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 14,
+  },
+  halfCard: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  cardHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  roundIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  halfCardTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  halfCardSub: {
+    fontSize: 9.5,
+    color: "#64748B",
+  },
+  phonePillBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  phonePillText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  phoneInputField: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#0F172A",
+    backgroundColor: "#F8FAFC",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#0056D2",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  scheduleRowBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  scheduleRowText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#0F172A",
+  },
+  couponCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginBottom: 14,
+  },
+  couponLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  couponIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: "#F3E8FF",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  couponTitle: {
+    fontSize: 13.5,
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  couponSub: {
+    fontSize: 11,
+    color: "#64748B",
+  },
+  couponInputWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  couponInput: {
+    flex: 1,
+    height: 40,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    paddingHorizontal: 12,
+    fontSize: 12.5,
+    color: "#0F172A",
+  },
+  couponApplyBtn: {
+    backgroundColor: "#0F766E",
+    paddingHorizontal: 16,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  couponAppliedBtn: {
+    backgroundColor: "#059669",
+  },
+  couponApplyText: {
+    color: "#FFFFFF",
+    fontSize: 12.5,
+    fontWeight: "700",
+  },
+  addressPreviewCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  addressPreviewLabel: {
+    fontSize: 10.5,
+    fontWeight: "700",
+    color: "#64748B",
+    textTransform: "uppercase",
+  },
+  addressPreviewText: {
+    fontSize: 12.5,
+    fontWeight: "700",
+    color: "#0F172A",
+    marginTop: 2,
+  },
+  addressInputField: {
+    fontSize: 12.5,
+    fontWeight: "700",
+    color: "#0F172A",
+    borderBottomWidth: 1,
+    borderBottomColor: "#0056D2",
+    paddingVertical: 2,
+  },
+  bottomBarSafe: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#0B2238",
+  },
+  bottomBarContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  bottomPriceCol: {
+    justifyContent: "center",
+  },
+  bottomPriceLabel: {
+    fontSize: 11,
+    color: "#94A3B8",
+    fontWeight: "600",
+  },
+  bottomPriceAmount: {
+    fontSize: 20,
+    fontWeight: "900",
+    color: "#FFFFFF",
+  },
+  bottomSecurityCol: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  bottomSecurityText: {
+    fontSize: 10,
+    color: "#94A3B8",
+    fontWeight: "600",
+    lineHeight: 13,
+  },
+  confirmBtn: {
+    backgroundColor: "#10B981",
+    paddingHorizontal: 18,
+    height: 46,
+    borderRadius: 16,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  confirmBtnText: {
+    color: "#0F172A",
+    fontSize: 14.5,
+    fontWeight: "900",
   },
 });

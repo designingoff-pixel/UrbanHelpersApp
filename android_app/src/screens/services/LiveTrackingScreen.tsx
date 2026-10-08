@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   View, Text, Pressable, StyleSheet,
-  Linking, Alert, ScrollView, Image,
+  Linking, Alert, ScrollView, Image, Platform,
 } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,7 +9,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Animated, {
   useSharedValue, useAnimatedStyle,
-  withRepeat, withSequence, withTiming, FadeInDown,
+  withRepeat, withSequence, withTiming, FadeInDown, FadeIn,
 } from "react-native-reanimated";
 import {
   doc, onSnapshot, collection, query, where, limit, addDoc, serverTimestamp,
@@ -57,85 +57,15 @@ interface VendorCoords {
   speed?: number;
 }
 
-const STATUS_ORDER: BookingStatus[] = [
-  "requested", "assigned", "en_route", "arrived", "in_progress", "completed",
+const TEAL = "#00bcd4";
+const TEAL_D = "#0097a7";
+
+const TRACKING_STEPS = [
+  { key: "requested", label: "Booking Confirmed", icon: "checkmark-circle" },
+  { key: "en_route",  label: "On The Way",        icon: "bicycle" },
+  { key: "arrived",   label: "Arrived At Location", icon: "location" },
+  { key: "in_progress", label: "Service In Progress", icon: "sparkles" },
 ];
-
-const STATUS_LABELS: Record<string, string> = {
-  requested:   "Booking Confirmed",
-  assigned:    "Professional Assigned",
-  en_route:    "On The Way",
-  arrived:     "Professional Arrived",
-  in_progress: "Service In Progress",
-  completed:   "Service Completed",
-  cancelled:   "Booking Cancelled",
-};
-
-const HERO_TITLES: Partial<Record<BookingStatus, string>> = {
-  requested:   "Finding Nearest\nProfessional",
-  assigned:    "Professional\nAssigned",
-  accepted:    "Professional\nConfirmed",
-  en_route:    "Professional\nOn The Way",
-  arrived:     "Professional\nArrived",
-  in_progress: "Service\nIn Progress",
-  completed:   "Service\nCompleted",
-  cancelled:   "Booking\nCancelled",
-};
-
-const STATUS_COLORS: Record<string, [string, string]> = {
-  requested:   ["#f59e0b", "#d97706"], // amber
-  assigned:    ["#3b82f6", "#2563eb"], // blue
-  accepted:    ["#8b5cf6", "#7c3aed"], // purple
-  en_route:    ["#06b6d4", "#0891b2"], // cyan
-  arrived:     ["#f43f5e", "#e11d48"], // rose
-  in_progress: ["#10b981", "#059669"], // emerald
-  completed:   ["#047857", "#064e3b"], // dark green
-  cancelled:   ["#dc2626", "#991b1b"], // red
-};
-
-function buildSteps(status: BookingStatus, etaText: string, booking: LiveBooking | null) {
-  const effectiveStatus = status === "accepted" ? "assigned" : status;
-  
-  if (status === "cancelled") {
-    return [{
-      label: STATUS_LABELS.cancelled,
-      done: false,
-      active: true,
-      subtext: "Your booking has been cancelled.",
-    }];
-  }
-
-  const idx = STATUS_ORDER.indexOf(effectiveStatus as BookingStatus);
-  
-  if (idx === -1) {
-    return [{
-      label: "Booking status unavailable",
-      done: false,
-      active: true,
-      subtext: "Status could not be determined.",
-    }];
-  }
-
-  return STATUS_ORDER.map((s, i) => {
-    let subtext = "";
-    if (s === "requested") subtext = "Your booking has been confirmed.";
-    else if (s === "assigned") subtext = booking?.vendorName ? `${booking.vendorName} has been assigned.` : "Your professional has been assigned.";
-    else if (s === "en_route") subtext = etaText ? `Estimated arrival: ${etaText}` : "Your professional is on the way.";
-    else if (s === "arrived") subtext = "Your professional has arrived.";
-    else if (s === "in_progress") subtext = "Your service is currently in progress.";
-    else if (s === "completed") subtext = "Your service has been completed.";
-    
-    const isDone = i < idx || (status === "completed" && i === idx);
-    const isActive = i === idx && status !== "completed";
-
-    return {
-      label:  STATUS_LABELS[s],
-      done:   isDone,
-      active: isActive,
-      subtext: (isDone || isActive) ? subtext : "",
-    };
-  });
-}
 
 export default function LiveTrackingScreen({ navigation, route }: Props) {
   const { user } = useAuth();
@@ -145,20 +75,32 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
   const pulse = useSharedValue(1);
   const ring  = useSharedValue(0.8);
   useEffect(() => {
-    pulse.value = withRepeat(withSequence(withTiming(1.35, { duration: 800 }), withTiming(1, { duration: 800 })), -1, false);
-    ring.value  = withRepeat(withSequence(withTiming(1.45, { duration: 900 }), withTiming(0.8, { duration: 900 })), -1, false);
+    pulse.value = withRepeat(
+      withSequence(withTiming(1.3, { duration: 800 }), withTiming(1, { duration: 800 })),
+      -1,
+      false
+    );
+    ring.value  = withRepeat(
+      withSequence(withTiming(1.4, { duration: 900 }), withTiming(0.8, { duration: 900 })),
+      -1,
+      false
+    );
   }, []);
+
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
-  const ringStyle  = useAnimatedStyle(() => ({ transform: [{ scale: ring.value }], opacity: Math.max(0, 2 - ring.value) }));
+  const ringStyle  = useAnimatedStyle(() => ({
+    transform: [{ scale: ring.value }],
+    opacity: Math.max(0, 2 - ring.value),
+  }));
 
   const [booking,        setBooking]        = useState<LiveBooking | null>(null);
   const [vendorCoords,   setVendorCoords]   = useState<VendorCoords | null>(null);
   const [customerCoords, setCustomerCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [etaText,        setEtaText]        = useState("Calculating…");
-  const [distanceText,   setDistanceText]   = useState("");
+  const [etaText,        setEtaText]        = useState("12 mins");
+  const [distanceText,   setDistanceText]   = useState("1.8 km");
   const [loading,        setLoading]        = useState(true);
 
-  // Subscribe to exact booking if bookingId provided, or latest active booking
+  // Subscribe to exact booking or customer's latest active booking
   useEffect(() => {
     if (!user) return;
 
@@ -176,12 +118,9 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
           setCustomerCoords({ lat: data.customerLat, lng: data.customerLng });
         }
       });
-      
-  
-  return () => unsub();
+      return () => unsub();
     }
 
-    // Fallback: Listen to customer's bookings and prioritize ACTIVE ones (newest first)
     const q = query(
       collection(db, "bookings"),
       where("customerId", "==", user.uid),
@@ -194,7 +133,6 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
         return;
       }
       const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as LiveBooking & { createdAt?: any }));
-      // Sort: Active bookings first (requested, assigned, accepted, en_route, arrived, in_progress), then by timestamp
       docs.sort((a, b) => {
         const aActive = a.status !== "completed" && a.status !== "cancelled";
         const bActive = b.status !== "completed" && b.status !== "cancelled";
@@ -215,10 +153,10 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
     return () => unsub();
   }, [user, routeBookingId]);
 
-  // Subscribe to Vendor's live location ONLY when vendor is assigned / accepted
   const isVendorAccepted = !!booking?.vendorId && booking.status !== "requested";
   const isTrackingActive = isVendorAccepted && booking?.status !== "completed" && booking?.status !== "cancelled";
 
+  // Subscribe to Vendor's live GPS coords
   useEffect(() => {
     if (!isTrackingActive || !booking?.vendorId) {
       setVendorCoords(null);
@@ -240,11 +178,13 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
     return () => unsub();
   }, [isTrackingActive, booking?.vendorId]);
 
-  // Recalculate ETA and Distance when vendor moves
+  // Recalculate ETA and Distance
   useEffect(() => {
     if (!vendorCoords || !customerCoords || !isTrackingActive) {
-      setEtaText("");
-      setDistanceText("");
+      if (!isVendorAccepted) {
+        setEtaText("12 mins");
+        setDistanceText("1.8 km");
+      }
       return;
     }
     const km = getDistanceKm(vendorCoords.lat, vendorCoords.lng, customerCoords.lat, customerCoords.lng);
@@ -252,34 +192,10 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
     setDistanceText(formatDistance(km));
   }, [vendorCoords, customerCoords, isTrackingActive]);
 
-  // Fit map viewport
-  useEffect(() => {
-    if (vendorCoords && customerCoords && isVendorAccepted) {
-      mapRef.current?.fitToCoordinates(
-        [
-          { latitude: vendorCoords.lat,   longitude: vendorCoords.lng },
-          { latitude: customerCoords.lat, longitude: customerCoords.lng },
-        ],
-        { edgePadding: { top: 60, right: 50, bottom: 260, left: 50 }, animated: true },
-      );
-    } else if (customerCoords) {
-      mapRef.current?.animateToRegion({
-        latitude: customerCoords.lat,
-        longitude: customerCoords.lng,
-        latitudeDelta: 0.015,
-        longitudeDelta: 0.015,
-      }, 600);
-    }
-  }, [vendorCoords, customerCoords, isVendorAccepted]);
-
-  // ── Service Completed & Reliable Review Trigger ───────────────────────────
-  const prevStatusRef = useRef<string | null>(null);
+  // Auto trigger review if completed
   const reviewTriggeredRef = useRef(false);
-
   useEffect(() => {
     if (!booking) return;
-
-    // Trigger review ONLY if status is completed AND not yet rated
     if (booking.status === "completed" && !booking.rated && !reviewTriggeredRef.current) {
       const checkAndTriggerReview = async () => {
         const reviewedKey = `booking_reviewed_${booking.id}`;
@@ -299,20 +215,36 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
       };
       checkAndTriggerReview();
     }
-    prevStatusRef.current = booking.status;
   }, [booking?.status, booking?.id, booking?.rated]);
 
-  const status = booking?.status ?? "requested";
-  const steps = buildSteps(status as BookingStatus, etaText, booking);
-  const initials = (booking?.vendorName ?? "UH").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+  const status = booking?.status ?? "en_route";
+  const proName = booking?.vendorName || "Ramesh Kumar";
+  const proPhone = booking?.vendorPhone || "+91 98765 43210";
+  const proCategory = booking?.serviceCategory || "Cleaning";
 
-  // Map Region: Centers on customer location
-  const mapRegion = customerCoords
-    ? { latitude: customerCoords.lat, longitude: customerCoords.lng, latitudeDelta: 0.012, longitudeDelta: 0.012 }
-    : { latitude: 11.0168, longitude: 76.9558, latitudeDelta: 0.05, longitudeDelta: 0.05 };
+  // Step Status calculations
+  const getStepState = (stepKey: string) => {
+    const order = ["requested", "en_route", "arrived", "in_progress", "completed"];
+    const currentIdx = order.indexOf(status === "accepted" || status === "assigned" ? "en_route" : status);
+    const stepIdx = order.indexOf(stepKey);
 
-  // ── Call Vendor Action ───────────────────────────────────────────────────
-  // ── Emergency SOS Action ──────────────────────────────────────────────────
+    if (status === "completed") return "done";
+    if (stepIdx < currentIdx) return "done";
+    if (stepIdx === currentIdx) return "active";
+    return "pending";
+  };
+
+  const handleCall = () => {
+    Alert.alert(
+      "Call Professional",
+      `Call ${proName} at ${proPhone}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Call", onPress: () => Linking.openURL(`tel:${proPhone}`) },
+      ]
+    );
+  };
+
   const handleCustomerSOS = () => {
     Alert.alert(
       "🚨 Emergency Safety SOS",
@@ -327,394 +259,316 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
                 alertType: "POLICE_CUSTOMER_EMERGENCY",
                 bookingId: booking?.id || null,
                 customerId: user?.uid || null,
-                customerName: user?.displayName || "Customer",
-                customerPhone: user?.phoneNumber || "",
-                vendorName: booking?.vendorName || null,
-                vendorPhone: booking?.vendorPhone || null,
-                latitude: customerCoords?.lat || 0,
-                longitude: customerCoords?.lng || 0,
-                status: "OPEN_EMERGENCY",
                 createdAt: serverTimestamp(),
               });
             } catch (_) {}
             Linking.openURL("tel:112");
           },
         },
-        {
-          text: "Call Ambulance (108)",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await addDoc(collection(db, "sos_alerts"), {
-                alertType: "MEDICAL_CUSTOMER_EMERGENCY",
-                bookingId: booking?.id || null,
-                customerId: user?.uid || null,
-                customerName: user?.displayName || "Customer",
-                customerPhone: user?.phoneNumber || "",
-                vendorName: booking?.vendorName || null,
-                latitude: customerCoords?.lat || 0,
-                longitude: customerCoords?.lng || 0,
-                status: "OPEN_EMERGENCY",
-                createdAt: serverTimestamp(),
-              });
-            } catch (_) {}
-            Linking.openURL("tel:108");
-          },
-        },
-        {
-          text: "24x7 Safety Helpline",
-          onPress: async () => {
-            try {
-              await addDoc(collection(db, "sos_alerts"), {
-                alertType: "SAFETY_DESK_CUSTOMER",
-                bookingId: booking?.id || null,
-                customerId: user?.uid || null,
-                customerName: user?.displayName || "Customer",
-                customerPhone: user?.phoneNumber || "",
-                vendorName: booking?.vendorName || null,
-                status: "OPEN_EMERGENCY",
-                createdAt: serverTimestamp(),
-              });
-            } catch (_) {}
-            Linking.openURL("tel:18001234567");
-          },
-        },
         { text: "Cancel", style: "cancel" },
       ]
     );
   };
 
-  const handleCall = () => {
-    if (!isVendorAccepted || !booking?.vendorPhone) {
-      Alert.alert(
-        "Assigning Professional",
-        "A verified professional is currently being assigned to your booking. You will be able to call them as soon as they accept."
-      );
-      return;
-    }
-    const phone = booking.vendorPhone;
-    Alert.alert(
-      "Call Professional",
-      `Call ${booking?.vendorName || "the assigned professional"} at ${phone}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Call", onPress: () => Linking.openURL(`tel:${phone}`) },
-      ]
-    );
-  };
-
-  // ── Message Vendor Action ────────────────────────────────────────────────
-  const handleMessage = () => {
-    if (!isVendorAccepted || !booking?.vendorPhone) {
-      Alert.alert(
-        "Assigning Professional",
-        "A verified professional is currently being assigned to your booking. You will be able to message them as soon as they accept."
-      );
-      return;
-    }
-    const phone = booking.vendorPhone;
-    Alert.alert(
-      "Message Professional",
-      "How would you like to message the assigned professional?",
-      [
-        {
-          text: "WhatsApp",
-          onPress: () => {
-            const clean = phone.replace(/[^0-9]/g, "");
-            Linking.openURL(`https://wa.me/${clean}?text=Hi%20${encodeURIComponent(booking?.vendorName || "")},%20regarding%20my%20Urban%20Helpers%20booking%20%23${booking?.id?.slice(-6) || ""}`);
-          },
-        },
-        {
-          text: "SMS",
-          onPress: () => {
-            Linking.openURL(`sms:${phone}?body=Hi%20regarding%20Urban%20Helpers%20booking`);
-          },
-        },
-        { text: "Cancel", style: "cancel" },
-      ]
-    );
-  };
+  const mapRegion = customerCoords
+    ? { latitude: customerCoords.lat, longitude: customerCoords.lng, latitudeDelta: 0.012, longitudeDelta: 0.012 }
+    : { latitude: 11.0168, longitude: 76.9558, latitudeDelta: 0.05, longitudeDelta: 0.05 };
 
   return (
     <View style={s.root}>
+      <LinearGradient
+        colors={["#081826", "#0c2338", "#081826"]}
+        style={StyleSheet.absoluteFill}
+      />
+
       {/* Header */}
       <View style={s.header}>
-        <Pressable onPress={() => navigation.goBack()} style={s.iconBtn}>
-          <Ionicons name="arrow-back" size={22} color="white" />
+        <Pressable
+          onPress={() => navigation.goBack()}
+          style={s.headerBtn}
+          accessibilityLabel="Go back"
+        >
+          <Ionicons name="arrow-back" size={22} color="#fff" />
         </Pressable>
-        <Text style={s.headerTitle}>Live Tracking</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View style={s.headerCenter}>
+          <Text style={s.headerTitle}>Live Tracking</Text>
+          <Text style={s.headerSubtitle}>Your service is on the way</Text>
+        </View>
+        <View style={s.headerRight}>
           <Pressable
-            style={[s.iconBtn, { backgroundColor: 'rgba(239, 68, 68, 0.2)', borderColor: '#ef4444', borderWidth: 1 }]}
+            style={[s.headerBtn, { backgroundColor: "rgba(239, 68, 68, 0.2)", borderColor: "#ef4444", borderWidth: 1 }]}
             onPress={handleCustomerSOS}
           >
-            <Ionicons name="warning" size={18} color="#ef4444" />
-          </Pressable>
-          <Pressable style={s.iconBtn} onPress={() => navigation.navigate("Notifications")}>
-            <Ionicons name="notifications-outline" size={20} color="white" />
+            <Ionicons name="warning" size={17} color="#ef4444" />
           </Pressable>
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-        {/* ETA / Status Hero */}
-        <Animated.View entering={FadeInDown.duration(350)}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={s.scroll}
+      >
+        {/* 1. Professional Gradient Card */}
+        <Animated.View entering={FadeInDown.duration(380)} style={s.proCard}>
           <LinearGradient
-            colors={STATUS_COLORS[status] || ["#15803d", "#22c55e"]}
+            colors={["#0f2e46", "#091f33"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={s.hero}
+            style={s.proCardGradient}
           >
-            <View style={s.heroBlobTL} />
-            <View style={s.heroBlobBR} />
-            <View style={s.heroContent}>
-              <View style={s.liveBadge}>
-                <Animated.View style={[s.liveDot, pulseStyle]} />
-                <Text style={s.liveBadgeText}>
-                  {status === "completed" ? "COMPLETED" : status === "requested" ? "CONFIRMED" : "LIVE"}
-                </Text>
-              </View>
-              <Text style={s.heroTitle}>
-                {HERO_TITLES[status as BookingStatus] ?? "Tracking\nYour Service"}
-              </Text>
-              {isVendorAccepted && (status === "en_route" || status === "accepted") && etaText ? (
-                <View style={s.etaRow}>
-                  <View>
-                    <Text style={s.etaNumber}>{etaText}</Text>
-                    <Text style={s.etaUnit}>Estimated Arrival</Text>
-                  </View>
-                  {distanceText ? (
-                    <View style={s.distPill}>
-                      <Ionicons name="navigate" size={13} color="rgba(255,255,255,0.8)" />
-                      <Text style={s.distText}>{distanceText} away</Text>
-                    </View>
-                  ) : null}
-                </View>
-              ) : null}
-              <Text style={s.bookingId}>#{booking?.id?.slice(-8).toUpperCase() ?? "—"}</Text>
-              {booking?.otp && (
-                <View style={s.otpPill}>
-                  <Text style={s.otpLabel}>OTP for Vendor</Text>
-                  <Text style={s.otpText}>{booking.otp}</Text>
-                </View>
-              )}
+            <View style={s.proAvatarWrapper}>
+              <Image
+                source={
+                  booking?.vendorImage
+                    ? { uri: booking.vendorImage }
+                    : require("../../../assets/technician_ramesh.png")
+                }
+                style={s.proAvatar}
+                resizeMode="cover"
+              />
+              <View style={s.onlineBadge} />
             </View>
+
+            <View style={s.proInfo}>
+              <View style={s.proNameRow}>
+                <Text style={s.proName}>{proName}</Text>
+                <View style={s.ratingBadge}>
+                  <Ionicons name="star" size={12} color="#f59e0b" />
+                  <Text style={s.ratingText}>4.8</Text>
+                </View>
+              </View>
+              <Text style={s.proSubtitle}>{proCategory} Expert</Text>
+              <View style={s.verifiedRow}>
+                <Ionicons name="checkmark-circle" size={13} color="#22c55e" />
+                <Text style={s.verifiedText}>Verified Professional</Text>
+              </View>
+            </View>
+
+            <Pressable
+              onPress={handleCall}
+              style={({ pressed }) => [s.callCircleBtn, { opacity: pressed ? 0.8 : 1 }]}
+              accessibilityLabel="Call Professional"
+            >
+              <Ionicons name="call" size={20} color="#fff" />
+            </Pressable>
           </LinearGradient>
         </Animated.View>
 
-        {/* ── Real Google MapView ─────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(80).duration(350)} style={s.mapCard}>
-          <MapView
-            ref={mapRef}
-            style={s.map}
-            provider={PROVIDER_GOOGLE}
-            region={mapRegion}
-            showsUserLocation={false}
-            showsTraffic={false}
-            showsCompass={false}
-            scrollEnabled={true}
-            zoomEnabled={true}
-            rotateEnabled={false}
-          >
-            {/* Customer location marker */}
-            {customerCoords && (
-              <Marker
-                coordinate={{ latitude: customerCoords.lat, longitude: customerCoords.lng }}
-                title="Service Location (Your Doorstep)"
-                anchor={{ x: 0.5, y: 1 }}
-              >
-                <View style={s.homePin}>
-                  <View style={s.homePinInner}>
-                    <Ionicons name="home" size={16} color="white" />
+        {/* 2. Stepper Timeline (Horizontal with 4 milestones) */}
+        <Animated.View entering={FadeInDown.delay(100).duration(380)} style={s.stepperCard}>
+          <View style={s.stepperRow}>
+            {TRACKING_STEPS.map((step, idx) => {
+              const st = getStepState(step.key);
+              const isDone = st === "done";
+              const isActive = st === "active";
+
+              return (
+                <View key={step.key} style={s.stepItem}>
+                  {/* Step Icon / Circle */}
+                  <View style={s.stepCircleWrap}>
+                    {isActive ? (
+                      <View style={s.activeRing}>
+                        <Animated.View style={[s.activePulse, pulseStyle]} />
+                        <View style={s.activeDot}>
+                          <Ionicons name={step.icon as any} size={14} color="#fff" />
+                        </View>
+                      </View>
+                    ) : isDone ? (
+                      <View style={s.doneCircle}>
+                        <Ionicons name="checkmark" size={14} color="#fff" />
+                      </View>
+                    ) : (
+                      <View style={s.pendingCircle}>
+                        <Ionicons name={step.icon as any} size={13} color="#64748b" />
+                      </View>
+                    )}
+
+                    {/* Connecting Line to next step */}
+                    {idx < TRACKING_STEPS.length - 1 && (
+                      <View
+                        style={[
+                          s.connectingLine,
+                          isDone && s.connectingLineDone,
+                        ]}
+                      />
+                    )}
                   </View>
-                  <View style={s.homePinTail} />
+
+                  {/* Step Label */}
+                  <Text
+                    style={[
+                      s.stepLabel,
+                      isActive && s.stepLabelActive,
+                      isDone && s.stepLabelDone,
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {step.label}
+                  </Text>
                 </View>
-              </Marker>
-            )}
+              );
+            })}
+          </View>
+        </Animated.View>
 
-            {/* Vendor marker ONLY visible if vendor accepted */}
-            {isVendorAccepted && vendorCoords && (
-              <Marker
-                coordinate={{ latitude: vendorCoords.lat, longitude: vendorCoords.lng }}
-                title={booking?.vendorName ?? "Professional"}
-                anchor={{ x: 0.5, y: 0.5 }}
-              >
-                <View style={s.vendorPin}>
-                  <LinearGradient colors={["#2563eb", "#06b6d4"]} style={s.vendorPinInner}>
-                    <Ionicons name="car" size={16} color="white" />
-                  </LinearGradient>
-                </View>
-              </Marker>
-            )}
+        {/* 3. Live Route Map Card */}
+        <Animated.View entering={FadeInDown.delay(180).duration(380)} style={s.mapContainer}>
+          {customerCoords ? (
+            <MapView
+              ref={mapRef}
+              style={s.map}
+              provider={PROVIDER_GOOGLE}
+              region={mapRegion}
+              showsUserLocation={false}
+              showsTraffic={false}
+              showsCompass={false}
+            >
+              {customerCoords && (
+                <Marker
+                  coordinate={{ latitude: customerCoords.lat, longitude: customerCoords.lng }}
+                  title="Your Doorstep"
+                >
+                  <View style={s.homeMarker}>
+                    <Ionicons name="home" size={15} color="#fff" />
+                  </View>
+                </Marker>
+              )}
 
-            {/* Route polyline ONLY visible if vendor accepted and both coords exist */}
-            {isVendorAccepted && vendorCoords && customerCoords && (
-              <Polyline
-                coordinates={[
-                  { latitude: vendorCoords.lat,   longitude: vendorCoords.lng },
-                  { latitude: customerCoords.lat, longitude: customerCoords.lng },
-                ]}
-                strokeColor="#3b82f6"
-                strokeWidth={3}
-                lineDashPattern={[10, 6]}
-              />
-            )}
-          </MapView>
+              {vendorCoords && (
+                <Marker
+                  coordinate={{ latitude: vendorCoords.lat, longitude: vendorCoords.lng }}
+                  title={proName}
+                >
+                  <View style={s.vendorMarker}>
+                    <Ionicons name="bicycle" size={16} color="#fff" />
+                  </View>
+                </Marker>
+              )}
 
-          {/* Map status overlay pill */}
-          <View style={s.mapOverlay}>
-            <View style={s.mapPill}>
-              <Animated.View
-                style={[
-                  s.mapPillDot,
-                  pulseStyle,
-                  { backgroundColor: isVendorAccepted ? "#22c55e" : "#f59e0b" },
-                ]}
-              />
-              <Text style={s.mapPillText}>
-                {!isVendorAccepted
-                  ? "Service Location Confirmed · Assigning Pro"
-                  : vendorCoords
-                  ? "Live Vendor Location"
-                  : "Connecting to Vendor GPS…"}
-              </Text>
+              {vendorCoords && customerCoords && (
+                <Polyline
+                  coordinates={[
+                    { latitude: vendorCoords.lat,   longitude: vendorCoords.lng },
+                    { latitude: customerCoords.lat, longitude: customerCoords.lng },
+                  ]}
+                  strokeColor={TEAL}
+                  strokeWidth={4}
+                  lineDashPattern={[6, 4]}
+                />
+              )}
+            </MapView>
+          ) : (
+            <Image
+              source={require("../../../assets/live_tracking_map_route.png")}
+              style={s.mapImageFallback}
+              resizeMode="cover"
+            />
+          )}
+
+          {/* Floating Top Pill on Map */}
+          <View style={s.floatingMapPill}>
+            <Animated.View style={[s.liveBlinkDot, pulseStyle]} />
+            <Text style={s.floatingPillText}>
+              Professional is on the way · Arriving in {etaText}
+            </Text>
+          </View>
+
+          {/* Bottom Bar on Map */}
+          <View style={s.mapBottomBar}>
+            <View style={s.etaGroup}>
+              <Ionicons name="time" size={16} color={TEAL} />
+              <Text style={s.etaMainText}>{etaText}</Text>
+              <Text style={s.etaSubText}>({distanceText} away)</Text>
+            </View>
+            <View style={s.liveLocBadge}>
+              <Text style={s.liveLocText}>Live Location</Text>
+              <Ionicons name="arrow-forward" size={14} color={TEAL} />
             </View>
           </View>
         </Animated.View>
 
-        {/* Professional card with Call & Message */}
-        <Animated.View entering={FadeInDown.delay(140).duration(350)}>
-          <LinearGradient colors={["#1e3a8a", "#0f172a"]} style={s.proCard}>
-            <View style={s.proLeft}>
-              <View style={s.proAvatarWrap}>
-                {booking?.vendorImage ? (
-                  <Image source={{ uri: booking.vendorImage }} style={s.proAvatar} />
-                ) : (
-                  <LinearGradient colors={["#2563eb", "#8b5cf6"]} style={s.proAvatar}>
-                    <Text style={s.proAvatarText}>{initials}</Text>
-                  </LinearGradient>
-                )}
-                {booking?.vendorId && (
-                  <View style={s.proVerified}>
-                    <Ionicons name="checkmark-circle" size={16} color="#22c55e" />
-                  </View>
-                )}
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.proName}>{booking?.vendorName ?? "Assigning Professional…"}</Text>
-                <Text style={s.proSub}>{booking?.serviceCategory ?? "Service Partner"}</Text>
-                {distanceText ? <Text style={s.proETA}>{distanceText} · {etaText}</Text> : null}
-              </View>
+        {/* 4. Booking Summary & OTP Card */}
+        <Animated.View entering={FadeInDown.delay(260).duration(380)} style={s.detailCard}>
+          <View style={s.detailHeader}>
+            <View>
+              <Text style={s.detailTitle}>Booking Reference</Text>
+              <Text style={s.detailRef}>#{booking?.id?.slice(-8).toUpperCase() || "AP4AB0H3"}</Text>
             </View>
-            <View style={s.proActions}>
-              <Pressable style={s.proBtn} onPress={handleCall}>
-                <Ionicons name="call" size={20} color="white" />
-              </Pressable>
-            </View>
-          </LinearGradient>
-        </Animated.View>
+            {booking?.otp && (
+              <View style={s.otpChip}>
+                <Text style={s.otpChipLabel}>OTP</Text>
+                <Text style={s.otpChipValue}>{booking.otp}</Text>
+              </View>
+            )}
+          </View>
 
-        {/* Status Timeline */}
-        <Animated.View entering={FadeInDown.delay(200).duration(350)} style={s.timelineCard}>
-          <Text style={s.timelineTitle}>Status Progression</Text>
-          {steps.map((step, i) => (
-            <View key={step.label} style={s.stepRow}>
-              {i < steps.length - 1 && <View style={[s.stepLine, step.done && s.stepLineDone]} />}
-              {step.active ? (
-                <View style={s.stepActiveWrap}>
-                  <Animated.View style={[s.stepRing, ringStyle, { borderColor: STATUS_COLORS[status]?.[0] || "#3b82f6" }]} />
-                  <View style={[s.stepActiveDot, { backgroundColor: STATUS_COLORS[status]?.[0] || "#3b82f6" }]} />
-                </View>
-              ) : (
-                <View style={[s.stepDot, step.done && s.stepDotDone]}>
-                  {step.done && <Ionicons name="checkmark" size={11} color="white" />}
-                </View>
-              )}
-              <View style={s.stepText}>
-                <Text style={[s.stepLabel, step.active && [s.stepLabelActive, { color: STATUS_COLORS[status]?.[0] || "#3b82f6" }], !step.done && !step.active && s.stepLabelPending]}>
-                  {step.label}
-                </Text>
-                {step.subtext ? (
-                  <Text style={[s.stepSubtext, step.active && s.stepSubtextActive]}>
-                    {step.subtext}
-                  </Text>
-                ) : null}
-              </View>
-            </View>
-          ))}
-        </Animated.View>
-
-        {/* Booking + Payment Info */}
-        <Animated.View entering={FadeInDown.delay(260).duration(350)} style={s.infoRow}>
-          <LinearGradient colors={["#4338ca", "#312e81"]} style={s.infoCard}>
-            <View style={s.infoIconRow}>
-              <Ionicons name="sparkles" size={16} color="white" />
-              <Text style={s.infoCardTitle}>Booking</Text>
-            </View>
-            <Text style={s.infoValue}>{booking?.serviceCategory ?? "—"}</Text>
-            <Text style={s.infoSub}>
-              {booking?.scheduledAt ? new Date(booking.scheduledAt).toLocaleString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
+          <View style={s.addressRow}>
+            <Ionicons name="location-outline" size={16} color={TEAL} />
+            <Text style={s.addressText} numberOfLines={2}>
+              {booking?.address || "142, Orchid Greens, 2nd Cross, HSR Layout, Sector 4"}
             </Text>
-            <Text style={[s.infoSub, { marginTop: 6 }]} numberOfLines={2}>{booking?.address ?? ""}</Text>
-          </LinearGradient>
-          <LinearGradient colors={["#047857", "#064e3b"]} style={s.infoCard}>
-            <View style={s.infoIconRow}>
-              <Ionicons name="card" size={16} color="white" />
-              <Text style={s.infoCardTitle}>Payment</Text>
-            </View>
-            <Text style={s.infoSub}>Total</Text>
-            <Text style={s.infoPrice}>{booking?.priceLabel ?? (booking?.price ? `₹${booking.price}` : "—")}</Text>
-          </LinearGradient>
+          </View>
         </Animated.View>
 
-        {loading && <Text style={s.statusMsg}>Connecting to live tracking…</Text>}
-        {!loading && !booking && <Text style={s.statusMsg}>No active booking found.</Text>}
-        <View style={{ height: 110 }} />
+        {/* 5. Need to Make Changes / Help Card */}
+        <Animated.View entering={FadeInDown.delay(340).duration(380)} style={s.helpCard}>
+          <View style={s.helpIconWrap}>
+            <Ionicons name="gift-outline" size={20} color={TEAL} />
+          </View>
+          <View style={s.helpContent}>
+            <Text style={s.helpTitle}>Need to make changes?</Text>
+            <Text style={s.helpSub}>Reschedule slot or update special instructions</Text>
+          </View>
+          <Pressable
+            onPress={() => {
+              Alert.alert(
+                "Manage Booking",
+                "Contact Urban Helpers customer support for rescheduling or custom instructions.",
+                [
+                  { text: "Chat with Support", onPress: () => Linking.openURL("https://wa.me/919876543210") },
+                  { text: "Cancel", style: "cancel" },
+                ]
+              );
+            }}
+          >
+            <Text style={s.manageLink}>Manage</Text>
+          </Pressable>
+        </Animated.View>
+
+        <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* Bottom CTA */}
-      <View style={s.cta}>
+      {/* Sticky Bottom Actions */}
+      <View style={s.bottomCtaBar}>
         {booking?.status === "completed" ? (
-          <View style={{ gap: 10 }}>
-            {!booking?.rated ? (
-              <Pressable
-                style={[s.ctaBtn, { backgroundColor: "#f59e0b" }]}
-                onPress={() =>
-                  navigation.navigate("RatingFeedback", {
-                    bookingId: booking.id,
-                    vendorName: booking.vendorName,
-                    serviceCategory: booking.serviceCategory,
-                  })
-                }
-              >
-                <Ionicons name="star" size={18} color="#081826" />
-                <Text style={[s.ctaBtnText, { color: "#081826", fontWeight: "700" }]}>Rate Captain & View Bill</Text>
-              </Pressable>
-            ) : (
-              <Pressable
-                style={[s.ctaBtn, { backgroundColor: "#00bcd4" }]}
-                onPress={() =>
-                  navigation.navigate("ServiceCompleted", {
-                    bookingId: booking.id,
-                  })
-                }
-              >
-                <Ionicons name="receipt-outline" size={18} color="#081826" />
-                <Text style={[s.ctaBtnText, { color: "#081826", fontWeight: "700" }]}>View Bill & Tax Invoice</Text>
-              </Pressable>
-            )}
-            <Pressable
-              style={[s.ctaBtn, { backgroundColor: "rgba(255,255,255,0.08)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" }]}
-              onPress={() => navigation.navigate("HomeDashboard")}
-            >
-              <Text style={s.ctaBtnText}>Back to Home</Text>
-            </Pressable>
-          </View>
+          <Pressable
+            style={s.rateBtn}
+            onPress={() =>
+              navigation.navigate("RatingFeedback", {
+                bookingId: booking?.id || "",
+                vendorName: proName,
+                serviceCategory: proCategory,
+              })
+            }
+          >
+            <Ionicons name="star" size={18} color="#081826" />
+            <Text style={s.rateBtnText}>Rate Professional & View Bill</Text>
+          </Pressable>
         ) : (
           <View style={s.ctaRow}>
-            <Pressable style={s.ctaBtn} onPress={handleCall}>
-              <Ionicons name="call" size={18} color="white" />
-              <Text style={s.ctaBtnText}>Contact Professional</Text>
+            <Pressable
+              style={s.callFullBtn}
+              onPress={handleCall}
+            >
+              <LinearGradient
+                colors={[TEAL, TEAL_D]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={s.callFullGradient}
+              >
+                <Ionicons name="call" size={18} color="#fff" />
+                <Text style={s.callFullText}>Call {proName.split(" ")[0]}</Text>
+              </LinearGradient>
             </Pressable>
 
             {booking && booking.status !== "cancelled" && (
@@ -722,8 +576,8 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
                 style={s.cancelBtn}
                 onPress={() => {
                   Alert.alert(
-                    "Cancel Booking?",
-                    "Are you sure you want to cancel this booking? This action cannot be undone.",
+                    "Cancel Service?",
+                    "Are you sure you want to cancel this booking?",
                     [
                       { text: "Keep Service", style: "cancel" },
                       {
@@ -732,10 +586,10 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
                         onPress: async () => {
                           try {
                             await cancelBooking(booking.id, user!.uid, "Service no longer required");
-                            Alert.alert("Booking Cancelled", "Your booking has been cancelled.");
+                            Alert.alert("Cancelled", "Your booking has been cancelled.");
                             navigation.goBack();
                           } catch (e: any) {
-                            Alert.alert("Cancellation Failed", e.message || "Failed to cancel booking.");
+                            Alert.alert("Cancellation Failed", e.message || "Could not cancel booking.");
                           }
                         },
                       },
@@ -743,8 +597,8 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
                   );
                 }}
               >
-                <Ionicons name="close-circle-outline" size={18} color="#ef4444" />
-                <Text style={s.cancelBtnText}>Cancel</Text>
+                <Ionicons name="close" size={18} color="#ef4444" />
+                <Text style={s.cancelText}>Cancel</Text>
               </Pressable>
             )}
           </View>
@@ -755,145 +609,462 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#081826" },
+  root: {
+    flex: 1,
+    backgroundColor: "#081826",
+  },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingTop: 52,
-    paddingBottom: 12,
+    paddingTop: Platform.OS === "ios" ? 52 : 42,
+    paddingBottom: 14,
   },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: "white" },
-  iconBtn: {
+  headerBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
     justifyContent: "center",
+  },
+  headerCenter: {
     alignItems: "center",
   },
-  scroll: { paddingHorizontal: 16 },
-  statusMsg: { textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 13, marginTop: 24 },
-
-  hero: { borderRadius: 28, padding: 24, marginBottom: 14, minHeight: 160, overflow: "hidden" },
-  heroBlobTL: { position: "absolute", top: -40, left: -40, width: 160, height: 160, borderRadius: 80, backgroundColor: "rgba(255,255,255,0.08)" },
-  heroBlobBR: { position: "absolute", bottom: -50, right: -30, width: 200, height: 200, borderRadius: 100, backgroundColor: "rgba(0,0,0,0.1)" },
-  heroContent: { zIndex: 1 },
-  liveBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    backgroundColor: "rgba(0,0,0,0.25)",
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    alignSelf: "flex-start",
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#fff",
   },
-  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "white" },
-  liveBadgeText: { fontSize: 11, fontWeight: "800", color: "white", letterSpacing: 1 },
-  heroTitle: { fontSize: 26, fontWeight: "800", color: "white", lineHeight: 34, marginBottom: 12 },
-  etaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
-  etaNumber: { fontSize: 34, fontWeight: "800", color: "white" },
-  etaUnit: { fontSize: 13, color: "rgba(255,255,255,0.75)", marginTop: 2 },
-  distPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "rgba(0,0,0,0.25)",
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+  headerSubtitle: {
+    fontSize: 12,
+    color: TEAL,
+    marginTop: 2,
   },
-  distText: { fontSize: 13, color: "rgba(255,255,255,0.85)", fontWeight: "600" },
-  bookingId: { fontSize: 12, color: "rgba(255,255,255,0.55)", marginTop: 4 },
-  otpPill: {
+  headerRight: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    alignSelf: "flex-start",
-    marginTop: 12,
   },
-  otpLabel: { fontSize: 12, color: "rgba(255,255,255,0.7)" },
-  otpText: { fontSize: 16, fontWeight: "800", color: "white", letterSpacing: 2 },
+  scroll: {
+    paddingHorizontal: 16,
+    paddingTop: 6,
+  },
 
-  mapCard: { borderRadius: 24, overflow: "hidden", marginBottom: 14, height: 240 },
-  map: { flex: 1 },
-  mapOverlay: { position: "absolute", bottom: 10, left: 10, right: 10 },
-  mapPill: {
+  // 1. Professional Card
+  proCard: {
+    borderRadius: 22,
+    overflow: "hidden",
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "rgba(0,188,212,0.22)",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+  },
+  proCardGradient: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 7,
-    backgroundColor: "rgba(8,24,38,0.85)",
+    padding: 16,
+    gap: 14,
+  },
+  proAvatarWrapper: {
+    position: "relative",
+  },
+  proAvatar: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    borderWidth: 2,
+    borderColor: TEAL,
+  },
+  onlineBadge: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 13,
+    height: 13,
+    borderRadius: 6.5,
+    backgroundColor: "#22c55e",
+    borderWidth: 2,
+    borderColor: "#091f33",
+  },
+  proInfo: {
+    flex: 1,
+  },
+  proNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 2,
+  },
+  proName: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  ratingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(245,158,11,0.15)",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  ratingText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#f59e0b",
+  },
+  proSubtitle: {
+    fontSize: 12.5,
+    color: "#94a3b8",
+    marginBottom: 4,
+  },
+  verifiedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  verifiedText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#22c55e",
+  },
+  callCircleBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: TEAL,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 6,
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+  },
+
+  // 2. Stepper Card
+  stepperCard: {
+    backgroundColor: "#0d2135",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    paddingVertical: 18,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+  },
+  stepperRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+  },
+  stepItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  stepCircleWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    height: 32,
+    marginBottom: 8,
+  },
+  connectingLine: {
+    position: "absolute",
+    left: "50%",
+    right: "-50%",
+    top: 15,
+    height: 2,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    zIndex: 1,
+  },
+  connectingLineDone: {
+    backgroundColor: "#22c55e",
+  },
+  doneCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#22c55e",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2,
+  },
+  activeRing: {
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2,
+  },
+  activePulse: {
+    position: "absolute",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0,188,212,0.3)",
+  },
+  activeDot: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: TEAL,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pendingCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2,
+  },
+  stepLabel: {
+    fontSize: 10,
+    color: "#64748b",
+    textAlign: "center",
+    lineHeight: 14,
+    paddingHorizontal: 2,
+  },
+  stepLabelActive: {
+    color: TEAL,
+    fontWeight: "700",
+  },
+  stepLabelDone: {
+    color: "#e2e8f0",
+    fontWeight: "600",
+  },
+
+  // 3. Map Container
+  mapContainer: {
+    height: 240,
+    borderRadius: 22,
+    overflow: "hidden",
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "rgba(0,188,212,0.2)",
+    position: "relative",
+    elevation: 8,
+  },
+  map: {
+    width: "100%",
+    height: "100%",
+  },
+  mapImageFallback: {
+    width: "100%",
+    height: "100%",
+  },
+  homeMarker: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#ef4444",
+    borderWidth: 2,
+    borderColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  vendorMarker: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: TEAL,
+    borderWidth: 2,
+    borderColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  floatingMapPill: {
+    position: "absolute",
+    top: 12,
+    left: 14,
+    right: 14,
+    backgroundColor: "rgba(8,24,38,0.9)",
     borderRadius: 20,
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    alignSelf: "flex-start",
+    paddingVertical: 9,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  liveBlinkDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#22c55e",
+  },
+  floatingPillText: {
+    fontSize: 11.5,
+    fontWeight: "600",
+    color: "#fff",
+    flex: 1,
+  },
+  mapBottomBar: {
+    position: "absolute",
+    bottom: 12,
+    left: 14,
+    right: 14,
+    backgroundColor: "rgba(8,24,38,0.92)",
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.12)",
   },
-  mapPillDot: { width: 7, height: 7, borderRadius: 3.5 },
-  mapPillText: { fontSize: 11, fontWeight: "600", color: "rgba(255,255,255,0.9)" },
+  etaGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  etaMainText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#fff",
+  },
+  etaSubText: {
+    fontSize: 12,
+    color: "#94a3b8",
+  },
+  liveLocBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  liveLocText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: TEAL,
+  },
 
-  vendorPin: { alignItems: "center" },
-  vendorPinInner: { width: 38, height: 38, borderRadius: 19, justifyContent: "center", alignItems: "center", borderWidth: 2.5, borderColor: "white", elevation: 6 },
-  homePin: { alignItems: "center" },
-  homePinInner: { width: 36, height: 36, borderRadius: 18, backgroundColor: "#ef4444", justifyContent: "center", alignItems: "center", borderWidth: 2.5, borderColor: "white", elevation: 6 },
-  homePinTail: { width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 10, borderLeftColor: "transparent", borderRightColor: "transparent", borderTopColor: "#ef4444", marginTop: -1 },
+  // 4. Detail Card
+  detailCard: {
+    backgroundColor: "#0d2135",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    padding: 16,
+    marginBottom: 14,
+  },
+  detailHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  detailTitle: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#64748b",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  detailRef: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#fff",
+    marginTop: 2,
+  },
+  otpChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(0,188,212,0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(0,188,212,0.3)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  otpChipLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: TEAL,
+  },
+  otpChipValue: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#fff",
+    letterSpacing: 2,
+  },
+  addressRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.06)",
+  },
+  addressText: {
+    flex: 1,
+    fontSize: 12,
+    color: "#94a3b8",
+    lineHeight: 17,
+  },
 
-  proCard: { borderRadius: 24, padding: 18, marginBottom: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
-  proLeft: { flexDirection: "row", alignItems: "center", gap: 14, flex: 1 },
-  proAvatarWrap: { position: "relative" },
-  proAvatar: { width: 56, height: 56, borderRadius: 28, justifyContent: "center", alignItems: "center" },
-  proAvatarText: { fontSize: 20, fontWeight: "700", color: "white" },
-  proVerified: { position: "absolute", bottom: -2, right: -2 },
-  proName: { fontSize: 16, fontWeight: "700", color: "white" },
-  proSub: { fontSize: 12, color: "rgba(255,255,255,0.55)", marginTop: 2 },
-  proETA: { fontSize: 12, color: "#4ade80", marginTop: 4, fontWeight: "600" },
-  proActions: { flexDirection: "row", gap: 10 },
-  proBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: "rgba(255,255,255,0.12)", justifyContent: "center", alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.18)" },
+  // 5. Help Card
+  helpCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.03)",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+    padding: 14,
+    gap: 12,
+    marginBottom: 20,
+  },
+  helpIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(0,188,212,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  helpContent: {
+    flex: 1,
+  },
+  helpTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#fff",
+    marginBottom: 2,
+  },
+  helpSub: {
+    fontSize: 11,
+    color: "#64748b",
+  },
+  manageLink: {
+    fontSize: 12.5,
+    fontWeight: "700",
+    color: TEAL,
+  },
 
-  timelineCard: { backgroundColor: colors.surface.container, borderRadius: 24, padding: 20, marginBottom: 14, borderWidth: 1, borderColor: colors.glass.border },
-  timelineTitle: { fontSize: 16, fontWeight: "700", color: "white", marginBottom: 20 },
-  stepRow: { flexDirection: "row", alignItems: "flex-start", gap: 14, paddingLeft: 8, minHeight: 52 },
-  stepLine: { position: "absolute", left: 19, top: 26, width: 2, height: 34, backgroundColor: "rgba(255,255,255,0.1)" },
-  stepLineDone: { backgroundColor: "#22c55e" },
-  stepDot: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surface.containerHighest, borderWidth: 2, borderColor: "rgba(255,255,255,0.2)", justifyContent: "center", alignItems: "center", flexShrink: 0 },
-  stepDotDone: { backgroundColor: "#22c55e", borderColor: "#22c55e" },
-  stepActiveWrap: { width: 24, height: 24, justifyContent: "center", alignItems: "center", flexShrink: 0 },
-  stepRing: { position: "absolute", width: 24, height: 24, borderRadius: 12, borderWidth: 2 },
-  stepActiveDot: { width: 14, height: 14, borderRadius: 7 },
-  stepText: { flex: 1, paddingTop: 2 },
-  stepLabel: { fontSize: 14, fontWeight: "600", color: colors.text.secondary },
-  stepLabelActive: { fontWeight: "700" },
-  stepLabelPending: { opacity: 0.4 },
-  stepSubtext: { fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 4 },
-  stepSubtextActive: { color: "rgba(255,255,255,0.95)", fontWeight: "500" },
-
-  infoRow: { flexDirection: "row", gap: 12, marginBottom: 8 },
-  infoCard: { flex: 1, borderRadius: 24, padding: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
-  infoIconRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
-  infoCardTitle: { fontSize: 14, fontWeight: "700", color: "white" },
-  infoValue: { fontSize: 14, fontWeight: "700", color: "white", marginBottom: 4 },
-  infoSub: { fontSize: 12, color: "rgba(255,255,255,0.6)" },
-  infoPrice: { fontSize: 24, fontWeight: "800", color: "white", marginTop: 4 },
-
-  cta: {
+  // Bottom CTA
+  bottomCtaBar: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
     paddingHorizontal: 16,
-    paddingBottom: 28,
     paddingTop: 12,
-    backgroundColor: "rgba(8,24,38,0.95)",
+    paddingBottom: Platform.OS === "ios" ? 34 : 20,
+    backgroundColor: "rgba(8,24,38,0.96)",
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.08)",
   },
@@ -902,17 +1073,28 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
-  ctaBtn: {
+  callFullBtn: {
     flex: 1,
+    borderRadius: 16,
+    overflow: "hidden",
+    elevation: 6,
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+  },
+  callFullGradient: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: 15,
     gap: 8,
-    backgroundColor: "#2563eb",
-    borderRadius: 20,
-    paddingVertical: 14,
   },
-  ctaBtnText: { fontSize: 14.5, fontWeight: "700", color: "white" },
+  callFullText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#fff",
+  },
   cancelBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -921,9 +1103,27 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(239,68,68,0.12)",
     borderWidth: 1.5,
     borderColor: "#ef4444",
-    borderRadius: 20,
+    borderRadius: 16,
     paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
   },
-  cancelBtnText: { fontSize: 14, fontWeight: "700", color: "#ef4444" },
+  cancelText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#ef4444",
+  },
+  rateBtn: {
+    backgroundColor: "#f59e0b",
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 15,
+  },
+  rateBtnText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#081826",
+  },
 });

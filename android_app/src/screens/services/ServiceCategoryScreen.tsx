@@ -1,30 +1,33 @@
-/**
- * ServiceCategoryScreen
- * Reusable screen for any of the service categories.
- * Shows sub-services as scrollable cards with price, duration, description.
- * Tapping any sub-service navigates to ServiceDetailScreen with exact pricing.
- */
 import React, { useState, useMemo } from "react";
 import {
-  ScrollView, Text, View, Pressable, StyleSheet, Dimensions, Image, TextInput,
+  ScrollView,
+  Text,
+  View,
+  Pressable,
+  StyleSheet,
+  Dimensions,
+  Image,
+  TextInput,
+  TouchableOpacity,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import { RootStackParamList } from "@/navigation/types";
-import { colors } from "@/theme/colors";
 import { useServiceCategories } from "@/services/firestoreServices";
-import { SERVICE_CATEGORIES } from "./servicesData";
+import { SERVICE_CATEGORIES, SubService } from "./servicesData";
 import { getSubServiceImageSource } from "@/assets/serviceImages";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceCategory">;
+const { width } = Dimensions.get("window");
 
-function formatPrice(price: string): string {
-  if (!price) return "₹299";
-  if (price.startsWith("₹") || price.toLowerCase().includes("quote")) return price;
-  return `₹${price}`;
-}
+const SUB_FILTERS = [
+  { id: "all", label: "All", icon: "home" },
+  { id: "bathroom", label: "Bathroom", icon: "water" },
+  { id: "kitchen", label: "Kitchen", icon: "restaurant" },
+  { id: "windows", label: "Windows", icon: "grid" },
+  { id: "deep", label: "Deep Clean", icon: "sparkles" },
+];
 
 export default function ServiceCategoryScreen({ navigation, route }: Props) {
   const { categoryId } = route.params;
@@ -37,7 +40,6 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
     if (!firestoreCategory) return staticCategory;
     if (!staticCategory) return firestoreCategory;
 
-    // Merge subServices: ensure all 11 cleaning sub-services and full catalog are preserved
     const existingIds = new Set((firestoreCategory.subServices ?? []).map((s) => s.id));
     const mergedSubServices = [
       ...(firestoreCategory.subServices ?? []),
@@ -51,360 +53,450 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
     };
   }, [staticCategory, firestoreCategory]);
 
+  const [activeFilter, setActiveFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
 
-  const filteredSubServices = useMemo(() => {
+  const subServices = useMemo(() => {
     if (!category) return [];
-    if (!searchQuery.trim()) return category.subServices;
-    const q = searchQuery.toLowerCase().trim();
-    return category.subServices.filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.description.toLowerCase().includes(q)
-    );
-  }, [category, searchQuery]);
+    let list = category.subServices || [];
+
+    // Filter by query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        (s) => s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q)
+      );
+    }
+
+    // Filter by sub-category pill
+    if (activeFilter === "bathroom") {
+      list = list.filter((s) =>
+        s.id.includes("restroom") || s.name.toLowerCase().includes("bathroom") || s.name.toLowerCase().includes("toilet")
+      );
+    } else if (activeFilter === "kitchen") {
+      list = list.filter((s) =>
+        s.id.includes("kitchen") || s.name.toLowerCase().includes("kitchen")
+      );
+    } else if (activeFilter === "windows") {
+      list = list.filter((s) =>
+        s.id.includes("window") || s.name.toLowerCase().includes("window") || s.name.toLowerCase().includes("glass")
+      );
+    } else if (activeFilter === "deep") {
+      list = list.filter((s) =>
+        s.id.includes("full") || s.id.includes("tank") || s.id.includes("disinfect") || s.name.toLowerCase().includes("deep")
+      );
+    }
+
+    return list;
+  }, [category, searchQuery, activeFilter]);
 
   if (!category) {
     return (
-      <View style={s.root}>
+      <View style={styles.root}>
         <Text style={{ color: "white", padding: 24 }}>Category not found.</Text>
       </View>
     );
   }
 
   return (
-    <View style={s.root}>
-      {/* ── Sleek Clean Hero Top Bar ────────────────────────────── */}
-      <LinearGradient
-        colors={category.gradient || ["#0891b2", "#06b6d4"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={s.topBar}
-      >
-        {/* Subtle decorative glow circles */}
-        <View style={s.heroGlowTL} />
-        <View style={s.heroGlowBR} />
-
-        {/* Top navigation row */}
-        <View style={s.topBarInner}>
-          <Pressable onPress={() => navigation.goBack()} style={s.backBtn}>
-            <Ionicons name="arrow-back" size={22} color="white" />
-          </Pressable>
-          <Text style={s.topBarTitle}>{category.name}</Text>
-          <View style={s.topBarRight} />
-        </View>
-
-        {/* Hero section */}
-        <View style={s.heroContent}>
-          <View style={s.heroIconBig}>
-            <Ionicons name={category.icon as any} size={38} color="white" />
-          </View>
-          <Text style={s.heroTitle}>{category.name}</Text>
-          <Text style={s.heroTagline}>{category.tagline}</Text>
-          <View style={s.heroBadgeRow}>
-            <View style={s.heroBadge}>
-              <Ionicons name="sparkles" size={13} color="white" style={{ marginRight: 6 }} />
-              <Text style={s.heroBadgeText}>{category.subServices.length} services available</Text>
-            </View>
+    <View style={styles.root}>
+      {/* ── Top Header Bar ────────────────────────────────────────────── */}
+      <SafeAreaView edges={["top"]} style={styles.headerSafeArea}>
+        <View style={styles.headerBar}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIconBtn}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{category.name}</Text>
+          <View style={styles.headerRightActions}>
+            <TouchableOpacity
+              onPress={() => setShowSearch(!showSearch)}
+              style={styles.headerRoundBtn}
+            >
+              <Ionicons name="search" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerRoundBtn}>
+              <Ionicons name="options-outline" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
           </View>
         </View>
-      </LinearGradient>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-        {/* ── Search bar (shown when category has 4+ sub-services) ─── */}
-        {category.subServices.length >= 4 && (
-          <View style={s.searchWrap}>
-            <Ionicons name="search-outline" size={17} color="rgba(255,255,255,0.4)" style={{ marginRight: 8 }} />
+        {showSearch && (
+          <View style={styles.searchBarWrap}>
+            <Ionicons name="search" size={18} color="#94A3B8" style={{ marginRight: 8 }} />
             <TextInput
-              style={s.searchInput}
-              placeholder="Search for services..."
-              placeholderTextColor="rgba(255,255,255,0.35)"
               value={searchQuery}
               onChangeText={setSearchQuery}
-              returnKeyType="search"
-              clearButtonMode="while-editing"
+              placeholder="Search in this category..."
+              placeholderTextColor="#94A3B8"
+              style={styles.searchInput}
+              autoFocus
             />
-            {searchQuery.length > 0 && (
-              <Pressable onPress={() => setSearchQuery("")}>
-                <Ionicons name="close-circle" size={17} color="rgba(255,255,255,0.4)" />
-              </Pressable>
-            )}
+            {searchQuery ? (
+              <TouchableOpacity onPress={() => setSearchQuery("")}>
+                <Ionicons name="close-circle" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+            ) : null}
           </View>
         )}
+      </SafeAreaView>
 
-        {/* ── Sub-service cards ─────────────────────────────── */}
-        <Text style={s.sectionTitle}>Choose a Service</Text>
-        {filteredSubServices.length === 0 && searchQuery.trim() !== "" && (
-          <View style={s.emptyState}>
-            <Ionicons name="search-outline" size={36} color="rgba(255,255,255,0.2)" />
-            <Text style={s.emptyStateText}>No services found for "{searchQuery}"</Text>
-          </View>
-        )}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* ── Hero Banner Card (Matching Design 1) ────────────────────── */}
+        <View style={styles.heroBannerCard}>
+          <Image
+            source={require("../../../assets/category_banner_cleaning.png")}
+            style={styles.heroBannerImg}
+            resizeMode="cover"
+          />
+        </View>
 
-        {filteredSubServices.length === 0 && searchQuery.trim() === "" && category.subServices.length === 0 && (
-          <View style={s.emptyState}>
-            <Ionicons name="calendar-outline" size={36} color="rgba(255,255,255,0.2)" />
-            <Text style={s.emptyStateText}>No other services available right now.</Text>
-          </View>
-        )}
-
-        {filteredSubServices.map((sub, i) => {
-          const displayPrice = formatPrice(sub.price);
-          return (
-            <Animated.View
-              key={sub.id}
-              entering={FadeInDown.delay(i * 50).duration(350).springify()}
-            >
-              <Pressable
-                onPress={() =>
-                  navigation.navigate("ServiceDetail", {
-                    categoryId: category.id,
-                    subServiceId: sub.id,
-                  })
-                }
-                style={({ pressed }) => [s.subCard, { opacity: pressed ? 0.9 : 1 }]}
+        {/* ── Horizontal Filter Pills ──────────────────────────────────── */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.pillsRow}
+        >
+          {SUB_FILTERS.map((f) => {
+            const isActive = activeFilter === f.id;
+            return (
+              <TouchableOpacity
+                key={f.id}
+                onPress={() => setActiveFilter(f.id)}
+                style={[styles.pillBtn, isActive && styles.pillBtnActive]}
+                activeOpacity={0.8}
               >
-                {/* Sub-service image thumbnail */}
-                <Image
-                  source={getSubServiceImageSource(sub.id, category.id, sub.imageUrl)}
-                  style={s.subCardImage}
-                  resizeMode="cover"
+                <Ionicons
+                  name={f.icon as any}
+                  size={16}
+                  color={isActive ? "#FFFFFF" : "#0F766E"}
+                  style={{ marginRight: 6 }}
                 />
-                {/* Accent left bar */}
-                <View style={[s.accentBar, { backgroundColor: category.accent }]} />
+                <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
-                <View style={s.subCardBody}>
-                  <View style={s.subCardTop}>
-                    <View style={s.subCardTitleRow}>
-                      <Text style={s.subName}>{sub.name}</Text>
-                      {sub.popular && (
-                        <View
-                          style={[
-                            s.popularBadge,
-                            {
-                              backgroundColor: category.accent + "22",
-                              borderColor: category.accent + "55",
-                            },
-                          ]}
-                        >
-                          <Ionicons name="star" size={10} color={category.accent} />
-                          <Text style={[s.popularText, { color: category.accent }]}>Popular</Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={s.subDesc} numberOfLines={2}>
+        {/* ── Sub-Services List ────────────────────────────────────────── */}
+        <View style={styles.cardsContainer}>
+          {subServices.length === 0 ? (
+            <View style={styles.emptyWrap}>
+              <Ionicons name="search-outline" size={40} color="#94A3B8" />
+              <Text style={styles.emptyTitle}>No services found</Text>
+              <Text style={styles.emptySub}>Try clearing search or choosing "All".</Text>
+            </View>
+          ) : (
+            subServices.map((sub: SubService) => {
+              const imgSource = getSubServiceImageSource(sub.id, category.id, sub.imageUrl);
+              const origPriceNum = parseInt(sub.price.replace(/[^\d]/g, ""), 10) || 499;
+              const slashedPrice = `₹${origPriceNum + 200}`;
+
+              return (
+                <View key={sub.id} style={styles.serviceCard}>
+                  {/* Left: Square Photo */}
+                  <View style={styles.cardImgWrap}>
+                    <Image source={imgSource} style={styles.cardImg} resizeMode="cover" />
+                    {sub.popular && (
+                      <View style={styles.popularBadge}>
+                        <Ionicons name="star" size={10} color="#92400E" />
+                        <Text style={styles.popularBadgeText}>Most Popular</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Middle: Details */}
+                  <View style={styles.cardDetails}>
+                    <Text style={styles.cardTitle} numberOfLines={1}>
+                      {sub.name}
+                    </Text>
+                    <Text style={styles.cardDesc} numberOfLines={2}>
                       {sub.description}
                     </Text>
+
+                    <View style={styles.cardMetaRow}>
+                      <View style={styles.metaItem}>
+                        <Ionicons name="time-outline" size={13} color="#64748B" />
+                        <Text style={styles.metaText}>{sub.duration}</Text>
+                      </View>
+                      <View style={styles.metaItem}>
+                        <Ionicons name="star" size={13} color="#F59E0B" />
+                        <Text style={styles.metaText}>4.8 (1.2k)</Text>
+                      </View>
+                    </View>
+
+                    {/* Price Row */}
+                    <View style={styles.priceRow}>
+                      <Text style={styles.priceMain}>{sub.price}</Text>
+                      <Text style={styles.priceSlashed}>{slashedPrice}</Text>
+                    </View>
                   </View>
 
-                  <View style={s.subCardBottom}>
-                    <View style={s.subMeta}>
-                      <View style={s.metaItem}>
-                        <Ionicons name="time-outline" size={13} color={colors.text.muted} />
-                        <Text style={s.metaText}>{sub.duration}</Text>
-                      </View>
-                    </View>
-                    <View style={s.subPriceRow}>
-                      <Text style={[s.subPrice, { color: category.accent }]}>
-                        {displayPrice}
-                      </Text>
-                      <View
-                        style={[
-                          s.bookMiniBtn,
-                          {
-                            backgroundColor: category.accent + "25",
-                            borderColor: category.accent + "55",
-                          },
-                        ]}
-                      >
-                        <Text style={[s.bookMiniText, { color: category.accent }]}>Book</Text>
-                        <Ionicons name="arrow-forward" size={13} color={category.accent} />
-                      </View>
-                    </View>
+                  {/* Right: Book Now Button */}
+                  <View style={styles.cardRightCol}>
+                    <TouchableOpacity
+                      style={styles.bookNowBtn}
+                      onPress={() =>
+                        navigation.navigate("ServiceDetail", {
+                          categoryId: category.id,
+                          subServiceId: sub.id,
+                        })
+                      }
+                      activeOpacity={0.88}
+                    >
+                      <Text style={styles.bookNowText}>Book Now</Text>
+                      <Ionicons name="arrow-forward" size={13} color="#FFFFFF" style={{ marginLeft: 3 }} />
+                    </TouchableOpacity>
                   </View>
                 </View>
-              </Pressable>
-            </Animated.View>
-          );
-        })}
-        <View style={{ height: 60 }} />
+              );
+            })
+          )}
+        </View>
       </ScrollView>
     </View>
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#081826" },
-
-  // Clean Header without clashing background text
-  topBar: {
-    paddingBottom: 24,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    overflow: "hidden",
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: "#F1F5F9",
   },
-  heroGlowTL: {
-    position: "absolute",
-    top: -50,
-    left: -50,
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: "rgba(255,255,255,0.12)",
+  headerSafeArea: {
+    backgroundColor: "#0B2238",
   },
-  heroGlowBR: {
-    position: "absolute",
-    bottom: -60,
-    right: -40,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: "rgba(0,0,0,0.15)",
-  },
-  topBarInner: {
+  headerBar: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: 52,
-    paddingBottom: 12,
+    paddingVertical: 12,
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.25)",
+  headerIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: "center",
     alignItems: "center",
   },
-  topBarTitle: { fontSize: 18, fontWeight: "700", color: "white" },
-  topBarRight: { flexDirection: "row", gap: 8 },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.25)",
-    justifyContent: "center",
-    alignItems: "center",
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#FFFFFF",
+    letterSpacing: -0.3,
   },
-  heroContent: { paddingHorizontal: 20, alignItems: "center", paddingTop: 4 },
-  heroIconBig: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.35)",
-  },
-  heroTitle: { fontSize: 26, fontWeight: "800", color: "white", textAlign: "center" },
-  heroTagline: { fontSize: 14, color: "rgba(255,255,255,0.88)", marginTop: 4, textAlign: "center" },
-  heroBadgeRow: { flexDirection: "row", marginTop: 12, gap: 8 },
-  heroBadge: {
+  headerRightActions: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.2)",
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
+    gap: 8,
   },
-  heroBadgeText: { fontSize: 12, fontWeight: "700", color: "white" },
-
-  scroll: { paddingHorizontal: 16, paddingTop: 20 },
-
-  // Search bar
-  searchWrap: {
+  headerRoundBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(255, 255, 255, 0.14)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  searchBarWrap: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.07)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    marginHorizontal: 16,
+    marginBottom: 12,
     paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 18,
+    height: 42,
   },
   searchInput: {
     flex: 1,
-    fontSize: 13,
-    color: "#ffffff",
+    fontSize: 13.5,
+    color: "#0F172A",
   },
-
-  // Empty state
-  emptyState: {
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  heroBannerCard: {
+    marginHorizontal: 16,
+    marginTop: 14,
+    borderRadius: 24,
+    overflow: "hidden",
+    height: 185,
+    backgroundColor: "#FFFFFF",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+  },
+  heroBannerImg: {
+    width: "100%",
+    height: "100%",
+  },
+  pillsRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  pillBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  pillBtnActive: {
+    backgroundColor: "#0F766E",
+    borderColor: "#0F766E",
+  },
+  pillText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0F766E",
+  },
+  pillTextActive: {
+    color: "#FFFFFF",
+  },
+  cardsContainer: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  serviceCard: {
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  cardImgWrap: {
+    width: 92,
+    height: 92,
+    borderRadius: 16,
+    overflow: "hidden",
+    position: "relative",
+    backgroundColor: "#E2E8F0",
+  },
+  cardImg: {
+    width: "100%",
+    height: "100%",
+  },
+  popularBadge: {
+    position: "absolute",
+    top: 4,
+    left: 4,
+    backgroundColor: "#FEF3C7",
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
+  popularBadgeText: {
+    fontSize: 8.5,
+    fontWeight: "800",
+    color: "#92400E",
+  },
+  cardDetails: {
+    flex: 1,
+    marginLeft: 12,
+    marginRight: 6,
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#0F172A",
+    marginBottom: 2,
+  },
+  cardDesc: {
+    fontSize: 11.5,
+    color: "#64748B",
+    lineHeight: 16,
+    marginBottom: 6,
+  },
+  cardMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 4,
+  },
+  metaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  metaText: {
+    fontSize: 11,
+    color: "#64748B",
+    fontWeight: "600",
+  },
+  priceRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 6,
+  },
+  priceMain: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#0F766E",
+  },
+  priceSlashed: {
+    fontSize: 12,
+    color: "#94A3B8",
+    textDecorationLine: "line-through",
+    fontWeight: "600",
+  },
+  cardRightCol: {
+    justifyContent: "center",
+    alignItems: "flex-end",
+  },
+  bookNowBtn: {
+    backgroundColor: "#0F766E",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#0F766E",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  bookNowText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  emptyWrap: {
     alignItems: "center",
     paddingVertical: 40,
-    gap: 10,
   },
-  emptyStateText: {
-    fontSize: 13,
-    color: "rgba(255,255,255,0.4)",
-    textAlign: "center",
-    paddingHorizontal: 20,
-  },
-
-  sectionTitle: {
-    fontSize: 18,
+  emptyTitle: {
+    fontSize: 16,
     fontWeight: "800",
-    color: "white",
-    marginBottom: 14,
-    letterSpacing: 0.3,
+    color: "#334155",
+    marginTop: 10,
   },
-
-  // Sub-service card
-  subCard: {
-    backgroundColor: colors.surface.container,
-    borderRadius: 20,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: colors.glass.border,
-    flexDirection: "row",
-    overflow: "hidden",
-  },
-  subCardImage: {
-    width: 90,
-    height: "100%" as any,
-    opacity: 0.9,
-  },
-  accentBar: { width: 4 },
-  subCardBody: { flex: 1, padding: 14 },
-  subCardTop: { marginBottom: 10 },
-  subCardTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
-  subName: { fontSize: 15, fontWeight: "700", color: colors.text.primary, flex: 1 },
-  popularBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  popularText: { fontSize: 10, fontWeight: "700" },
-  subDesc: { fontSize: 12, color: colors.text.secondary, lineHeight: 17 },
-  subCardBottom: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  emptySub: {
+    fontSize: 13,
+    color: "#94A3B8",
     marginTop: 4,
   },
-  subMeta: { flexDirection: "row", gap: 12 },
-  metaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
-  metaText: { fontSize: 12, color: colors.text.muted },
-  subPriceRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  subPrice: { fontSize: 18, fontWeight: "800" },
-  bookMiniBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  bookMiniText: { fontSize: 12, fontWeight: "700" },
 });
