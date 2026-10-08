@@ -154,7 +154,7 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* ── Hero Banner Card (Accurately Aligned & Proportionate) ───── */}
+        {/* ── Hero Banner Card (Cleanly Framed & Centered) ────────────── */}
         <View style={styles.heroBannerCard}>
           <Image
             source={require("../../../assets/category_banner_cleaning.png")}
@@ -217,7 +217,7 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
           })}
         </ScrollView>
 
-        {/* ── Sub-Services List ────────────────────────────────────────── */}
+        {/* ── Sub-Services List (Spacious & No Overlapping Text) ───────── */}
         <View style={styles.cardsContainer}>
           {subServices.length === 0 ? (
             <View style={styles.emptyWrap}>
@@ -243,48 +243,47 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
                     })
                   }
                 >
-                  {/* Left: Service Thumbnail Image */}
-                  <View style={styles.cardImgWrap}>
-                    <Image
-                      source={imgSource}
-                      style={styles.cardImg}
-                      resizeMode="cover"
-                    />
-                    <View style={styles.popularBadge}>
-                      <Ionicons name="star" size={9} color="#92400E" />
-                      <Text style={styles.popularBadgeText}>4.8</Text>
+                  {/* Top Section: Image + Details */}
+                  <View style={styles.cardTopRow}>
+                    <View style={styles.cardImgWrap}>
+                      <Image
+                        source={imgSource}
+                        style={styles.cardImg}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.popularBadge}>
+                        <Ionicons name="star" size={9} color="#92400E" />
+                        <Text style={styles.popularBadgeText}>4.8</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.cardDetails}>
+                      <Text style={[styles.cardTitle, textPrimary]} numberOfLines={2}>
+                        {sub.name}
+                      </Text>
+                      <Text style={[styles.cardDesc, textSecondary]} numberOfLines={2}>
+                        {sub.description}
+                      </Text>
+                      <View style={styles.cardMetaRow}>
+                        <View style={styles.metaItem}>
+                          <Ionicons name="time-outline" size={13} color={textSecondary.color} />
+                          <Text style={[styles.metaText, textSecondary]}>{sub.duration}</Text>
+                        </View>
+                        <View style={styles.metaItem}>
+                          <Ionicons name="shield-checkmark-outline" size={13} color="#059669" />
+                          <Text style={[styles.metaText, { color: "#059669" }]}>Verified</Text>
+                        </View>
+                      </View>
                     </View>
                   </View>
 
-                  {/* Middle: Details */}
-                  <View style={styles.cardDetails}>
-                    <Text style={[styles.cardTitle, textPrimary]} numberOfLines={1}>
-                      {sub.name}
-                    </Text>
-                    <Text style={[styles.cardDesc, textSecondary]} numberOfLines={2}>
-                      {sub.description}
-                    </Text>
-
-                    <View style={styles.cardMetaRow}>
-                      <View style={styles.metaItem}>
-                        <Ionicons name="time-outline" size={13} color={textSecondary.color} />
-                        <Text style={[styles.metaText, textSecondary]}>{sub.duration}</Text>
-                      </View>
-                      <View style={styles.metaItem}>
-                        <Ionicons name="shield-checkmark-outline" size={13} color="#059669" />
-                        <Text style={[styles.metaText, { color: "#059669" }]}>Safe & Eco</Text>
-                      </View>
-                    </View>
-
-                    {/* Price Row */}
+                  {/* Bottom Divider & Action Row */}
+                  <View style={[styles.cardBottomRow, { borderTopColor: isDark ? "rgba(255,255,255,0.06)" : "#F1F5F9" }]}>
                     <View style={styles.priceRow}>
                       <Text style={[styles.priceMain, { color: isDark ? "#00BCD4" : "#0F766E" }]}>{sub.price}</Text>
                       <Text style={styles.priceSlashed}>{slashedPrice}</Text>
                     </View>
-                  </View>
 
-                  {/* Right: Book Now Action */}
-                  <View style={styles.bookNowBtnCol}>
                     <TouchableOpacity
                       style={styles.bookNowBtn}
                       onPress={() =>
@@ -295,7 +294,7 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
                       }
                     >
                       <Text style={styles.bookNowText}>Book Now</Text>
-                      <Ionicons name="arrow-forward" size={12} color="#FFFFFF" />
+                      <Ionicons name="arrow-forward" size={13} color="#FFFFFF" />
                     </TouchableOpacity>
                   </View>
                 </TouchableOpacity>
@@ -397,7 +396,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 10,
     marginBottom: 14,
-    height: 145,
+    height: 140,
     borderRadius: 20,
     overflow: "hidden",
     borderWidth: 1,
@@ -431,13 +430,11 @@ const styles = StyleSheet.create({
   // Service Cards
   cardsContainer: {
     paddingHorizontal: 16,
-    gap: 12,
+    gap: 14,
   },
   serviceCard: {
-    flexDirection: "row",
     borderRadius: 20,
-    padding: 12,
-    alignItems: "center",
+    padding: 14,
     borderWidth: 1,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -445,9 +442,14 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
+  cardTopRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
   cardImgWrap: {
-    width: 86,
-    height: 86,
+    width: 82,
+    height: 82,
     borderRadius: 16,
     overflow: "hidden",
     position: "relative",
@@ -476,13 +478,11 @@ const styles = StyleSheet.create({
   },
   cardDetails: {
     flex: 1,
-    marginLeft: 12,
-    marginRight: 6,
   },
   cardTitle: {
     fontSize: 15,
     fontWeight: "800",
-    marginBottom: 2,
+    marginBottom: 3,
   },
   cardDesc: {
     fontSize: 11.5,
@@ -493,7 +493,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    marginBottom: 4,
   },
   metaItem: {
     flexDirection: "row",
@@ -504,32 +503,38 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "600",
   },
+
+  // Bottom Row
+  cardBottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+  },
   priceRow: {
     flexDirection: "row",
     alignItems: "baseline",
     gap: 6,
   },
   priceMain: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "900",
   },
   priceSlashed: {
-    fontSize: 11.5,
+    fontSize: 12,
     color: "#94A3B8",
     textDecorationLine: "line-through",
   },
-  bookNowBtnCol: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
   bookNowBtn: {
     backgroundColor: "#0056D2",
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 6,
     shadowColor: "#0056D2",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
@@ -538,7 +543,7 @@ const styles = StyleSheet.create({
   },
   bookNowText: {
     color: "#FFFFFF",
-    fontSize: 11.5,
+    fontSize: 12.5,
     fontWeight: "800",
   },
 

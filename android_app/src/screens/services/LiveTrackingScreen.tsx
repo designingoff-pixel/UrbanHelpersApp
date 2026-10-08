@@ -60,11 +60,14 @@ interface VendorCoords {
 const TEAL = "#00bcd4";
 const TEAL_D = "#0097a7";
 
-const TRACKING_STEPS = [
-  { key: "requested", label: "Booking Confirmed", icon: "checkmark-circle" },
-  { key: "en_route",  label: "On The Way",        icon: "bicycle" },
-  { key: "arrived",   label: "Arrived At Location", icon: "location" },
-  { key: "in_progress", label: "Service In Progress", icon: "sparkles" },
+// 6 Full Milestones matching exact workflow
+const MILESTONES = [
+  { key: "requested",   label: "Booking Confirmed",     icon: "checkmark-circle" },
+  { key: "assigned",    label: "Vendor Assigned",       icon: "person" },
+  { key: "en_route",    label: "On The Way",            icon: "bicycle" },
+  { key: "arrived",     label: "Arrived at Location",   icon: "location" },
+  { key: "in_progress", label: "Service in Progress",   icon: "sparkles" },
+  { key: "completed",   label: "Completed",             icon: "star" },
 ];
 
 export default function LiveTrackingScreen({ navigation, route }: Props) {
@@ -97,8 +100,8 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
   const [booking,        setBooking]        = useState<LiveBooking | null>(null);
   const [vendorCoords,   setVendorCoords]   = useState<VendorCoords | null>(null);
   const [customerCoords, setCustomerCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [etaText,        setEtaText]        = useState("12 mins");
-  const [distanceText,   setDistanceText]   = useState("1.8 km");
+  const [etaText,        setEtaText]        = useState("Calculating...");
+  const [distanceText,   setDistanceText]   = useState("");
   const [loading,        setLoading]        = useState(true);
 
   // Subscribe to exact booking or customer's latest active booking
@@ -154,10 +157,11 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
     return () => unsub();
   }, [user, routeBookingId]);
 
-  const isVendorAccepted = !!booking?.vendorId && booking.status !== "requested";
-  const isTrackingActive = isVendorAccepted && booking?.status !== "completed" && booking?.status !== "cancelled";
+  // Vendor assignment condition: only show location and live GPS when vendor is assigned
+  const isVendorAssigned = !!booking?.vendorId && booking.status !== "requested";
+  const isTrackingActive = isVendorAssigned && booking?.status !== "completed" && booking?.status !== "cancelled";
 
-  // Subscribe to Vendor's live GPS coords
+  // Subscribe to Vendor's live GPS coords ONLY when assigned
   useEffect(() => {
     if (!isTrackingActive || !booking?.vendorId) {
       setVendorCoords(null);
@@ -182,18 +186,18 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
   // Recalculate ETA and Distance
   useEffect(() => {
     if (!vendorCoords || !customerCoords || !isTrackingActive) {
-      if (!isVendorAccepted) {
-        setEtaText("12 mins");
-        setDistanceText("1.8 km");
+      if (!isVendorAssigned) {
+        setEtaText("Finding Pro...");
+        setDistanceText("");
       }
       return;
     }
     const km = getDistanceKm(vendorCoords.lat, vendorCoords.lng, customerCoords.lat, customerCoords.lng);
     setEtaText(formatETA(Math.max(1, Math.round((km / 25) * 60))));
     setDistanceText(formatDistance(km));
-  }, [vendorCoords, customerCoords, isTrackingActive]);
+  }, [vendorCoords, customerCoords, isTrackingActive, isVendorAssigned]);
 
-  // Auto trigger review if completed
+  // Auto trigger review & rating when status becomes "completed"
   const reviewTriggeredRef = useRef(false);
   useEffect(() => {
     if (!booking) return;
@@ -218,15 +222,15 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
     }
   }, [booking?.status, booking?.id, booking?.rated]);
 
-  const status = booking?.status ?? "en_route";
-  const proName = booking?.vendorName || "Ramesh Kumar";
+  const status = booking?.status ?? "requested";
+  const proName = booking?.vendorName || (isVendorAssigned ? "Ramesh Kumar" : "Assigning Professional...");
   const proPhone = booking?.vendorPhone || "+91 98765 43210";
   const proCategory = booking?.serviceCategory || "Cleaning";
 
-  // Step Status calculations
+  // Step milestone status calculations
   const getStepState = (stepKey: string) => {
-    const order = ["requested", "en_route", "arrived", "in_progress", "completed"];
-    const currentIdx = order.indexOf(status === "accepted" || status === "assigned" ? "en_route" : status);
+    const order = ["requested", "assigned", "en_route", "arrived", "in_progress", "completed"];
+    const currentIdx = order.indexOf(status === "accepted" ? "assigned" : status);
     const stepIdx = order.indexOf(stepKey);
 
     if (status === "completed") return "done";
@@ -236,6 +240,10 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
   };
 
   const handleCall = () => {
+    if (!isVendorAssigned) {
+      Alert.alert("Professional Not Assigned", "We are currently assigning a verified professional to your booking.");
+      return;
+    }
     Alert.alert(
       "Call Professional",
       `Call ${proName} at ${proPhone}?`,
@@ -271,6 +279,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
     );
   };
 
+  // Map Region
   const mapRegion = customerCoords
     ? { latitude: customerCoords.lat, longitude: customerCoords.lng, latitudeDelta: 0.012, longitudeDelta: 0.012 }
     : { latitude: 11.0168, longitude: 76.9558, latitudeDelta: 0.05, longitudeDelta: 0.05 };
@@ -285,7 +294,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
 
   return (
     <View style={[s.root, bgStyle]}>
-      {/* Header */}
+      {/* ── Top Header ──────────────────────────────────────────────── */}
       <View style={[s.header, { backgroundColor: isDark ? "#081826" : "#FFFFFF", borderBottomColor: isDark ? "rgba(255,255,255,0.06)" : "#E2E8F0" }]}>
         <Pressable
           onPress={() => navigation.goBack()}
@@ -296,7 +305,9 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
         </Pressable>
         <View style={s.headerCenter}>
           <Text style={[s.headerTitle, textPrimary]}>Live Tracking</Text>
-          <Text style={s.headerSubtitle}>Your service is on the way</Text>
+          <Text style={s.headerSubtitle}>
+            {isVendorAssigned ? "Professional is on the way" : "Finding nearest professional"}
+          </Text>
         </View>
         <View style={s.headerRight}>
           <Pressable
@@ -312,7 +323,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={s.scroll}
       >
-        {/* 1. Professional Gradient Card */}
+        {/* ── 1. Assigned Vendor Hero Card ────────────────────────────── */}
         <Animated.View entering={FadeInDown.duration(380)} style={s.proCard}>
           <LinearGradient
             colors={isDark ? ["#0f2e46", "#091f33"] : ["#0F766E", "#0D5E58"]}
@@ -330,182 +341,239 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
                 style={s.proAvatar}
                 resizeMode="cover"
               />
-              <View style={s.onlineBadge} />
+              {isVendorAssigned && <View style={s.onlineBadge} />}
             </View>
 
             <View style={s.proInfo}>
               <View style={s.proNameRow}>
                 <Text style={s.proName}>{proName}</Text>
-                <View style={s.ratingBadge}>
-                  <Ionicons name="star" size={12} color="#f59e0b" />
-                  <Text style={s.ratingText}>4.8</Text>
-                </View>
+                {isVendorAssigned && (
+                  <View style={s.ratingBadge}>
+                    <Ionicons name="star" size={12} color="#f59e0b" />
+                    <Text style={s.ratingText}>4.8</Text>
+                  </View>
+                )}
               </View>
-              <Text style={s.proSubtitle}>{proCategory} Expert</Text>
+              <Text style={s.proSubtitle}>
+                {isVendorAssigned ? `${proCategory} Expert` : "Connecting to nearby partner..."}
+              </Text>
               <View style={s.verifiedRow}>
-                <Ionicons name="checkmark-circle" size={13} color="#22c55e" />
-                <Text style={s.verifiedText}>Verified Professional</Text>
+                <Ionicons
+                  name={isVendorAssigned ? "checkmark-circle" : "sync"}
+                  size={13}
+                  color={isVendorAssigned ? "#22c55e" : "#f59e0b"}
+                />
+                <Text style={[s.verifiedText, !isVendorAssigned && { color: "#f59e0b" }]}>
+                  {isVendorAssigned ? "Verified Professional" : "Assigning Expert..."}
+                </Text>
               </View>
             </View>
 
-            <Pressable
-              onPress={handleCall}
-              style={({ pressed }) => [s.callCircleBtn, { opacity: pressed ? 0.8 : 1 }]}
-              accessibilityLabel="Call Professional"
-            >
-              <Ionicons name="call" size={20} color="#fff" />
-            </Pressable>
+            {isVendorAssigned && (
+              <Pressable
+                onPress={handleCall}
+                style={({ pressed }) => [s.callCircleBtn, { opacity: pressed ? 0.8 : 1 }]}
+                accessibilityLabel="Call Professional"
+              >
+                <Ionicons name="call" size={20} color="#0F766E" />
+              </Pressable>
+            )}
           </LinearGradient>
         </Animated.View>
 
-        {/* 2. Stepper Timeline (Horizontal with 4 milestones) */}
+        {/* ── 2. Full Stepper Timeline (6 Milestones) ─────────────────── */}
         <Animated.View entering={FadeInDown.delay(100).duration(380)} style={[s.stepperCard, cardBgStyle]}>
-          <View style={s.stepperRow}>
-            {TRACKING_STEPS.map((step, idx) => {
+          <Text style={[s.stepperSectionTitle, textPrimary]}>Service Status Timeline</Text>
+          <View style={s.timelineVertical}>
+            {MILESTONES.map((step, idx) => {
               const st = getStepState(step.key);
               const isDone = st === "done";
               const isActive = st === "active";
 
               return (
-                <View key={step.key} style={s.stepItem}>
-                  {/* Step Icon / Circle */}
-                  <View style={s.stepCircleWrap}>
+                <View key={step.key} style={s.timelineStepRow}>
+                  {/* Left Icon & Connector Line */}
+                  <View style={s.timelineStepLeft}>
                     {isActive ? (
                       <View style={s.activeRing}>
                         <Animated.View style={[s.activePulse, pulseStyle]} />
                         <View style={s.activeDot}>
-                          <Ionicons name={step.icon as any} size={14} color="#fff" />
+                          <Ionicons name={step.icon as any} size={13} color="#fff" />
                         </View>
                       </View>
                     ) : isDone ? (
                       <View style={s.doneCircle}>
-                        <Ionicons name="checkmark" size={14} color="#fff" />
+                        <Ionicons name="checkmark" size={13} color="#fff" />
                       </View>
                     ) : (
                       <View style={[s.pendingCircle, { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#F1F5F9", borderColor: isDark ? "rgba(255,255,255,0.15)" : "#CBD5E1" }]}>
-                        <Ionicons name={step.icon as any} size={13} color="#94A3B8" />
+                        <Ionicons name={step.icon as any} size={12} color="#94A3B8" />
                       </View>
                     )}
 
-                    {/* Connecting Line to next step */}
-                    {idx < TRACKING_STEPS.length - 1 && (
+                    {idx < MILESTONES.length - 1 && (
                       <View
                         style={[
-                          s.connectingLine,
+                          s.verticalLine,
                           { backgroundColor: isDark ? "rgba(255,255,255,0.12)" : "#E2E8F0" },
-                          isDone && s.connectingLineDone,
+                          isDone && s.verticalLineDone,
                         ]}
                       />
                     )}
                   </View>
 
-                  {/* Step Label */}
-                  <Text
-                    style={[
-                      s.stepLabel,
-                      { color: isDark ? "#64748b" : "#94A3B8" },
-                      isActive && [s.stepLabelActive, { color: isDark ? TEAL : "#0F766E" }],
-                      isDone && [s.stepLabelDone, textPrimary],
-                    ]}
-                    numberOfLines={2}
-                  >
-                    {step.label}
-                  </Text>
+                  {/* Right Details */}
+                  <View style={s.timelineStepRight}>
+                    <Text
+                      style={[
+                        s.timelineStepLabel,
+                        { color: isDark ? "#94A3B8" : "#64748B" },
+                        isActive && [s.timelineStepLabelActive, { color: isDark ? TEAL : "#0F766E" }],
+                        isDone && [s.timelineStepLabelDone, textPrimary],
+                      ]}
+                    >
+                      {step.label}
+                    </Text>
+                    {isActive && (
+                      <Text style={s.timelineStepActiveHint}>
+                        {step.key === "requested"
+                          ? "We are locating the best professional near your address."
+                          : step.key === "assigned"
+                          ? `${proName} accepted your booking and is preparing.`
+                          : step.key === "en_route"
+                          ? `On the way to your doorstep. Arriving in ~${etaText}.`
+                          : step.key === "arrived"
+                          ? "Technician is outside. Please provide the OTP below to begin."
+                          : step.key === "in_progress"
+                          ? "Service is actively being performed with care."
+                          : "Job completed! Rate your experience."}
+                      </Text>
+                    )}
+                  </View>
                 </View>
               );
             })}
           </View>
         </Animated.View>
 
-        {/* 3. Live Route Map Card */}
+        {/* ── 3. Real Interactive Google Map ──────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(180).duration(380)} style={s.mapContainer}>
-          {customerCoords ? (
-            <MapView
-              ref={mapRef}
-              style={s.map}
-              provider={PROVIDER_GOOGLE}
-              region={mapRegion}
-              showsUserLocation={false}
-              showsTraffic={false}
-              showsCompass={false}
-            >
-              {customerCoords && (
-                <Marker
-                  coordinate={{ latitude: customerCoords.lat, longitude: customerCoords.lng }}
-                  title="Your Doorstep"
-                >
-                  <View style={s.homeMarker}>
-                    <Ionicons name="home" size={15} color="#fff" />
-                  </View>
-                </Marker>
-              )}
+          <MapView
+            ref={mapRef}
+            style={s.map}
+            provider={PROVIDER_GOOGLE}
+            region={mapRegion}
+            showsUserLocation={false}
+            showsTraffic={false}
+            showsCompass={false}
+          >
+            {/* Customer Doorstep Marker */}
+            {customerCoords && (
+              <Marker
+                coordinate={{ latitude: customerCoords.lat, longitude: customerCoords.lng }}
+                title="Your Doorstep"
+              >
+                <View style={s.homeMarker}>
+                  <Ionicons name="home" size={15} color="#fff" />
+                </View>
+              </Marker>
+            )}
 
-              {vendorCoords && (
-                <Marker
-                  coordinate={{ latitude: vendorCoords.lat, longitude: vendorCoords.lng }}
-                  title={proName}
-                >
-                  <View style={s.vendorMarker}>
-                    <Ionicons name="bicycle" size={16} color="#fff" />
-                  </View>
-                </Marker>
-              )}
+            {/* Vendor Live Marker (ONLY when assigned) */}
+            {isVendorAssigned && vendorCoords && (
+              <Marker
+                coordinate={{ latitude: vendorCoords.lat, longitude: vendorCoords.lng }}
+                title={proName}
+              >
+                <View style={s.vendorMarker}>
+                  <Ionicons name="bicycle" size={16} color="#fff" />
+                </View>
+              </Marker>
+            )}
 
-              {vendorCoords && customerCoords && (
-                <Polyline
-                  coordinates={[
-                    { latitude: vendorCoords.lat,   longitude: vendorCoords.lng },
-                    { latitude: customerCoords.lat, longitude: customerCoords.lng },
-                  ]}
-                  strokeColor={TEAL}
-                  strokeWidth={4}
-                  lineDashPattern={[6, 4]}
-                />
-              )}
-            </MapView>
-          ) : (
-            <Image
-              source={require("../../../assets/live_tracking_map_route.png")}
-              style={s.mapImageFallback}
-              resizeMode="cover"
-            />
-          )}
+            {/* Route Polyline (ONLY when assigned and both coords exist) */}
+            {isVendorAssigned && vendorCoords && customerCoords && (
+              <Polyline
+                coordinates={[
+                  { latitude: vendorCoords.lat,   longitude: vendorCoords.lng },
+                  { latitude: customerCoords.lat, longitude: customerCoords.lng },
+                ]}
+                strokeColor={TEAL}
+                strokeWidth={4}
+                lineDashPattern={[6, 4]}
+              />
+            )}
+          </MapView>
 
-          {/* Floating Top Pill on Map */}
+          {/* Floating Map Pill */}
           <View style={s.floatingMapPill}>
-            <Animated.View style={[s.liveBlinkDot, pulseStyle]} />
+            <Animated.View
+              style={[
+                s.liveBlinkDot,
+                pulseStyle,
+                { backgroundColor: isVendorAssigned ? "#22c55e" : "#f59e0b" },
+              ]}
+            />
             <Text style={s.floatingPillText}>
-              Professional is on the way · Arriving in {etaText}
+              {isVendorAssigned
+                ? `Professional En Route · ETA ${etaText}`
+                : "Locating nearest verified partner..."}
             </Text>
-          </View>
-
-          {/* Bottom Bar on Map */}
-          <View style={s.mapBottomBar}>
-            <View style={s.etaGroup}>
-              <Ionicons name="time" size={16} color={TEAL} />
-              <Text style={s.etaMainText}>{etaText}</Text>
-              <Text style={s.etaSubText}>({distanceText} away)</Text>
-            </View>
-            <View style={s.liveLocBadge}>
-              <Text style={s.liveLocText}>Live Location</Text>
-              <Ionicons name="arrow-forward" size={14} color={TEAL} />
-            </View>
           </View>
         </Animated.View>
 
-        {/* 4. Booking Summary & OTP Card */}
-        <Animated.View entering={FadeInDown.delay(260).duration(380)} style={[s.detailCard, cardBgStyle]}>
+        {/* ── 4. Separate Prominent ETA & Distance Stats Bar (Below Map) ── */}
+        <Animated.View entering={FadeInDown.delay(220).duration(380)} style={[s.etaStatsCard, cardBgStyle]}>
+          <View style={s.etaStatsLeft}>
+            <View style={[s.etaStatsIconCircle, { backgroundColor: isDark ? "rgba(0,188,212,0.15)" : "#E0F2FE" }]}>
+              <Ionicons name="time" size={20} color={isDark ? TEAL : "#0284C7"} />
+            </View>
+            <View>
+              <Text style={[s.etaStatsTitle, textPrimary]}>
+                {isVendorAssigned ? etaText : "Assigning..."}
+              </Text>
+              <Text style={[s.etaStatsSub, textSecondary]}>
+                {distanceText ? `${distanceText} away from doorstep` : "Real-time GPS tracking active"}
+              </Text>
+            </View>
+          </View>
+
+          <View style={[s.liveLocBadge, { backgroundColor: isDark ? "rgba(0,188,212,0.12)" : "#F0FDFA" }]}>
+            <Ionicons name="navigate" size={13} color={isDark ? TEAL : "#059669"} />
+            <Text style={[s.liveLocText, { color: isDark ? TEAL : "#059669" }]}>Live GPS</Text>
+          </View>
+        </Animated.View>
+
+        {/* ── 5. OTP Display Box (Highlighted when Arrived or In Progress) */}
+        {booking?.otp && (
+          <Animated.View entering={FadeInDown.delay(260).duration(380)} style={[s.otpHighlightCard, { backgroundColor: isDark ? "rgba(0,188,212,0.1)" : "#F0FDFA", borderColor: isDark ? "rgba(0,188,212,0.3)" : "#5EEAD4" }]}>
+            <View style={s.otpCardTop}>
+              <Ionicons name="shield-checkmark" size={18} color={TEAL} />
+              <Text style={[s.otpCardHeading, { color: isDark ? TEAL : "#0F766E" }]}>START-SERVICE OTP</Text>
+            </View>
+            <View style={s.otpDigitsRow}>
+              {String(booking.otp).slice(0, 4).split("").map((digit, i) => (
+                <View key={i} style={[s.otpBox, { backgroundColor: isDark ? "rgba(0,188,212,0.2)" : "#CCFBF1", borderColor: isDark ? "rgba(0,188,212,0.4)" : "#2DD4BF" }]}>
+                  <Text style={[s.otpDigitText, { color: isDark ? "#fff" : "#0F766E" }]}>{digit}</Text>
+                </View>
+              ))}
+            </View>
+            <Text style={[s.otpCardNotice, textSecondary]}>
+              Share this 4-digit verification code with {proName.split(" ")[0]} when they arrive to start the service.
+            </Text>
+          </Animated.View>
+        )}
+
+        {/* ── 6. Booking Summary Card ─────────────────────────────────── */}
+        <Animated.View entering={FadeInDown.delay(300).duration(380)} style={[s.detailCard, cardBgStyle]}>
           <View style={s.detailHeader}>
             <View>
               <Text style={[s.detailTitle, textSecondary]}>Booking Reference</Text>
               <Text style={[s.detailRef, textPrimary]}>#{booking?.id?.slice(-8).toUpperCase() || "AP4AB0H3"}</Text>
             </View>
-            {booking?.otp && (
-              <View style={[s.otpChip, { backgroundColor: isDark ? "rgba(0,188,212,0.14)" : "#E0F2FE", borderColor: isDark ? "rgba(0,188,212,0.3)" : "#7DD3FC" }]}>
-                <Text style={[s.otpChipLabel, { color: isDark ? TEAL : "#0284C7" }]}>OTP</Text>
-                <Text style={[s.otpChipValue, { color: isDark ? "#fff" : "#0284C7" }]}>{booking.otp}</Text>
-              </View>
-            )}
+            <Text style={[s.detailPrice, { color: isDark ? TEAL : "#0F766E" }]}>
+              {booking?.priceLabel || "₹600"}
+            </Text>
           </View>
 
           <View style={[s.addressRow, { borderTopColor: isDark ? "rgba(255,255,255,0.06)" : "#E2E8F0" }]}>
@@ -516,35 +584,10 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
           </View>
         </Animated.View>
 
-        {/* 5. Need to Make Changes / Help Card */}
-        <Animated.View entering={FadeInDown.delay(340).duration(380)} style={[s.helpCard, { backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "#FFFFFF", borderColor: isDark ? "rgba(255,255,255,0.06)" : "#E2E8F0" }]}>
-          <View style={s.helpIconWrap}>
-            <Ionicons name="gift-outline" size={20} color={TEAL} />
-          </View>
-          <View style={s.helpContent}>
-            <Text style={[s.helpTitle, textPrimary]}>Need to make changes?</Text>
-            <Text style={[s.helpSub, textSecondary]}>Reschedule slot or update special instructions</Text>
-          </View>
-          <Pressable
-            onPress={() => {
-              Alert.alert(
-                "Manage Booking",
-                "Contact Urban Helpers customer support for rescheduling or custom instructions.",
-                [
-                  { text: "Chat with Support", onPress: () => Linking.openURL("https://wa.me/919876543210") },
-                  { text: "Cancel", style: "cancel" },
-                ]
-              );
-            }}
-          >
-            <Text style={s.manageLink}>Manage</Text>
-          </Pressable>
-        </Animated.View>
-
         <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* Sticky Bottom Actions */}
+      {/* ── Sticky Bottom Actions ───────────────────────────────────── */}
       <View style={[s.bottomCtaBar, { backgroundColor: isDark ? "rgba(8,24,38,0.96)" : "#FFFFFF", borderTopColor: isDark ? "rgba(255,255,255,0.08)" : "#E2E8F0" }]}>
         {booking?.status === "completed" ? (
           <Pressable
@@ -563,7 +606,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
         ) : (
           <View style={s.ctaRow}>
             <Pressable
-              style={s.callFullBtn}
+              style={[s.callFullBtn, !isVendorAssigned && { opacity: 0.7 }]}
               onPress={handleCall}
             >
               <LinearGradient
@@ -573,7 +616,9 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
                 style={s.callFullGradient}
               >
                 <Ionicons name="call" size={18} color="#fff" />
-                <Text style={s.callFullText}>Call {proName.split(" ")[0]}</Text>
+                <Text style={s.callFullText}>
+                  {isVendorAssigned ? `Call ${proName.split(" ")[0]}` : "Assigning Contact..."}
+                </Text>
               </LinearGradient>
             </Pressable>
 
@@ -656,7 +701,7 @@ const s = StyleSheet.create({
     paddingTop: 10,
   },
 
-  // 1. Professional Card
+  // 1. Pro Card
   proCard: {
     borderRadius: 22,
     overflow: "hidden",
@@ -751,88 +796,95 @@ const s = StyleSheet.create({
   stepperCard: {
     borderRadius: 20,
     borderWidth: 1,
-    paddingVertical: 18,
-    paddingHorizontal: 12,
+    padding: 16,
     marginBottom: 16,
   },
-  stepperRow: {
+  stepperSectionTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    marginBottom: 14,
+  },
+  timelineVertical: {
+    paddingLeft: 4,
+  },
+  timelineStepRow: {
     flexDirection: "row",
     alignItems: "flex-start",
-    justifyContent: "space-between",
+    minHeight: 48,
   },
-  stepItem: {
+  timelineStepLeft: {
+    alignItems: "center",
+    width: 28,
+    marginRight: 12,
+  },
+  verticalLine: {
+    width: 2,
     flex: 1,
-    alignItems: "center",
+    marginVertical: 4,
+    minHeight: 20,
   },
-  stepCircleWrap: {
-    alignItems: "center",
-    justifyContent: "center",
-    width: "100%",
-    height: 32,
-    marginBottom: 8,
-  },
-  connectingLine: {
-    position: "absolute",
-    left: "50%",
-    right: "-50%",
-    top: 15,
-    height: 2,
-    zIndex: 1,
-  },
-  connectingLineDone: {
+  verticalLineDone: {
     backgroundColor: "#22c55e",
   },
   doneCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: "#22c55e",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 2,
   },
   activeRing: {
-    width: 32,
-    height: 32,
+    width: 26,
+    height: 26,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 2,
   },
   activePulse: {
     position: "absolute",
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(0,188,212,0.3)",
-  },
-  activeDot: {
     width: 26,
     height: 26,
     borderRadius: 13,
+    backgroundColor: "rgba(0,188,212,0.3)",
+  },
+  activeDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: TEAL,
     alignItems: "center",
     justifyContent: "center",
   },
   pendingCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 2,
   },
-  stepLabel: {
-    fontSize: 10,
-    textAlign: "center",
-    lineHeight: 14,
-    paddingHorizontal: 2,
+  timelineStepRight: {
+    flex: 1,
+    paddingTop: 2,
+    paddingBottom: 10,
   },
-  stepLabelActive: {
+  timelineStepLabel: {
+    fontSize: 13,
+  },
+  timelineStepLabelActive: {
+    fontWeight: "800",
+  },
+  timelineStepLabelDone: {
     fontWeight: "700",
   },
-  stepLabelDone: {
-    fontWeight: "600",
+  timelineStepActiveHint: {
+    fontSize: 11.5,
+    color: "#059669",
+    marginTop: 2,
+    lineHeight: 16,
   },
 
   // 3. Map Container
@@ -840,17 +892,13 @@ const s = StyleSheet.create({
     height: 240,
     borderRadius: 22,
     overflow: "hidden",
-    marginBottom: 16,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: "rgba(0,188,212,0.2)",
+    borderColor: "rgba(0,188,212,0.25)",
     position: "relative",
     elevation: 6,
   },
   map: {
-    width: "100%",
-    height: "100%",
-  },
-  mapImageFallback: {
     width: "100%",
     height: "100%",
   },
@@ -893,7 +941,6 @@ const s = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#22c55e",
   },
   floatingPillText: {
     fontSize: 11.5,
@@ -901,47 +948,93 @@ const s = StyleSheet.create({
     color: "#fff",
     flex: 1,
   },
-  mapBottomBar: {
-    position: "absolute",
-    bottom: 12,
-    left: 14,
-    right: 14,
-    backgroundColor: "rgba(8,24,38,0.94)",
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+
+  // 4. Separate ETA Stats Card (Below Map)
+  etaStatsCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 14,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
   },
-  etaGroup: {
+  etaStatsLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 12,
   },
-  etaMainText: {
-    fontSize: 14,
+  etaStatsIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  etaStatsTitle: {
+    fontSize: 16,
     fontWeight: "800",
-    color: "#fff",
   },
-  etaSubText: {
-    fontSize: 12,
-    color: "#94a3b8",
+  etaStatsSub: {
+    fontSize: 11.5,
+    marginTop: 2,
   },
   liveLocBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
   },
   liveLocText: {
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: "700",
-    color: TEAL,
   },
 
-  // 4. Detail Card
+  // 5. OTP Highlight Card
+  otpHighlightCard: {
+    borderRadius: 18,
+    borderWidth: 1.5,
+    padding: 16,
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  otpCardTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 10,
+  },
+  otpCardHeading: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.5,
+  },
+  otpDigitsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 8,
+  },
+  otpBox: {
+    width: 46,
+    height: 50,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  otpDigitText: {
+    fontSize: 24,
+    fontWeight: "900",
+  },
+  otpCardNotice: {
+    fontSize: 11,
+    textAlign: "center",
+    lineHeight: 16,
+  },
+
+  // 6. Detail Card
   detailCard: {
     borderRadius: 18,
     borderWidth: 1,
@@ -952,7 +1045,7 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
+    marginBottom: 10,
   },
   detailTitle: {
     fontSize: 11,
@@ -965,23 +1058,9 @@ const s = StyleSheet.create({
     fontWeight: "800",
     marginTop: 2,
   },
-  otpChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-  },
-  otpChipLabel: {
-    fontSize: 10,
-    fontWeight: "800",
-  },
-  otpChipValue: {
-    fontSize: 14,
-    fontWeight: "800",
-    letterSpacing: 2,
+  detailPrice: {
+    fontSize: 18,
+    fontWeight: "900",
   },
   addressRow: {
     flexDirection: "row",
@@ -994,41 +1073,6 @@ const s = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     lineHeight: 17,
-  },
-
-  // 5. Help Card
-  helpCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 14,
-    gap: 12,
-    marginBottom: 20,
-  },
-  helpIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(0,188,212,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  helpContent: {
-    flex: 1,
-  },
-  helpTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    marginBottom: 2,
-  },
-  helpSub: {
-    fontSize: 11,
-  },
-  manageLink: {
-    fontSize: 12.5,
-    fontWeight: "700",
-    color: TEAL,
   },
 
   // Bottom CTA
