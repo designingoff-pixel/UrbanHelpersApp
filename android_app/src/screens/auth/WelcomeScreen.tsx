@@ -1,38 +1,42 @@
 import React from "react";
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  ScrollView,
+  Dimensions,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Welcome">;
+const { width } = Dimensions.get("window");
 
 export default function WelcomeScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Top House + Hand Logo Badge */}
-        <View style={styles.logoBadgeWrap}>
-          <View style={styles.logoBadge}>
-            <Ionicons name="home" size={26} color="#0056D2" />
-            <Ionicons name="hand-left" size={14} color="#0056D2" style={styles.handIcon} />
-          </View>
-        </View>
-
-        {/* Hero Illustration */}
-        <View style={styles.heroWrap}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
+        {/* Top Hero Art */}
+        <View style={styles.heroCard}>
           <Image
-            source={require("../../../assets/welcome_hero.jpg")}
+            source={require("../../../assets/welcome_hero.png")}
             style={styles.heroImg}
-            resizeMode="cover"
+            resizeMode="contain"
           />
         </View>
 
         {/* Brand House Icon in Blue */}
         <View style={styles.brandIconWrap}>
           <View style={styles.brandHouseIcon}>
-            <Ionicons name="home" size={32} color="#0056D2" />
-            <Ionicons name="hand-left" size={16} color="#0056D2" style={styles.brandHand} />
+            <Ionicons name="home" size={28} color="#0056D2" />
           </View>
         </View>
 
@@ -49,21 +53,21 @@ export default function WelcomeScreen({ navigation }: Props) {
         <View style={styles.pillsRow}>
           <View style={styles.pillItem}>
             <View style={[styles.pillIconWrap, { backgroundColor: "#DCFCE7" }]}>
-              <Ionicons name="home" size={18} color="#15803D" />
+              <Ionicons name="home" size={20} color="#15803D" />
             </View>
             <Text style={styles.pillLabel}>Home{"\n"}Services</Text>
           </View>
 
           <View style={styles.pillItem}>
             <View style={[styles.pillIconWrap, { backgroundColor: "#DBEAFE" }]}>
-              <Ionicons name="heart" size={18} color="#2563EB" />
+              <Ionicons name="heart" size={20} color="#2563EB" />
             </View>
             <Text style={styles.pillLabel}>Health{"\n"}& Wellness</Text>
           </View>
 
           <View style={styles.pillItem}>
             <View style={[styles.pillIconWrap, { backgroundColor: "#F3E8FF" }]}>
-              <Ionicons name="people" size={18} color="#7E22CE" />
+              <Ionicons name="people" size={20} color="#7E22CE" />
             </View>
             <Text style={styles.pillLabel}>Emergency{"\n"}Support</Text>
           </View>
@@ -89,12 +93,10 @@ export default function WelcomeScreen({ navigation }: Props) {
           </TouchableOpacity>
         </View>
 
-        {/* Footer */}
-        <View style={styles.footerRow}>
-          <Text style={styles.footerText}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate("SignIn")}>
-            <Text style={styles.footerLink}>Sign In</Text>
-          </TouchableOpacity>
+        {/* Footer info */}
+        <View style={styles.footerWrap}>
+          <Ionicons name="shield-checkmark" size={14} color="#059669" />
+          <Text style={styles.footerText}>100% Verified Professionals · Instant Support</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -104,110 +106,109 @@ export default function WelcomeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#F8FAFC",
   },
   scroll: {
     paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingTop: 12,
+    paddingBottom: 28,
     alignItems: "center",
   },
-  logoBadgeWrap: {
-    alignSelf: "flex-start",
-    marginTop: 6,
-    marginBottom: 8,
-  },
-  logoBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+  heroCard: {
+    width: width - 48,
+    height: 190,
     backgroundColor: "#EFF6FF",
+    borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",
-    position: "relative",
-  },
-  handIcon: {
-    position: "absolute",
-    bottom: 12,
-  },
-  heroWrap: {
-    width: "100%",
-    height: 180,
-    borderRadius: 24,
     overflow: "hidden",
-    marginVertical: 6,
-    backgroundColor: "#F1F5F9",
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#DBEAFE",
   },
   heroImg: {
-    width: "100%",
-    height: "100%",
+    width: "90%",
+    height: "90%",
   },
   brandIconWrap: {
-    marginVertical: 10,
-    alignSelf: "flex-start",
+    marginBottom: 12,
   },
   brandHouseIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: "#EFF6FF",
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#E0E7FF",
     justifyContent: "center",
     alignItems: "center",
-    position: "relative",
-  },
-  brandHand: {
-    position: "absolute",
-    bottom: 14,
+    shadowColor: "#0056D2",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 3,
   },
   title: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: "900",
     color: "#0F172A",
-    alignSelf: "flex-start",
-    lineHeight: 32,
+    textAlign: "center",
+    lineHeight: 28,
     marginBottom: 8,
+    letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: 13.5,
     color: "#64748B",
-    alignSelf: "flex-start",
-    lineHeight: 19,
-    marginBottom: 16,
+    textAlign: "center",
+    lineHeight: 20,
+    paddingHorizontal: 8,
+    marginBottom: 22,
   },
   pillsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
-    marginBottom: 20,
+    marginBottom: 26,
+    gap: 8,
   },
   pillItem: {
-    alignItems: "center",
     flex: 1,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
   },
   pillIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 6,
+    marginBottom: 8,
   },
   pillLabel: {
     fontSize: 11.5,
     fontWeight: "700",
     color: "#1E293B",
     textAlign: "center",
-    lineHeight: 14,
+    lineHeight: 15,
   },
   actionsWrap: {
     width: "100%",
-    gap: 10,
-    marginBottom: 16,
+    gap: 12,
+    marginBottom: 18,
   },
   primaryBtn: {
-    width: "100%",
-    height: 52,
-    borderRadius: 26,
     backgroundColor: "#0056D2",
+    borderRadius: 16,
+    height: 52,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
@@ -221,34 +222,31 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "800",
+    letterSpacing: 0.2,
   },
   secondaryBtn: {
-    width: "100%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
     height: 52,
-    borderRadius: 26,
-    borderWidth: 1.5,
-    borderColor: "#CBD5E1",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    borderWidth: 1.5,
+    borderColor: "#CBD5E1",
   },
   secondaryBtnText: {
     color: "#0F172A",
-    fontSize: 15,
+    fontSize: 15.5,
     fontWeight: "700",
   },
-  footerRow: {
+  footerWrap: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 6,
     marginTop: 4,
   },
   footerText: {
-    fontSize: 13,
-    color: "#64748B",
-  },
-  footerLink: {
-    fontSize: 13,
-    color: "#0056D2",
-    fontWeight: "800",
+    fontSize: 11.5,
+    color: "#059669",
+    fontWeight: "600",
   },
 });

@@ -16,20 +16,21 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth, db } from "@/services/firebase";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type Props = NativeStackScreenProps<RootStackParamList, "CreateAccount">;
 
 export default function CreateAccountScreen({ navigation }: Props) {
-  const [name, setName] = useState("");
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(true);
   const [loading, setLoading] = useState(false);
 
-  const handleCreateAccount = async () => {
-    const cleanName = name.trim();
+  const handleSignUp = async () => {
+    const cleanName = fullName.trim();
     const cleanEmail = email.trim();
     const cleanPass = password;
 
@@ -38,41 +39,53 @@ export default function CreateAccountScreen({ navigation }: Props) {
       return;
     }
     if (!cleanEmail) {
-      Alert.alert("Email Required", "Please enter a valid email address.");
+      Alert.alert("Email Required", "Please enter your email address.");
       return;
     }
-    if (cleanPass.length < 6) {
-      Alert.alert("Password Too Short", "Please enter a password with at least 6 characters.");
+    if (!cleanPass || cleanPass.length < 6) {
+      Alert.alert("Password Too Short", "Password must be at least 6 characters long.");
+      return;
+    }
+    if (!agreeTerms) {
+      Alert.alert("Terms & Conditions", "Please accept the Terms of Service to continue.");
       return;
     }
 
     setLoading(true);
     try {
-      const userCred = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPass);
-      const user = userCred.user;
+      const res = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPass);
+      const user = res.user;
 
       await updateProfile(user, { displayName: cleanName });
-
-      // Save user record in Firestore
-      await setDoc(doc(db, "users", user.uid), {
-        uid: user.uid,
-        name: cleanName,
-        displayName: cleanName,
-        email: cleanEmail,
-        createdAt: serverTimestamp(),
-        profileCompleted: false,
-      }, { merge: true });
-
       await AsyncStorage.setItem("@customer_logged_in", "true");
 
-      // Navigate to fill profile details with pre-filled name & email
-      navigation.navigate("CreateProfile", {
-        name: cleanName,
-        email: cleanEmail,
-      } as any);
+      await setDoc(
+        doc(db, "users", user.uid),
+        {
+          name: cleanName,
+          displayName: cleanName,
+          email: cleanEmail,
+          role: "customer",
+          profileCompleted: false,
+          createdAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+
+      navigation.reset({
+        index: 0,
+        routes: [
+          {
+            name: "CreateProfile",
+            params: {
+              name: cleanName,
+              email: cleanEmail,
+            } as any,
+          },
+        ],
+      });
     } catch (err: any) {
-      console.warn("Create account error:", err);
-      Alert.alert("Registration Error", err.message || "Could not register account. Please try again.");
+      Alert.alert("Sign Up Failed", err.message || "Failed to create account. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -86,37 +99,38 @@ export default function CreateAccountScreen({ navigation }: Props) {
           <Ionicons name="chevron-back" size={24} color="#0F172A" />
         </TouchableOpacity>
 
-        {/* Top Illustration: Journey Starts Here */}
+        {/* Top Illustration: Journey Card */}
         <View style={styles.topIllustrationWrap}>
           <Image
-            source={require("../../../assets/signup_journey.jpg")}
+            source={require("../../../assets/signup_journey.png")}
             style={styles.topIllustrationImg}
-            resizeMode="cover"
+            resizeMode="contain"
           />
         </View>
 
         {/* Title */}
-        <Text style={styles.title}>Create your account</Text>
-        <Text style={styles.subtitle}>Start your journey to better health and home.</Text>
+        <Text style={styles.title}>Create Account</Text>
+        <Text style={styles.subtitle}>Join Urban Helpers for seamless home & health care.</Text>
 
-        {/* Full Name Input */}
+        {/* Full Name */}
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Full name</Text>
+          <Text style={styles.inputLabel}>Full Name</Text>
           <View style={styles.inputBox}>
             <Ionicons name="person-outline" size={18} color="#64748B" style={{ marginRight: 10 }} />
             <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder="Your full name"
+              value={fullName}
+              onChangeText={setFullName}
+              placeholder="e.g. Alex Johnson"
               placeholderTextColor="#94A3B8"
+              autoCapitalize="words"
               style={styles.inputField}
             />
           </View>
         </View>
 
-        {/* Email Input */}
+        {/* Email Address */}
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Email address</Text>
+          <Text style={styles.inputLabel}>Email Address</Text>
           <View style={styles.inputBox}>
             <Ionicons name="mail-outline" size={18} color="#64748B" style={{ marginRight: 10 }} />
             <TextInput
@@ -131,7 +145,7 @@ export default function CreateAccountScreen({ navigation }: Props) {
           </View>
         </View>
 
-        {/* Password Input */}
+        {/* Password */}
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Password</Text>
           <View style={styles.inputBox}>
@@ -139,7 +153,7 @@ export default function CreateAccountScreen({ navigation }: Props) {
             <TextInput
               value={password}
               onChangeText={setPassword}
-              placeholder="Create a strong password"
+              placeholder="At least 6 characters"
               placeholderTextColor="#94A3B8"
               secureTextEntry={!showPassword}
               style={styles.inputField}
@@ -154,10 +168,25 @@ export default function CreateAccountScreen({ navigation }: Props) {
           </View>
         </View>
 
-        {/* Primary Create Account Button */}
+        {/* Terms Agreement */}
+        <TouchableOpacity
+          style={styles.termsRow}
+          onPress={() => setAgreeTerms(!agreeTerms)}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.checkbox, agreeTerms && styles.checkboxActive]}>
+            {agreeTerms && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+          </View>
+          <Text style={styles.termsText}>
+            I agree to the <Text style={styles.termsLink}>Terms of Service</Text> and{" "}
+            <Text style={styles.termsLink}>Privacy Policy</Text>
+          </Text>
+        </TouchableOpacity>
+
+        {/* Create Account Button */}
         <TouchableOpacity
           style={styles.primaryBtn}
-          onPress={handleCreateAccount}
+          onPress={handleSignUp}
           disabled={loading}
           activeOpacity={0.88}
         >
@@ -200,25 +229,29 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginTop: 4,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   topIllustrationWrap: {
     width: "100%",
-    height: 140,
+    height: 145,
     borderRadius: 20,
     overflow: "hidden",
-    marginVertical: 6,
-    backgroundColor: "#F1F5F9",
+    marginVertical: 4,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
   },
   topIllustrationImg: {
-    width: "100%",
-    height: "100%",
+    width: "92%",
+    height: "92%",
   },
   title: {
     fontSize: 24,
     fontWeight: "900",
     color: "#0F172A",
-    marginTop: 10,
+    marginTop: 12,
     marginBottom: 4,
   },
   subtitle: {
@@ -227,7 +260,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   inputGroup: {
-    marginBottom: 14,
+    marginBottom: 12,
   },
   inputLabel: {
     fontSize: 12.5,
@@ -238,52 +271,80 @@ const styles = StyleSheet.create({
   inputBox: {
     flexDirection: "row",
     alignItems: "center",
-    height: 48,
+    height: 50,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    borderRadius: 14,
     paddingHorizontal: 14,
-    backgroundColor: "#FFFFFF",
   },
   inputField: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 14.5,
     color: "#0F172A",
   },
-  primaryBtn: {
-    width: "100%",
-    height: 50,
-    borderRadius: 25,
+  termsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 14,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: "#CBD5E1",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+    backgroundColor: "#FFFFFF",
+  },
+  checkboxActive: {
     backgroundColor: "#0056D2",
+    borderColor: "#0056D2",
+  },
+  termsText: {
+    flex: 1,
+    fontSize: 12.5,
+    color: "#64748B",
+    lineHeight: 18,
+  },
+  termsLink: {
+    color: "#0056D2",
+    fontWeight: "700",
+  },
+  primaryBtn: {
+    backgroundColor: "#0056D2",
+    borderRadius: 14,
+    height: 52,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#0056D2",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.22,
     shadowRadius: 8,
-    elevation: 4,
-    marginTop: 10,
-    marginBottom: 16,
+    elevation: 3,
+    marginTop: 6,
   },
   primaryBtnText: {
     color: "#FFFFFF",
-    fontSize: 15.5,
+    fontSize: 16,
     fontWeight: "800",
   },
   footerRow: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 22,
   },
   footerText: {
-    fontSize: 13,
+    fontSize: 13.5,
     color: "#64748B",
   },
   footerLink: {
-    fontSize: 13,
-    color: "#0056D2",
+    fontSize: 13.5,
     fontWeight: "800",
+    color: "#0056D2",
   },
 });

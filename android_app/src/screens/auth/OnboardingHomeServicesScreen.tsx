@@ -33,7 +33,7 @@ export default function OnboardingHomeServicesScreen({ navigation }: Props) {
         <View className="items-center">
           <View className="w-full h-64 rounded-3xl overflow-hidden bg-white shadow-md border border-slate-100 items-center justify-center p-2 mb-6">
             <Image
-              source={require("../../../assets/onboard_services.jpg")}
+              source={require("../../../assets/onboard_services.png")}
               style={{ width: "100%", height: "100%", borderRadius: 20 }}
               resizeMode="cover"
             />

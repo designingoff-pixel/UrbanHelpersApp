@@ -11,12 +11,12 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "@/services/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/AuthContext";
 
@@ -54,7 +54,6 @@ export default function SignInScreen({ navigation }: Props) {
           signInErr.code === "auth/invalid-credential" ||
           signInErr.code === "auth/invalid-email"
         ) {
-          // Auto-provision user if new
           const createRes = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPass);
           firebaseUser = createRes.user;
         } else {
@@ -65,12 +64,10 @@ export default function SignInScreen({ navigation }: Props) {
       if (firebaseUser) {
         await AsyncStorage.setItem("@customer_logged_in", "true");
 
-        // Check if user has a profile document in Firestore
         const userDocRef = doc(db, "users", firebaseUser.uid);
         const userDocSnap = await getDoc(userDocRef);
 
         if (!userDocSnap.exists() || !userDocSnap.data()?.profileCompleted) {
-          // New user -> navigate to fill profile details
           navigation.reset({
             index: 0,
             routes: [
@@ -91,7 +88,6 @@ export default function SignInScreen({ navigation }: Props) {
         }
       }
     } catch (err: any) {
-      console.warn("Sign in error:", err);
       Alert.alert("Sign In Failed", err.message || "Invalid credentials. Please try again.");
     } finally {
       setLoading(false);
@@ -122,12 +118,12 @@ export default function SignInScreen({ navigation }: Props) {
           <Ionicons name="chevron-back" size={24} color="#0F172A" />
         </TouchableOpacity>
 
-        {/* Top Illustration: Technician */}
+        {/* Top Illustration: Technician Card */}
         <View style={styles.topIllustrationWrap}>
           <Image
-            source={require("../../../assets/signin_tech.jpg")}
+            source={require("../../../assets/signin_tech.png")}
             style={styles.topIllustrationImg}
-            resizeMode="cover"
+            resizeMode="contain"
           />
         </View>
 
@@ -214,12 +210,10 @@ export default function SignInScreen({ navigation }: Props) {
             <Text style={styles.socialBtnText}>Continue with Google</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.socialBtn} onPress={() => Alert.alert("Apple Sign-In", "Apple authentication available on iOS devices.")}>
-            <Ionicons name="logo-apple" size={20} color="#000000" style={{ marginRight: 8 }} />
-            <Text style={styles.socialBtnText}>Continue with Apple</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.socialBtn} onPress={() => navigation.navigate("OTPVerification")}>
+          <TouchableOpacity
+            style={styles.socialBtn}
+            onPress={() => navigation.navigate("OTPVerification")}
+          >
             <Ionicons name="call-outline" size={18} color="#0F172A" style={{ marginRight: 8 }} />
             <Text style={styles.socialBtnText}>Continue with Phone</Text>
           </TouchableOpacity>
@@ -254,25 +248,29 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginTop: 4,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   topIllustrationWrap: {
     width: "100%",
-    height: 140,
+    height: 145,
     borderRadius: 20,
     overflow: "hidden",
-    marginVertical: 6,
-    backgroundColor: "#F1F5F9",
+    marginVertical: 4,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
   },
   topIllustrationImg: {
-    width: "100%",
-    height: "100%",
+    width: "92%",
+    height: "92%",
   },
   title: {
     fontSize: 24,
     fontWeight: "900",
     color: "#0F172A",
-    marginTop: 10,
+    marginTop: 12,
     marginBottom: 4,
   },
   subtitle: {
@@ -292,51 +290,50 @@ const styles = StyleSheet.create({
   inputBox: {
     flexDirection: "row",
     alignItems: "center",
-    height: 48,
+    height: 50,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    borderRadius: 14,
     paddingHorizontal: 14,
-    backgroundColor: "#FFFFFF",
   },
   inputField: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 14.5,
     color: "#0F172A",
   },
   forgotBtn: {
     alignSelf: "flex-end",
-    marginBottom: 18,
+    marginBottom: 16,
+    marginTop: 2,
   },
   forgotText: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontWeight: "700",
     color: "#0056D2",
   },
   primaryBtn: {
-    width: "100%",
-    height: 50,
-    borderRadius: 25,
     backgroundColor: "#0056D2",
+    borderRadius: 14,
+    height: 52,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#0056D2",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.22,
     shadowRadius: 8,
-    elevation: 4,
-    marginBottom: 16,
+    elevation: 3,
   },
   primaryBtnText: {
     color: "#FFFFFF",
-    fontSize: 15.5,
+    fontSize: 16,
     fontWeight: "800",
   },
   dividerRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 12,
+    marginVertical: 18,
   },
   dividerLine: {
     flex: 1,
@@ -344,44 +341,42 @@ const styles = StyleSheet.create({
     backgroundColor: "#E2E8F0",
   },
   dividerText: {
-    paddingHorizontal: 10,
-    fontSize: 11.5,
+    marginHorizontal: 12,
+    fontSize: 12,
     color: "#94A3B8",
     fontWeight: "600",
   },
   socialButtonsWrap: {
-    gap: 8,
-    marginBottom: 16,
+    gap: 10,
   },
   socialBtn: {
-    width: "100%",
-    height: 46,
-    borderRadius: 23,
+    flexDirection: "row",
+    height: 48,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
   },
   socialBtnText: {
-    fontSize: 13.5,
+    fontSize: 14,
     fontWeight: "700",
-    color: "#1E293B",
+    color: "#334155",
   },
   footerRow: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 6,
+    marginTop: 22,
   },
   footerText: {
-    fontSize: 13,
+    fontSize: 13.5,
     color: "#64748B",
   },
   footerLink: {
-    fontSize: 13,
-    color: "#0056D2",
+    fontSize: 13.5,
     fontWeight: "800",
+    color: "#0056D2",
   },
 });

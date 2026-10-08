@@ -100,7 +100,7 @@ export default function CreateProfileScreen({ navigation, route }: Props) {
   if (isSuccess) {
     return (
       <ImageBackground
-        source={require("../../../assets/success_art.jpg")}
+        source={require("../../../assets/success_art.png")}
         style={styles.successBg}
         resizeMode="cover"
       >
