@@ -140,6 +140,30 @@ class AppStore {
         completedTimestamp = fb.completedAt.toMillis ? fb.completedAt.toMillis() : fb.completedAt;
       }
 
+      // Preserve coordinates: if Firestore returns 0/missing, fall back to the
+      // value we already have in local store so that a status-only update (e.g.
+      // verifyOTP writing in_progress) never clears a valid navigation destination.
+      const resolvedLat =
+        (typeof fb.customerLat === 'number' && fb.customerLat !== 0)
+          ? fb.customerLat
+          : (existing?.latitude && existing.latitude !== 0 ? existing.latitude : 0);
+      const resolvedLng =
+        (typeof fb.customerLng === 'number' && fb.customerLng !== 0)
+          ? fb.customerLng
+          : (existing?.longitude && existing.longitude !== 0 ? existing.longitude : 0);
+
+      // Preserve CUSTOMER_VERIFIED when Firestore fires in_progress before the
+      // vendor has pressed "Start Service".  verifyOTP() writes in_progress to
+      // Firestore immediately, but the vendor still needs to see the
+      // CUSTOMER_VERIFIED state to be able to tap the Start Service button.
+      // Once the vendor navigates to ServiceScreen and startRecording() is called,
+      // the local status becomes RECORDING_ACTIVE and this guard no longer applies.
+      const firestoreMapped = this._mapStatus(fb.status);
+      const resolvedStatus: import('../data/types').JobStatus =
+        (firestoreMapped === 'SERVICE_STARTED' && existing?.status === 'CUSTOMER_VERIFIED')
+          ? 'CUSTOMER_VERIFIED'
+          : firestoreMapped;
+
       return {
         jobId:               fb.id,
         customerId:          fb.customerId,
@@ -148,12 +172,12 @@ class AppStore {
         serviceType:         fb.serviceCategory || 'Service',
         serviceName:         fb.subServiceName || fb.serviceCategory || 'Home Service',
         assignmentType:      isAssigned ? ('ADMIN_ASSIGNED' as const) : ('CUSTOMER_REQUEST' as const),
-        status:              this._mapStatus(fb.status),
+        status:              resolvedStatus,
         date:                dateStr,
         time:                timeStr,
         address:             fb.address || 'Customer Location',
-        latitude:            fb.customerLat || 0,
-        longitude:           fb.customerLng || 0,
+        latitude:            resolvedLat,
+        longitude:           resolvedLng,
         distance:            'Nearby',
         estimatedDuration:   '1 hr',
         customerInstructions:'',
