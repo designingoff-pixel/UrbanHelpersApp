@@ -131,7 +131,7 @@ function GlobalBookingListener() {
     const q = query(
       collection(db, "bookings"),
       where("customerId", "==", user.uid),
-      where("status", "in", ["assigned", "accepted", "en_route", "arrived", "in_progress", "completed"])
+      where("status", "in", ["assigned", "accepted", "en_route", "arrived", "in_progress", "service_ended", "completed"])
     );
     const unsub = onSnapshot(q, (snap) => {
       if (snap.empty) {
@@ -141,9 +141,9 @@ function GlobalBookingListener() {
         return;
       }
 
-      // Prioritize actively ongoing bookings first
+      // Prioritize actively ongoing or awaiting-review bookings first
       const activeDoc = snap.docs.find((d) =>
-        ["in_progress", "arrived", "en_route", "accepted", "assigned"].includes(d.data().status)
+        ["service_ended", "in_progress", "arrived", "en_route", "accepted", "assigned"].includes(d.data().status)
       ) || snap.docs[0];
 
       const data = activeDoc.data();
@@ -170,11 +170,11 @@ function GlobalBookingListener() {
         }
       }
 
-      // ONLY when vendor explicitly completes the service in their app:
+      // When vendor finishes job (service_ended) or completes:
       if (
         activeBookingId.current === currentId &&
         (prevStatus.current === "in_progress" || prevStatus.current === "arrived") &&
-        newStatus === "completed"
+        (newStatus === "service_ended" || newStatus === "completed")
       ) {
         sendServiceCompletedNotification(data.serviceCategory ?? "Service").catch(console.log);
         navigation.navigate("RatingFeedback", {

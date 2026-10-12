@@ -21,6 +21,7 @@ export type BookingStatus =
   | "en_route"
   | "arrived"
   | "in_progress"
+  | "service_ended"
   | "completed"
   | "cancelled";
 
@@ -263,15 +264,15 @@ export async function updateBookingStatus(
     [`${status}At`]: serverTimestamp(),
   };
 
-  if (status === "completed") {
-    update.completedAt = serverTimestamp();
+  if (status === "completed" || status === "service_ended") {
+    update.serviceEndedAt = serverTimestamp();
     update.paymentStatus = "paid";
   }
 
   await updateDoc(doc(db, "bookings", bookingId), update);
 
-  // When completing a job, update the vendor document in Firestore for Admin Web visibility
-  if (status === "completed" && vendorId) {
+  // When ending/completing a job, update the vendor document in Firestore for Admin Web visibility
+  if ((status === "completed" || status === "service_ended") && vendorId) {
     try {
       const vRef = doc(db, "vendors", vendorId);
       const vSnap = await getDoc(vRef);
@@ -318,18 +319,39 @@ export async function updateVendorLocation(
   lat:       number,
   lng:       number,
   heading:   number = 0,
-  speed:     number = 0
+  speed:     number = 0,
+  bookingId?: string
 ): Promise<void> {
-  await updateDoc(doc(db, "vendors", vendorId), {
-    location: {
-      lat,
-      lng,
-      heading,
-      speed,
-      updatedAt: serverTimestamp(),
-    },
-    isOnline: true,
-  });
+  const cleanId = (vendorId || "").trim();
+  if (cleanId) {
+    try {
+      await setDoc(doc(db, "vendors", cleanId), {
+        location: {
+          lat,
+          lng,
+          heading,
+          speed,
+          updatedAt: serverTimestamp(),
+        },
+        isOnline: true,
+      }, { merge: true });
+    } catch (e) {
+      console.warn("[updateVendorLocation] vendor doc update error:", e);
+    }
+  }
+
+  if (bookingId) {
+    try {
+      await setDoc(doc(db, "bookings", bookingId), {
+        vendorLat: lat,
+        vendorLng: lng,
+        vendorHeading: heading,
+        vendorSpeed: speed,
+      }, { merge: true });
+    } catch (e) {
+      console.warn("[updateVendorLocation] booking doc location update error:", e);
+    }
+  }
 }
 
 export async function setVendorOnlineStatus(

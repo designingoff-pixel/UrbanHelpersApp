@@ -80,6 +80,12 @@ export default function MapScreen({ route, navigation }: any) {
   // Start GPS broadcast
   useEffect(() => {
     if (!job || !store.vendorId) return;
+
+    // Security check: Once OTP is verified or service active, do NOT broadcast or navigate
+    if (['CUSTOMER_VERIFIED', 'SERVICE_STARTED', 'RECORDING_ACTIVE', 'COMPLETED'].includes(job.status)) {
+      return;
+    }
+
     let active = true;
 
     (async () => {
@@ -121,7 +127,35 @@ export default function MapScreen({ route, navigation }: any) {
     );
   }
 
+  // Security guard: Map navigation is not accessible once on-site / OTP verified
+  if (['CUSTOMER_VERIFIED', 'SERVICE_STARTED', 'RECORDING_ACTIVE', 'COMPLETED'].includes(job.status)) {
+    return (
+      <View style={[st.container, { justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: '#0B132B' }]}>
+        <View style={{ width: 84, height: 84, borderRadius: 42, backgroundColor: 'rgba(16, 185, 129, 0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+          <Ionicons name="shield-checkmark" size={44} color="#10B981" />
+        </View>
+        <Text style={{ fontSize: 20, fontWeight: '800', color: '#FFFFFF', textAlign: 'center', marginBottom: 10 }}>
+          Navigation Locked
+        </Text>
+        <Text style={{ fontSize: 14, color: '#94A3B8', textAlign: 'center', lineHeight: 22, maxWidth: 320, marginBottom: 28 }}>
+          Customer OTP verification is complete and you have arrived on-site. Map navigation is disabled for customer privacy and security during active service.
+        </Text>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={{ backgroundColor: '#10B981', paddingHorizontal: 28, paddingVertical: 14, borderRadius: 14 }}
+          activeOpacity={0.85}
+        >
+          <Text style={{ color: '#0B132B', fontWeight: '800', fontSize: 15 }}>Return to Job Details</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   const handleNavigation = async () => {
+    if (['CUSTOMER_VERIFIED', 'SERVICE_STARTED', 'RECORDING_ACTIVE', 'COMPLETED'].includes(job.status)) {
+      Alert.alert('🔒 Navigation Locked', 'Map navigation is disabled once on-site for customer security.');
+      return;
+    }
     setNavigating(true);
 
     const lat = customerCoords?.lat || (job.latitude !== 0 ? job.latitude : null);

@@ -19,16 +19,6 @@ type Props = NativeStackScreenProps<RootStackParamList, "ServiceInProgress">;
 function getDynamicChecklist(serviceName: string): { label: string; icon: string }[] {
   const text = serviceName.toLowerCase();
 
-  if (text.includes("clean") || text.includes("maid") || text.includes("housekeep")) {
-    return [
-      { label: "Inspect rooms, surfaces & high-touch areas", icon: "search-outline" },
-      { label: "Dusting, vacuuming & deep scrubbing of floors", icon: "brush-outline" },
-      { label: "Kitchen counter, sink & appliance degreasing", icon: "flame-outline" },
-      { label: "Bathroom sanitation & tile descaling", icon: "water-outline" },
-      { label: "Before & After service proof photos", icon: "camera-outline" },
-      { label: "Final walkthrough & customer satisfaction review", icon: "checkmark-done-outline" },
-    ];
-  }
   if (text.includes("ac") || text.includes("air conditioner") || text.includes("cool")) {
     return [
       { label: "Inspect indoor/outdoor units & power diagnostics", icon: "hardware-chip-outline" },
@@ -56,6 +46,16 @@ function getDynamicChecklist(serviceName: string): { label: string; icon: string
       { label: "Gel baiting & crack-and-crevice perimeter spray", icon: "information-circle-outline" },
       { label: "Safety briefing on ventilation to customer", icon: "megaphone-outline" },
       { label: "Before & After treatment photos", icon: "camera-outline" },
+    ];
+  }
+  if (text.includes("clean") || text.includes("maid") || text.includes("housekeep")) {
+    return [
+      { label: "Inspect rooms, surfaces & high-touch areas", icon: "search-outline" },
+      { label: "Dusting, vacuuming & deep scrubbing of floors", icon: "brush-outline" },
+      { label: "Kitchen counter, sink & appliance degreasing", icon: "flame-outline" },
+      { label: "Bathroom sanitation & tile descaling", icon: "water-outline" },
+      { label: "Before & After service proof photos", icon: "camera-outline" },
+      { label: "Final walkthrough & customer satisfaction review", icon: "checkmark-done-outline" },
     ];
   }
   if (text.includes("plumb") || text.includes("pipe") || text.includes("drain") || text.includes("tap")) {
@@ -281,9 +281,13 @@ export default function ServiceInProgressScreen({ route, navigation }: Props) {
       <View style={s.cta}>
         <Pressable
           style={s.ctaBtn}
-          onPress={() => navigation.navigate("ServiceCompleted", {})}
+          onPress={() =>
+            navigation.navigate("LiveTracking", {
+              bookingId: bookingId || "",
+            })
+          }
         >
-          <Text style={s.ctaBtnText}>Track Progress</Text>
+          <Text style={s.ctaBtnText}>Live Track Progress</Text>
           <Ionicons name="arrow-forward" size={18} color="white" />
         </Pressable>
       </View>

@@ -9,8 +9,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { store } from '../store/AppStore';
 import { Colors, Typography, Spacing, Radius } from '../theme';
 import { updateBookingStatus, updateBookingAudio, updateBookingPhotos, updateBookingChecklist } from '../services/firestoreService';
-import { db } from '../services/firebase';
+import { db, storage } from '../services/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Audio } from 'expo-av';
@@ -30,16 +31,7 @@ function formatTime(secs: number) {
 function getDynamicChecklist(serviceType: string, serviceName: string): string[] {
   const text = `${serviceType} ${serviceName}`.toLowerCase();
 
-  if (text.includes('clean') || text.includes('maid') || text.includes('housekeep')) {
-    return [
-      'Inspect rooms, surfaces & high-touch areas',
-      'Dusting, vacuuming & deep scrubbing of floors',
-      'Kitchen counter, sink & appliance degreasing',
-      'Bathroom sanitation & tile descaling',
-      'Capture Before & After service proof photos',
-      'Final walkthrough & customer satisfaction review',
-    ];
-  }
+  // 1. AC / Air Conditioner (Must be checked before generic "clean")
   if (text.includes('ac') || text.includes('air conditioner') || text.includes('cool')) {
     return [
       'Inspect indoor/outdoor units & power diagnostics',
@@ -50,6 +42,7 @@ function getDynamicChecklist(serviceType: string, serviceName: string): string[]
       'Complete test run & handover to customer',
     ];
   }
+  // 2. RO / Water Purifier
   if (text.includes('ro') || text.includes('water') || text.includes('purif')) {
     return [
       'Test raw inlet TDS and check water pressure',
@@ -60,6 +53,7 @@ function getDynamicChecklist(serviceType: string, serviceName: string): string[]
       'Handover verified pure water sample to customer',
     ];
   }
+  // 3. Pest Control
   if (text.includes('pest') || text.includes('cockroach') || text.includes('termite')) {
     return [
       'Identify infestation hotspots & entry gaps',
@@ -69,6 +63,7 @@ function getDynamicChecklist(serviceType: string, serviceName: string): string[]
       'Capture Before & After treatment photos',
     ];
   }
+  // 4. Plumbing
   if (text.includes('plumb') || text.includes('pipe') || text.includes('drain') || text.includes('tap')) {
     return [
       'Inspect pipeline joints, valves & pressure test',
@@ -76,6 +71,27 @@ function getDynamicChecklist(serviceType: string, serviceName: string): string[]
       'Replace worn washers, seals, cartridges or pipes',
       'Re-pressurize system & verify zero leaks',
       'Capture Before & After repair photos',
+    ];
+  }
+  // 5. Electrical
+  if (text.includes('electr') || text.includes('wire') || text.includes('switch') || text.includes('fan')) {
+    return [
+      'Voltage & circuit continuity safety check',
+      'Inspect wiring insulation and terminal tightness',
+      'Replace or repair malfunctioning electrical components',
+      'Test load capacity and grounding safety',
+      'Capture Before & After service photos',
+    ];
+  }
+  // 6. Home Cleaning / Maid / Housekeeping
+  if (text.includes('clean') || text.includes('maid') || text.includes('housekeep')) {
+    return [
+      'Inspect rooms, surfaces & high-touch areas',
+      'Dusting, vacuuming & deep scrubbing of floors',
+      'Kitchen counter, sink & appliance degreasing',
+      'Bathroom sanitation & tile descaling',
+      'Capture Before & After service proof photos',
+      'Final walkthrough & customer satisfaction review',
     ];
   }
 
@@ -126,42 +142,17 @@ export default function ServiceScreen({ route, navigation }: any) {
     if (job?.audioUrl) setAudioUri(job.audioUrl);
   }, [job?.beforePhoto, job?.afterPhoto, job?.audioUrl]);
 
-  // Auto-start recording continuously on service start
+  // Automatically start voice recording upon entering active service
   useEffect(() => {
-    let active = true;
-    async function startAutoRecording() {
-      try {
-        const perm = await Audio.requestPermissionsAsync();
-        if (!perm.granted) {
-          console.warn('[ServiceScreen] Microphone permission not granted');
-          return;
-        }
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: true,
-          playsInSilentModeIOS: true,
-        });
-
-        if (recordingRef.current) return;
-        const { recording } = await Audio.Recording.createAsync(
-          Audio.RecordingOptionsPresets.HIGH_QUALITY
-        );
-        if (active) {
-          recordingRef.current = recording;
-          setIsAudioRecording(true);
-        } else {
-          await recording.stopAndUnloadAsync();
-        }
-      } catch (err) {
-        console.warn('[ServiceScreen] Auto recording init err:', err);
+    const startAutoRecord = async () => {
+      if (job && !job.audioUrl && !audioUri && !isAudioRecording && !recordingRef.current) {
+        await handleStartAudioRecording();
       }
-    }
-
-    startAutoRecording();
-
-    return () => {
-      active = false;
     };
-  }, []);
+    startAutoRecord();
+  }, [job?.jobId]);
+
+
 
   // Audio recording duration timer
   useEffect(() => {
@@ -198,7 +189,7 @@ export default function ServiceScreen({ route, navigation }: any) {
 
   if (!job) return null;
 
-  // ── Photo Picker Handler ──────────────────────────────────────────────────
+  // ── Photo Picker Handler (Compressed & Storage-Uploaded) ───────────────────
   const handlePickPhoto = async (type: 'before' | 'after') => {
     try {
       Alert.alert(
@@ -215,7 +206,8 @@ export default function ServiceScreen({ route, navigation }: any) {
               }
               const res = await ImagePicker.launchCameraAsync({
                 allowsEditing: true,
-                quality: 0.6,
+                aspect: [4, 3],
+                quality: 0.25,
                 base64: true,
               });
               if (!res.canceled && res.assets && res.assets.length > 0) {
@@ -233,7 +225,8 @@ export default function ServiceScreen({ route, navigation }: any) {
               }
               const res = await ImagePicker.launchImageLibraryAsync({
                 allowsEditing: true,
-                quality: 0.6,
+                aspect: [4, 3],
+                quality: 0.25,
                 base64: true,
               });
               if (!res.canceled && res.assets && res.assets.length > 0) {
@@ -250,29 +243,63 @@ export default function ServiceScreen({ route, navigation }: any) {
   };
 
   const savePhotoData = async (type: 'before' | 'after', asset: ImagePicker.ImagePickerAsset) => {
-    const dataUri = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
     setUploadingPhoto(type);
+    try {
+      let finalPhotoUrl = '';
 
-    if (type === 'before') {
-      setBeforePhoto(dataUri);
-      store.updateJobPhotos(job.jobId, dataUri, undefined);
-      await updateBookingPhotos(job.jobId, { beforePhoto: dataUri });
-    } else {
-      setAfterPhoto(dataUri);
-      store.updateJobPhotos(job.jobId, undefined, dataUri);
-      await updateBookingPhotos(job.jobId, { afterPhoto: dataUri });
+      // 1. Upload photo to Firebase Storage
+      try {
+        const storagePath = `proofs/${job.bookingId || job.jobId}_${type}_${Date.now()}.jpg`;
+        const storageRef = ref(storage, storagePath);
+        const response = await fetch(asset.uri);
+        const blob = await response.blob();
+        await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
+        finalPhotoUrl = await getDownloadURL(storageRef);
+      } catch (storageErr) {
+        console.warn('[savePhotoData] Storage upload failed, using safe fallback:', storageErr);
+      }
+
+      // 2. Safe fallback if storage upload failed
+      if (!finalPhotoUrl) {
+        if (asset.base64 && asset.base64.length < 500000) {
+          finalPhotoUrl = `data:image/jpeg;base64,${asset.base64}`;
+        } else {
+          finalPhotoUrl = asset.uri;
+        }
+      }
+
+      if (type === 'before') {
+        setBeforePhoto(finalPhotoUrl);
+        store.updateJobPhotos(job.jobId, finalPhotoUrl, undefined);
+        await updateBookingPhotos(job.jobId, { beforePhoto: finalPhotoUrl });
+      } else {
+        setAfterPhoto(finalPhotoUrl);
+        store.updateJobPhotos(job.jobId, undefined, finalPhotoUrl);
+        await updateBookingPhotos(job.jobId, { afterPhoto: finalPhotoUrl });
+      }
+
+      Alert.alert('✅ Photo Saved', `${type === 'before' ? 'Before' : 'After'} service proof attached successfully.`);
+    } catch (err: any) {
+      console.warn('savePhotoData error:', err);
+      Alert.alert('Upload Error', err.message || 'Could not save photo proof.');
+    } finally {
+      setUploadingPhoto(null);
     }
-
-    setUploadingPhoto(null);
-    Alert.alert('✅ Photo Saved', `${type === 'before' ? 'Before' : 'After'} service proof uploaded to booking record.`);
   };
 
-  // ── Audio Recording Handlers ──────────────────────────────────────────────
+  // ── Audio Recording Handlers (Automatic & Storage-Uploaded) ────────────────
   const handleStartAudioRecording = async () => {
     try {
+      if (soundRef.current) {
+        await soundRef.current.stopAsync().catch(() => {});
+        await soundRef.current.unloadAsync().catch(() => {});
+        soundRef.current = null;
+      }
+      setIsPlayingAudio(false);
+
       const perm = await Audio.requestPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('Microphone Access Needed', 'Please allow microphone access to record audio proof of service.');
+        console.warn('Microphone permission not granted.');
         return;
       }
       await Audio.setAudioModeAsync({
@@ -281,19 +308,18 @@ export default function ServiceScreen({ route, navigation }: any) {
       });
 
       const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
+        Audio.RecordingOptionsPresets.LOW_QUALITY
       );
       recordingRef.current = recording;
       setIsAudioRecording(true);
       setRecordingDurationSecs(0);
     } catch (e: any) {
       console.warn('Start recording error:', e);
-      Alert.alert('Recording Error', e.message || 'Could not start voice recording.');
     }
   };
 
-  const handleStopAudioRecording = async () => {
-    if (!recordingRef.current) return;
+  const handleStopAudioRecording = async (): Promise<string | null> => {
+    if (!recordingRef.current) return audioUri || job?.audioUrl || null;
     setSavingAudio(true);
     try {
       await recordingRef.current.stopAndUnloadAsync();
@@ -302,21 +328,35 @@ export default function ServiceScreen({ route, navigation }: any) {
       setIsAudioRecording(false);
 
       if (uri) {
-        const base64Audio = await FileSystem.readAsStringAsync(uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        const dataUri = `data:audio/m4a;base64,${base64Audio}`;
-        setAudioUri(dataUri);
-        job.audioUrl = dataUri;
-        await updateBookingAudio(job.jobId, dataUri);
-        Alert.alert('🎙️ Voice Note Saved', 'Voice recording attached to booking record.');
+        let finalAudioUrl = '';
+
+        // 1. Upload audio to Firebase Storage
+        try {
+          const storagePath = `audio_proofs/${job.bookingId || job.jobId}_${Date.now()}.m4a`;
+          const audioRef = ref(storage, storagePath);
+          const response = await fetch(uri);
+          const blob = await response.blob();
+          await uploadBytes(audioRef, blob, { contentType: 'audio/m4a' });
+          finalAudioUrl = await getDownloadURL(audioRef);
+        } catch (storageErr) {
+          console.warn('[handleStopAudioRecording] Storage upload failed:', storageErr);
+          // If storage fails, store local uri or safe identifier so it NEVER exceeds 1MB in Firestore
+          finalAudioUrl = uri;
+        }
+
+        if (finalAudioUrl) {
+          setAudioUri(finalAudioUrl);
+          job.audioUrl = finalAudioUrl;
+          await updateBookingAudio(job.jobId, finalAudioUrl);
+          return finalAudioUrl;
+        }
       }
     } catch (e: any) {
       console.warn('Stop recording error:', e);
-      Alert.alert('Error', 'Failed to save recording.');
     } finally {
       setSavingAudio(false);
     }
+    return audioUri || job?.audioUrl || null;
   };
 
   const handleTogglePlayback = async () => {
@@ -329,9 +369,29 @@ export default function ServiceScreen({ route, navigation }: any) {
       }
       if (soundRef.current) {
         await soundRef.current.unloadAsync();
+        soundRef.current = null;
       }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+
+      let playUri = audioUri;
+      if (audioUri.startsWith('data:')) {
+        const base64Data = audioUri.split(',')[1] || audioUri;
+        const tempDir = (FileSystem as any).cacheDirectory || (FileSystem as any).documentDirectory || '';
+        const tempFile = `${tempDir}playback_${job.jobId}.m4a`;
+        await FileSystem.writeAsStringAsync(tempFile, base64Data, {
+          encoding: 'base64' as any,
+        });
+        playUri = tempFile;
+      }
+
       const { sound } = await Audio.Sound.createAsync(
-        { uri: audioUri },
+        { uri: playUri },
         { shouldPlay: true }
       );
       soundRef.current = sound;
@@ -344,7 +404,39 @@ export default function ServiceScreen({ route, navigation }: any) {
     } catch (e: any) {
       console.warn('Audio playback error:', e);
       Alert.alert('Playback Error', 'Could not play voice recording.');
+      setIsPlayingAudio(false);
     }
+  };
+
+  const handleRerecord = async () => {
+    Alert.alert(
+      'Re-record Voice Proof?',
+      'Discard current recording and record a fresh voice proof?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Record Fresh',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              if (soundRef.current) {
+                await soundRef.current.stopAsync().catch(() => {});
+                await soundRef.current.unloadAsync().catch(() => {});
+                soundRef.current = null;
+              }
+              setIsPlayingAudio(false);
+              setAudioUri(null);
+              setRecordingDurationSecs(0);
+              job.audioUrl = undefined;
+              await updateBookingAudio(job.jobId, '');
+              handleStartAudioRecording();
+            } catch (err) {
+              console.warn('Reset audio error:', err);
+            }
+          },
+        },
+      ]
+    );
   };
 
   // ── Dynamic Checklist Handler with Firestore Sync ──────────────────────────
@@ -360,47 +452,43 @@ export default function ServiceScreen({ route, navigation }: any) {
 
   // ── Finish & Complete Service ─────────────────────────────────────────────
   const handleConfirmComplete = async () => {
+    const currentBefore = beforePhoto || job.beforePhoto || null;
+    const currentAfter = afterPhoto || job.afterPhoto || null;
+    const currentAudio = audioUri || job.audioUrl || null;
     const currentChecklistItems = job.checklist && job.checklist.length > 0
       ? job.checklist
       : getDynamicChecklist(job.serviceType, job.serviceName);
 
-    if (job.checklistDone.length < currentChecklistItems.length) {
-      Alert.alert('Incomplete Checklist', 'Please complete all steps in the service checklist before finalizing.');
-      setCompleteModalVisible(false);
-      return;
-    }
-
-    const currentBefore = beforePhoto || job.beforePhoto || null;
-    const currentAfter = afterPhoto || job.afterPhoto || null;
-
     if (!currentBefore) {
-      Alert.alert('Missing Photo', 'Please capture the Before Work proof photo before finalizing.');
-      setCompleteModalVisible(false);
+      Alert.alert('Missing Before Photo', 'Please capture the Before Work proof photo before finalizing.');
       return;
     }
 
     if (!currentAfter) {
-      Alert.alert('Missing Photo', 'Please capture the After Work proof photo before finalizing.');
-      setCompleteModalVisible(false);
+      Alert.alert('Missing After Photo', 'Please capture the After Work proof photo before finalizing.');
+      return;
+    }
+
+    if (!currentAudio && !recordingRef.current && recordingDurationSecs === 0) {
+      Alert.alert('Missing Voice Proof', 'Please record the voice recording proof before finalizing.');
+      return;
+    }
+
+    if (job.checklistDone.length < currentChecklistItems.length) {
+      Alert.alert(
+        'Incomplete Checklist',
+        `Please complete all ${currentChecklistItems.length} steps in the service checklist (${job.checklistDone.length}/${currentChecklistItems.length} completed).`
+      );
       return;
     }
 
     setIsFinishing(true);
     try {
-      let finalAudioDataUri: string | null = audioUri || job.audioUrl || null;
-      if (recordingRef.current) {
+      let finalAudioUrl: string | null = audioUri || job.audioUrl || null;
+      if (recordingRef.current || isAudioRecording) {
         try {
-          await recordingRef.current.stopAndUnloadAsync();
-          const uri = recordingRef.current.getURI();
-          recordingRef.current = null;
-          setIsAudioRecording(false);
-          if (uri) {
-            const base64Audio = await FileSystem.readAsStringAsync(uri, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-            finalAudioDataUri = `data:audio/m4a;base64,${base64Audio}`;
-            setAudioUri(finalAudioDataUri);
-          }
+          const uploadedUrl = await handleStopAudioRecording();
+          if (uploadedUrl) finalAudioUrl = uploadedUrl;
         } catch (audioErr) {
           console.warn('Final audio capture error:', audioErr);
         }
@@ -410,24 +498,24 @@ export default function ServiceScreen({ route, navigation }: any) {
       const currentAfter = afterPhoto || job.afterPhoto || null;
 
       store.completeJob(job.jobId);
-      if (finalAudioDataUri) job.audioUrl = finalAudioDataUri;
+      if (finalAudioUrl) job.audioUrl = finalAudioUrl;
       if (currentBefore) job.beforePhoto = currentBefore;
       if (currentAfter) job.afterPhoto = currentAfter;
 
-      // Update booking directly in Firestore with all completed data bundled together
+      // Update booking directly in Firestore - marked as service_ended (awaiting customer feedback/sign-off)
       await updateDoc(doc(db, 'bookings', job.jobId), {
-        status: 'completed',
-        completedAt: serverTimestamp(),
+        status: 'service_ended',
+        serviceEndedAt: serverTimestamp(),
         paymentStatus: 'paid',
         beforePhoto: currentBefore,
         afterPhoto: currentAfter,
-        audioUrl: finalAudioDataUri,
+        audioUrl: finalAudioUrl,
         checklistDone: job.checklistDone,
         checklist: checklistItems,
       });
 
       // Also trigger stats update in firestoreService
-      await updateBookingStatus(job.jobId, 'completed', store.vendorId || undefined, job.vendorEarnings);
+      await updateBookingStatus(job.jobId, 'service_ended', store.vendorId || undefined, job.vendorEarnings);
 
       setCompleteModalVisible(false);
       navigation.navigate('Complete', { jobId: job.jobId });
@@ -444,6 +532,14 @@ export default function ServiceScreen({ route, navigation }: any) {
 
   const doneCount = job.checklistDone.length;
   const totalCount = checklistItems.length;
+
+  const hasBefore = !!(beforePhoto || job.beforePhoto);
+  const hasAfter = !!(afterPhoto || job.afterPhoto);
+  const hasAudio = !!(audioUri || job.audioUrl || isAudioRecording || recordingDurationSecs > 0);
+  const isChecklistDone = totalCount > 0 && doneCount >= totalCount;
+
+  const proofsCompletedCount = (hasBefore ? 1 : 0) + (hasAfter ? 1 : 0) + (hasAudio ? 1 : 0) + (isChecklistDone ? 1 : 0);
+  const isAllProofsReady = proofsCompletedCount === 4;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -587,45 +683,38 @@ export default function ServiceScreen({ route, navigation }: any) {
           </View>
         </View>
 
-        {/* Voice Recording Verification Card */}
+        {/* Automated Voice Recording Monitoring Card */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="mic-outline" size={18} color="#0D3325" />
-            <Text style={styles.sectionTitle}>VOICE RECORDING PROOF</Text>
+            <Ionicons name="mic" size={18} color="#059669" />
+            <Text style={styles.sectionTitle}>AUTOMATIC SERVICE AUDIO RECORDING</Text>
           </View>
           <Text style={styles.sectionSub}>
-            Record an audio summary or customer confirmation before completion.
+            Automated background audio monitoring for service quality &amp; customer security.
           </Text>
 
           <View style={styles.audioRecordBox}>
             {isAudioRecording ? (
               <View style={styles.recordingActiveWrap}>
                 <View style={styles.recordingPulseDot} />
-                <Text style={styles.recordingTimerText}>
-                  Recording: {formatTime(recordingDurationSecs)}
-                </Text>
-                <TouchableOpacity
-                  style={styles.stopRecordingBtn}
-                  onPress={handleStopAudioRecording}
-                  disabled={savingAudio}
-                >
-                  {savingAudio ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <>
-                      <Ionicons name="stop-circle" size={18} color="#FFFFFF" />
-                      <Text style={styles.stopRecordingBtnText}>Stop &amp; Save</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#0F172A' }}>
+                    Service Audio Monitoring Active
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#059669', fontWeight: '600', marginTop: 2 }}>
+                    Recording in progress: {formatTime(recordingDurationSecs)} (Auto-stops on completion)
+                  </Text>
+                </View>
               </View>
-            ) : audioUri ? (
+            ) : (
               <View style={styles.audioSavedWrap}>
                 <View style={styles.audioSavedInfo}>
                   <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-                  <Text style={styles.audioSavedText}>Voice proof recorded &amp; attached</Text>
+                  <Text style={styles.audioSavedText}>
+                    Audio proof recorded &amp; securely attached to booking
+                  </Text>
                 </View>
-                <View style={styles.audioActionsRow}>
+                {audioUri && (
                   <TouchableOpacity
                     style={styles.playAudioBtn}
                     onPress={handleTogglePlayback}
@@ -639,24 +728,8 @@ export default function ServiceScreen({ route, navigation }: any) {
                       {isPlayingAudio ? 'Pause' : 'Play Proof'}
                     </Text>
                   </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.rerecordBtn}
-                    onPress={handleStartAudioRecording}
-                  >
-                    <Ionicons name="refresh" size={14} color="#64748B" />
-                    <Text style={styles.rerecordText}>Re-record</Text>
-                  </TouchableOpacity>
-                </View>
+                )}
               </View>
-            ) : (
-              <TouchableOpacity
-                style={styles.startRecordBtn}
-                onPress={handleStartAudioRecording}
-              >
-                <Ionicons name="mic" size={20} color="#FFFFFF" />
-                <Text style={styles.startRecordText}>Start Voice Recording</Text>
-              </TouchableOpacity>
             )}
           </View>
         </View>
@@ -700,22 +773,92 @@ export default function ServiceScreen({ route, navigation }: any) {
           onPress={() => setCompleteModalVisible(true)}
           activeOpacity={0.85}
         >
-          <LinearGradient colors={['#0D3325', '#164E3A']} style={styles.completeBtnGrad}>
-            <Ionicons name="checkmark-done-circle" size={22} color="#FFFFFF" />
-            <Text style={styles.completeBtnText}>Complete &amp; Finalize Service</Text>
+          <LinearGradient
+            colors={isAllProofsReady ? ['#0D3325', '#164E3A'] : ['#475569', '#334155']}
+            style={styles.completeBtnGrad}
+          >
+            <Ionicons
+              name={isAllProofsReady ? "checkmark-done-circle" : "lock-closed"}
+              size={22}
+              color="#FFFFFF"
+            />
+            <Text style={styles.completeBtnText}>
+              {isAllProofsReady
+                ? "Complete & Finalize Service"
+                : `Complete & Finalize Service (${proofsCompletedCount}/4 Proofs Ready)`}
+            </Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
 
-      {/* Confirmation Modal */}
+      {/* Confirmation & Proof Verification Modal */}
       <Modal visible={completeModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.confirmBox}>
-            <Ionicons name="checkmark-circle" size={54} color="#10B981" />
-            <Text style={styles.confirmTitle}>Complete Service?</Text>
-            <Text style={styles.confirmSub}>
-              Ensure all checklist steps are completed and verification photos are captured.
+            <Ionicons
+              name={isAllProofsReady ? "checkmark-circle" : "alert-circle"}
+              size={54}
+              color={isAllProofsReady ? "#10B981" : "#EF4444"}
+            />
+            <Text style={styles.confirmTitle}>
+              {isAllProofsReady ? "Complete Service?" : "Mandatory Proofs Missing"}
             </Text>
+            <Text style={styles.confirmSub}>
+              {isAllProofsReady
+                ? "All required verification photos, voice recording, and checklist steps are recorded. Ready to finalize service."
+                : "Without recording all verification photos, voice proof, and completing all checklist steps, the service cannot be ended."}
+            </Text>
+
+            {/* Proofs Status Breakdown */}
+            <View style={styles.proofsStatusBox}>
+              <View style={styles.proofRow}>
+                <Ionicons
+                  name={hasBefore ? "checkmark-circle" : "close-circle"}
+                  size={18}
+                  color={hasBefore ? "#10B981" : "#EF4444"}
+                />
+                <Text style={styles.proofLabel}>1. Before Service Photo</Text>
+                <Text style={[styles.proofBadge, hasBefore ? styles.proofBadgeDone : styles.proofBadgePending]}>
+                  {hasBefore ? "Captured" : "Missing"}
+                </Text>
+              </View>
+
+              <View style={styles.proofRow}>
+                <Ionicons
+                  name={hasAfter ? "checkmark-circle" : "close-circle"}
+                  size={18}
+                  color={hasAfter ? "#10B981" : "#EF4444"}
+                />
+                <Text style={styles.proofLabel}>2. After Service Photo</Text>
+                <Text style={[styles.proofBadge, hasAfter ? styles.proofBadgeDone : styles.proofBadgePending]}>
+                  {hasAfter ? "Captured" : "Missing"}
+                </Text>
+              </View>
+
+              <View style={styles.proofRow}>
+                <Ionicons
+                  name={hasAudio ? "checkmark-circle" : "close-circle"}
+                  size={18}
+                  color={hasAudio ? "#10B981" : "#EF4444"}
+                />
+                <Text style={styles.proofLabel}>3. Voice Recording Proof</Text>
+                <Text style={[styles.proofBadge, hasAudio ? styles.proofBadgeDone : styles.proofBadgePending]}>
+                  {hasAudio ? "Recorded" : "Missing"}
+                </Text>
+              </View>
+
+              <View style={styles.proofRow}>
+                <Ionicons
+                  name={isChecklistDone ? "checkmark-circle" : "close-circle"}
+                  size={18}
+                  color={isChecklistDone ? "#10B981" : "#EF4444"}
+                />
+                <Text style={styles.proofLabel}>4. Service Checklist</Text>
+                <Text style={[styles.proofBadge, isChecklistDone ? styles.proofBadgeDone : styles.proofBadgePending]}>
+                  {doneCount}/{totalCount} Done
+                </Text>
+              </View>
+            </View>
 
             <View style={styles.confirmActions}>
               <TouchableOpacity
@@ -723,18 +866,20 @@ export default function ServiceScreen({ route, navigation }: any) {
                 onPress={() => setCompleteModalVisible(false)}
                 disabled={isFinishing}
               >
-                <Text style={styles.cancelBtnText}>Back</Text>
+                <Text style={styles.cancelBtnText}>{isAllProofsReady ? "Back" : "Go Back & Complete"}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.confirmBtn}
+                style={[styles.confirmBtn, !isAllProofsReady && styles.confirmBtnDisabled]}
                 onPress={handleConfirmComplete}
-                disabled={isFinishing}
+                disabled={!isAllProofsReady || isFinishing}
               >
                 {isFinishing ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.confirmBtnText}>Yes, Complete</Text>
+                  <Text style={[styles.confirmBtnText, !isAllProofsReady && styles.confirmBtnTextDisabled]}>
+                    {isAllProofsReady ? "Yes, Complete" : "Requirements Pending"}
+                  </Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -1182,9 +1327,54 @@ const styles = StyleSheet.create({
     backgroundColor: '#0D3325',
     alignItems: 'center',
   },
+  confirmBtnDisabled: {
+    backgroundColor: '#94A3B8',
+    opacity: 0.7,
+  },
   confirmBtnText: {
     fontSize: 13,
     fontWeight: '800',
     color: '#FFFFFF',
+  },
+  confirmBtnTextDisabled: {
+    color: '#F1F5F9',
+    fontSize: 12,
+  },
+  proofsStatusBox: {
+    width: '100%',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginVertical: 4,
+  },
+  proofRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  proofLabel: {
+    flex: 1,
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  proofBadge: {
+    fontSize: 11,
+    fontWeight: '700',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  proofBadgeDone: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    color: '#059669',
+  },
+  proofBadgePending: {
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    color: '#DC2626',
   },
 });

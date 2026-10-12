@@ -209,6 +209,7 @@ class AppStore {
       en_route:    'NAVIGATING',
       arrived:     'ARRIVED',
       in_progress: 'SERVICE_STARTED',
+      service_ended: 'COMPLETED',
       completed:   'COMPLETED',
       cancelled:   'CANCELLED',
     };

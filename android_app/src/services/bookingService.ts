@@ -19,6 +19,7 @@ export type BookingStatus =
   | "en_route"
   | "arrived"
   | "in_progress"
+  | "service_ended"
   | "completed"
   | "cancelled";
 

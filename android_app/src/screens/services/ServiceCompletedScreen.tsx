@@ -68,6 +68,10 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
     return () => unsub();
   }, [bookingId]);
 
+  // Status flags
+  const isCompleted = booking?.status === "completed";
+  const isCancelled = booking?.status === "cancelled";
+
   // Invoice calculations
   const total = booking?.price || 599;
   const platformFee = 29;
@@ -77,15 +81,28 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
   const baseServiceFee = Math.max(0, taxablePortion - gst);
   const invoiceNo = `INV-UH-${(booking?.id || "99999").slice(-8).toUpperCase()}`;
 
-  const formattedDate = booking?.scheduledAt
-    ? new Date(booking.scheduledAt).toLocaleString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "Just now";
+  // Robust safe date parsing
+  const formatScheduledDate = (val?: string) => {
+    if (!val) return "Scheduled";
+    if (typeof val === "string") {
+      if (val.includes("at") || val.includes("AM") || val.includes("PM") || val.includes(",")) {
+        return val;
+      }
+      const d = new Date(val);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
+    }
+    return String(val);
+  };
+
+  const formattedDate = formatScheduledDate(booking?.scheduledAt);
 
   const handleDownloadInvoicePDF = async () => {
     try {
@@ -361,19 +378,102 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
       </View>
 
       <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
-        {/* Success Hero Banner */}
-        <Animated.View entering={FadeInDown.duration(380)} style={s.heroBanner}>
+        {/* Status Hero Banner */}
+        <Animated.View entering={FadeInDown.duration(380)} style={[
+          s.heroBanner,
+          {
+            borderColor: isCompleted
+              ? "rgba(16,185,129,0.3)"
+              : isCancelled
+              ? "rgba(239,68,68,0.3)"
+              : "rgba(0,188,212,0.35)",
+          }
+        ]}>
           <LinearGradient
-            colors={["#065f46", "#042f2e"]}
+            colors={
+              isCompleted
+                ? ["#065f46", "#042f2e"]
+                : isCancelled
+                ? ["#7f1d1d", "#450a0a"]
+                : ["#0e7490", "#083344"]
+            }
             style={[StyleSheet.absoluteFillObject, { borderRadius: 22 }]}
           />
-          <View style={s.successIconWrap}>
-            <Ionicons name="checkmark-circle" size={38} color="#10b981" />
+          <View style={[
+            s.successIconWrap,
+            {
+              backgroundColor: isCompleted
+                ? "rgba(16,185,129,0.18)"
+                : isCancelled
+                ? "rgba(239,68,68,0.18)"
+                : "rgba(0,188,212,0.18)",
+              borderColor: isCompleted ? "#10b981" : isCancelled ? "#ef4444" : "#00bcd4",
+            }
+          ]}>
+            <Ionicons
+              name={
+                isCompleted
+                  ? "checkmark-circle"
+                  : isCancelled
+                  ? "close-circle"
+                  : "time"
+              }
+              size={38}
+              color={isCompleted ? "#10b981" : isCancelled ? "#ef4444" : booking?.status === "service_ended" ? "#f59e0b" : "#00bcd4"}
+            />
           </View>
-          <Text style={s.heroTitle}>Service Completed Successfully</Text>
-          <Text style={s.heroSub}>
-            Your service has been completed and verified by {booking?.vendorName || "our captain"}.
+          <Text style={s.heroTitle}>
+            {isCompleted
+              ? "Service Completed Successfully"
+              : isCancelled
+              ? "Booking Cancelled"
+              : booking?.status === "service_ended"
+              ? "Verification & Rating Required"
+              : "Service In Progress"}
           </Text>
+          <Text style={s.heroSub}>
+            {isCompleted
+              ? `Your service has been completed and verified by ${booking?.vendorName || "our captain"}.`
+              : isCancelled
+              ? "This booking was cancelled. Any refund has been processed."
+              : booking?.status === "service_ended"
+              ? `Partner ${booking?.vendorName || "Technician"} has ended work on site. Please verify the checklist and rate the service to finalize completion.`
+              : `Your service is currently active and assigned to ${booking?.vendorName || "our certified partner"}.`}
+          </Text>
+
+          {!isCompleted && !isCancelled && (
+            booking?.status === "service_ended" ? (
+              <Pressable
+                style={[s.trackLiveBannerBtn, { backgroundColor: "#f59e0b" }]}
+                onPress={() =>
+                  navigation.navigate("RatingFeedback", {
+                    bookingId: booking?.id || bookingId,
+                    vendorName: booking?.vendorName,
+                    serviceCategory: booking?.serviceCategory,
+                  })
+                }
+              >
+                <Ionicons name="star" size={18} color="#081826" />
+                <Text style={s.trackLiveBannerBtnText}>Rate &amp; Finalize Service</Text>
+                <Ionicons name="arrow-forward" size={14} color="#081826" />
+              </Pressable>
+            ) : (
+              <Pressable
+                style={s.trackLiveBannerBtn}
+                onPress={() =>
+                  navigation.navigate("LiveTracking", {
+                    bookingId: booking?.id || bookingId,
+                    categoryId: booking?.serviceId,
+                    subServiceId: booking?.subServiceId,
+                  })
+                }
+              >
+                <Ionicons name="navigate-circle" size={18} color="#081826" />
+                <Text style={s.trackLiveBannerBtnText}>Live Track Partner on Map</Text>
+                <Ionicons name="arrow-forward" size={14} color="#081826" />
+              </Pressable>
+            )
+          )}
         </Animated.View>
 
         {/* Work Verification Photos (Before & After Proof) */}
@@ -523,20 +623,38 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
 
       {/* Bottom Floating Actions */}
       <View style={s.ctaWrap}>
-        <Pressable
-          style={[s.shareBtn, { backgroundColor: "#065f46", borderColor: "#10b981" }]}
-          onPress={handleDownloadInvoicePDF}
-          disabled={downloading}
-        >
-          {downloading ? (
-            <ActivityIndicator size="small" color="#ffffff" />
-          ) : (
-            <>
-              <Ionicons name="download-outline" size={18} color="#ffffff" />
-              <Text style={[s.shareBtnText, { color: "#ffffff", fontWeight: "700" }]}>Download PDF Invoice</Text>
-            </>
-          )}
-        </Pressable>
+        {!isCompleted && !isCancelled ? (
+          <Pressable
+            style={[s.shareBtn, { backgroundColor: "#00bcd4", borderColor: "#00bcd4" }]}
+            onPress={() =>
+              navigation.navigate("LiveTracking", {
+                bookingId: booking?.id || bookingId,
+                categoryId: booking?.serviceId,
+                subServiceId: booking?.subServiceId,
+              })
+            }
+          >
+            <Ionicons name="navigate-circle" size={18} color="#081826" />
+            <Text style={[s.shareBtnText, { color: "#081826", fontWeight: "800" }]}>
+              Live Track Service on Map
+            </Text>
+          </Pressable>
+        ) : (
+          <Pressable
+            style={[s.shareBtn, { backgroundColor: "#065f46", borderColor: "#10b981" }]}
+            onPress={handleDownloadInvoicePDF}
+            disabled={downloading}
+          >
+            {downloading ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <>
+                <Ionicons name="download-outline" size={18} color="#ffffff" />
+                <Text style={[s.shareBtnText, { color: "#ffffff", fontWeight: "700" }]}>Download PDF Invoice</Text>
+              </>
+            )}
+          </Pressable>
+        )}
 
         <Pressable
           style={s.homeBtn}
@@ -553,6 +671,22 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#081826" },
   center: { justifyContent: "center", alignItems: "center" },
   loadingText: { color: "white", marginTop: 14, fontSize: 15, fontWeight: "600" },
+  trackLiveBannerBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#00bcd4",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 14,
+    marginTop: 14,
+  },
+  trackLiveBannerBtnText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#081826",
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",

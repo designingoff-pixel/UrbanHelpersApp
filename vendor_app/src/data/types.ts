@@ -51,6 +51,7 @@ export interface Job {
 
 export interface Vendor {
   vendorId: string;
+  docId?: string;
   name: string;
   mobile: string;
   email: string;

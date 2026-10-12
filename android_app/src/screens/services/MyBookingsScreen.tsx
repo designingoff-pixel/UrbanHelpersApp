@@ -56,6 +56,7 @@ const STATUS_COLORS: Record<BookingStatus, string> = {
   en_route: "#38bdf8",
   arrived: "#f59e0b",
   in_progress: "#22c55e",
+  service_ended: "#f59e0b",
   completed: "#6366f1",
   cancelled: "#ef4444",
 };
@@ -67,6 +68,7 @@ const STATUS_LABELS: Record<BookingStatus, string> = {
   en_route: "En route",
   arrived: "Arrived",
   in_progress: "In progress",
+  service_ended: "Review Required",
   completed: "Completed",
   cancelled: "Cancelled",
 };
@@ -361,7 +363,7 @@ export default function MyBookingsScreen({ navigation }: Props) {
                           <Text style={s.cancelBtnText}>Cancel</Text>
                         </Pressable>
                       )}
-                      {booking.status === "completed" && !booking.rated && (
+                      {(booking.status === "service_ended" || (booking.status === "completed" && !booking.rated)) && (
                         <Pressable
                           style={[s.billBtn, { backgroundColor: "rgba(245,158,11,0.18)", borderColor: "#f59e0b", borderWidth: 1 }]}
                           onPress={() =>
@@ -373,20 +375,35 @@ export default function MyBookingsScreen({ navigation }: Props) {
                           }
                         >
                           <Ionicons name="star" size={13} color="#f59e0b" />
-                          <Text style={[s.billBtnText, { color: "#f59e0b" }]}>Rate</Text>
+                          <Text style={[s.billBtnText, { color: "#f59e0b" }]}>Rate &amp; End</Text>
                         </Pressable>
                       )}
-                      <Pressable
-                        style={s.billBtn}
-                        onPress={() =>
-                          navigation.navigate("ServiceCompleted", {
-                            bookingId: booking.id,
-                          })
-                        }
-                      >
-                        <Ionicons name="document-text-outline" size={13} color="#ffffff" />
-                        <Text style={s.billBtnText}>View Bill</Text>
-                      </Pressable>
+                      {booking.status !== "completed" && booking.status !== "cancelled" ? (
+                        <Pressable
+                          style={[s.billBtn, { backgroundColor: "#00bcd4", borderColor: "#00bcd4" }]}
+                          onPress={() =>
+                            navigation.navigate("LiveTracking", {
+                              bookingId: booking.id,
+                              categoryId: category?.id,
+                            })
+                          }
+                        >
+                          <Ionicons name="navigate-circle-outline" size={14} color="#ffffff" />
+                          <Text style={[s.billBtnText, { color: "#ffffff", fontWeight: "700" }]}>Track Order</Text>
+                        </Pressable>
+                      ) : (
+                        <Pressable
+                          style={s.billBtn}
+                          onPress={() =>
+                            navigation.navigate("ServiceCompleted", {
+                              bookingId: booking.id,
+                            })
+                          }
+                        >
+                          <Ionicons name="document-text-outline" size={13} color="#ffffff" />
+                          <Text style={s.billBtnText}>View Receipt</Text>
+                        </Pressable>
+                      )}
                     </View>
                   </View>
                 </View>

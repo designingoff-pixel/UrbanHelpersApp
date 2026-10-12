@@ -11,8 +11,8 @@ import {
   subscribeToVendorJobs,
   subscribeToVendorProfile,
   FirestoreBooking,
-  db,
 } from '../services/firestoreService';
+import { db } from '../services/firebase';
 import { getDoc, doc } from 'firebase/firestore';
 import SOSModal from '../components/SOSModal';
 import CalendarModal from '../components/CalendarModal';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   ScrollView,
   Text,
@@ -42,6 +42,94 @@ const COMPLAINT_REASONS = [
 
 const TIPS = ["No Tip", "₹50", "₹100", "₹200"];
 
+function getServiceChecklist(serviceName: string, categoryName: string, existingList?: string[]): string[] {
+  const text = `${serviceName} ${categoryName}`.toLowerCase();
+
+  // Priority 1: AC / Air Conditioner (Must match before generic cleaning)
+  if (text.includes("ac") || text.includes("air condition") || text.includes("cool")) {
+    return [
+      "Inspect indoor/outdoor units & power diagnostics",
+      "Deep jet cleaning of filters & condenser coils",
+      "Check refrigerant gas pressure & leak detection",
+      "Measure air output temperature & voltage test",
+      "Capture Before & After service proof photos",
+      "Complete test run & handover to customer",
+    ];
+  }
+
+  // Priority 2: Water purifier / RO
+  if (text.includes("ro") || text.includes("water") || text.includes("purif")) {
+    return [
+      "Test raw inlet TDS and check water pressure",
+      "Inspect pre-filter, sediment & activated carbon cartridges",
+      "Check RO membrane rejection rate & pump PSI",
+      "Sanitize storage tank & test output water purity",
+      "Capture Before & After service proof photos",
+      "Handover verified pure water sample to customer",
+    ];
+  }
+
+  // Priority 3: Pest control
+  if (text.includes("pest") || text.includes("cockroach") || text.includes("termite") || text.includes("bedbug") || text.includes("insect")) {
+    return [
+      "Identify infestation hotspots & entry gaps",
+      "Chemical dilution & safety preparation check",
+      "Targeted gel baiting & crack-and-crevice perimeter spray",
+      "Safety briefing on ventilation to customer",
+      "Capture Before & After treatment photos",
+      "Final handover & prevention recommendations",
+    ];
+  }
+
+  // Priority 4: Plumbing
+  if (text.includes("plumb") || text.includes("pipe") || text.includes("drain") || text.includes("tap") || text.includes("leak") || text.includes("faucet")) {
+    return [
+      "Inspect pipeline joints, valves & pressure test",
+      "Isolate main water line & disassemble faulty fittings",
+      "Replace worn washers, seals, cartridges or pipes",
+      "Re-pressurize system & verify zero leaks",
+      "Capture Before & After repair photos",
+      "Test water flow & cleanup work area",
+    ];
+  }
+
+  // Priority 5: Electrical / Appliance
+  if (text.includes("electr") || text.includes("wiring") || text.includes("switch") || text.includes("fan") || text.includes("appliance")) {
+    return [
+      "Voltage & circuit continuity safety check",
+      "Inspect wiring insulation and terminal tightness",
+      "Replace or repair malfunctioning electrical components",
+      "Test load capacity and grounding safety",
+      "Capture Before & After service photos",
+      "Operational demonstration to customer",
+    ];
+  }
+
+  // Priority 6: Home Cleaning / Deep Cleaning / Maid
+  if (text.includes("clean") || text.includes("maid") || text.includes("housekeep") || text.includes("mop") || text.includes("scrub")) {
+    return [
+      "Inspect rooms, surfaces & high-touch areas",
+      "Dusting, vacuuming & deep scrubbing of floors",
+      "Kitchen counter, sink & appliance degreasing",
+      "Bathroom sanitation & tile descaling",
+      "Capture Before & After service proof photos",
+      "Final walkthrough & customer satisfaction review",
+    ];
+  }
+
+  if (existingList && existingList.length > 0) {
+    return existingList;
+  }
+
+  return [
+    "Quality of service executed to satisfaction",
+    "Professionalism & punctuality verified",
+    "Work area cleaned & sanitized post-service",
+    "Capture Before & After service proof photos",
+    "Final demonstration & invoice confirmed",
+  ];
+}
+
 export default function RatingFeedbackScreen({ navigation, route }: Props) {
   const bookingId = route.params?.bookingId;
   const initialVendorName = route.params?.vendorName || "Service Partner";
@@ -58,6 +146,10 @@ export default function RatingFeedbackScreen({ navigation, route }: Props) {
   const [customerChecklistDone, setCustomerChecklistDone] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
+  // Live countdown timer for forceful end (10 minutes = 600 seconds)
+  const [secondsRemaining, setSecondsRemaining] = useState<number>(600);
+  const hasForceEndedRef = useRef<boolean>(false);
+
   useEffect(() => {
     if (!bookingId) return;
     getDoc(doc(db, "bookings", bookingId))
@@ -65,19 +157,40 @@ export default function RatingFeedbackScreen({ navigation, route }: Props) {
         if (snap.exists()) {
           const data = snap.data();
           setBookingData(data);
-          const defaultList = [
-            "Quality of service executed to satisfaction",
-            "Professionalism & punctuality verified",
-            "Work area cleaned & sanitized post-service",
-            "Final demonstration & invoice confirmed",
-          ];
-          const list = (data.checklist && data.checklist.length > 0) ? data.checklist : defaultList;
+          const svcName = data.subServiceName || data.serviceCategory || initialCategory;
+          const category = data.serviceCategory || initialCategory;
+          const list = getServiceChecklist(svcName, category, data.checklist);
           setCustomerChecklist(list);
           setCustomerChecklistDone(data.customerChecklistDone || data.checklistDone || list);
         }
       })
       .catch((e) => console.log("[RatingFeedback] error fetching booking:", e));
   }, [bookingId]);
+
+  // Live countdown timer ticker
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSecondsRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          if (!hasForceEndedRef.current) {
+            hasForceEndedRef.current = true;
+            handleForcefulEnd("Auto-closed after 10-minute verification timeout");
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [bookingId, bookingData]);
+
+  const formatCountdown = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  };
 
   const vendorName = bookingData?.vendorName || initialVendorName;
   const serviceName = bookingData?.subServiceName || bookingData?.serviceCategory || initialCategory;
@@ -95,6 +208,77 @@ export default function RatingFeedbackScreen({ navigation, route }: Props) {
     );
   };
 
+  // Intercept Skip or Close with Forceful Ending Warning
+  const handlePromptSkipOrClose = () => {
+    Alert.alert(
+      "⚠️ Forcefully End Service?",
+      "Customer verification is required to finalize this booking. If you exit now, the service will be forcefully ended without your feedback and marked completed.",
+      [
+        {
+          text: "Continue Review",
+          style: "cancel",
+        },
+        {
+          text: "Forcefully End Now",
+          style: "destructive",
+          onPress: () => handleForcefulEnd("Customer skipped review"),
+        },
+      ]
+    );
+  };
+
+  // Forcefully end the service
+  const handleForcefulEnd = async (reason: string) => {
+    if (!bookingId) {
+      navigation.replace("ServiceCompleted", { bookingId: "UH-DEMO982" });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await updateDoc(doc(db, "bookings", bookingId), {
+        status: "completed",
+        completedAt: serverTimestamp(),
+        forcefullyEnded: true,
+        forcefullyEndedReason: reason,
+        endedBy: "forcefully_ended",
+        rated: false,
+        customerReviewedAt: serverTimestamp(),
+      });
+
+      // Update vendor stats if present
+      if (vendorId) {
+        try {
+          const vRef = doc(db, "vendors", vendorId);
+          const vSnap = await getDoc(vRef);
+          if (vSnap.exists()) {
+            const vData = vSnap.data();
+            await updateDoc(vRef, {
+              completedJobs: (vData.completedJobs || 0) + 1,
+              lastCompletedAt: serverTimestamp(),
+            });
+          }
+        } catch (_) {}
+      }
+
+      Alert.alert(
+        "Service Forcefully Ended",
+        "The service has been forcefully closed without customer feedback.",
+        [
+          {
+            text: "View Bill",
+            onPress: () => navigation.replace("ServiceCompleted", { bookingId }),
+          },
+        ]
+      );
+    } catch (e: any) {
+      console.warn("[handleForcefulEnd] error:", e);
+      navigation.replace("ServiceCompleted", { bookingId });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSubmitRating = async () => {
     if (!bookingId) {
       navigation.replace("ServiceCompleted", { bookingId: "UH-DEMO982" });
@@ -110,16 +294,36 @@ export default function RatingFeedbackScreen({ navigation, route }: Props) {
         tags: isComplaint ? [selectedComplaintReason] : selectedTags,
         review: review.trim(),
         tip: activeTip > 0 ? TIPS[activeTip] : undefined,
+        vendorId: vendorId || undefined,
       });
 
-      // Save customer verification checklist
+      // 2. Officially end and complete the service upon customer feedback
       await updateDoc(doc(db, "bookings", bookingId), {
+        status: "completed",
+        completedAt: serverTimestamp(),
+        forcefullyEnded: false,
+        endedBy: "customer_feedback",
         customerChecklistDone,
         customerChecklist,
         customerReviewedAt: serverTimestamp(),
       });
 
-      // 2. If complaint filed or rating <= 2, register in complaints & lock vendor profile
+      // 3. Update vendor completed stats
+      if (vendorId) {
+        try {
+          const vRef = doc(db, "vendors", vendorId);
+          const vSnap = await getDoc(vRef);
+          if (vSnap.exists()) {
+            const vData = vSnap.data();
+            await updateDoc(vRef, {
+              completedJobs: (vData.completedJobs || 0) + 1,
+              lastCompletedAt: serverTimestamp(),
+            });
+          }
+        } catch (_) {}
+      }
+
+      // 4. If complaint filed or rating <= 2, register in complaints & lock vendor profile
       if (isComplaint || stars <= 2) {
         try {
           await addDoc(collection(db, "complaints"), {
@@ -176,22 +380,51 @@ export default function RatingFeedbackScreen({ navigation, route }: Props) {
       <View style={s.header}>
         <Pressable
           style={s.iconBtn}
-          onPress={() => navigation.replace("ServiceCompleted", { bookingId })}
+          onPress={handlePromptSkipOrClose}
         >
           <Ionicons name="close" size={20} color="white" />
         </Pressable>
         <Text style={s.headerTitle}>Rate &amp; Review</Text>
         <Pressable
           style={s.skipHeaderBtn}
-          onPress={() => navigation.replace("ServiceCompleted", { bookingId })}
+          onPress={handlePromptSkipOrClose}
         >
           <Text style={s.skipHeaderText}>Skip</Text>
         </Pressable>
       </View>
 
       <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
+        {/* Forceful Ending Warning & Live Countdown Banner */}
+        <Animated.View entering={FadeInDown.duration(340)} style={s.forcefulWarningCard}>
+          <LinearGradient
+            colors={["rgba(245, 158, 11, 0.16)", "rgba(180, 83, 9, 0.08)"]}
+            style={[StyleSheet.absoluteFillObject, { borderRadius: 16 }]}
+          />
+          <View style={s.forcefulWarningHeader}>
+            <View style={s.forcefulWarningIconWrap}>
+              <Ionicons name="time" size={18} color="#f59e0b" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.forcefulWarningTitle}>ACTION REQUIRED: SERVICE COMPLETION</Text>
+              <Text style={s.forcefulWarningSubtitle}>
+                Service will only officially end once you submit feedback below. Otherwise, it will be forcefully ended automatically.
+              </Text>
+            </View>
+          </View>
+
+          <View style={s.countdownTimerBar}>
+            <View style={s.countdownTag}>
+              <Ionicons name="alert-circle" size={14} color="#f87171" />
+              <Text style={s.countdownTagText}>Auto Force-End In</Text>
+            </View>
+            <View style={s.timerDigitsBox}>
+              <Text style={s.timerDigitsText}>{formatCountdown(secondsRemaining)}</Text>
+            </View>
+          </View>
+        </Animated.View>
+
         {/* Hero Partner Info */}
-        <Animated.View entering={FadeInDown.duration(380)} style={s.hero}>
+        <Animated.View entering={FadeInDown.delay(50).duration(380)} style={s.hero}>
           <LinearGradient
             colors={["#10283b", "#091724"]}
             style={[StyleSheet.absoluteFillObject, { borderRadius: 20 }]}
@@ -631,4 +864,83 @@ const s = StyleSheet.create({
   btnDisabled: { opacity: 0.7 },
   submitContent: { flexDirection: "row", alignItems: "center", gap: 8 },
   submitBtnText: { fontSize: 16, fontWeight: "700", color: "#081826" },
+
+  // Forceful Ending Warning Banner
+  forcefulWarningCard: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: "rgba(245,158,11,0.35)",
+    backgroundColor: "rgba(245,158,11,0.06)",
+  },
+  forcefulWarningHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  forcefulWarningIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(245,158,11,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(245,158,11,0.4)",
+  },
+  forcefulWarningTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#f59e0b",
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  forcefulWarningSubtitle: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.72)",
+    lineHeight: 16,
+  },
+  countdownTimerBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(245,158,11,0.2)",
+  },
+  countdownTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(239,68,68,0.14)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(239,68,68,0.3)",
+  },
+  countdownTagText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#fca5a5",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+  },
+  timerDigitsBox: {
+    backgroundColor: "#07131e",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(245,158,11,0.5)",
+  },
+  timerDigitsText: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#f59e0b",
+    fontVariant: ["tabular-nums"],
+    letterSpacing: 1,
+  },
 });

@@ -15,7 +15,9 @@ import {
   rejectJob,
   cancelBooking,
   verifyOTP,
+  updateVendorLocation,
 } from '../services/firestoreService';
+import * as Location from 'expo-location';
 import OTPInput from '../components/OTPInput';
 import SOSModal from '../components/SOSModal';
 import DiagnosticModal from '../components/DiagnosticModal';
@@ -34,8 +36,40 @@ export default function JobDetailsScreen({ route, navigation }: any) {
   const [otp, setOtp] = useState(['', '', '', '']);
   const [hasError, setHasError] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
+  const job = store.getJob(jobId);
 
   useEffect(() => store.subscribe(() => forceUpdate((n) => n + 1)), []);
+
+  // Continuous GPS broadcast to customer app while en route
+  useEffect(() => {
+    if (!job || !['ACCEPTED', 'NAVIGATING', 'ARRIVED'].includes(job.status)) return;
+    let active = true;
+
+    const broadcastGps = async () => {
+      try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        if (active && pos?.coords) {
+          await updateVendorLocation(
+            store.vendorId || 'v1',
+            pos.coords.latitude,
+            pos.coords.longitude,
+            pos.coords.heading || 0,
+            pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0,
+            job.bookingId
+          );
+        }
+      } catch (_) {}
+    };
+
+    broadcastGps();
+    const timer = setInterval(broadcastGps, 5000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [job?.status, job?.bookingId]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -43,7 +77,6 @@ export default function JobDetailsScreen({ route, navigation }: any) {
     setTimeout(() => setRefreshing(false), 800);
   };
 
-  const job = store.getJob(jobId);
   if (!job) {
     return (
       <SafeAreaView style={s.safe}>
@@ -76,6 +109,16 @@ export default function JobDetailsScreen({ route, navigation }: any) {
 
   // ── Turn-by-Turn Voice Navigation ─────────────────────────────────────────
   const handleOpenNavigation = () => {
+    // Security check: Once OTP is verified or service is active/completed, navigation is locked
+    const isServiceActiveOrVerified = ['CUSTOMER_VERIFIED', 'SERVICE_STARTED', 'RECORDING_ACTIVE', 'COMPLETED'].includes(job.status);
+    if (isServiceActiveOrVerified) {
+      Alert.alert(
+        '🔒 Navigation Locked',
+        'Customer OTP is verified and you are on site. Map navigation is disabled during active service for privacy and security.'
+      );
+      return;
+    }
+
     const hasCoords = typeof job.latitude === 'number' && job.latitude !== 0 && typeof job.longitude === 'number' && job.longitude !== 0;
     if (hasCoords) {
       const url = `google.navigation:q=${job.latitude},${job.longitude}&mode=d`;
@@ -401,12 +444,21 @@ export default function JobDetailsScreen({ route, navigation }: any) {
             <Text style={s.addressText}>{job.address}</Text>
           </View>
 
-          {!['CANCELLED', 'COMPLETED', 'REJECTED'].includes(job.status) && (
+          {/* Navigation only available BEFORE OTP verification while travelling to site */}
+          {!['CANCELLED', 'COMPLETED', 'REJECTED', 'CUSTOMER_VERIFIED', 'SERVICE_STARTED', 'RECORDING_ACTIVE'].includes(job.status) ? (
             <TouchableOpacity style={s.navBtn} onPress={handleOpenNavigation} activeOpacity={0.85}>
               <Ionicons name="navigate-circle" size={20} color="#0D3325" />
               <Text style={s.navBtnText}>Open Turn-by-Turn Voice Navigation</Text>
             </TouchableOpacity>
-          )}
+          ) : ['CUSTOMER_VERIFIED', 'SERVICE_STARTED', 'RECORDING_ACTIVE'].includes(job.status) ? (
+            <View style={s.navSecuredBadge}>
+              <Ionicons name="shield-checkmark" size={18} color="#059669" />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={s.navSecuredTitle}>On-Site Location Verified</Text>
+                <Text style={s.navSecuredSub}>Map navigation is disabled during active service for customer security & privacy.</Text>
+              </View>
+            </View>
+          ) : null}
         </View>
 
         {/* Work Verification Photos (if completed or taken) */}
@@ -775,6 +827,27 @@ const s = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: '#065F46',
+  },
+  navSecuredBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+  },
+  navSecuredTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#065F46',
+  },
+  navSecuredSub: {
+    fontSize: 11,
+    color: '#047857',
+    marginTop: 2,
+    lineHeight: 15,
   },
   photoProofRow: {
     flexDirection: 'row',

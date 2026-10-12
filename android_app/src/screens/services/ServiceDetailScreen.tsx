@@ -38,6 +38,7 @@ import {
 } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { sendRealSMSViaFast2SMS } from "@/services/smsService";
+import { reverseGeocodeLocation } from "@/services/geocodingService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceDetail">;
 const { width } = Dimensions.get("window");
@@ -72,12 +73,13 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   const [otpLoading, setOtpLoading] = useState(false);
 
   const [serviceAddress, setServiceAddress] = useState(
-    "142, Orchid Greens, 2nd Cross, Sector 4, Bangalore"
+    "Fetching current location..."
   );
   const [addressCoords, setAddressCoords] = useState<{ latitude: number; longitude: number }>({
     latitude: 12.9141,
     longitude: 77.6411,
   });
+  const [isFetchingLocation, setIsFetchingLocation] = useState(true);
 
   const [bookingDate, setBookingDate] = useState("Thu, Oct 8, 2026");
   const [bookingTime, setBookingTime] = useState("10:00 AM");
@@ -315,6 +317,120 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       }
     } catch (_) {}
   };
+
+  // Automatically fetch user's real GPS doorstep location & reverse geocode
+  const fetchCurrentLocation = async (showAlertOnError = false) => {
+    setIsFetchingLocation(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        if (showAlertOnError) {
+          Alert.alert(
+            "Location Permission Required",
+            "Please enable location access in settings to automatically fetch your doorstep address."
+          );
+        }
+        // Fallback to cached address if available
+        const cached = await AsyncStorage.getItem("@customer_last_address");
+        if (cached && cached.trim()) {
+          setServiceAddress(cached.trim());
+          setDraggedAddress(cached.trim());
+          const cachedCoords = await AsyncStorage.getItem("@customer_last_coords");
+          if (cachedCoords) {
+            try {
+              const c = JSON.parse(cachedCoords);
+              if (c.latitude && c.longitude) setAddressCoords(c);
+            } catch (_) {}
+          }
+        } else if (serviceAddress === "Fetching current location...") {
+          setServiceAddress("Select location on map");
+          setDraggedAddress("Select location on map");
+        }
+        setIsFetchingLocation(false);
+        return;
+      }
+
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      const lat = loc.coords.latitude;
+      const lng = loc.coords.longitude;
+
+      setAddressCoords({ latitude: lat, longitude: lng });
+      setMapRegion({
+        latitude: lat,
+        longitude: lng,
+        latitudeDelta: 0.008,
+        longitudeDelta: 0.008,
+      });
+
+      // Reverse geocode to clean human-readable address
+      let resolvedAddress = "";
+      try {
+        resolvedAddress = await reverseGeocodeLocation(lat, lng);
+      } catch (_) {}
+
+      if (!resolvedAddress || resolvedAddress.includes("," + lat.toFixed(1))) {
+        try {
+          const rev = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+          if (rev && rev.length > 0) {
+            const p = rev[0];
+            resolvedAddress = [
+              p.name || p.street,
+              p.district || p.subregion,
+              p.city,
+              p.postalCode,
+              p.region,
+            ]
+              .filter(Boolean)
+              .join(", ");
+          }
+        } catch (_) {}
+      }
+
+      const finalAddress =
+        resolvedAddress && resolvedAddress.trim().length > 3
+          ? resolvedAddress.trim()
+          : `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+
+      setServiceAddress(finalAddress);
+      setDraggedAddress(finalAddress);
+
+      // Persist to storage
+      await AsyncStorage.setItem("@customer_last_address", finalAddress).catch(() => {});
+      await AsyncStorage.setItem("@customer_last_coords", JSON.stringify({ latitude: lat, longitude: lng })).catch(() => {});
+
+      const currUid = auth.currentUser?.uid || user?.uid;
+      if (currUid) {
+        await setDoc(
+          doc(db, "users", currUid),
+          { address: finalAddress, deliveryAddress: finalAddress, customerLat: lat, customerLng: lng },
+          { merge: true }
+        ).catch(() => {});
+      }
+    } catch (err: any) {
+      console.warn("[ServiceDetail] Error fetching auto location:", err);
+      if (showAlertOnError) {
+        Alert.alert("Location Error", "Could not retrieve your current location. Please check your GPS connection or select on the map.");
+      }
+      const cached = await AsyncStorage.getItem("@customer_last_address");
+      if (cached && cached.trim()) {
+        setServiceAddress(cached.trim());
+        setDraggedAddress(cached.trim());
+      } else if (serviceAddress === "Fetching current location...") {
+        setServiceAddress("Select location on map");
+        setDraggedAddress("Select location on map");
+      }
+    } finally {
+      setIsFetchingLocation(false);
+    }
+  };
+
+  // Trigger automatic location fetch on component mount
+  useEffect(() => {
+    fetchCurrentLocation();
+  }, []);
 
   // Open Map and fetch user's live GPS automatically
   const handleOpenMapPicker = async () => {
@@ -658,8 +774,25 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               <Ionicons name="location" size={18} color="#0D9488" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.addressCardTitle}>Service Address</Text>
-              <Text style={styles.addressCardSub}>Select your location on map</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <Text style={styles.addressCardTitle}>Service Address</Text>
+                <TouchableOpacity
+                  onPress={() => fetchCurrentLocation(true)}
+                  style={styles.gpsDetectBtn}
+                  disabled={isFetchingLocation}
+                  activeOpacity={0.7}
+                >
+                  {isFetchingLocation ? (
+                    <ActivityIndicator size={12} color="#0D9488" />
+                  ) : (
+                    <Ionicons name="locate" size={13} color="#0D9488" />
+                  )}
+                  <Text style={styles.gpsDetectBtnText}>
+                    {isFetchingLocation ? "Detecting..." : "Current GPS"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.addressCardSub}>Fetched automatically from your current location</Text>
             </View>
           </View>
 
@@ -696,9 +829,13 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 
           {/* Selected Address Displayed Directly Below the Map */}
           <View style={styles.selectedAddressBelowMap}>
-            <Ionicons name="navigate-circle-outline" size={18} color="#0D9488" style={{ marginTop: 2 }} />
+            {isFetchingLocation ? (
+              <ActivityIndicator size={16} color="#0D9488" style={{ marginTop: 2, marginRight: 2 }} />
+            ) : (
+              <Ionicons name="navigate-circle-outline" size={18} color="#0D9488" style={{ marginTop: 2 }} />
+            )}
             <Text style={styles.selectedAddressBelowText} numberOfLines={2}>
-              {serviceAddress}
+              {isFetchingLocation ? "Fetching your current location..." : serviceAddress}
             </Text>
             <TouchableOpacity onPress={handleOpenMapPicker}>
               <Text style={styles.changeAddressLink}>Change</Text>
@@ -1201,6 +1338,22 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     color: "#64748B",
     marginTop: 1,
+  },
+  gpsDetectBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#F0FDFA",
+    borderWidth: 1,
+    borderColor: "#CCFBF1",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  gpsDetectBtnText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#0D9488",
   },
   mapGraphicCard: {
     width: "100%",

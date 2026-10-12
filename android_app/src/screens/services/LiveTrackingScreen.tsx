@@ -30,6 +30,7 @@ type Props = NativeStackScreenProps<RootStackParamList, "LiveTracking">;
 type BookingStatus =
   | "requested" | "assigned" | "accepted"
   | "en_route"  | "arrived"  | "in_progress"
+  | "service_ended"
   | "completed" | "cancelled";
 
 interface LiveBooking {
@@ -157,9 +158,12 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
     return () => unsub();
   }, [user, routeBookingId]);
 
-  // Vendor assignment condition: only show location and live GPS when vendor is assigned
+  // Vendor assignment condition: only show location and live GPS when vendor is assigned and travelling
   const isVendorAssigned = !!booking?.vendorId && booking.status !== "requested";
-  const isTrackingActive = isVendorAssigned && booking?.status !== "completed" && booking?.status !== "cancelled";
+  const isServiceActive = booking?.status === "in_progress" || booking?.status === "service_ended";
+  const isCompleted = booking?.status === "completed";
+  const isPreService = isVendorAssigned && !isServiceActive && !isCompleted && booking?.status !== "cancelled";
+  const isTrackingActive = isPreService;
 
   // Subscribe to Vendor's live GPS coords ONLY when assigned
   useEffect(() => {
@@ -183,6 +187,20 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
     return () => unsub();
   }, [isTrackingActive, booking?.vendorId]);
 
+  // Sync directly from booking document if vendorLat/vendorLng are updated
+  useEffect(() => {
+    if (!isTrackingActive) return;
+    const bAny = booking as any;
+    if (bAny?.vendorLat && bAny?.vendorLng) {
+      setVendorCoords({
+        lat: bAny.vendorLat,
+        lng: bAny.vendorLng,
+        heading: bAny.vendorHeading ?? 0,
+        speed: bAny.vendorSpeed ?? 0,
+      });
+    }
+  }, [isTrackingActive, (booking as any)?.vendorLat, (booking as any)?.vendorLng]);
+
   // Recalculate ETA and Distance
   useEffect(() => {
     if (!vendorCoords || !customerCoords || !isTrackingActive) {
@@ -197,11 +215,11 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
     setDistanceText(formatDistance(km));
   }, [vendorCoords, customerCoords, isTrackingActive, isVendorAssigned]);
 
-  // Auto trigger review & rating when status becomes "completed"
+  // Auto trigger review & rating when status becomes "completed" or "service_ended"
   const reviewTriggeredRef = useRef(false);
   useEffect(() => {
     if (!booking) return;
-    if (booking.status === "completed" && !booking.rated && !reviewTriggeredRef.current) {
+    if ((booking.status === "completed" || booking.status === "service_ended") && !booking.rated && !reviewTriggeredRef.current) {
       const checkAndTriggerReview = async () => {
         const reviewedKey = `booking_reviewed_${booking.id}`;
         const alreadyReviewed = await AsyncStorage.getItem(reviewedKey);
@@ -230,10 +248,12 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
   // Step milestone status calculations
   const getStepState = (stepKey: string) => {
     const order = ["requested", "assigned", "en_route", "arrived", "in_progress", "completed"];
-    const currentIdx = order.indexOf(status === "accepted" ? "assigned" : status);
+    const currentMapped = status === "service_ended" ? "in_progress" : status === "accepted" ? "assigned" : status;
+    const currentIdx = order.indexOf(currentMapped);
     const stepIdx = order.indexOf(stepKey);
 
     if (status === "completed") return "done";
+    if (status === "service_ended" && stepKey === "completed") return "active";
     if (stepIdx < currentIdx) return "done";
     if (stepIdx === currentIdx) return "active";
     return "pending";
@@ -456,96 +476,128 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
           </View>
         </Animated.View>
 
-        {/* ── 3. Real Interactive Google Map ──────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(180).duration(380)} style={s.mapContainer}>
-          <MapView
-            ref={mapRef}
-            style={s.map}
-            provider={PROVIDER_GOOGLE}
-            region={mapRegion}
-            showsUserLocation={false}
-            showsTraffic={false}
-            showsCompass={false}
-          >
-            {/* Customer Doorstep Marker */}
-            {customerCoords && (
-              <Marker
-                coordinate={{ latitude: customerCoords.lat, longitude: customerCoords.lng }}
-                title="Your Doorstep"
-              >
-                <View style={s.homeMarker}>
-                  <Ionicons name="home" size={15} color="#fff" />
-                </View>
-              </Marker>
-            )}
+        {/* ── 3. Real Interactive Google Map (Pre-Service Only) / On-Site Security ── */}
+        {isPreService ? (
+          <Animated.View entering={FadeInDown.delay(180).duration(380)} style={s.mapContainer}>
+            <MapView
+              ref={mapRef}
+              style={s.map}
+              provider={PROVIDER_GOOGLE}
+              region={mapRegion}
+              showsUserLocation={false}
+              showsTraffic={false}
+              showsCompass={false}
+            >
+              {/* Customer Doorstep Marker */}
+              {customerCoords && (
+                <Marker
+                  coordinate={{ latitude: customerCoords.lat, longitude: customerCoords.lng }}
+                  title="Your Doorstep"
+                >
+                  <View style={s.homeMarker}>
+                    <Ionicons name="home" size={15} color="#fff" />
+                  </View>
+                </Marker>
+              )}
 
-            {/* Vendor Live Marker (ONLY when assigned) */}
-            {isVendorAssigned && vendorCoords && (
-              <Marker
-                coordinate={{ latitude: vendorCoords.lat, longitude: vendorCoords.lng }}
-                title={proName}
-              >
-                <View style={s.vendorMarker}>
-                  <Ionicons name="bicycle" size={16} color="#fff" />
-                </View>
-              </Marker>
-            )}
+              {/* Vendor Live Marker (ONLY when assigned) */}
+              {isVendorAssigned && vendorCoords && (
+                <Marker
+                  coordinate={{ latitude: vendorCoords.lat, longitude: vendorCoords.lng }}
+                  title={proName}
+                >
+                  <View style={s.vendorMarker}>
+                    <Ionicons name="bicycle" size={16} color="#fff" />
+                  </View>
+                </Marker>
+              )}
 
-            {/* Route Polyline (ONLY when assigned and both coords exist) */}
-            {isVendorAssigned && vendorCoords && customerCoords && (
-              <Polyline
-                coordinates={[
-                  { latitude: vendorCoords.lat,   longitude: vendorCoords.lng },
-                  { latitude: customerCoords.lat, longitude: customerCoords.lng },
+              {/* Route Polyline (ONLY when assigned and both coords exist) */}
+              {isVendorAssigned && vendorCoords && customerCoords && (
+                <Polyline
+                  coordinates={[
+                    { latitude: vendorCoords.lat,   longitude: vendorCoords.lng },
+                    { latitude: customerCoords.lat, longitude: customerCoords.lng },
+                  ]}
+                  strokeColor={TEAL}
+                  strokeWidth={4}
+                  lineDashPattern={[6, 4]}
+                />
+              )}
+            </MapView>
+
+            {/* Floating Map Pill */}
+            <View style={s.floatingMapPill}>
+              <Animated.View
+                style={[
+                  s.liveBlinkDot,
+                  pulseStyle,
+                  { backgroundColor: isVendorAssigned ? "#22c55e" : "#f59e0b" },
                 ]}
-                strokeColor={TEAL}
-                strokeWidth={4}
-                lineDashPattern={[6, 4]}
               />
-            )}
-          </MapView>
-
-          {/* Floating Map Pill */}
-          <View style={s.floatingMapPill}>
-            <Animated.View
-              style={[
-                s.liveBlinkDot,
-                pulseStyle,
-                { backgroundColor: isVendorAssigned ? "#22c55e" : "#f59e0b" },
-              ]}
-            />
-            <Text style={s.floatingPillText}>
-              {isVendorAssigned
-                ? `Professional En Route · ETA ${etaText}`
-                : "Locating nearest verified partner..."}
-            </Text>
-          </View>
-        </Animated.View>
+              <Text style={s.floatingPillText}>
+                {isVendorAssigned
+                  ? `Professional En Route · ETA ${etaText}`
+                  : "Locating nearest verified partner..."}
+              </Text>
+            </View>
+          </Animated.View>
+        ) : (
+          <Animated.View entering={FadeInDown.delay(180).duration(380)} style={[s.onSiteSecuredCard, cardBgStyle]}>
+            <View style={[s.onSiteSecuredIconWrap, { backgroundColor: isDark ? "rgba(0,188,212,0.15)" : "#E0F2FE" }]}>
+              <Ionicons name="shield-checkmark" size={32} color={TEAL} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.onSiteSecuredTitle, textPrimary]}>
+                {isCompleted ? "Service Completed on Site" : "Professional Verified On-Site"}
+              </Text>
+              <Text style={[s.onSiteSecuredSub, textSecondary]}>
+                {isCompleted
+                  ? "All service work and proof verification completed at your premises."
+                  : "Customer OTP verified. Live GPS navigation has concluded for home security & privacy."}
+              </Text>
+            </View>
+          </Animated.View>
+        )}
 
         {/* ── 4. Separate Prominent ETA & Distance Stats Bar (Below Map) ── */}
         <Animated.View entering={FadeInDown.delay(220).duration(380)} style={[s.etaStatsCard, cardBgStyle]}>
           <View style={s.etaStatsLeft}>
             <View style={[s.etaStatsIconCircle, { backgroundColor: isDark ? "rgba(0,188,212,0.15)" : "#E0F2FE" }]}>
-              <Ionicons name="time" size={20} color={isDark ? TEAL : "#0284C7"} />
+              <Ionicons name={isPreService ? "time" : "shield-checkmark"} size={20} color={isDark ? TEAL : "#0284C7"} />
             </View>
             <View>
               <Text style={[s.etaStatsTitle, textPrimary]}>
-                {isVendorAssigned ? etaText : "Assigning..."}
+                {isCompleted
+                  ? "Completed"
+                  : isServiceActive
+                  ? "Active On-Site"
+                  : isVendorAssigned
+                  ? etaText
+                  : "Assigning..."}
               </Text>
               <Text style={[s.etaStatsSub, textSecondary]}>
-                {distanceText ? `${distanceText} away from doorstep` : "Real-time GPS tracking active"}
+                {isCompleted
+                  ? "Service finished & proof verified"
+                  : isServiceActive
+                  ? "Professional is actively performing service"
+                  : distanceText
+                  ? `${distanceText} away from doorstep`
+                  : "Real-time GPS tracking active"}
               </Text>
             </View>
           </View>
 
           <View style={[s.liveLocBadge, { backgroundColor: isDark ? "rgba(0,188,212,0.12)" : "#F0FDFA" }]}>
-            <Ionicons name="navigate" size={13} color={isDark ? TEAL : "#059669"} />
-            <Text style={[s.liveLocText, { color: isDark ? TEAL : "#059669" }]}>Live GPS</Text>
+            <Ionicons name={isPreService ? "navigate" : "shield-checkmark"} size={13} color={isDark ? TEAL : "#059669"} />
+            <Text style={[s.liveLocText, { color: isDark ? TEAL : "#059669" }]}>
+              {isPreService ? "Live GPS" : "On-Site"}
+            </Text>
           </View>
         </Animated.View>
 
-        {/* ── 5. OTP Display Box (Highlighted when Arrived or In Progress) */}
-        {booking?.otp && (
+        {/* ── 5. OTP Display Box (Visible ONLY before OTP is verified) ── */}
+        {booking?.otp && isPreService && (
           <Animated.View entering={FadeInDown.delay(260).duration(380)} style={[s.otpHighlightCard, { backgroundColor: isDark ? "rgba(0,188,212,0.1)" : "#F0FDFA", borderColor: isDark ? "rgba(0,188,212,0.3)" : "#5EEAD4" }]}>
             <View style={s.otpCardTop}>
               <Ionicons name="shield-checkmark" size={18} color={TEAL} />
@@ -589,7 +641,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
 
       {/* ── Sticky Bottom Actions ───────────────────────────────────── */}
       <View style={[s.bottomCtaBar, { backgroundColor: isDark ? "rgba(8,24,38,0.96)" : "#FFFFFF", borderTopColor: isDark ? "rgba(255,255,255,0.08)" : "#E2E8F0" }]}>
-        {booking?.status === "completed" ? (
+        {booking?.status === "completed" || booking?.status === "service_ended" ? (
           <Pressable
             style={s.rateBtn}
             onPress={() =>
@@ -601,7 +653,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
             }
           >
             <Ionicons name="star" size={18} color="#081826" />
-            <Text style={s.rateBtnText}>Rate Professional & View Bill</Text>
+            <Text style={s.rateBtnText}>Rate Professional &amp; View Bill</Text>
           </Pressable>
         ) : (
           <View style={s.ctaRow}>
@@ -947,6 +999,33 @@ const s = StyleSheet.create({
     fontWeight: "600",
     color: "#fff",
     flex: 1,
+  },
+
+  // 3b. On-Site Secured Card (Shown once service starts)
+  onSiteSecuredCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 18,
+    marginBottom: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  onSiteSecuredIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  onSiteSecuredTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    marginBottom: 4,
+  },
+  onSiteSecuredSub: {
+    fontSize: 12,
+    lineHeight: 17,
   },
 
   // 4. Separate ETA Stats Card (Below Map)
