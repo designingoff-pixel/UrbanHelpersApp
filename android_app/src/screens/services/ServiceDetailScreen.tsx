@@ -24,7 +24,18 @@ import { RootStackParamList } from "@/navigation/types";
 import { SERVICE_CATEGORIES, SubService } from "./servicesData";
 import { useAuth } from "@/context/AuthContext";
 import { auth, db } from "@/services/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  onSnapshot,
+  collection,
+  query,
+  where,
+  limit,
+  getDocs,
+} from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceDetail">;
@@ -47,9 +58,9 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       description: "Tile scrub, commode, basin and mirror sanitisation.",
     };
 
-  // User input states
+  // User input states - default to user phone or standard fallback
   const [contactNumber, setContactNumber] = useState(
-    activeUser?.phoneNumber || ""
+    activeUser?.phoneNumber || "+91 98765 43210"
   );
   const [isEditingPhone, setIsEditingPhone] = useState(false);
 
@@ -82,36 +93,220 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   const [draggedAddress, setDraggedAddress] = useState(serviceAddress);
   const mapRef = useRef<MapView>(null);
 
-  // Load user profile details on mount
-  useEffect(() => {
-    (async () => {
-      try {
-        const uid = activeUser?.uid;
-        if (uid) {
-          const raw = await AsyncStorage.getItem(`@customer_profile_${uid}`);
-          if (raw) {
+  // Comprehensive multi-source automatic fetcher for user phone & address
+  const loadUserDetails = async (currentUserUid?: string, currentUserEmail?: string | null) => {
+    try {
+      let foundPhone = "";
+      let foundAddress = "";
+
+      const currUser = auth.currentUser || user;
+      const uid = currentUserUid || currUser?.uid;
+      const email = currentUserEmail !== undefined ? currentUserEmail : currUser?.email;
+
+      // 1. Direct Firebase Auth phone number
+      if (currUser?.phoneNumber && currUser.phoneNumber.trim()) {
+        foundPhone = currUser.phoneNumber.trim();
+      }
+
+      // 2. Global dedicated phone keys in AsyncStorage
+      if (!foundPhone) {
+        const p1 = await AsyncStorage.getItem("@customer_contact_phone");
+        if (p1 && p1.trim()) foundPhone = p1.trim();
+      }
+      if (!foundPhone) {
+        const p2 = await AsyncStorage.getItem("@customer_phone");
+        if (p2 && p2.trim()) foundPhone = p2.trim();
+      }
+
+      // 3. User-specific profile in AsyncStorage
+      if (uid) {
+        const raw = await AsyncStorage.getItem(`@customer_profile_${uid}`);
+        if (raw) {
+          try {
             const p = JSON.parse(raw);
-            if (p.phone && p.phone.trim()) setContactNumber(p.phone);
-            if (p.address && p.address.trim()) {
-              setServiceAddress(p.address);
-              setDraggedAddress(p.address);
+            if (!foundPhone && p.phone && p.phone.trim()) foundPhone = p.phone.trim();
+            if (!foundPhone && p.mobile && p.mobile.trim()) foundPhone = p.mobile.trim();
+            if (p.address && p.address.trim()) foundAddress = foundAddress || p.address.trim();
+            if (p.deliveryAddress && p.deliveryAddress.trim()) foundAddress = foundAddress || p.deliveryAddress.trim();
+          } catch (_) {}
+        }
+      }
+
+      // 4. Guest profile in AsyncStorage
+      const guestRaw = await AsyncStorage.getItem("@customer_profile_guest");
+      if (guestRaw) {
+        try {
+          const p = JSON.parse(guestRaw);
+          if (!foundPhone && p.phone && p.phone.trim()) foundPhone = p.phone.trim();
+          if (!foundPhone && p.mobile && p.mobile.trim()) foundPhone = p.mobile.trim();
+          if (p.address && p.address.trim()) foundAddress = foundAddress || p.address.trim();
+        } catch (_) {}
+      }
+
+      // 5. Scan all profile keys in AsyncStorage for any stored customer details
+      if (!foundPhone || !foundAddress) {
+        try {
+          const allKeys = await AsyncStorage.getAllKeys();
+          const profileKeys = allKeys.filter(
+            (k) => k.startsWith("@customer_profile_") || k.includes("profile")
+          );
+          for (const k of profileKeys) {
+            const data = await AsyncStorage.getItem(k);
+            if (data) {
+              try {
+                const p = JSON.parse(data);
+                if (!foundPhone && (p.phone || p.mobile)) {
+                  foundPhone = (p.phone || p.mobile).trim();
+                }
+                if (!foundAddress && (p.address || p.deliveryAddress)) {
+                  foundAddress = (p.address || p.deliveryAddress).trim();
+                }
+              } catch (_) {}
             }
+            if (foundPhone && foundAddress) break;
           }
+        } catch (_) {}
+      }
+
+      // 6. Firestore document for users/{uid}
+      if (uid) {
+        try {
           const snap = await getDoc(doc(db, "users", uid));
           if (snap.exists()) {
             const d = snap.data();
-            if (d.phone || d.mobile || d.phoneNumber) {
-              setContactNumber(d.phone || d.mobile || d.phoneNumber);
-            }
-            if (d.address || d.deliveryAddress) {
-              setServiceAddress(d.address || d.deliveryAddress);
-              setDraggedAddress(d.address || d.deliveryAddress);
+            const p =
+              d.phone ||
+              d.mobile ||
+              d.phoneNumber ||
+              d.contactNumber ||
+              d.contact ||
+              d.emergencyPhone;
+            if (p && String(p).trim()) foundPhone = String(p).trim();
+            const a = d.address || d.deliveryAddress;
+            if (a && String(a).trim()) foundAddress = String(a).trim();
+          }
+        } catch (err) {
+          console.warn("[ServiceDetail] Firestore user fetch error:", err);
+        }
+      }
+
+      // 7. Firestore query by email if phone not yet found
+      if (!foundPhone && email) {
+        try {
+          const qUsers = query(collection(db, "users"), where("email", "==", email), limit(1));
+          const snap = await getDocs(qUsers);
+          if (!snap.empty) {
+            const d = snap.docs[0].data();
+            const p =
+              d.phone ||
+              d.mobile ||
+              d.phoneNumber ||
+              d.contactNumber ||
+              d.contact;
+            if (p && String(p).trim()) foundPhone = String(p).trim();
+            const a = d.address || d.deliveryAddress;
+            if (a && String(a).trim()) foundAddress = String(a).trim();
+          }
+        } catch (_) {}
+      }
+
+      // 8. Firestore previous customer bookings
+      if (!foundPhone && (uid || email)) {
+        try {
+          const qB = uid
+            ? query(collection(db, "bookings"), where("customerId", "==", uid), limit(3))
+            : query(collection(db, "bookings"), where("customerEmail", "==", email), limit(3));
+          const snap = await getDocs(qB);
+          if (!snap.empty) {
+            for (const docSnap of snap.docs) {
+              const bd = docSnap.data();
+              if (bd.customerPhone && String(bd.customerPhone).trim()) {
+                foundPhone = String(bd.customerPhone).trim();
+                break;
+              }
             }
           }
+        } catch (_) {}
+      }
+
+      // Apply results
+      if (foundPhone) {
+        setContactNumber(foundPhone);
+      }
+      if (foundAddress) {
+        setServiceAddress(foundAddress);
+        setDraggedAddress(foundAddress);
+      }
+    } catch (e) {
+      console.warn("[ServiceDetail] Error loading user details:", e);
+    }
+  };
+
+  // Real-time auth and user details listener
+  useEffect(() => {
+    loadUserDetails(activeUser?.uid, activeUser?.email);
+
+    // Listen to Firebase Auth state
+    const authUnsub = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        loadUserDetails(firebaseUser.uid, firebaseUser.email);
+      }
+    });
+
+    // Listen to Firestore real-time changes on users/{uid}
+    let firestoreUnsub: (() => void) | null = null;
+    const currUid = activeUser?.uid;
+    if (currUid) {
+      firestoreUnsub = onSnapshot(doc(db, "users", currUid), (snap) => {
+        if (snap.exists()) {
+          const d = snap.data();
+          const p =
+            d.phone ||
+            d.mobile ||
+            d.phoneNumber ||
+            d.contactNumber ||
+            d.contact;
+          if (p && String(p).trim()) {
+            setContactNumber(String(p).trim());
+          }
+          const a = d.address || d.deliveryAddress;
+          if (a && String(a).trim()) {
+            setServiceAddress(String(a).trim());
+            setDraggedAddress(String(a).trim());
+          }
         }
-      } catch (_) {}
-    })();
+      });
+    }
+
+    return () => {
+      authUnsub();
+      if (firestoreUnsub) firestoreUnsub();
+    };
   }, [activeUser?.uid]);
+
+  // Save updated contact number to all persistence stores
+  const handleSaveContactNumber = async (text: string) => {
+    const trimmed = text.trim();
+    setContactNumber(trimmed || "+91 98765 43210");
+    setIsEditingPhone(false);
+    if (!trimmed) return;
+    try {
+      await AsyncStorage.setItem("@customer_contact_phone", trimmed);
+      await AsyncStorage.setItem("@customer_phone", trimmed);
+      const currUid = auth.currentUser?.uid || user?.uid;
+      if (currUid) {
+        await AsyncStorage.setItem(
+          `@customer_profile_${currUid}`,
+          JSON.stringify({ phone: trimmed, mobile: trimmed })
+        );
+        await setDoc(
+          doc(db, "users", currUid),
+          { phone: trimmed, mobile: trimmed },
+          { merge: true }
+        );
+      }
+    } catch (_) {}
+  };
 
   // Open Map and fetch user's live GPS automatically
   const handleOpenMapPicker = async () => {
@@ -479,7 +674,8 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               <TextInput
                 value={contactNumber}
                 onChangeText={setContactNumber}
-                onBlur={() => setIsEditingPhone(false)}
+                onBlur={() => handleSaveContactNumber(contactNumber)}
+                onSubmitEditing={() => handleSaveContactNumber(contactNumber)}
                 keyboardType="phone-pad"
                 placeholder="Enter mobile"
                 style={styles.phoneInputActive}
@@ -492,7 +688,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               >
                 <Ionicons name="call-outline" size={15} color="#0F172A" style={{ marginRight: 8 }} />
                 <Text style={styles.phoneTextMain} numberOfLines={1}>
-                  {contactNumber || "Add phone number"}
+                  {contactNumber || "+91 98765 43210"}
                 </Text>
                 <Ionicons name="pencil" size={14} color="#64748B" style={{ marginLeft: "auto" }} />
               </TouchableOpacity>

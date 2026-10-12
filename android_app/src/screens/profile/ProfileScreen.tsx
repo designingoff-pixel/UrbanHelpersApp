@@ -266,6 +266,10 @@ export default function ProfileScreen({ navigation }: Props) {
     setEditModalVisible(false);
     try {
       await AsyncStorage.setItem(getStorageKey(user?.uid), JSON.stringify(updated));
+      if (updated.phone && updated.phone.trim()) {
+        await AsyncStorage.setItem("@customer_contact_phone", updated.phone.trim());
+        await AsyncStorage.setItem("@customer_phone", updated.phone.trim());
+      }
       if (user?.uid) {
         await setDoc(
           doc(db, "users", user.uid),

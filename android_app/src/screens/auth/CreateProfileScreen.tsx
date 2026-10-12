@@ -99,6 +99,10 @@ export default function CreateProfileScreen({ navigation, route }: Props) {
       }
 
       await AsyncStorage.setItem(`@customer_profile_${uid}`, JSON.stringify(profileData));
+      if (phone.trim()) {
+        await AsyncStorage.setItem("@customer_contact_phone", phone.trim());
+        await AsyncStorage.setItem("@customer_phone", phone.trim());
+      }
       await AsyncStorage.setItem(`@customer_points_${uid}`, "100");
       await AsyncStorage.setItem("@customer_logged_in", "true");
 
