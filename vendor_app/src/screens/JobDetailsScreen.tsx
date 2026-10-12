@@ -76,7 +76,8 @@ export default function JobDetailsScreen({ route, navigation }: any) {
 
   // ── Turn-by-Turn Voice Navigation ─────────────────────────────────────────
   const handleOpenNavigation = () => {
-    if (job.latitude && job.longitude) {
+    const hasCoords = typeof job.latitude === 'number' && job.latitude !== 0 && typeof job.longitude === 'number' && job.longitude !== 0;
+    if (hasCoords) {
       const url = `google.navigation:q=${job.latitude},${job.longitude}&mode=d`;
       Linking.canOpenURL(url).then(supported => {
         if (supported) {

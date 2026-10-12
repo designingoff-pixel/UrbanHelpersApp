@@ -37,6 +37,7 @@ import {
   getDocs,
 } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { sendRealSMSViaFast2SMS } from "@/services/smsService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceDetail">;
 const { width } = Dimensions.get("window");
@@ -63,6 +64,12 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
     activeUser?.phoneNumber || "+91 98765 43210"
   );
   const [isEditingPhone, setIsEditingPhone] = useState(false);
+
+  const [verifiedPhone, setVerifiedPhone] = useState(activeUser?.phoneNumber || "");
+  const [otpModalVisible, setOtpModalVisible] = useState(false);
+  const [generatedOtp, setGeneratedOtp] = useState("");
+  const [enteredOtp, setEnteredOtp] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
 
   const [serviceAddress, setServiceAddress] = useState(
     "142, Orchid Greens, 2nd Cross, Sector 4, Bangalore"
@@ -232,6 +239,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       // Apply results
       if (foundPhone) {
         setContactNumber(foundPhone);
+        setVerifiedPhone(foundPhone);
       }
       if (foundAddress) {
         setServiceAddress(foundAddress);
@@ -433,6 +441,35 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       return;
     }
 
+    if (contactNumber.trim() !== verifiedPhone) {
+      setOtpLoading(true);
+      const newOtp = Math.floor(1000 + Math.random() * 9000).toString();
+      setGeneratedOtp(newOtp);
+      try {
+        await sendRealSMSViaFast2SMS(contactNumber.trim(), newOtp, "Phone Verification");
+        setOtpModalVisible(true);
+      } catch (err) {
+        Alert.alert("SMS Error", "Failed to send OTP. Please check your number.");
+      } finally {
+        setOtpLoading(false);
+      }
+      return;
+    }
+
+    executeBooking();
+  };
+
+  const handleVerifyOtpSubmit = () => {
+    if (enteredOtp.trim() === generatedOtp) {
+      setOtpModalVisible(false);
+      setVerifiedPhone(contactNumber.trim());
+      executeBooking();
+    } else {
+      Alert.alert("Invalid OTP", "The code you entered is incorrect.");
+    }
+  };
+
+  const executeBooking = async () => {
     setLoading(true);
     try {
       const bookingId = "AP4" + Math.random().toString(36).substring(2, 7).toUpperCase();
@@ -486,6 +523,19 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         list.unshift(bookingPayload);
         await AsyncStorage.setItem(localKey, JSON.stringify(list));
       } catch (_) {}
+
+      // Save newly verified phone to profile
+      if (contactNumber.trim() !== verifiedPhone) {
+        if (uid && uid.indexOf("guest_") === -1) {
+          try {
+            await setDoc(doc(db, "users", uid), { phone: contactNumber.trim(), mobile: contactNumber.trim() }, { merge: true });
+            const prev = await AsyncStorage.getItem(`@customer_profile_${uid}`);
+            const p = prev ? JSON.parse(prev) : {};
+            p.phone = contactNumber.trim();
+            await AsyncStorage.setItem(`@customer_profile_${uid}`, JSON.stringify(p));
+          } catch (_) {}
+        }
+      }
 
       // Navigate to confirmation screen
       navigation.navigate("BookingConfirmed", {
@@ -865,6 +915,34 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
             </TouchableOpacity>
           </View>
         </SafeAreaView>
+      </Modal>
+
+      {/* OTP Verification Modal */}
+      <Modal visible={otpModalVisible} transparent animationType="fade">
+        <View style={styles.otpModalOverlay}>
+          <View style={styles.otpModalContent}>
+            <Text style={styles.otpModalTitle}>Verify Phone Number</Text>
+            <Text style={styles.otpModalDesc}>Enter the 4-digit OTP sent to {contactNumber}</Text>
+            <TextInput
+              style={styles.otpInput}
+              value={enteredOtp}
+              onChangeText={setEnteredOtp}
+              keyboardType="number-pad"
+              maxLength={4}
+              placeholder="0000"
+              textAlign="center"
+              autoFocus
+            />
+            <View style={styles.otpModalButtons}>
+              <TouchableOpacity style={styles.otpModalCancel} onPress={() => setOtpModalVisible(false)}>
+                <Text style={styles.otpModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.otpModalConfirm} onPress={handleVerifyOtpSubmit}>
+                <Text style={styles.otpModalConfirmText}>Verify & Book</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
     </View>
   );
@@ -1553,5 +1631,67 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "900",
+  },
+  otpModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  otpModalContent: {
+    width: "80%",
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 24,
+    alignItems: "center",
+  },
+  otpModalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#0F172A",
+    marginBottom: 8,
+  },
+  otpModalDesc: {
+    fontSize: 14,
+    color: "#64748B",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  otpInput: {
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    borderRadius: 8,
+    width: "100%",
+    padding: 12,
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 24,
+    letterSpacing: 4,
+  },
+  otpModalButtons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  otpModalCancel: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+  },
+  otpModalCancelText: {
+    color: "#475569",
+    fontWeight: "600",
+  },
+  otpModalConfirm: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: "#0F766E",
+    alignItems: "center",
+  },
+  otpModalConfirmText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
 });

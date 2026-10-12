@@ -8,7 +8,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { store } from '../store/AppStore';
 import { Colors, Typography, Spacing, Radius } from '../theme';
-import { updateBookingStatus, updateBookingAudio, updateBookingPhotos, updateBookingChecklist, db } from '../services/firestoreService';
+import { updateBookingStatus, updateBookingAudio, updateBookingPhotos, updateBookingChecklist } from '../services/firestoreService';
+import { db } from '../services/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
@@ -359,6 +360,31 @@ export default function ServiceScreen({ route, navigation }: any) {
 
   // ── Finish & Complete Service ─────────────────────────────────────────────
   const handleConfirmComplete = async () => {
+    const currentChecklistItems = job.checklist && job.checklist.length > 0
+      ? job.checklist
+      : getDynamicChecklist(job.serviceType, job.serviceName);
+
+    if (job.checklistDone.length < currentChecklistItems.length) {
+      Alert.alert('Incomplete Checklist', 'Please complete all steps in the service checklist before finalizing.');
+      setCompleteModalVisible(false);
+      return;
+    }
+
+    const currentBefore = beforePhoto || job.beforePhoto || null;
+    const currentAfter = afterPhoto || job.afterPhoto || null;
+
+    if (!currentBefore) {
+      Alert.alert('Missing Photo', 'Please capture the Before Work proof photo before finalizing.');
+      setCompleteModalVisible(false);
+      return;
+    }
+
+    if (!currentAfter) {
+      Alert.alert('Missing Photo', 'Please capture the After Work proof photo before finalizing.');
+      setCompleteModalVisible(false);
+      return;
+    }
+
     setIsFinishing(true);
     try {
       let finalAudioDataUri: string | null = audioUri || job.audioUrl || null;
