@@ -23,6 +23,7 @@ import * as Location from "expo-location";
 import { RootStackParamList } from "@/navigation/types";
 import { SERVICE_CATEGORIES, SubService } from "./servicesData";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { auth, db } from "@/services/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import {
@@ -43,9 +44,40 @@ import { reverseGeocodeLocation } from "@/services/geocodingService";
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceDetail">;
 const { width } = Dimensions.get("window");
 
+// Generate upcoming 14 days dynamically
+const getUpcomingDates = (daysCount = 14) => {
+  const dates: { label: string; value: string }[] = [];
+  const now = new Date();
+  for (let i = 0; i < daysCount; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() + i);
+    const value = d.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    const prefix = i === 0 ? "Today, " : i === 1 ? "Tomorrow, " : "";
+    const label = `${prefix}${d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}`;
+    dates.push({ label, value });
+  }
+  return dates;
+};
+
+// Comprehensive time slots from morning to night
+const ALL_TIME_SLOTS = [
+  "06:00 AM", "06:30 AM", "07:00 AM", "07:30 AM", "08:00 AM", "08:30 AM",
+  "09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM",
+  "12:00 PM", "12:30 PM", "01:00 PM", "01:30 PM", "02:00 PM", "02:30 PM",
+  "03:00 PM", "03:30 PM", "04:00 PM", "04:30 PM", "05:00 PM", "05:30 PM",
+  "06:00 PM", "06:30 PM", "07:00 PM", "07:30 PM", "08:00 PM", "08:30 PM",
+  "09:00 PM", "09:30 PM", "10:00 PM"
+];
+
 export default function ServiceDetailScreen({ navigation, route }: Props) {
   const { categoryId, subServiceId } = route.params;
   const { user } = useAuth();
+  const { isDark, colors: themeColors } = useTheme();
   const activeUser = auth.currentUser || user;
 
   const category =
@@ -60,9 +92,9 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       description: "Tile scrub, commode, basin and mirror sanitisation.",
     };
 
-  // User input states - default to user phone or standard fallback
+  // User input states - strictly fetch from authenticated profile or empty (NEVER fake dummy number)
   const [contactNumber, setContactNumber] = useState(
-    activeUser?.phoneNumber || "+91 98765 43210"
+    activeUser?.phoneNumber || ""
   );
   const [isEditingPhone, setIsEditingPhone] = useState(false);
 
@@ -81,8 +113,14 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   });
   const [isFetchingLocation, setIsFetchingLocation] = useState(true);
 
-  const [bookingDate, setBookingDate] = useState("Thu, Oct 8, 2026");
+  const [bookingDate, setBookingDate] = useState(getUpcomingDates(1)[0]?.value || "Today");
   const [bookingTime, setBookingTime] = useState("10:00 AM");
+
+  // Dynamic Date & Any-Time Selection Modal States
+  const [dateModalVisible, setDateModalVisible] = useState(false);
+  const [timeModalVisible, setTimeModalVisible] = useState(false);
+  const [customTimeInput, setCustomTimeInput] = useState("");
+  const [customAmPm, setCustomAmPm] = useState<"AM" | "PM">("AM");
 
   const [couponCode, setCouponCode] = useState("");
   const [couponDiscount, setCouponDiscount] = useState(0);
@@ -294,10 +332,11 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
     };
   }, [activeUser?.uid]);
 
-  // Save updated contact number to all persistence stores
+  // Save updated contact number to all persistence stores (strictly user-entered, never dummy)
   const handleSaveContactNumber = async (text: string) => {
     const trimmed = text.trim();
-    setContactNumber(trimmed || "+91 98765 43210");
+    setContactNumber(trimmed);
+    setVerifiedPhone(trimmed);
     setIsEditingPhone(false);
     if (!trimmed) return;
     try {
@@ -318,7 +357,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
     } catch (_) {}
   };
 
-  // Automatically fetch user's real GPS doorstep location & reverse geocode
+  // Ultra-fast doorstep location detection with instant last-known cache and quick GPS race
   const fetchCurrentLocation = async (showAlertOnError = false) => {
     setIsFetchingLocation(true);
     try {
@@ -350,64 +389,69 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         return;
       }
 
-      const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
+      // STEP 1: Ultra-fast instant position check (< 50ms)
+      const lastKnown = await Location.getLastKnownPositionAsync().catch(() => null);
+      if (lastKnown?.coords) {
+        const lat = lastKnown.coords.latitude;
+        const lng = lastKnown.coords.longitude;
+        setAddressCoords({ latitude: lat, longitude: lng });
+        setMapRegion({
+          latitude: lat,
+          longitude: lng,
+          latitudeDelta: 0.008,
+          longitudeDelta: 0.008,
+        });
 
-      const lat = loc.coords.latitude;
-      const lng = loc.coords.longitude;
-
-      setAddressCoords({ latitude: lat, longitude: lng });
-      setMapRegion({
-        latitude: lat,
-        longitude: lng,
-        latitudeDelta: 0.008,
-        longitudeDelta: 0.008,
-      });
-
-      // Reverse geocode to clean human-readable address
-      let resolvedAddress = "";
-      try {
-        resolvedAddress = await reverseGeocodeLocation(lat, lng);
-      } catch (_) {}
-
-      if (!resolvedAddress || resolvedAddress.includes("," + lat.toFixed(1))) {
-        try {
-          const rev = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
-          if (rev && rev.length > 0) {
-            const p = rev[0];
-            resolvedAddress = [
-              p.name || p.street,
-              p.district || p.subregion,
-              p.city,
-              p.postalCode,
-              p.region,
-            ]
-              .filter(Boolean)
-              .join(", ");
+        // Instant reverse geocode in parallel
+        reverseGeocodeLocation(lat, lng).then((resolved) => {
+          if (resolved && resolved.trim().length > 3) {
+            setServiceAddress(resolved.trim());
+            setDraggedAddress(resolved.trim());
+            setIsFetchingLocation(false);
           }
-        } catch (_) {}
+        }).catch(() => {});
       }
 
-      const finalAddress =
-        resolvedAddress && resolvedAddress.trim().length > 3
-          ? resolvedAddress.trim()
-          : `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      // STEP 2: Concurrently get fresh position with tight 3-second timeout race
+      const freshPromise = Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
+      const loc = (await Promise.race([freshPromise, timeoutPromise])) || lastKnown;
 
-      setServiceAddress(finalAddress);
-      setDraggedAddress(finalAddress);
+      if (loc?.coords) {
+        const lat = loc.coords.latitude;
+        const lng = loc.coords.longitude;
 
-      // Persist to storage
-      await AsyncStorage.setItem("@customer_last_address", finalAddress).catch(() => {});
-      await AsyncStorage.setItem("@customer_last_coords", JSON.stringify({ latitude: lat, longitude: lng })).catch(() => {});
+        setAddressCoords({ latitude: lat, longitude: lng });
+        setMapRegion({
+          latitude: lat,
+          longitude: lng,
+          latitudeDelta: 0.008,
+          longitudeDelta: 0.008,
+        });
 
-      const currUid = auth.currentUser?.uid || user?.uid;
-      if (currUid) {
-        await setDoc(
-          doc(db, "users", currUid),
-          { address: finalAddress, deliveryAddress: finalAddress, customerLat: lat, customerLng: lng },
-          { merge: true }
-        ).catch(() => {});
+        const resolvedAddress = await reverseGeocodeLocation(lat, lng);
+        const finalAddress =
+          resolvedAddress && resolvedAddress.trim().length > 3
+            ? resolvedAddress.trim()
+            : `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+
+        setServiceAddress(finalAddress);
+        setDraggedAddress(finalAddress);
+
+        // Persist to storage
+        await AsyncStorage.setItem("@customer_last_address", finalAddress).catch(() => {});
+        await AsyncStorage.setItem("@customer_last_coords", JSON.stringify({ latitude: lat, longitude: lng })).catch(() => {});
+
+        const currUid = auth.currentUser?.uid || user?.uid;
+        if (currUid) {
+          await setDoc(
+            doc(db, "users", currUid),
+            { address: finalAddress, deliveryAddress: finalAddress, customerLat: lat, customerLng: lng },
+            { merge: true }
+          ).catch(() => {});
+        }
       }
     } catch (err: any) {
       console.warn("[ServiceDetail] Error fetching auto location:", err);
@@ -432,55 +476,40 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
     fetchCurrentLocation();
   }, []);
 
-  // Open Map and fetch user's live GPS automatically
+  // Open Map: Defaults automatically to current location with live camera animation
   const handleOpenMapPicker = async () => {
-    setMapModalVisible(true);
-    setMapLoading(true);
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          "Location Permission",
-          "Please enable location access to automatically find your doorstep."
-        );
-        setMapLoading(false);
-        return;
-      }
-
-      const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-
-      const newRegion: Region = {
-        latitude: loc.coords.latitude,
-        longitude: loc.coords.longitude,
+    // 1. Immediately position map to user's detected coordinates
+    if (addressCoords.latitude && addressCoords.longitude) {
+      const currentRegion: Region = {
+        latitude: addressCoords.latitude,
+        longitude: addressCoords.longitude,
         latitudeDelta: 0.006,
         longitudeDelta: 0.006,
       };
+      setMapRegion(currentRegion);
+      setDraggedAddress(serviceAddress);
+    }
 
-      setMapRegion(newRegion);
-      mapRef.current?.animateToRegion(newRegion, 800);
+    setMapModalVisible(true);
 
-      // Reverse geocode to get formatted address text
-      const reverse = await Location.reverseGeocodeAsync({
-        latitude: loc.coords.latitude,
-        longitude: loc.coords.longitude,
-      });
-
-      if (reverse && reverse.length > 0) {
-        const place = reverse[0];
-        const formatted = [
-          place.name || place.street,
-          place.district || place.subregion,
-          place.city,
-          place.postalCode,
-        ]
-          .filter(Boolean)
-          .join(", ");
-
-        const finalAddr = formatted || `${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`;
-        setDraggedAddress(finalAddr);
-        setAddressCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+    // 2. Animate camera and verify latest position smoothly without blocking UI
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        const lastKnown = await Location.getLastKnownPositionAsync().catch(() => null);
+        const coords = lastKnown?.coords || addressCoords;
+        if (coords) {
+          const freshRegion: Region = {
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            latitudeDelta: 0.006,
+            longitudeDelta: 0.006,
+          };
+          setMapRegion(freshRegion);
+          setTimeout(() => {
+            mapRef.current?.animateToRegion(freshRegion, 600);
+          }, 200);
+        }
       }
     } catch (err) {
       console.warn("Location fetch error:", err);
@@ -670,22 +699,34 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   };
 
   return (
-    <View style={styles.root}>
-      {/* ── Top Header matching Screenshot ────────────────────────────── */}
-      <SafeAreaView edges={["top"]} style={styles.headerSafeArea}>
-        <View style={styles.headerBar}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBackBtn}>
-            <Ionicons name="arrow-back" size={22} color="#0F172A" />
+    <View style={[styles.root, { backgroundColor: isDark ? themeColors.background : "#F8FAFC" }]}>
+      {/* ── Top Header ────────────────────────────────────────────────── */}
+      <SafeAreaView
+        edges={["top"]}
+        style={[styles.headerSafeArea, { backgroundColor: isDark ? themeColors.surface : "#FFFFFF" }]}
+      >
+        <View style={[styles.headerBar, { backgroundColor: isDark ? themeColors.surface : "#FFFFFF", borderBottomColor: themeColors.cardBorder }]}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={[styles.headerBackBtn, { backgroundColor: isDark ? themeColors.cardAlt : "#F1F5F9" }]}
+          >
+            <Ionicons name="arrow-back" size={22} color={isDark ? themeColors.text : "#0F172A"} />
           </TouchableOpacity>
 
           <View style={styles.headerTitleWrap}>
-            <Text style={styles.headerTitleText}>{selectedSub.name}</Text>
-            <Text style={styles.headerSubtitleText}>Clean  •  Fresh  •  Hygienic</Text>
+            <Text style={[styles.headerTitleText, { color: isDark ? themeColors.text : "#0F172A" }]}>
+              {selectedSub.name}
+            </Text>
+            <Text style={[styles.headerSubtitleText, { color: themeColors.primary }]}>
+              Clean  •  Fresh  •  Hygienic
+            </Text>
           </View>
 
           <View style={styles.headerLeafTag}>
             <Text style={styles.leafTagIcon}>🌿</Text>
-            <Text style={styles.leafTagText}>A healthier space{"\n"}for you</Text>
+            <Text style={[styles.leafTagText, { color: isDark ? themeColors.textSecondary : "#475569" }]}>
+              A healthier space{"\n"}for you
+            </Text>
           </View>
         </View>
       </SafeAreaView>
@@ -694,57 +735,59 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* ── 1. Hero Promo Card (Beautiful rendered banner tailored for any service) ── */}
-        <View style={styles.heroBannerCard}>
+        {/* ── 1. Hero Promo Card ────────────────────────────────────── */}
+        <View style={[styles.heroBannerCard, { borderColor: themeColors.cardBorder }]}>
           <LinearGradient
-            colors={["#E0F2FE", "#F0FDFA", "#E6FFFA"]}
+            colors={isDark ? ["#0a2233", "#102331", "#091a24"] : ["#E0F2FE", "#F0FDFA", "#E6FFFA"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.heroBannerGradient}
           >
             <View style={styles.heroBannerTextCol}>
-              <Text style={styles.heroSmallTag}>PROFESSIONAL {category.name.toUpperCase()} SERVICE</Text>
-              <Text style={styles.heroMainHeading}>
+              <Text style={[styles.heroSmallTag, { color: themeColors.primary }]}>
+                PROFESSIONAL {category.name.toUpperCase()} SERVICE
+              </Text>
+              <Text style={[styles.heroMainHeading, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
                 Sparkling {selectedSub.name.split(" ")[0]},{"\n"}Happier Spaces
               </Text>
-              <Text style={styles.heroSubText}>
+              <Text style={[styles.heroSubText, { color: isDark ? themeColors.textSecondary : "#64748B" }]}>
                 We take care of your space so you can focus on what matters.
               </Text>
 
               {/* 3 Value Inset Badges */}
               <View style={styles.heroBadgesRow}>
-                <View style={styles.heroBadgeItem}>
-                  <Ionicons name="shield-checkmark" size={12} color="#0D9488" />
-                  <Text style={styles.heroBadgeText}>Hygienic</Text>
+                <View style={[styles.heroBadgeItem, { backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "#FFFFFF", borderColor: themeColors.cardBorder }]}>
+                  <Ionicons name="shield-checkmark" size={12} color={themeColors.primary} />
+                  <Text style={[styles.heroBadgeText, { color: themeColors.primary }]}>Hygienic</Text>
                 </View>
-                <View style={styles.heroBadgeItem}>
-                  <Ionicons name="leaf" size={12} color="#0D9488" />
-                  <Text style={styles.heroBadgeText}>Eco-Friendly</Text>
+                <View style={[styles.heroBadgeItem, { backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "#FFFFFF", borderColor: themeColors.cardBorder }]}>
+                  <Ionicons name="leaf" size={12} color={themeColors.primary} />
+                  <Text style={[styles.heroBadgeText, { color: themeColors.primary }]}>Eco-Friendly</Text>
                 </View>
-                <View style={styles.heroBadgeItem}>
-                  <Ionicons name="star" size={12} color="#0D9488" />
-                  <Text style={styles.heroBadgeText}>Trusted Staff</Text>
+                <View style={[styles.heroBadgeItem, { backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "#FFFFFF", borderColor: themeColors.cardBorder }]}>
+                  <Ionicons name="star" size={12} color={themeColors.primary} />
+                  <Text style={[styles.heroBadgeText, { color: themeColors.primary }]}>Trusted Staff</Text>
                 </View>
               </View>
             </View>
 
             <View style={styles.heroBannerIconCol}>
-              <View style={styles.heroIconBubble}>
-                <Ionicons name={category.icon as any || "sparkles"} size={36} color="#0D9488" />
+              <View style={[styles.heroIconBubble, { backgroundColor: isDark ? "rgba(0,198,170,0.15)" : "#CCFBF1" }]}>
+                <Ionicons name={category.icon as any || "sparkles"} size={36} color={themeColors.primary} />
               </View>
             </View>
           </LinearGradient>
         </View>
 
-        {/* ── 2. Service Summary Card (Matching Design) ───────────────── */}
-        <View style={styles.serviceSummaryCard}>
+        {/* ── 2. Service Summary Card ───────────────────────────────── */}
+        <View style={[styles.serviceSummaryCard, { backgroundColor: isDark ? themeColors.card : "#F0FDFA", borderColor: isDark ? themeColors.cardBorder : "#CCFBF1" }]}>
           <View style={styles.serviceSummaryLeft}>
-            <View style={styles.mintIconBox}>
-              <Ionicons name="sparkles" size={24} color="#0D9488" />
+            <View style={[styles.mintIconBox, { backgroundColor: isDark ? "rgba(0,198,170,0.15)" : "#CCFBF1" }]}>
+              <Ionicons name="sparkles" size={24} color={themeColors.primary} />
             </View>
             <View style={styles.serviceSummaryTextCol}>
-              <Text style={styles.serviceSummaryTitle}>{selectedSub.name}</Text>
-              <Text style={styles.serviceSummaryDesc} numberOfLines={2}>
+              <Text style={[styles.serviceSummaryTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>{selectedSub.name}</Text>
+              <Text style={[styles.serviceSummaryDesc, { color: isDark ? themeColors.textSecondary : "#64748B" }]} numberOfLines={2}>
                 {selectedSub.description}
               </Text>
             </View>
@@ -755,90 +798,92 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
           </View>
 
           <View style={styles.serviceSummaryPriceCol}>
-            <Text style={styles.startsFromSmall}>Starts from</Text>
+            <Text style={[styles.startsFromSmall, { color: isDark ? themeColors.textMuted : "#94A3B8" }]}>Starts from</Text>
             <View style={styles.priceWithSlashedRow}>
-              <Text style={styles.priceGreenMain}>₹{basePriceNum}</Text>
-              <Text style={styles.priceSlashedSmall}>₹{originalPrice}</Text>
+              <Text style={[styles.priceGreenMain, { color: themeColors.primary }]}>₹{basePriceNum}</Text>
+              <Text style={[styles.priceSlashedSmall, { color: isDark ? themeColors.textMuted : "#94A3B8" }]}>₹{originalPrice}</Text>
             </View>
-            <View style={styles.durationPill}>
-              <Ionicons name="time-outline" size={13} color="#475569" />
-              <Text style={styles.durationPillText}>{selectedSub.duration}</Text>
+            <View style={[styles.durationPill, { backgroundColor: isDark ? themeColors.surface : "#FFFFFF", borderColor: themeColors.cardBorder }]}>
+              <Ionicons name="time-outline" size={13} color={isDark ? themeColors.textSecondary : "#475569"} />
+              <Text style={[styles.durationPillText, { color: isDark ? themeColors.text : "#0F172A" }]}>{selectedSub.duration}</Text>
             </View>
           </View>
         </View>
 
-        {/* ── 3. Service Address & Map Selector Card ──────────────────── */}
-        <View style={styles.serviceAddressCard}>
+        {/* ── 3. Service Address & Map Selector Card ─────────────────── */}
+        <View style={[styles.serviceAddressCard, { backgroundColor: isDark ? themeColors.card : "#FFFFFF", borderColor: themeColors.cardBorder }]}>
           <View style={styles.addressCardHeader}>
-            <View style={styles.greenPinCircle}>
-              <Ionicons name="location" size={18} color="#0D9488" />
+            <View style={[styles.greenPinCircle, { backgroundColor: isDark ? "rgba(0,198,170,0.15)" : "#CCFBF1" }]}>
+              <Ionicons name="location" size={18} color={themeColors.primary} />
             </View>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                <Text style={styles.addressCardTitle}>Service Address</Text>
+                <Text style={[styles.addressCardTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>Service Address</Text>
                 <TouchableOpacity
                   onPress={() => fetchCurrentLocation(true)}
-                  style={styles.gpsDetectBtn}
+                  style={[styles.gpsDetectBtn, { backgroundColor: isDark ? "rgba(0,198,170,0.12)" : "#F0FDFA", borderColor: isDark ? "rgba(0,198,170,0.3)" : "#CCFBF1" }]}
                   disabled={isFetchingLocation}
                   activeOpacity={0.7}
                 >
                   {isFetchingLocation ? (
-                    <ActivityIndicator size={12} color="#0D9488" />
+                    <ActivityIndicator size={12} color={themeColors.primary} />
                   ) : (
-                    <Ionicons name="locate" size={13} color="#0D9488" />
+                    <Ionicons name="locate" size={13} color={themeColors.primary} />
                   )}
-                  <Text style={styles.gpsDetectBtnText}>
+                  <Text style={[styles.gpsDetectBtnText, { color: themeColors.primary }]}>
                     {isFetchingLocation ? "Detecting..." : "Current GPS"}
                   </Text>
                 </TouchableOpacity>
               </View>
-              <Text style={styles.addressCardSub}>Fetched automatically from your current location</Text>
+              <Text style={[styles.addressCardSub, { color: isDark ? themeColors.textSecondary : "#64748B" }]}>
+                Fetched automatically from your current location
+              </Text>
             </View>
           </View>
 
           {/* Interactive Map Graphic Card */}
-          <View style={styles.mapGraphicCard}>
+          <View style={[styles.mapGraphicCard, { borderColor: themeColors.cardBorder }]}>
             <LinearGradient
-              colors={["#EFF6FF", "#ECFDF5", "#F0FDFA"]}
+              colors={isDark ? ["#0b1e2c", "#0f2330", "#081b22"] : ["#EFF6FF", "#ECFDF5", "#F0FDFA"]}
               style={StyleSheet.absoluteFill}
             />
 
             {/* Subtle Grid / Street Vector Lines */}
             <View style={styles.vectorMapLines}>
-              <View style={styles.mapRoad1} />
-              <View style={styles.mapRoad2} />
-              <View style={styles.mapRoad3} />
+              <View style={[styles.mapRoad1, isDark && { backgroundColor: "rgba(255,255,255,0.1)" }]} />
+              <View style={[styles.mapRoad2, isDark && { backgroundColor: "rgba(255,255,255,0.1)" }]} />
+              <View style={[styles.mapRoad3, isDark && { backgroundColor: "rgba(255,255,255,0.1)" }]} />
             </View>
 
             {/* Centered Map Pin */}
             <View style={styles.mapCenterPin}>
-              <Ionicons name="location" size={32} color="#0F766E" />
+              <Ionicons name="location" size={32} color={themeColors.primary} />
             </View>
 
             {/* Clickable Select on Map Button */}
             <TouchableOpacity
-              style={styles.selectOnMapFloatingBtn}
+              style={[styles.selectOnMapFloatingBtn, { backgroundColor: isDark ? themeColors.surface : "#FFFFFF", borderColor: themeColors.cardBorder }]}
               onPress={handleOpenMapPicker}
               activeOpacity={0.88}
             >
-              <Ionicons name="map-outline" size={16} color="#0F172A" style={{ marginRight: 6 }} />
-              <Text style={styles.selectOnMapText}>Select on Map</Text>
-              <Ionicons name="chevron-forward" size={14} color="#0F172A" style={{ marginLeft: 4 }} />
+              <Ionicons name="map-outline" size={16} color={isDark ? themeColors.text : "#0F172A"} style={{ marginRight: 6 }} />
+              <Text style={[styles.selectOnMapText, { color: isDark ? themeColors.text : "#0F172A" }]}>Select on Map</Text>
+              <Ionicons name="chevron-forward" size={14} color={isDark ? themeColors.text : "#0F172A"} style={{ marginLeft: 4 }} />
             </TouchableOpacity>
           </View>
 
           {/* Selected Address Displayed Directly Below the Map */}
-          <View style={styles.selectedAddressBelowMap}>
+          <View style={[styles.selectedAddressBelowMap, { backgroundColor: isDark ? themeColors.cardAlt : "#F8FAFC", borderColor: themeColors.cardBorder }]}>
             {isFetchingLocation ? (
-              <ActivityIndicator size={16} color="#0D9488" style={{ marginTop: 2, marginRight: 2 }} />
+              <ActivityIndicator size={16} color={themeColors.primary} style={{ marginTop: 2, marginRight: 2 }} />
             ) : (
-              <Ionicons name="navigate-circle-outline" size={18} color="#0D9488" style={{ marginTop: 2 }} />
+              <Ionicons name="navigate-circle-outline" size={18} color={themeColors.primary} style={{ marginTop: 2 }} />
             )}
-            <Text style={styles.selectedAddressBelowText} numberOfLines={2}>
+            <Text style={[styles.selectedAddressBelowText, { color: isDark ? themeColors.text : "#1E293B" }]} numberOfLines={2}>
               {isFetchingLocation ? "Fetching your current location..." : serviceAddress}
             </Text>
             <TouchableOpacity onPress={handleOpenMapPicker}>
-              <Text style={styles.changeAddressLink}>Change</Text>
+              <Text style={[styles.changeAddressLink, { color: themeColors.primary }]}>Change</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -846,14 +891,14 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         {/* ── 4. Two Side-by-Side Cards: Contact Number & Schedule Slot ── */}
         <View style={styles.twoColsRow}>
           {/* Card 1: Contact Number */}
-          <View style={styles.contactCard}>
+          <View style={[styles.contactCard, { backgroundColor: isDark ? themeColors.card : "#F0F9FF", borderColor: isDark ? themeColors.cardBorder : "#E0F2FE" }]}>
             <View style={styles.cardHeaderSmall}>
-              <View style={styles.bluePhoneCircle}>
+              <View style={[styles.bluePhoneCircle, isDark && { backgroundColor: "rgba(2,132,199,0.18)" }]}>
                 <Ionicons name="call" size={16} color="#0284C7" />
               </View>
               <View style={{ flex: 1, marginLeft: 8 }}>
-                <Text style={styles.smallCardTitle}>Contact Number</Text>
-                <Text style={styles.smallCardSub}>We will contact you</Text>
+                <Text style={[styles.smallCardTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>Contact Number</Text>
+                <Text style={[styles.smallCardSub, { color: isDark ? themeColors.textSecondary : "#64748B" }]}>We will contact you</Text>
               </View>
             </View>
 
@@ -865,79 +910,77 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                 onSubmitEditing={() => handleSaveContactNumber(contactNumber)}
                 keyboardType="phone-pad"
                 placeholder="Enter mobile"
-                style={styles.phoneInputActive}
+                placeholderTextColor={isDark ? themeColors.textMuted : "#94A3B8"}
+                style={[styles.phoneInputActive, { backgroundColor: isDark ? themeColors.surface : "#FFFFFF", color: isDark ? themeColors.text : "#0F172A", borderColor: themeColors.primary }]}
                 autoFocus
               />
             ) : (
               <TouchableOpacity
-                style={styles.whiteInputPill}
+                style={[styles.whiteInputPill, { backgroundColor: isDark ? themeColors.surface : "#FFFFFF", borderColor: themeColors.cardBorder }]}
                 onPress={() => setIsEditingPhone(true)}
               >
-                <Ionicons name="call-outline" size={15} color="#0F172A" style={{ marginRight: 8 }} />
-                <Text style={styles.phoneTextMain} numberOfLines={1}>
-                  {contactNumber || "+91 98765 43210"}
+                <Ionicons name="call-outline" size={15} color={isDark ? themeColors.textSecondary : "#0F172A"} style={{ marginRight: 8 }} />
+                <Text
+                  style={[
+                    styles.phoneTextMain,
+                    { color: contactNumber ? (isDark ? themeColors.text : "#0F172A") : (isDark ? "#f87171" : "#ef4444") },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {contactNumber || "Tap to enter phone"}
                 </Text>
-                <Ionicons name="pencil" size={14} color="#64748B" style={{ marginLeft: "auto" }} />
+                <Ionicons name="pencil" size={14} color={isDark ? themeColors.textMuted : "#64748B"} style={{ marginLeft: "auto" }} />
               </TouchableOpacity>
             )}
           </View>
 
           {/* Card 2: Schedule Slot */}
-          <View style={styles.scheduleCard}>
+          <View style={[styles.scheduleCard, { backgroundColor: isDark ? themeColors.card : "#FAF5FF", borderColor: isDark ? themeColors.cardBorder : "#F3E8FF" }]}>
             <View style={styles.cardHeaderSmall}>
-              <View style={styles.purpleCalCircle}>
+              <View style={[styles.purpleCalCircle, isDark && { backgroundColor: "rgba(124,58,237,0.18)" }]}>
                 <Ionicons name="calendar" size={16} color="#7C3AED" />
               </View>
               <View style={{ flex: 1, marginLeft: 8 }}>
-                <Text style={styles.smallCardTitle}>Schedule Slot</Text>
-                <Text style={styles.smallCardSub}>Preferred arrival</Text>
+                <Text style={[styles.smallCardTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>Schedule Slot</Text>
+                <Text style={[styles.smallCardSub, { color: isDark ? themeColors.textSecondary : "#64748B" }]}>Preferred arrival</Text>
               </View>
             </View>
 
-            {/* Date Pill */}
+            {/* Date Pill (Opens dynamic 14-day selector) */}
             <TouchableOpacity
-              style={styles.whiteInputPill}
-              onPress={() => {
-                Alert.alert("Select Date", "Choose arrival day:", [
-                  { text: "Today", onPress: () => setBookingDate("Thu, Oct 8, 2026") },
-                  { text: "Tomorrow", onPress: () => setBookingDate("Fri, Oct 9, 2026") },
-                  { text: "Saturday", onPress: () => setBookingDate("Sat, Oct 10, 2026") },
-                ]);
-              }}
+              style={[styles.whiteInputPill, { backgroundColor: isDark ? themeColors.surface : "#FFFFFF", borderColor: themeColors.cardBorder }]}
+              onPress={() => setDateModalVisible(true)}
             >
-              <Ionicons name="calendar-outline" size={15} color="#64748B" style={{ marginRight: 6 }} />
-              <Text style={styles.schedulePillText} numberOfLines={1}>{bookingDate}</Text>
-              <Ionicons name="chevron-forward" size={14} color="#94A3B8" style={{ marginLeft: "auto" }} />
+              <Ionicons name="calendar-outline" size={15} color={isDark ? themeColors.textSecondary : "#64748B"} style={{ marginRight: 6 }} />
+              <Text style={[styles.schedulePillText, { color: isDark ? themeColors.text : "#0F172A" }]} numberOfLines={1}>{bookingDate}</Text>
+              <Ionicons name="chevron-forward" size={14} color={isDark ? themeColors.textMuted : "#94A3B8"} style={{ marginLeft: "auto" }} />
             </TouchableOpacity>
 
-            {/* Time Pill */}
+            {/* Time Pill (Opens comprehensive any-time slot picker) */}
             <TouchableOpacity
-              style={[styles.whiteInputPill, { marginTop: 6 }]}
+              style={[styles.whiteInputPill, { marginTop: 6, backgroundColor: isDark ? themeColors.surface : "#FFFFFF", borderColor: themeColors.cardBorder }]}
               onPress={() => {
-                Alert.alert("Select Time Slot", "Choose preferred arrival time:", [
-                  { text: "09:00 AM", onPress: () => setBookingTime("09:00 AM") },
-                  { text: "10:00 AM", onPress: () => setBookingTime("10:00 AM") },
-                  { text: "02:00 PM", onPress: () => setBookingTime("02:00 PM") },
-                  { text: "05:00 PM", onPress: () => setBookingTime("05:00 PM") },
-                ]);
+                setCustomTimeInput(bookingTime.replace(/\s*(AM|PM)/i, ""));
+                setCustomAmPm(bookingTime.toUpperCase().includes("PM") ? "PM" : "AM");
+                setTimeModalVisible(true);
               }}
             >
-              <Ionicons name="time-outline" size={15} color="#64748B" style={{ marginRight: 6 }} />
-              <Text style={styles.schedulePillText} numberOfLines={1}>{bookingTime}</Text>
-              <Ionicons name="chevron-forward" size={14} color="#94A3B8" style={{ marginLeft: "auto" }} />
+              <Ionicons name="time-outline" size={15} color={isDark ? themeColors.textSecondary : "#64748B"} style={{ marginRight: 6 }} />
+              <Text style={[styles.schedulePillText, { color: isDark ? themeColors.text : "#0F172A" }]} numberOfLines={1}>{bookingTime}</Text>
+              <Ionicons name="chevron-forward" size={14} color={isDark ? themeColors.textMuted : "#94A3B8"} style={{ marginLeft: "auto" }} />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* ── 5. Have a Coupon Code? Card ─────────────────────────────── */}
-        <View style={styles.couponCard}>
+        <View style={[styles.couponCard, { backgroundColor: isDark ? themeColors.card : "#FFF7ED", borderColor: isDark ? themeColors.cardBorder : "#FFEDD5" }]}>
           <View style={styles.couponHeaderRow}>
-            <View style={styles.peachGiftCircle}>
+            <View style={[styles.peachGiftCircle, isDark && { backgroundColor: "rgba(234,88,12,0.18)" }]}>
               <Ionicons name="gift" size={16} color="#EA580C" />
             </View>
             <View style={{ marginLeft: 8 }}>
-              <Text style={styles.couponCardTitle}>Have a Coupon Code?</Text>
-              <Text style={styles.couponCardSub}>Apply URBAN50 for ₹50 off</Text>
+              <Text style={[styles.couponCardTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>Have a Coupon Code?</Text>
+              <Text style={[styles.couponCardSub, { color: isDark ? themeColors.textSecondary : "#64748B" }]}>Apply URBAN50 for ₹50 off</Text>
             </View>
           </View>
 
@@ -946,9 +989,9 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               value={couponCode}
               onChangeText={setCouponCode}
               placeholder="e.g. URBAN50"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={isDark ? themeColors.textMuted : "#94A3B8"}
               autoCapitalize="characters"
-              style={styles.couponTextInput}
+              style={[styles.couponTextInput, { backgroundColor: isDark ? themeColors.surface : "#FFFFFF", color: isDark ? themeColors.text : "#0F172A", borderColor: isDark ? themeColors.cardBorder : "#FED7AA" }]}
             />
             <TouchableOpacity
               style={[styles.couponApplyBtn, couponApplied && { backgroundColor: "#059669" }]}
@@ -964,12 +1007,12 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       </ScrollView>
 
       {/* ── 6. Bottom Sticky Checkout Bar ────────────────────────────── */}
-      <View style={styles.bottomStickyBar}>
+      <View style={[styles.bottomStickyBar, { backgroundColor: isDark ? themeColors.surface : "#FFFFFF", borderTopColor: themeColors.cardBorder }]}>
         <View style={styles.bottomPriceWrap}>
-          <Text style={styles.totalAmountLabel}>Total Amount</Text>
+          <Text style={[styles.totalAmountLabel, { color: isDark ? themeColors.textSecondary : "#64748B" }]}>Total Amount</Text>
           <View style={styles.totalPriceRow}>
-            <Text style={styles.totalPriceGreen}>₹{finalPrice}</Text>
-            <Text style={styles.totalPriceSlashed}>₹{originalPrice}</Text>
+            <Text style={[styles.totalPriceGreen, { color: themeColors.primary }]}>₹{finalPrice}</Text>
+            <Text style={[styles.totalPriceSlashed, { color: isDark ? themeColors.textMuted : "#94A3B8" }]}>₹{originalPrice}</Text>
           </View>
         </View>
 
@@ -992,13 +1035,13 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 
       {/* ── 7. Full-Screen Interactive Google Map Modal ──────────────── */}
       <Modal visible={mapModalVisible} animationType="slide">
-        <SafeAreaView style={styles.mapModalRoot} edges={["top", "bottom"]}>
+        <SafeAreaView style={[styles.mapModalRoot, { backgroundColor: isDark ? themeColors.background : "#FFFFFF" }]} edges={["top", "bottom"]}>
           {/* Modal Header */}
-          <View style={styles.mapModalHeader}>
-            <TouchableOpacity onPress={() => setMapModalVisible(false)} style={styles.mapCloseBtn}>
-              <Ionicons name="close" size={24} color="#0F172A" />
+          <View style={[styles.mapModalHeader, { backgroundColor: isDark ? themeColors.surface : "#FFFFFF", borderBottomColor: themeColors.cardBorder }]}>
+            <TouchableOpacity onPress={() => setMapModalVisible(false)} style={[styles.mapCloseBtn, { backgroundColor: isDark ? themeColors.cardAlt : "#F1F5F9" }]}>
+              <Ionicons name="close" size={24} color={isDark ? themeColors.text : "#0F172A"} />
             </TouchableOpacity>
-            <Text style={styles.mapModalHeaderTitle}>Select Delivery Doorstep</Text>
+            <Text style={[styles.mapModalHeaderTitle, { color: isDark ? themeColors.text : "#0F172A" }]}>Select Delivery Doorstep</Text>
             <View style={{ width: 40 }} />
           </View>
 
@@ -1016,36 +1059,49 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 
             {/* Fixed Center Pin */}
             <View style={styles.fixedCenterPinWrap} pointerEvents="none">
-              <View style={styles.pinBubble}>
+              <View style={[styles.pinBubble, { backgroundColor: isDark ? themeColors.surface : "#0F172A" }]}>
                 <Text style={styles.pinBubbleText}>Service Location</Text>
               </View>
-              <Ionicons name="location" size={42} color="#0F766E" style={{ marginTop: -4 }} />
+              <Ionicons name="location" size={42} color={themeColors.primary} style={{ marginTop: -4 }} />
               <View style={styles.pinShadowDot} />
             </View>
 
             {/* GPS Recenter Floating Button */}
             <TouchableOpacity
-              style={styles.gpsRecenterBtn}
-              onPress={handleOpenMapPicker}
+              style={[styles.gpsRecenterBtn, { backgroundColor: isDark ? themeColors.surface : "#FFFFFF" }]}
+              onPress={async () => {
+                const last = await Location.getLastKnownPositionAsync().catch(() => null);
+                const coords = last?.coords || addressCoords;
+                if (coords) {
+                  const reg: Region = {
+                    latitude: coords.latitude,
+                    longitude: coords.longitude,
+                    latitudeDelta: 0.005,
+                    longitudeDelta: 0.005,
+                  };
+                  setMapRegion(reg);
+                  mapRef.current?.animateToRegion(reg, 600);
+                }
+              }}
             >
-              <Ionicons name="locate" size={22} color="#0F766E" />
+              <Ionicons name="locate" size={22} color={themeColors.primary} />
             </TouchableOpacity>
           </View>
 
           {/* Bottom Selected Location Card */}
-          <View style={styles.mapBottomCard}>
+          <View style={[styles.mapBottomCard, { backgroundColor: isDark ? themeColors.card : "#FFFFFF", borderTopColor: themeColors.cardBorder }]}>
             <View style={styles.mapAddressInfoRow}>
-              <Ionicons name="location-outline" size={24} color="#0F766E" style={{ marginTop: 2 }} />
+              <Ionicons name="location-outline" size={24} color={themeColors.primary} style={{ marginTop: 2 }} />
               <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={styles.mapSelectedTitle}>Selected Doorstep</Text>
-                <Text style={styles.mapSelectedAddress} numberOfLines={2}>
+                <Text style={[styles.mapSelectedTitle, { color: isDark ? themeColors.textSecondary : "#64748B" }]}>Selected Doorstep</Text>
+                <Text style={[styles.mapSelectedAddress, { color: isDark ? themeColors.text : "#0F172A" }]} numberOfLines={2}>
                   {draggedAddress}
                 </Text>
               </View>
             </View>
 
             <TouchableOpacity
-              style={styles.useThisLocationBtn}
+              style={[styles.useThisLocationBtn, { backgroundColor: themeColors.primary }]}
               onPress={handleConfirmMapLocation}
             >
               <Text style={styles.useThisLocationText}>Confirm Location</Text>
@@ -1054,27 +1110,221 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         </SafeAreaView>
       </Modal>
 
-      {/* OTP Verification Modal */}
+      {/* ── 8. Dynamic Date Selector Modal ────────────────────────────── */}
+      <Modal visible={dateModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlayDark}>
+          <View style={[styles.dateModalSheet, { backgroundColor: isDark ? themeColors.card : "#FFFFFF", borderColor: themeColors.cardBorder }]}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={[styles.modalTitleText, { color: isDark ? themeColors.text : "#0F172A" }]}>
+                Select Service Date
+              </Text>
+              <TouchableOpacity onPress={() => setDateModalVisible(false)} style={styles.modalCloseIconBtn}>
+                <Ionicons name="close" size={22} color={isDark ? themeColors.textSecondary : "#64748B"} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
+              {getUpcomingDates(14).map((d, index) => {
+                const isSelected = bookingDate === d.value;
+                return (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.dateItemRow,
+                      {
+                        backgroundColor: isSelected
+                          ? (isDark ? "rgba(0,198,170,0.18)" : "#CCFBF1")
+                          : (isDark ? themeColors.surface : "#F8FAFC"),
+                        borderColor: isSelected ? themeColors.primary : themeColors.cardBorder,
+                      },
+                    ]}
+                    onPress={() => {
+                      setBookingDate(d.value);
+                      setDateModalVisible(false);
+                    }}
+                  >
+                    <Ionicons
+                      name={isSelected ? "checkmark-circle" : "calendar-outline"}
+                      size={20}
+                      color={isSelected ? themeColors.primary : (isDark ? themeColors.textSecondary : "#64748B")}
+                      style={{ marginRight: 10 }}
+                    />
+                    <Text
+                      style={[
+                        styles.dateItemText,
+                        {
+                          color: isSelected
+                            ? themeColors.primary
+                            : (isDark ? themeColors.text : "#0F172A"),
+                          fontWeight: isSelected ? "800" : "600",
+                        },
+                      ]}
+                    >
+                      {d.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── 9. Flexible Any-Time Slot Selector Modal ──────────────────── */}
+      <Modal visible={timeModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlayDark}>
+          <View style={[styles.timeModalSheet, { backgroundColor: isDark ? themeColors.card : "#FFFFFF", borderColor: themeColors.cardBorder }]}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={[styles.modalTitleText, { color: isDark ? themeColors.text : "#0F172A" }]}>
+                Select Preferred Time
+              </Text>
+              <TouchableOpacity onPress={() => setTimeModalVisible(false)} style={styles.modalCloseIconBtn}>
+                <Ionicons name="close" size={22} color={isDark ? themeColors.textSecondary : "#64748B"} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.modalSectionLabel, { color: isDark ? themeColors.textSecondary : "#64748B" }]}>
+              Enter Any Custom Time (e.g. 07:15, 11:45, 04:20)
+            </Text>
+
+            <View style={styles.customTimeRow}>
+              <TextInput
+                value={customTimeInput}
+                onChangeText={setCustomTimeInput}
+                placeholder="10:00"
+                placeholderTextColor={isDark ? themeColors.textMuted : "#94A3B8"}
+                style={[
+                  styles.customTimeTextInput,
+                  {
+                    backgroundColor: isDark ? themeColors.surface : "#F1F5F9",
+                    color: isDark ? themeColors.text : "#0F172A",
+                    borderColor: themeColors.cardBorder,
+                  },
+                ]}
+              />
+
+              <View style={styles.amPmToggleRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.amPmBtn,
+                    customAmPm === "AM" && { backgroundColor: themeColors.primary },
+                  ]}
+                  onPress={() => setCustomAmPm("AM")}
+                >
+                  <Text style={[styles.amPmBtnText, customAmPm === "AM" && { color: "#FFFFFF" }]}>AM</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.amPmBtn,
+                    customAmPm === "PM" && { backgroundColor: themeColors.primary },
+                  ]}
+                  onPress={() => setCustomAmPm("PM")}
+                >
+                  <Text style={[styles.amPmBtnText, customAmPm === "PM" && { color: "#FFFFFF" }]}>PM</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.setCustomTimeBtn, { backgroundColor: themeColors.primary }]}
+                onPress={() => {
+                  const cleaned = customTimeInput.trim();
+                  if (!cleaned) {
+                    Alert.alert("Time", "Please enter a preferred time like 10:30.");
+                    return;
+                  }
+                  const formatted = `${cleaned} ${customAmPm}`;
+                  setBookingTime(formatted);
+                  setTimeModalVisible(false);
+                }}
+              >
+                <Text style={styles.setCustomTimeBtnText}>Set Time</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.modalSectionLabel, { color: isDark ? themeColors.textSecondary : "#64748B", marginTop: 14 }]}>
+              Or Choose Any Slot from 6:00 AM to 10:00 PM:
+            </Text>
+
+            <ScrollView style={{ maxHeight: 220 }} showsVerticalScrollIndicator={false}>
+              <View style={styles.timeChipsGrid}>
+                {ALL_TIME_SLOTS.map((t, idx) => {
+                  const isSelected = bookingTime === t;
+                  return (
+                    <TouchableOpacity
+                      key={idx}
+                      style={[
+                        styles.timeChip,
+                        {
+                          backgroundColor: isSelected
+                            ? (isDark ? "rgba(0,198,170,0.22)" : "#CCFBF1")
+                            : (isDark ? themeColors.surface : "#F8FAFC"),
+                          borderColor: isSelected ? themeColors.primary : themeColors.cardBorder,
+                        },
+                      ]}
+                      onPress={() => {
+                        setBookingTime(t);
+                        setTimeModalVisible(false);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.timeChipText,
+                          {
+                            color: isSelected
+                              ? themeColors.primary
+                              : (isDark ? themeColors.text : "#0F172A"),
+                            fontWeight: isSelected ? "800" : "600",
+                          },
+                        ]}
+                      >
+                        {t}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── 10. OTP Verification Modal ───────────────────────────────── */}
       <Modal visible={otpModalVisible} transparent animationType="fade">
         <View style={styles.otpModalOverlay}>
-          <View style={styles.otpModalContent}>
-            <Text style={styles.otpModalTitle}>Verify Phone Number</Text>
-            <Text style={styles.otpModalDesc}>Enter the 4-digit OTP sent to {contactNumber}</Text>
+          <View style={[styles.otpModalContent, { backgroundColor: isDark ? themeColors.card : "#FFFFFF", borderColor: themeColors.cardBorder }]}>
+            <Text style={[styles.otpModalTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>Verify Phone Number</Text>
+            <Text style={[styles.otpModalDesc, { color: isDark ? themeColors.textSecondary : "#64748B" }]}>
+              Enter the 4-digit OTP sent to {contactNumber}
+            </Text>
             <TextInput
-              style={styles.otpInput}
+              style={[
+                styles.otpInput,
+                {
+                  backgroundColor: isDark ? themeColors.surface : "#F1F5F9",
+                  color: isDark ? themeColors.text : "#0F172A",
+                  borderColor: themeColors.cardBorder,
+                },
+              ]}
               value={enteredOtp}
               onChangeText={setEnteredOtp}
               keyboardType="number-pad"
               maxLength={4}
               placeholder="0000"
+              placeholderTextColor={isDark ? themeColors.textMuted : "#94A3B8"}
               textAlign="center"
               autoFocus
             />
             <View style={styles.otpModalButtons}>
-              <TouchableOpacity style={styles.otpModalCancel} onPress={() => setOtpModalVisible(false)}>
-                <Text style={styles.otpModalCancelText}>Cancel</Text>
+              <TouchableOpacity
+                style={[styles.otpModalCancel, { backgroundColor: isDark ? themeColors.surface : "#F1F5F9" }]}
+                onPress={() => setOtpModalVisible(false)}
+              >
+                <Text style={[styles.otpModalCancelText, { color: isDark ? themeColors.textSecondary : "#475569" }]}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.otpModalConfirm} onPress={handleVerifyOtpSubmit}>
+              <TouchableOpacity
+                style={[styles.otpModalConfirm, { backgroundColor: themeColors.primary }]}
+                onPress={handleVerifyOtpSubmit}
+              >
                 <Text style={styles.otpModalConfirmText}>Verify & Book</Text>
               </TouchableOpacity>
             </View>
@@ -1846,5 +2096,114 @@ const styles = StyleSheet.create({
   otpModalConfirmText: {
     color: "#fff",
     fontWeight: "bold",
+  },
+
+  // Date & Time Modals
+  modalOverlayDark: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    justifyContent: "flex-end",
+  },
+  dateModalSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderTopWidth: 1,
+    padding: 20,
+    paddingBottom: Platform.OS === "ios" ? 36 : 24,
+  },
+  timeModalSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderTopWidth: 1,
+    padding: 20,
+    paddingBottom: Platform.OS === "ios" ? 36 : 24,
+  },
+  modalHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  modalTitleText: {
+    fontSize: 17,
+    fontWeight: "900",
+  },
+  modalCloseIconBtn: {
+    padding: 4,
+  },
+  modalSectionLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    marginBottom: 10,
+  },
+  dateItemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+  },
+  dateItemText: {
+    fontSize: 14,
+  },
+  customTimeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 6,
+  },
+  customTimeTextInput: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  amPmToggleRow: {
+    flexDirection: "row",
+    backgroundColor: "rgba(0,0,0,0.06)",
+    borderRadius: 12,
+    padding: 3,
+  },
+  amPmBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 9,
+  },
+  amPmBtnText: {
+    fontSize: 12.5,
+    fontWeight: "800",
+    color: "#64748B",
+  },
+  setCustomTimeBtn: {
+    paddingHorizontal: 16,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  setCustomTimeBtnText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  timeChipsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    paddingBottom: 10,
+  },
+  timeChip: {
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  timeChipText: {
+    fontSize: 12.5,
   },
 });

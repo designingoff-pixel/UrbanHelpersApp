@@ -140,11 +140,30 @@ export async function searchAddressSuggestions(
  * Prioritizes high-precision OpenStreetMap/Photon reverse geocoding with fallback to Expo Location.
  */
 export async function reverseGeocodeLocation(lat: number, lng: number): Promise<string> {
-  // 1. Try Photon reverse geocoding
+  // 1. Instant native Expo reverse geocoding (uses Android Google Play Services local cache)
+  try {
+    const geocode = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+    if (geocode && geocode.length > 0) {
+      const p = geocode[0];
+      const parts = [
+        p.name || p.street,
+        p.district || p.subregion,
+        p.city,
+        p.postalCode,
+        p.region,
+      ].filter(Boolean);
+      const label = parts.filter((v, i, a) => a.indexOf(v) === i).join(", ");
+      if (label.trim().length > 3) {
+        return label;
+      }
+    }
+  } catch (_) {}
+
+  // 2. Fast fallback to Photon API with tight 1.5s timeout
   try {
     const url = `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
+    const timeout = setTimeout(() => controller.abort(), 1500);
     const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timeout);
     if (res.ok) {
@@ -162,19 +181,6 @@ export async function reverseGeocodeLocation(lat: number, lng: number): Promise<
         if (unique.trim().length > 3) {
           return unique;
         }
-      }
-    }
-  } catch (_) {}
-
-  // 2. Fallback to Expo reverseGeocodeAsync
-  try {
-    const geocode = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
-    if (geocode && geocode.length > 0) {
-      const p = geocode[0];
-      const parts = [p.name, p.street, p.subregion, p.city, p.region].filter(Boolean);
-      const label = parts.filter((v, i, a) => a.indexOf(v) === i).join(", ");
-      if (label.trim().length > 3) {
-        return label;
       }
     }
   } catch (_) {}
