@@ -30,7 +30,11 @@
         "NSLocationWhenInUseUsageDescription": "Urban Captain needs your location to navigate to customers.",
         "NSLocationAlwaysUsageDescription": "Urban Captain uses your location to show customers where you are.",
         "NSCameraUsageDescription": "Urban Captain needs camera access to upload your profile photo.",
-        "NSMicrophoneUsageDescription": "Urban Captain records audio during service for transparency and safety."
+        "NSMicrophoneUsageDescription": "Urban Captain records audio during service for transparency and safety.",
+        "UIBackgroundModes": [
+          "audio",
+          "location"
+        ]
       }
     },
     "android": {
@@ -43,6 +47,9 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "RECORD_AUDIO",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_MICROPHONE",
+        "WAKE_LOCK",
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",

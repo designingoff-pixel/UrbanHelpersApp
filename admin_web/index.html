@@ -2197,12 +2197,13 @@
     };
 
     window.unlockVendor = async function(docId, vendorName) {
-      if (!confirm('Unlock vendor partner "' + vendorName + '" and reset skipped requests count to 0?')) return;
+      if (!confirm('Unlock vendor partner "' + vendorName + '" and reset skipped requests and cancellations to 0?')) return;
       try {
         await updateDoc(doc(db, 'vendors', docId), {
           status: 'active',
           isLocked: false,
           skippedCount: 0,
+          cancelCount: 0,
           lockReason: null,
           unlockedAt: serverTimestamp()
         });
@@ -2451,6 +2452,15 @@
           vendorPhone: vendor.mobile || '',
           status: 'assigned',
           assignedAt: serverTimestamp(),
+          // Clear any previous execution proofs from past attempts so reassignment starts fresh
+          beforePhoto: null,
+          afterPhoto: null,
+          audioUrl: null,
+          checklistDone: [],
+          otpVerified: false,
+          startedAt: null,
+          serviceEndedAt: null,
+          completedAt: null,
         });
 
         // Update local cache
@@ -2460,6 +2470,11 @@
           b.vendorName = vendor.name;
           b.vendorPhone = vendor.mobile || '';
           b.status = 'assigned';
+          b.beforePhoto = null;
+          b.afterPhoto = null;
+          b.audioUrl = null;
+          b.checklistDone = [];
+          b.otpVerified = false;
         }
 
         closeAssignModal();

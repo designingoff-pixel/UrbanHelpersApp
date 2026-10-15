@@ -542,6 +542,18 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
               </Text>
             </View>
           </Animated.View>
+        ) : !isVendorAssigned || booking?.status === "requested" ? (
+          <Animated.View entering={FadeInDown.delay(180).duration(380)} style={[s.onSiteSecuredCard, cardBgStyle]}>
+            <View style={[s.onSiteSecuredIconWrap, { backgroundColor: isDark ? "rgba(245,158,11,0.15)" : "#FEF3C7" }]}>
+              <Ionicons name="search" size={28} color="#D97706" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.onSiteSecuredTitle, textPrimary]}>Assigning Verified Professional</Text>
+              <Text style={[s.onSiteSecuredSub, textSecondary]}>
+                We are locating the best nearby professional. Live tracking map will appear once your order is accepted.
+              </Text>
+            </View>
+          </Animated.View>
         ) : (
           <Animated.View entering={FadeInDown.delay(180).duration(380)} style={[s.onSiteSecuredCard, cardBgStyle]}>
             <View style={[s.onSiteSecuredIconWrap, { backgroundColor: isDark ? "rgba(0,188,212,0.15)" : "#E0F2FE" }]}>

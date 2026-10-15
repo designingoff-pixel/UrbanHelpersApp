@@ -15,6 +15,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Audio } from 'expo-av';
+import { audioRecordingService } from '../services/audioRecordingService';
 import SOSModal from '../components/SOSModal';
 import DiagnosticModal from '../components/DiagnosticModal';
 import NearbySuppliersModal from '../components/NearbySuppliersModal';
@@ -121,7 +122,6 @@ export default function ServiceScreen({ route, navigation }: any) {
   const [suppliersVisible, setSuppliersVisible] = useState(false);
 
   // Audio recording & playback
-  const recordingRef = useRef<Audio.Recording | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
   const [isAudioRecording, setIsAudioRecording] = useState(false);
   const [recordingDurationSecs, setRecordingDurationSecs] = useState(0);
@@ -142,40 +142,36 @@ export default function ServiceScreen({ route, navigation }: any) {
     if (job?.audioUrl) setAudioUri(job.audioUrl);
   }, [job?.beforePhoto, job?.afterPhoto, job?.audioUrl]);
 
-  // Automatically start voice recording upon entering active service
+  // Subscribe to background audio recording service state
+  useEffect(() => {
+    const unsub = audioRecordingService.subscribe((state) => {
+      if (state.jobId === jobId || !state.jobId) {
+        setIsAudioRecording(state.isRecording);
+        setRecordingDurationSecs(state.durationSecs);
+      }
+    });
+    return () => unsub();
+  }, [jobId]);
+
+  // Automatically start voice recording upon entering active service if not already recording
   useEffect(() => {
     const startAutoRecord = async () => {
-      if (job && !job.audioUrl && !audioUri && !isAudioRecording && !recordingRef.current) {
-        await handleStartAudioRecording();
+      if (job && !job.audioUrl && !audioUri) {
+        if (!audioRecordingService.isRecordingForJob(job.jobId)) {
+          await audioRecordingService.startBackgroundRecording(job.jobId);
+        }
       }
     };
     startAutoRecord();
   }, [job?.jobId]);
 
-
-
-  // Audio recording duration timer
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (isAudioRecording) {
-      interval = setInterval(() => {
-        setRecordingDurationSecs((s) => s + 1);
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isAudioRecording]);
-
-  // Clean up sound on unmount
+  // Clean up playback sound on unmount (note: background voice recording continues uninterrupted!)
   useEffect(() => {
     return () => {
       if (soundRef.current) {
         soundRef.current.unloadAsync().catch(() => {});
       }
-      if (recordingRef.current) {
-        recordingRef.current.stopAndUnloadAsync().catch(() => {});
-      }
+      // Audio recording deliberately continues in the background until service completion!
     };
   }, []);
 
@@ -296,60 +292,20 @@ export default function ServiceScreen({ route, navigation }: any) {
         soundRef.current = null;
       }
       setIsPlayingAudio(false);
-
-      const perm = await Audio.requestPermissionsAsync();
-      if (!perm.granted) {
-        console.warn('Microphone permission not granted.');
-        return;
-      }
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.LOW_QUALITY
-      );
-      recordingRef.current = recording;
-      setIsAudioRecording(true);
-      setRecordingDurationSecs(0);
+      await audioRecordingService.startBackgroundRecording(job.jobId);
     } catch (e: any) {
       console.warn('Start recording error:', e);
     }
   };
 
   const handleStopAudioRecording = async (): Promise<string | null> => {
-    if (!recordingRef.current) return audioUri || job?.audioUrl || null;
     setSavingAudio(true);
     try {
-      await recordingRef.current.stopAndUnloadAsync();
-      const uri = recordingRef.current.getURI();
-      recordingRef.current = null;
-      setIsAudioRecording(false);
-
-      if (uri) {
-        let finalAudioUrl = '';
-
-        // 1. Upload audio to Firebase Storage
-        try {
-          const storagePath = `audio_proofs/${job.bookingId || job.jobId}_${Date.now()}.m4a`;
-          const audioRef = ref(storage, storagePath);
-          const response = await fetch(uri);
-          const blob = await response.blob();
-          await uploadBytes(audioRef, blob, { contentType: 'audio/m4a' });
-          finalAudioUrl = await getDownloadURL(audioRef);
-        } catch (storageErr) {
-          console.warn('[handleStopAudioRecording] Storage upload failed:', storageErr);
-          // If storage fails, store local uri or safe identifier so it NEVER exceeds 1MB in Firestore
-          finalAudioUrl = uri;
-        }
-
-        if (finalAudioUrl) {
-          setAudioUri(finalAudioUrl);
-          job.audioUrl = finalAudioUrl;
-          await updateBookingAudio(job.jobId, finalAudioUrl);
-          return finalAudioUrl;
-        }
+      const finalUrl = await audioRecordingService.stopAndSaveRecording(job.jobId);
+      if (finalUrl) {
+        setAudioUri(finalUrl);
+        job.audioUrl = finalUrl;
+        return finalUrl;
       }
     } catch (e: any) {
       console.warn('Stop recording error:', e);
@@ -428,8 +384,9 @@ export default function ServiceScreen({ route, navigation }: any) {
               setAudioUri(null);
               setRecordingDurationSecs(0);
               job.audioUrl = undefined;
+              await audioRecordingService.discardRecording();
               await updateBookingAudio(job.jobId, '');
-              handleStartAudioRecording();
+              await audioRecordingService.startBackgroundRecording(job.jobId);
             } catch (err) {
               console.warn('Reset audio error:', err);
             }
@@ -469,7 +426,7 @@ export default function ServiceScreen({ route, navigation }: any) {
       return;
     }
 
-    if (!currentAudio && !recordingRef.current && recordingDurationSecs === 0) {
+    if (!currentAudio && !isAudioRecording && !audioRecordingService.isRecordingForJob(job.jobId) && recordingDurationSecs === 0) {
       Alert.alert('Missing Voice Proof', 'Please record the voice recording proof before finalizing.');
       return;
     }
@@ -485,7 +442,7 @@ export default function ServiceScreen({ route, navigation }: any) {
     setIsFinishing(true);
     try {
       let finalAudioUrl: string | null = audioUri || job.audioUrl || null;
-      if (recordingRef.current || isAudioRecording) {
+      if (isAudioRecording || audioRecordingService.isRecordingForJob(job.jobId)) {
         try {
           const uploadedUrl = await handleStopAudioRecording();
           if (uploadedUrl) finalAudioUrl = uploadedUrl;

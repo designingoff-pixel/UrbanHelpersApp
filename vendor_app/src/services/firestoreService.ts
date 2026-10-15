@@ -208,6 +208,20 @@ export async function acceptJob(
       acceptedAt: serverTimestamp(),
     });
   });
+
+  // Reset consecutive skip count upon successfully accepting an order
+  if (vendorId) {
+    try {
+      const vRef = doc(db, "vendors", vendorId);
+      await updateDoc(vRef, {
+        skippedCount: 0,
+        status: "active",
+        isLocked: false,
+      });
+    } catch (e) {
+      console.warn("[acceptJob] Could not reset vendor skip count:", e);
+    }
+  }
 }
 
 // ── Reject / Skip a job with 3-Skip Auto-Lock enforcement ────────────────────

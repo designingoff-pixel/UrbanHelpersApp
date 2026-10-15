@@ -39,7 +39,7 @@ import {
 } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { sendRealSMSViaFast2SMS } from "@/services/smsService";
-import { reverseGeocodeLocation } from "@/services/geocodingService";
+import { reverseGeocodeLocation, searchAddressSuggestions, GeocodedLocation } from "@/services/geocodingService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceDetail">;
 const { width } = Dimensions.get("window");
@@ -139,6 +139,13 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   });
   const [draggedAddress, setDraggedAddress] = useState(serviceAddress);
   const mapRef = useRef<MapView>(null);
+
+  // Map search & suggestions state
+  const [mapSearchQuery, setMapSearchQuery] = useState("");
+  const [mapSuggestions, setMapSuggestions] = useState<GeocodedLocation[]>([]);
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false);
+  const [isGeocodingAddress, setIsGeocodingAddress] = useState(false);
+  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Comprehensive multi-source automatic fetcher for user phone & address
   const loadUserDetails = async (currentUserUid?: string, currentUserEmail?: string | null) => {
@@ -518,31 +525,79 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
     }
   };
 
+  // Map location search handler with debouncing
+  const handleMapSearchChange = (text: string) => {
+    setMapSearchQuery(text);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    if (text.trim().length < 2) {
+      setMapSuggestions([]);
+      setIsSearchingLocation(false);
+      return;
+    }
+    setIsSearchingLocation(true);
+    searchDebounceRef.current = setTimeout(async () => {
+      try {
+        const results = await searchAddressSuggestions(text);
+        setMapSuggestions(results);
+      } catch (e) {
+        console.warn("Search location error:", e);
+      } finally {
+        setIsSearchingLocation(false);
+      }
+    }, 350);
+  };
+
+  const handleSelectSuggestion = (loc: GeocodedLocation) => {
+    setMapSearchQuery(loc.label);
+    setMapSuggestions([]);
+    setDraggedAddress(loc.label);
+    setAddressCoords({ latitude: loc.lat, longitude: loc.lng });
+
+    const newRegion: Region = {
+      latitude: loc.lat,
+      longitude: loc.lng,
+      latitudeDelta: 0.005,
+      longitudeDelta: 0.005,
+    };
+    setMapRegion(newRegion);
+    mapRef.current?.animateToRegion(newRegion, 600);
+  };
+
   // Reverse geocode on region change complete
   const handleRegionChangeComplete = async (region: Region) => {
     setMapRegion(region);
+    setIsGeocodingAddress(true);
     try {
-      const reverse = await Location.reverseGeocodeAsync({
-        latitude: region.latitude,
-        longitude: region.longitude,
-      });
-      if (reverse && reverse.length > 0) {
-        const place = reverse[0];
-        const formatted = [
-          place.name || place.street,
-          place.district || place.subregion,
-          place.city,
-          place.postalCode,
-        ]
-          .filter(Boolean)
-          .join(", ");
+      const address = await reverseGeocodeLocation(region.latitude, region.longitude);
+      if (address) {
+        setDraggedAddress(address);
+        setAddressCoords({ latitude: region.latitude, longitude: region.longitude });
+      } else {
+        const reverse = await Location.reverseGeocodeAsync({
+          latitude: region.latitude,
+          longitude: region.longitude,
+        });
+        if (reverse && reverse.length > 0) {
+          const place = reverse[0];
+          const formatted = [
+            place.name || place.street,
+            place.district || place.subregion,
+            place.city,
+            place.postalCode,
+          ]
+            .filter(Boolean)
+            .join(", ");
 
-        if (formatted) {
-          setDraggedAddress(formatted);
-          setAddressCoords({ latitude: region.latitude, longitude: region.longitude });
+          if (formatted) {
+            setDraggedAddress(formatted);
+            setAddressCoords({ latitude: region.latitude, longitude: region.longitude });
+          }
         }
       }
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      setIsGeocodingAddress(false);
+    }
   };
 
   const handleConfirmMapLocation = () => {
@@ -550,6 +605,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       setServiceAddress(draggedAddress);
     }
     setMapModalVisible(false);
+    setMapSuggestions([]);
   };
 
   // Calculate pricing
@@ -1038,14 +1094,22 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         <SafeAreaView style={[styles.mapModalRoot, { backgroundColor: isDark ? themeColors.background : "#FFFFFF" }]} edges={["top", "bottom"]}>
           {/* Modal Header */}
           <View style={[styles.mapModalHeader, { backgroundColor: isDark ? themeColors.surface : "#FFFFFF", borderBottomColor: themeColors.cardBorder }]}>
-            <TouchableOpacity onPress={() => setMapModalVisible(false)} style={[styles.mapCloseBtn, { backgroundColor: isDark ? themeColors.cardAlt : "#F1F5F9" }]}>
+            <TouchableOpacity
+              onPress={() => {
+                setMapModalVisible(false);
+                setMapSuggestions([]);
+              }}
+              style={[styles.mapCloseBtn, { backgroundColor: isDark ? themeColors.cardAlt : "#F1F5F9" }]}
+            >
               <Ionicons name="close" size={24} color={isDark ? themeColors.text : "#0F172A"} />
             </TouchableOpacity>
-            <Text style={[styles.mapModalHeaderTitle, { color: isDark ? themeColors.text : "#0F172A" }]}>Select Delivery Doorstep</Text>
+            <Text style={[styles.mapModalHeaderTitle, { color: isDark ? themeColors.text : "#0F172A" }]}>
+              Select Delivery Doorstep
+            </Text>
             <View style={{ width: 40 }} />
           </View>
 
-          {/* Interactive Google Map */}
+          {/* Interactive Google Map Container */}
           <View style={styles.mapViewContainer}>
             <MapView
               ref={mapRef}
@@ -1057,6 +1121,85 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               showsMyLocationButton={false}
             />
 
+            {/* Floating Top Search Bar */}
+            <View style={styles.floatingSearchContainer}>
+              <View style={[styles.searchBoxCard, { backgroundColor: isDark ? themeColors.surface : "#FFFFFF", borderColor: themeColors.cardBorder }]}>
+                <Ionicons name="search" size={19} color={themeColors.primary} style={{ marginRight: 8 }} />
+                <TextInput
+                  style={[styles.mapSearchInput, { color: isDark ? themeColors.text : "#0F172A" }]}
+                  placeholder="Search locality, street, or landmark..."
+                  placeholderTextColor={isDark ? "#94A3B8" : "#94A3B8"}
+                  value={mapSearchQuery}
+                  onChangeText={handleMapSearchChange}
+                  clearButtonMode="while-editing"
+                  autoCorrect={false}
+                />
+                {isSearchingLocation ? (
+                  <ActivityIndicator size="small" color={themeColors.primary} style={{ marginLeft: 6 }} />
+                ) : mapSearchQuery.length > 0 ? (
+                  <TouchableOpacity onPress={() => { setMapSearchQuery(""); setMapSuggestions([]); }} style={{ padding: 4 }}>
+                    <Ionicons name="close-circle" size={18} color="#94A3B8" />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+
+              {/* Suggestions Dropdown */}
+              {mapSuggestions.length > 0 && (
+                <View style={[styles.suggestionsDropdown, { backgroundColor: isDark ? themeColors.surface : "#FFFFFF", borderColor: themeColors.cardBorder }]}>
+                  <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled style={{ maxHeight: 220 }}>
+                    {mapSuggestions.map((item, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={[styles.suggestionItem, { borderBottomColor: isDark ? "rgba(255,255,255,0.08)" : "#F1F5F9" }]}
+                        onPress={() => handleSelectSuggestion(item)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={[styles.suggestionIconWrap, { backgroundColor: isDark ? "rgba(0,188,212,0.15)" : "#F0FDFA" }]}>
+                          <Ionicons name="location" size={16} color={themeColors.primary} />
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                          <Text style={[styles.suggestionLabelText, { color: isDark ? themeColors.text : "#0F172A" }]} numberOfLines={1}>
+                            {item.label}
+                          </Text>
+                          {item.city && (
+                            <Text style={[styles.suggestionSubText, { color: isDark ? "#94A3B8" : "#64748B" }]}>
+                              {item.city}{item.state ? `, ${item.state}` : ""}
+                            </Text>
+                          )}
+                        </View>
+                        <Ionicons name="arrow-forward" size={14} color="#94A3B8" />
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* Quick GPS Location Chip */}
+              <TouchableOpacity
+                style={[styles.floatingGpsChip, { backgroundColor: isDark ? themeColors.surface : "#FFFFFF", borderColor: themeColors.cardBorder }]}
+                onPress={async () => {
+                  const last = await Location.getLastKnownPositionAsync().catch(() => null);
+                  const coords = last?.coords || addressCoords;
+                  if (coords) {
+                    const reg: Region = {
+                      latitude: coords.latitude,
+                      longitude: coords.longitude,
+                      latitudeDelta: 0.005,
+                      longitudeDelta: 0.005,
+                    };
+                    setMapRegion(reg);
+                    mapRef.current?.animateToRegion(reg, 600);
+                  }
+                }}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="locate" size={15} color={themeColors.primary} style={{ marginRight: 6 }} />
+                <Text style={[styles.floatingGpsChipText, { color: isDark ? themeColors.text : "#0F172A" }]}>
+                  Use My Current GPS Location
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             {/* Fixed Center Pin */}
             <View style={styles.fixedCenterPinWrap} pointerEvents="none">
               <View style={[styles.pinBubble, { backgroundColor: isDark ? themeColors.surface : "#0F172A" }]}>
@@ -1065,44 +1208,37 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               <Ionicons name="location" size={42} color={themeColors.primary} style={{ marginTop: -4 }} />
               <View style={styles.pinShadowDot} />
             </View>
-
-            {/* GPS Recenter Floating Button */}
-            <TouchableOpacity
-              style={[styles.gpsRecenterBtn, { backgroundColor: isDark ? themeColors.surface : "#FFFFFF" }]}
-              onPress={async () => {
-                const last = await Location.getLastKnownPositionAsync().catch(() => null);
-                const coords = last?.coords || addressCoords;
-                if (coords) {
-                  const reg: Region = {
-                    latitude: coords.latitude,
-                    longitude: coords.longitude,
-                    latitudeDelta: 0.005,
-                    longitudeDelta: 0.005,
-                  };
-                  setMapRegion(reg);
-                  mapRef.current?.animateToRegion(reg, 600);
-                }
-              }}
-            >
-              <Ionicons name="locate" size={22} color={themeColors.primary} />
-            </TouchableOpacity>
           </View>
 
           {/* Bottom Selected Location Card */}
           <View style={[styles.mapBottomCard, { backgroundColor: isDark ? themeColors.card : "#FFFFFF", borderTopColor: themeColors.cardBorder }]}>
             <View style={styles.mapAddressInfoRow}>
-              <Ionicons name="location-outline" size={24} color={themeColors.primary} style={{ marginTop: 2 }} />
-              <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={[styles.mapSelectedTitle, { color: isDark ? themeColors.textSecondary : "#64748B" }]}>Selected Doorstep</Text>
-                <Text style={[styles.mapSelectedAddress, { color: isDark ? themeColors.text : "#0F172A" }]} numberOfLines={2}>
-                  {draggedAddress}
+              <View style={[styles.doorstepIconBubble, { backgroundColor: isDark ? "rgba(0,188,212,0.15)" : "#E6FFFA" }]}>
+                <Ionicons name="home" size={20} color={themeColors.primary} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={[styles.mapSelectedTitle, { color: isDark ? themeColors.textSecondary : "#64748B" }]}>
+                  SELECTED DOORSTEP
                 </Text>
+                {isGeocodingAddress ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
+                    <ActivityIndicator size="small" color={themeColors.primary} style={{ marginRight: 6 }} />
+                    <Text style={{ fontSize: 13, color: isDark ? "#94A3B8" : "#64748B", fontStyle: "italic" }}>
+                      Pinpointing address...
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={[styles.mapSelectedAddress, { color: isDark ? themeColors.text : "#0F172A" }]} numberOfLines={2}>
+                    {draggedAddress || "Position pin at your doorstep"}
+                  </Text>
+                )}
               </View>
             </View>
 
             <TouchableOpacity
               style={[styles.useThisLocationBtn, { backgroundColor: themeColors.primary }]}
               onPress={handleConfirmMapLocation}
+              activeOpacity={0.85}
             >
               <Text style={styles.useThisLocationText}>Confirm Location</Text>
             </TouchableOpacity>
@@ -1971,21 +2107,104 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.3)",
     marginTop: -2,
   },
-  gpsRecenterBtn: {
+  floatingSearchContainer: {
     position: "absolute",
-    bottom: 16,
-    right: 16,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#FFFFFF",
-    justifyContent: "center",
+    top: 14,
+    left: 14,
+    right: 14,
+    zIndex: 30,
+  },
+  searchBoxCard: {
+    flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: Platform.OS === "ios" ? 12 : 8,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  mapSearchInput: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#0F172A",
+    padding: 0,
+  },
+  suggestionsDropdown: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    elevation: 8,
+    overflow: "hidden",
+  },
+  suggestionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  suggestionIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#F0FDFA",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  suggestionLabelText: {
+    fontSize: 13.5,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  suggestionSubText: {
+    fontSize: 11.5,
+    fontWeight: "500",
+    color: "#64748B",
+    marginTop: 1,
+  },
+  floatingGpsChip: {
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.12,
     shadowRadius: 4,
     elevation: 4,
+  },
+  floatingGpsChipText: {
+    fontSize: 12.5,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  doorstepIconBubble: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#E6FFFA",
+    alignItems: "center",
+    justifyContent: "center",
   },
   mapBottomCard: {
     backgroundColor: "#FFFFFF",

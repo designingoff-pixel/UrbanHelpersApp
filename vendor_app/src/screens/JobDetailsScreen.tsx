@@ -444,8 +444,8 @@ export default function JobDetailsScreen({ route, navigation }: any) {
             <Text style={s.addressText}>{job.address}</Text>
           </View>
 
-          {/* Navigation only available BEFORE OTP verification while travelling to site */}
-          {!['CANCELLED', 'COMPLETED', 'REJECTED', 'CUSTOMER_VERIFIED', 'SERVICE_STARTED', 'RECORDING_ACTIVE'].includes(job.status) ? (
+          {/* Navigation only available AFTER job is accepted while travelling to site */}
+          {['ACCEPTED', 'UPCOMING', 'NAVIGATING', 'ARRIVED'].includes(job.status) ? (
             <TouchableOpacity style={s.navBtn} onPress={handleOpenNavigation} activeOpacity={0.85}>
               <Ionicons name="navigate-circle" size={20} color="#0D3325" />
               <Text style={s.navBtnText}>Open Turn-by-Turn Voice Navigation</Text>
@@ -458,11 +458,18 @@ export default function JobDetailsScreen({ route, navigation }: any) {
                 <Text style={s.navSecuredSub}>Map navigation is disabled during active service for customer security & privacy.</Text>
               </View>
             </View>
+          ) : isAssigned ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 8, padding: 10, marginTop: 10, borderWidth: 1, borderColor: '#E2E8F0' }}>
+              <Ionicons name="lock-closed-outline" size={16} color="#64748B" />
+              <Text style={{ fontSize: 12, color: '#64748B', marginLeft: 6, fontWeight: '500' }}>
+                Accept request to unlock turn-by-turn navigation map
+              </Text>
+            </View>
           ) : null}
         </View>
 
-        {/* Work Verification Photos (if completed or taken) */}
-        {(job.beforePhoto || job.afterPhoto) && (
+        {/* Work Verification Photos (only for active/completed jobs, hidden on unaccepted/reassigned jobs) */}
+        {!isAssigned && (job.beforePhoto || job.afterPhoto) && (
           <View style={s.card}>
             <Text style={s.cardHeading}>WORK VERIFICATION PROOF</Text>
             <View style={s.photoProofRow}>
@@ -532,15 +539,15 @@ export default function JobDetailsScreen({ route, navigation }: any) {
           </View>
         )}
 
-        {/* Voice Recording Proof (if audioUrl exists) */}
-        {job.audioUrl ? (
+        {/* Voice Recording Proof (only for active/completed jobs, raw path hidden) */}
+        {!isAssigned && job.audioUrl ? (
           <View style={s.card}>
             <Text style={s.cardHeading}>🎙 VOICE RECORDING</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDF4', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#BBF7D0' }}>
               <Ionicons name="mic-circle" size={32} color="#16A34A" />
               <View style={{ flex: 1, marginLeft: 10 }}>
                 <Text style={{ fontSize: 13, fontWeight: '700', color: '#166534' }}>Audio recorded during service</Text>
-                <Text style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>{job.audioUrl.substring(0, 48)}...</Text>
+                <Text style={{ fontSize: 11, color: '#059669', marginTop: 2, fontWeight: '500' }}>Proof securely verified &amp; attached</Text>
               </View>
               <Ionicons name="checkmark-circle" size={22} color="#16A34A" />
             </View>

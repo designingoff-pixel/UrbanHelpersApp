@@ -69,6 +69,11 @@ class AppStore {
       this.vendor.isLocked = false;
       this.vendor.status = 'active';
       this.vendor.lockReason = undefined;
+      // If vendor is active in Firestore, reset local cancellation block if any
+      if (this.cancelCount >= this.CANCEL_LIMIT) {
+        this.cancelCount = 0;
+        this.vendor.cancelCount = 0;
+      }
     }
     if (data.documents) {
       this.vendor.documents = data.documents;
@@ -86,15 +91,19 @@ class AppStore {
 
   // ── Sync Assigned & Completed Jobs ───────────────────────────────────────
   syncAssignedJobs(firestoreJobs: FirestoreBooking[]) {
-    const newReqs = this.jobs.filter(j => j.status === 'NEW_REQUEST');
     const mapped = this._mapFirestore(firestoreJobs);
+    const mappedIds = new Set(mapped.map(m => m.jobId));
+    // Filter out duplicates so accepted jobs leave the requests list cleanly
+    const newReqs = this.jobs.filter(j => j.status === 'NEW_REQUEST' && !mappedIds.has(j.jobId));
     this.jobs = [...mapped, ...newReqs];
 
     // Compute rolling 7-day cancellation count from Firestore jobs
+    // ONLY count if explicitly cancelled by the vendor
     const now = Date.now();
     const sevenDaysAgo = now - this.CANCEL_WINDOW_MS;
-    const recentCancels = firestoreJobs.filter(b => {
+    const recentVendorCancels = firestoreJobs.filter(b => {
       if (b.status !== 'cancelled') return false;
+      if (b.cancelledBy !== 'vendor') return false;
       let cTime = now;
       if (b.cancelledAt) {
         cTime = b.cancelledAt.toMillis ? b.cancelledAt.toMillis() : new Date(b.cancelledAt).getTime();
@@ -102,15 +111,18 @@ class AppStore {
       return cTime >= sevenDaysAgo;
     });
 
-    if (recentCancels.length > 0) {
-      this.cancelCount = Math.max(this.cancelCount, recentCancels.length);
-      this.vendor.cancelCount = this.cancelCount;
-      if (this.cancelCount >= this.CANCEL_LIMIT) {
-        this.vendor.isLocked = true;
-        this.vendor.isOnline = false;
-        this.vendor.status = 'locked';
-        this.vendor.lockReason = `Profile temporarily blocked: ${this.CANCEL_LIMIT} job cancellations recorded in 7 days. Contact Admin to unlock.`;
-      }
+    this.cancelCount = recentVendorCancels.length;
+    this.vendor.cancelCount = this.cancelCount;
+
+    if (this.cancelCount >= this.CANCEL_LIMIT) {
+      this.vendor.isLocked = true;
+      this.vendor.isOnline = false;
+      this.vendor.status = 'locked';
+      this.vendor.lockReason = `Profile temporarily blocked: ${this.CANCEL_LIMIT} job cancellations recorded in 7 days. Contact Admin to unlock.`;
+    } else if (this.vendor.status === 'locked' && this.vendor.lockReason?.includes('cancellation')) {
+      this.vendor.isLocked = false;
+      this.vendor.status = 'active';
+      this.vendor.lockReason = undefined;
     }
 
     this.notify();
@@ -185,17 +197,17 @@ class AppStore {
         paymentStatus:       fb.paymentStatus === 'paid' ? 'PAID' : 'PENDING',
         vendorEarnings:      Math.round((fb.price || 0) * 0.8),
         otp:                 fb.otp ?? '',
-        checklist:           fb.checklist ?? existing?.checklist ?? [],
-        checklistDone:       fb.checklistDone ?? existing?.checklistDone ?? [],
-        beforePhoto:         fb.beforePhoto || existing?.beforePhoto || null,
-        afterPhoto:          fb.afterPhoto || existing?.afterPhoto || null,
+        checklist:           (fb.status === 'assigned' || fb.status === 'requested') ? (fb.checklist ?? []) : (fb.checklist ?? existing?.checklist ?? []),
+        checklistDone:       (fb.status === 'assigned' || fb.status === 'requested') ? (fb.checklistDone ?? []) : (fb.checklistDone ?? existing?.checklistDone ?? []),
+        beforePhoto:         (fb.status === 'assigned' || fb.status === 'requested') ? (fb.beforePhoto || null) : (fb.beforePhoto || existing?.beforePhoto || null),
+        afterPhoto:          (fb.status === 'assigned' || fb.status === 'requested') ? (fb.afterPhoto || null) : (fb.afterPhoto || existing?.afterPhoto || null),
         createdAt:           Date.now(),
         completedAt:         completedTimestamp,
         rating:              fb.rating,
         review:              fb.review,
         reviewTags:          fb.reviewTags,
         tip:                 fb.tip,
-        audioUrl:            fb.audioUrl || existing?.audioUrl,
+        audioUrl:            (fb.status === 'assigned' || fb.status === 'requested') ? (fb.audioUrl || null) : (fb.audioUrl || existing?.audioUrl),
       } as Job;
     });
   }

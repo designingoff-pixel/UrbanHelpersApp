@@ -105,19 +105,21 @@ export default function HomeScreen({ navigation }: any) {
   const requestedJobs = store.getJobsForTab('requests');
   const upcomingJobs = store.getJobsForTab('upcoming');
   const activeJobs = store.getJobsForTab('active');
-  const completedJobs = store.getJobsForTab('completed');
+  const realCompletedJobs = store.jobs.filter((j) => j.status === 'COMPLETED');
 
   const displayedJobs = store.getJobsForTab(activeTab);
 
   const displayName = vendor.name || 'Vendor Captain';
   const displayRating = store.effectiveRating ? store.effectiveRating.toFixed(1) : '5.0';
-  const realTotalEarnings = completedJobs.reduce((sum, j) => sum + (j.vendorEarnings || 0), 0);
+  const realTotalEarnings = realCompletedJobs.reduce((sum, j) => sum + (j.vendorEarnings || 0), 0);
   const displayEarnings = realTotalEarnings.toLocaleString('en-IN');
 
   // Cancellation counter state (combines rolling cancellations & skips)
-  const cancelCount = Math.max(store.cancelCount, store.vendor.cancelCount || 0, store.vendor.skippedCount || 0);
+  const cancelCount = isLocked
+    ? Math.max(store.cancelCount, store.vendor.cancelCount || 0, store.vendor.skippedCount || 0)
+    : Math.max(store.cancelCount, store.vendor.skippedCount || 0);
   const cancelLimit = store.CANCEL_LIMIT;
-  const cancelBlocked = cancelCount >= cancelLimit;
+  const cancelBlocked = isLocked || cancelCount >= cancelLimit;
   const cancelWarning = cancelCount > 0 && !cancelBlocked;
   const cancelColor = cancelBlocked ? '#DC2626' : cancelCount >= 2 ? '#D97706' : '#10B981';
   const cancelBgColor = cancelBlocked ? '#FEF2F2' : cancelCount >= 2 ? '#FFFBEB' : '#F0FDF4';
@@ -204,7 +206,7 @@ export default function HomeScreen({ navigation }: any) {
               </View>
               <View style={s.kpiCard}>
                 <Text style={s.kpiLabel}>COMPLETED JOBS</Text>
-                <Text style={s.kpiValue}>{completedJobs.length}</Text>
+                <Text style={s.kpiValue}>{realCompletedJobs.length}</Text>
                 <Text style={s.kpiSub}>Verified 5★ Quality</Text>
               </View>
             </View>
