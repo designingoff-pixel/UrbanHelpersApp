@@ -180,6 +180,74 @@
     .firebase-status-bar { background: #0d1f18; color: #10b981; font-size: 11.5px; font-weight: 700; padding: 6px 14px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid #1a3028; }
     .firebase-status-bar.disconnected { color: #e11d48; }
     .firebase-status-bar .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+    /* ── Rejection & Allotment Notification Styling ── */
+    .rejection-alert-card {
+      background: #fff7ed;
+      border: 2px solid #ea580c;
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 6px 20px rgba(234, 88, 12, 0.2);
+      animation: alertCardPulse 2.5s infinite ease-in-out;
+      flex-wrap: wrap;
+    }
+    @keyframes alertCardPulse {
+      0%, 100% { box-shadow: 0 4px 14px rgba(234,88,12,0.18); border-color: #ea580c; }
+      50% { box-shadow: 0 8px 26px rgba(234,88,12,0.38); border-color: #f97316; }
+    }
+    @keyframes badgePulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.55; transform: scale(0.97); }
+    }
+    .badge-pulse {
+      animation: badgePulse 1.8s infinite ease-in-out;
+    }
+    .sound-toggle-btn {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #15803d;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 8px;
+      padding: 6px 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .sound-toggle-btn.muted {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      color: #64748b;
+    }
+    .sound-toggle-btn:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+    .sound-test-btn {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      color: #334155;
+      font-size: 11.5px;
+      font-weight: 700;
+      border-radius: 8px;
+      padding: 6px 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .sound-test-btn:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
   </style>
 </head>
 <body>
@@ -311,7 +379,17 @@
           <i class="fa-solid fa-magnifying-glass"></i>
           <input type="text" id="globalSearchInput" placeholder="Search users, vendors, bookings...">
         </div>
-        <div class="icon-circle-btn">
+        <!-- Sound Alert Controller for Dispatch & Rejection Allotment -->
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button id="btnSoundAlertToggle" class="sound-toggle-btn" onclick="toggleSoundAlerts()" title="Enable or mute audible sound alerts when a vendor rejects a service allotment">
+            <i class="fa-solid fa-bell" id="soundAlertBellIcon"></i>
+            <span id="soundAlertStatusText">Sound Alerts: ON</span>
+          </button>
+          <button id="btnTestSound" class="sound-test-btn" onclick="testRejectionAlertSound()" title="Test rejection notification sound & unlock browser audio">
+            <i class="fa-solid fa-volume-high" style="color:#0f8a5f;"></i> Test
+          </button>
+        </div>
+        <div class="icon-circle-btn" onclick="toggleRejectionAlertsView()" title="Allotment Notifications" style="position:relative; cursor:pointer;">
           <i class="fa-regular fa-bell"></i>
           <div class="notif-dot" id="notifDot" style="display:none;"></div>
         </div>
@@ -322,6 +400,9 @@
 
     <!-- LIVE SOS EMERGENCY BROADCAST BANNER -->
     <div id="sosAlertContainer" style="display:none; margin: 12px 24px 0 24px;"></div>
+
+    <!-- LIVE VENDOR REJECTION / ALLOTMENT NEEDED BANNER -->
+    <div id="vendorRejectionAlertContainer" style="display:none; margin: 12px 24px 0 24px;"></div>
   
 
     <!-- Main Content -->
@@ -1224,7 +1305,10 @@
 
       <div style="border-top:1px solid #e2e8f0; padding-top:14px; margin-top:20px; display:flex; justify-content:space-between; align-items:center;">
         <span style="font-size:11.5px; color:#94a3b8;"><i class="fa-solid fa-shield-halved" style="color:#10b981;"></i> Verified Urban Helpers Service Record</span>
-        <button type="button" class="btn-primary-action" onclick="closeBookingDetailsModal()" style="background:#0f172a; color:#fff; border:none; padding:8px 20px; border-radius:8px; font-weight:700; cursor:pointer;">Close</button>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button type="button" class="btn-outline-action" style="padding:8px 16px; border-radius:8px; font-weight:700; border:1px solid #cbd5e1; background:#f8fafc; cursor:pointer; font-size:12px; color:#0f172a;" onclick="closeBookingDetailsModal(); if(window._currentBdmBookingId) openStatusModal(window._currentBdmBookingId);"><i class="fa-solid fa-pen-to-square"></i> Change Status / Cancel</button>
+          <button type="button" class="btn-primary-action" onclick="closeBookingDetailsModal()" style="background:#0f172a; color:#fff; border:none; padding:8px 20px; border-radius:8px; font-weight:700; cursor:pointer;">Close</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1268,10 +1352,299 @@
     let _currentServicesSubKey = 'bookings';
     let _currentSection = 'overview';
 
+    // ─────────────────────────────────────────────
+    // DISPATCH NOTIFICATION SOUND & REJECTION ALERT SYSTEM
+    // ─────────────────────────────────────────────
+    let _audioCtx = null;
+    let _soundAlertsEnabled = localStorage.getItem('uh_admin_sound_alerts') !== 'false'; // default true
+    let _initialBookingsLoaded = false;
+    let _knownRejectedBookings = new Set();
+    let _dismissedRejections = new Set();
+
+    function initAudioContext() {
+      try {
+        if (!_audioCtx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass) {
+            _audioCtx = new AudioContextClass();
+          }
+        }
+        if (_audioCtx && _audioCtx.state === 'suspended') {
+          _audioCtx.resume();
+        }
+      } catch (e) {
+        console.warn('AudioContext init error:', e);
+      }
+    }
+
+    // Auto-unlock Web Audio on first user interaction with dashboard
+    ['click', 'touchstart', 'keydown'].forEach(evt => {
+      window.addEventListener(evt, () => {
+        initAudioContext();
+        try {
+          if (window.Notification && Notification.permission === 'default') {
+            Notification.requestPermission();
+          }
+        } catch (_) {}
+      }, { once: false, passive: true });
+    });
+
+    // 🔊 High-priority distinctive audible dual-chime alert
+    function playRejectionAlertSound() {
+      if (!_soundAlertsEnabled) return;
+      initAudioContext();
+
+      try {
+        if (_audioCtx) {
+          if (_audioCtx.state === 'suspended') {
+            _audioCtx.resume();
+          }
+          const now = _audioCtx.currentTime;
+
+          // Urgent melodic chime:
+          // Part 1: D5 (587.33Hz) -> A5 (880Hz) -> D6 (1174.66Hz)
+          // Part 2: D5 (587.33Hz) -> A5 (880Hz) -> E6 (1318.51Hz)
+          const notes = [
+            { f: 587.33, t: 0.00, d: 0.14 },
+            { f: 880.00, t: 0.15, d: 0.14 },
+            { f: 1174.66, t: 0.30, d: 0.28 },
+            { f: 587.33, t: 0.70, d: 0.14 },
+            { f: 880.00, t: 0.85, d: 0.14 },
+            { f: 1318.51, t: 1.00, d: 0.38 }
+          ];
+
+          notes.forEach(note => {
+            const osc = _audioCtx.createOscillator();
+            const gain = _audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(note.f, now + note.t);
+
+            gain.gain.setValueAtTime(0.0001, now + note.t);
+            gain.gain.exponentialRampToValueAtTime(0.38, now + note.t + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + note.t + note.d);
+
+            osc.connect(gain);
+            gain.connect(_audioCtx.destination);
+            osc.start(now + note.t);
+            osc.stop(now + note.t + note.d);
+          });
+        }
+      } catch (err) {
+        console.warn('[AudioAlert] Web Audio error:', err);
+      }
+
+      // Secondary audio element fallback
+      try {
+        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2874/2874-preview.mp3');
+        audio.volume = 0.9;
+        const p = audio.play();
+        if (p && p.catch) p.catch(() => {});
+      } catch (_) {}
+    }
+
+    window.toggleSoundAlerts = function() {
+      _soundAlertsEnabled = !_soundAlertsEnabled;
+      localStorage.setItem('uh_admin_sound_alerts', _soundAlertsEnabled ? 'true' : 'false');
+      updateSoundAlertUi();
+      if (_soundAlertsEnabled) {
+        initAudioContext();
+        playRejectionAlertSound();
+        showAdminToast('🔔 Sound Alerts Enabled for Vendor Rejections');
+      } else {
+        showAdminToast('🔕 Sound Alerts Muted');
+      }
+    };
+
+    window.testRejectionAlertSound = function() {
+      initAudioContext();
+      playRejectionAlertSound();
+      showAdminToast('🔊 Testing Vendor Rejection Alert Sound');
+    };
+
+    function updateSoundAlertUi() {
+      const btn = document.getElementById('btnSoundAlertToggle');
+      const icon = document.getElementById('soundAlertBellIcon');
+      const text = document.getElementById('soundAlertStatusText');
+      if (!btn || !icon || !text) return;
+
+      if (_soundAlertsEnabled) {
+        btn.className = 'sound-toggle-btn';
+        btn.style.background = '#f0fdf4';
+        btn.style.color = '#15803d';
+        btn.style.borderColor = '#bbf7d0';
+        icon.className = 'fa-solid fa-bell';
+        icon.style.color = '#10b981';
+        text.textContent = 'Sound Alerts: ON';
+      } else {
+        btn.className = 'sound-toggle-btn muted';
+        btn.style.background = '#f8fafc';
+        btn.style.color = '#64748b';
+        btn.style.borderColor = '#cbd5e1';
+        icon.className = 'fa-solid fa-bell-slash';
+        icon.style.color = '#94a3b8';
+        text.textContent = 'Sound Alerts: MUTED';
+      }
+    }
+
+    function showAdminToast(msg) {
+      let toast = document.getElementById('adminQuickToast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'adminQuickToast';
+        toast.style.cssText = 'position:fixed; bottom:24px; right:24px; background:#0f172a; color:#ffffff; padding:12px 20px; border-radius:12px; font-size:13px; font-weight:700; z-index:99999; box-shadow:0 8px 24px rgba(0,0,0,0.25); display:flex; align-items:center; gap:8px; transition:opacity 0.3s ease; pointer-events:none;';
+        document.body.appendChild(toast);
+      }
+      toast.textContent = msg;
+      toast.style.opacity = '1';
+      clearTimeout(window._toastTimeout);
+      window._toastTimeout = setTimeout(() => {
+        if (toast) toast.style.opacity = '0';
+      }, 3000);
+    }
+
+    function processVendorRejectionsSnapshot(snap) {
+      if (!_initialBookingsLoaded) {
+        _initialBookingsLoaded = true;
+        // On initial load, record all existing rejections so historical records do not blast sounds
+        snap.docs.forEach(docSnap => {
+          const d = docSnap.data();
+          const noticeId = d.lastRejectionNoticeId || (docSnap.id + '_' + (d.rejectedAt?.toMillis ? d.rejectedAt.toMillis() : 'init'));
+          if (d.rejected || d.rejectedAt || d.cancelledBy === 'vendor') {
+            _knownRejectedBookings.add(noticeId);
+          }
+        });
+        updateRejectionAlertBanner();
+        return;
+      }
+
+      // Realtime doc changes!
+      let newRejections = [];
+      snap.docChanges().forEach(change => {
+        if (change.type === 'modified' || change.type === 'added') {
+          const d = change.doc.data();
+          const docId = change.doc.id;
+          const noticeId = d.lastRejectionNoticeId || (docId + '_' + (d.rejectedAt?.toMillis ? d.rejectedAt.toMillis() : Date.now()));
+          
+          const isRejection = (
+            d.rejected === true || 
+            (d.status === 'requested' && d.rejectedAt && (!d.vendorId || d.vendorName === 'Pending Admin Assignment')) ||
+            d.cancelledBy === 'vendor'
+          );
+
+          if (isRejection && !_knownRejectedBookings.has(noticeId)) {
+            _knownRejectedBookings.add(noticeId);
+            newRejections.push({ id: docId, ...d });
+          }
+        }
+      });
+
+      if (newRejections.length > 0) {
+        // 🔊 TRIGGER AUDIBLE NOTIFICATION ALERT
+        playRejectionAlertSound();
+
+        newRejections.forEach(b => {
+          // Native browser desktop notification if permission granted
+          try {
+            if (window.Notification && Notification.permission === 'granted') {
+              new Notification('⚠️ Service Rejected by Vendor!', {
+                body: `Booking #${b.id.slice(-8).toUpperCase()} (${b.subServiceName || b.serviceCategory || 'Service'}) was rejected. Reallot now to avoid delay!`,
+                icon: 'logo.jpg'
+              });
+            }
+          } catch (_) {}
+          
+          showAdminToast(`⚠️ Vendor rejected service #${b.id.slice(-8).toUpperCase()}! Please reassign.`);
+        });
+
+        updateRejectionAlertBanner();
+      } else {
+        updateRejectionAlertBanner();
+      }
+    }
+
+    function updateRejectionAlertBanner() {
+      const container = document.getElementById('vendorRejectionAlertContainer');
+      const notifDot = document.getElementById('notifDot');
+      if (!container) return;
+
+      // Filter all bookings that are currently rejected and still unassigned / waiting for allotment
+      const pendingRejected = _allBookings.filter(b => {
+        const isRej = b.rejected === true || (b.status === 'requested' && b.rejectedAt) || (b.status === 'cancelled' && b.cancelledBy === 'vendor');
+        const needsAllotment = b.status === 'requested' || !b.vendorId || b.vendorName === 'Pending' || b.vendorName === 'Pending Admin Assignment' || b.vendorName === 'Vendor pending';
+        const notDismissed = !_dismissedRejections.has(b.id);
+        return isRej && needsAllotment && notDismissed;
+      });
+
+      if (notifDot) {
+        notifDot.style.display = pendingRejected.length > 0 ? 'block' : 'none';
+      }
+
+      if (pendingRejected.length === 0) {
+        container.style.display = 'none';
+        container.innerHTML = '';
+        return;
+      }
+
+      container.style.display = 'block';
+      container.innerHTML = pendingRejected.map(b => {
+        const shortId = b.id.slice(-8).toUpperCase();
+        const serviceTitle = b.subServiceName || b.serviceCategory || 'Service Booking';
+        const vendorWhoRejected = b.rejectedByName || b.rejectedBy || 'Vendor partner';
+        const customerInfo = b.customerName ? `${b.customerName} ${b.customerPhone ? '(' + b.customerPhone + ')' : ''}` : 'Customer';
+        const address = b.address || 'Address pending';
+        const priceStr = b.priceLabel || (typeof b.price === 'number' ? '₹' + b.price : '₹--');
+
+        return `
+          <div class="rejection-alert-card">
+            <div style="display:flex; align-items:center; gap:14px; flex:1; min-width:280px;">
+              <div style="width:44px; height:44px; border-radius:50%; background:#ea580c; color:#ffffff; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; box-shadow:0 3px 8px rgba(234,88,12,0.35);">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+              </div>
+              <div>
+                <div style="font-weight:900; font-size:14.5px; color:#9a3412; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                  <span>⚠️ VENDOR REJECTED SERVICE ALLOTMENT: #${shortId}</span>
+                  <span style="background:#dc2626; color:#ffffff; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px;" class="badge-pulse">REASSIGNMENT NEEDED</span>
+                  <span style="background:#ffedd5; color:#c2410c; font-size:11px; font-weight:700; padding:2px 7px; border-radius:6px;">${priceStr}</span>
+                </div>
+                <div style="font-size:12.5px; color:#431407; margin-top:3px;">
+                  Service: <strong>${serviceTitle}</strong> • Customer: <strong>${customerInfo}</strong> • Location: <em>${address}</em>
+                </div>
+                <div style="font-size:12px; color:#ea580c; font-weight:600; margin-top:2px;">
+                  <i class="fa-solid fa-circle-exclamation"></i> Declined by <strong>${vendorWhoRejected}</strong>. Allot another vendor immediately so customer is not kept waiting!
+                </div>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+              <button onclick="openAssignModal('${b.id}')" style="background:#10b981; color:#ffffff; border:none; padding:8px 16px; border-radius:10px; font-weight:800; font-size:13px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 8px rgba(16,185,129,0.35); transition:transform 0.15s ease;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='none'">
+                <i class="fa-solid fa-user-plus"></i> Assign Vendor Now
+              </button>
+              <button onclick="dismissRejectionAlert('${b.id}')" style="background:#ffffff; color:#9a3412; border:1px solid #fed7aa; padding:8px 12px; border-radius:10px; font-weight:700; font-size:12px; cursor:pointer;" title="Dismiss this alert notice">
+                Dismiss
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.dismissRejectionAlert = function(bookingId) {
+      _dismissedRejections.add(bookingId);
+      updateRejectionAlertBanner();
+    };
+
+    window.toggleRejectionAlertsView = function() {
+      showSection('services', document.querySelector('.nav-item[onclick*="services"]'));
+      showServicesSub('bookings', document.querySelector('.submenu-item[onclick*="bookings"]'));
+      setBookingsFilter('rejected');
+    };
+
     async function initDashboard() {
       try {
         const app = getApps().length ? getApp() : initializeApp(DEFAULT_FIREBASE_CONFIG);
         db = getFirestore(app);
+
+        // Update sound alert UI button state
+        updateSoundAlertUi();
 
         // Real-time live listener for bookings
         try {
@@ -1287,6 +1660,9 @@
             if (_currentSection === 'services' && _currentServicesSubKey === 'bookings') {
               renderBookingsBoardView();
             }
+
+            // 🚨 Process Vendor Rejection Alerts & Trigger Notification Sound
+            processVendorRejectionsSnapshot(snap);
           }, (err) => console.warn('Bookings realtime sync error:', err));
         } catch(e) {
           console.warn('Realtime listener error:', e);
@@ -2452,6 +2828,9 @@
           vendorPhone: vendor.mobile || '',
           status: 'assigned',
           assignedAt: serverTimestamp(),
+          // Clear rejection flag
+          rejected: false,
+          rejectedAt: null,
           // Clear any previous execution proofs from past attempts so reassignment starts fresh
           beforePhoto: null,
           afterPhoto: null,
@@ -2470,6 +2849,8 @@
           b.vendorName = vendor.name;
           b.vendorPhone = vendor.mobile || '';
           b.status = 'assigned';
+          b.rejected = false;
+          b.rejectedAt = null;
           b.beforePhoto = null;
           b.afterPhoto = null;
           b.audioUrl = null;
@@ -2477,6 +2858,7 @@
           b.otpVerified = false;
         }
 
+        updateRejectionAlertBanner();
         closeAssignModal();
         alert(`âœ… Booking #${bookingId.slice(-8).toUpperCase()} Assigned to ${vendor.name} (${vendor.vendorId || vendor.id})!\n\nThe vendor can now view and accept this order on their Vendor App.`);
         renderServices('bookings');
@@ -2853,10 +3235,12 @@
 
       const filtered = _allBookings.filter(b => {
         const isUnassigned = !b.vendorId || b.status === 'requested' || b.vendorName === 'Pending' || b.vendorName === 'Pending Admin Assignment' || b.vendorName === 'Vendor pending';
+        const isRejected = (b.rejected === true || (b.status === 'requested' && b.rejectedAt) || b.cancelledBy === 'vendor');
         const matchesFilter =
           f === 'all' ? true :
           f === 'active' ? (!['completed', 'cancelled'].includes(b.status)) :
           f === 'unassigned' ? isUnassigned :
+          f === 'rejected' ? (isRejected && isUnassigned) :
           b.status === f;
 
         const matchesQuery = !q ||
@@ -2912,23 +3296,31 @@
             <tbody>
               ${filtered.slice(0, 80).map(b => {
                 const isUnassigned = !b.vendorId || b.status === 'requested' || b.vendorName === 'Pending' || b.vendorName === 'Pending Admin Assignment' || b.vendorName === 'Vendor pending';
-                const techHtml = isUnassigned
-                  ? '<span class="status-badge badge-yellow" style="font-size:10px;"><i class="fa-solid fa-clock"></i> Pending Assignment</span>'
-                  : `<strong>${b.vendorName}</strong>${b.vendorId ? `<div style="font-size:11px;color:#0f8a5f;font-weight:700;">ID: ${b.vendorId}</div>` : ''}`;
+                const isRejectedBooking = (b.rejected === true || (b.status === 'requested' && b.rejectedAt) || b.cancelledBy === 'vendor') && isUnassigned;
+
+                const techHtml = isRejectedBooking
+                  ? `<span class="status-badge badge-red badge-pulse" style="font-size:10px; font-weight:800;"><i class="fa-solid fa-triangle-exclamation"></i> Rejected by Vendor</span><div style="font-size:10.5px;color:#c2410c;font-weight:700;margin-top:2px;">Needs Reassignment</div>`
+                  : (isUnassigned
+                    ? '<span class="status-badge badge-yellow" style="font-size:10px;"><i class="fa-solid fa-clock"></i> Pending Assignment</span>'
+                    : `<strong>${b.vendorName}</strong>${b.vendorId ? `<div style="font-size:11px;color:#0f8a5f;font-weight:700;">ID: ${b.vendorId}</div>` : ''}`);
 
                 const isDoneOrCancelled = b.status === 'completed' || b.status === 'cancelled';
                 const actionBtn = isDoneOrCancelled
                   ? ''
-                  : (isUnassigned
-                    ? `<button class="btn-sm-action" style="background:#10b981;color:#fff;border-color:#059669;font-weight:700;display:inline-flex;align-items:center;gap:4px;" onclick="openAssignModal('${b.id}')"><i class="fa-solid fa-user-plus"></i> Assign Vendor</button>`
-                    : `<button class="btn-sm-action" style="display:inline-flex;align-items:center;gap:4px;" onclick="openAssignModal('${b.id}')"><i class="fa-solid fa-arrows-rotate"></i> Reassign</button>`);
+                  : (isRejectedBooking
+                    ? `<button class="btn-sm-action" style="background:#ea580c;color:#fff;border-color:#c2410c;font-weight:800;display:inline-flex;align-items:center;gap:4px;box-shadow:0 2px 8px rgba(234,88,12,0.35);animation:alertCardPulse 2s infinite ease-in-out;" onclick="openAssignModal('${b.id}')"><i class="fa-solid fa-user-plus"></i> Assign Vendor</button>`
+                    : (isUnassigned
+                      ? `<button class="btn-sm-action" style="background:#10b981;color:#fff;border-color:#059669;font-weight:700;display:inline-flex;align-items:center;gap:4px;" onclick="openAssignModal('${b.id}')"><i class="fa-solid fa-user-plus"></i> Assign Vendor</button>`
+                      : `<button class="btn-sm-action" style="display:inline-flex;align-items:center;gap:4px;" onclick="openAssignModal('${b.id}')"><i class="fa-solid fa-arrows-rotate"></i> Reassign</button>`));
 
                 const dateStr = b.scheduledAt
                   ? (b.scheduledAt.includes('T') ? new Date(b.scheduledAt).toLocaleString('en-IN', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : b.scheduledAt)
                   : 'Immediate';
 
+                const rowBg = isRejectedBooking ? 'style="background:#fff7ed;"' : '';
+
                 return `
-                <tr>
+                <tr ${rowBg}>
                   <td><strong>#${b.id.slice(-8).toUpperCase()}</strong></td>
                   <td>
                     <strong>${b.customerName || 'Customer'}</strong>
@@ -2991,6 +3383,7 @@
 
       const totalBookings = _allBookings.length;
       const unassignedCount = _allBookings.filter(b => b.status === 'requested' || !b.vendorId || b.vendorName === 'Pending' || b.vendorName === 'Pending Admin Assignment' || b.vendorName === 'Vendor pending').length;
+      const rejectedCount = _allBookings.filter(b => (b.rejected === true || (b.status === 'requested' && b.rejectedAt) || b.cancelledBy === 'vendor') && (b.status === 'requested' || !b.vendorId || b.vendorName === 'Pending' || b.vendorName === 'Pending Admin Assignment' || b.vendorName === 'Vendor pending')).length;
       const autoAcceptedCount = _allBookings.filter(b => b.status === 'accepted').length;
       const adminAssignedCount = _allBookings.filter(b => b.status === 'assigned').length;
       const activeNowCount = _allBookings.filter(b => ['en_route', 'arrived', 'in_progress'].includes(b.status)).length;
@@ -3064,7 +3457,7 @@
                 </div>
                 <div style="font-size:32px; font-weight:900; color:#ea580c;">${unassignedCount}</div>
                 <div style="font-size:13.5px; font-weight:800; color:#9a3412; margin-top:3px;">Unassigned</div>
-                <div style="font-size:11.5px; color:#c2410c; margin-top:2px;">Waiting for a vendor</div>
+                <div style="font-size:11.5px; color:#c2410c; margin-top:2px;">${rejectedCount > 0 ? `⚠️ ${rejectedCount} rejected by vendor` : 'Waiting for a vendor'}</div>
               </div>
 
               <!-- 2. Auto-Accepted -->
@@ -3189,6 +3582,9 @@
                 <button class="cat-pill-btn ${_currentBookingsFilter==='active'?'active':''}" onclick="setBookingsFilter('active', this)">Active now</button>
                 <button class="cat-pill-btn ${_currentBookingsFilter==='unassigned'?'active':''}" onclick="setBookingsFilter('unassigned', this)">
                   Unassigned ${unassignedCount > 0 ? `<span style="background:#e11d48; color:white; font-size:10px; font-weight:800; padding:1px 6px; border-radius:10px; margin-left:4px;">${unassignedCount}</span>` : ''}
+                </button>
+                <button class="cat-pill-btn ${_currentBookingsFilter==='rejected'?'active':''}" onclick="setBookingsFilter('rejected', this)" style="${rejectedCount > 0 ? 'border-color:#fed7aa; color:#c2410c; font-weight:800;' : ''}">
+                  <i class="fa-solid fa-triangle-exclamation" style="color:#ea580c;"></i> Rejected ${rejectedCount > 0 ? `<span style="background:#ea580c; color:white; font-size:10px; font-weight:800; padding:1px 6px; border-radius:10px; margin-left:4px;" class="badge-pulse">${rejectedCount}</span>` : ''}
                 </button>
                 <button class="cat-pill-btn ${_currentBookingsFilter==='requested'?'active':''}" onclick="setBookingsFilter('requested', this)">Requested</button>
                 <button class="cat-pill-btn ${_currentBookingsFilter==='assigned'?'active':''}" onclick="setBookingsFilter('assigned', this)">Assigned</button>
@@ -3766,12 +4162,27 @@
       const newStatus = document.getElementById('statusModalSelect').value;
 
       try {
-        await updateDoc(doc(db, 'bookings', bookingId), {
+        const payload = {
           status: newStatus,
           updatedAt: serverTimestamp()
-        });
+        };
+        if (newStatus === 'cancelled') {
+          payload.cancelledBy = 'admin';
+          payload.cancelledAt = serverTimestamp();
+          payload.cancellationReason = 'Cancelled by Urban Helpers Admin';
+        }
+        await updateDoc(doc(db, 'bookings', bookingId), payload);
         closeStatusModal();
+        const b = _allBookings.find(x => x.id === bookingId);
+        if (b) {
+          b.status = newStatus;
+          if (newStatus === 'cancelled') {
+            b.cancelledBy = 'admin';
+            b.cancellationReason = 'Cancelled by Urban Helpers Admin';
+          }
+        }
         renderServices('live');
+        if (typeof renderOrders === 'function') renderOrders();
         alert(`Booking status updated to "${newStatus.toUpperCase()}"! Live tracking on customer phone updated.`);
       } catch(err) {
         alert('Failed to update status: ' + err.message);
@@ -3783,6 +4194,7 @@
     window.openBookingDetailsModal = function(bookingId) {
       const b = _allBookings.find(x => x.id === bookingId);
       if (!b) return;
+      window._currentBdmBookingId = bookingId;
 
       const modal = document.getElementById('bookingDetailsModal');
       const title = document.getElementById('bdmTitle');

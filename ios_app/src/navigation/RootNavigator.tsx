@@ -8,6 +8,7 @@ import { collection, query, where, onSnapshot, limit } from "firebase/firestore"
 import {
   sendVendorArrivedOTPNotification,
   sendServiceCompletedNotification,
+  sendBookingConfirmation,
 } from "@/services/notificationService";
 
 // Module 1 — Onboarding / Auth
@@ -131,7 +132,7 @@ function GlobalBookingListener() {
     const q = query(
       collection(db, "bookings"),
       where("customerId", "==", user.uid),
-      where("status", "in", ["assigned", "accepted", "en_route", "arrived", "in_progress", "completed"])
+      where("status", "in", ["requested", "assigned", "accepted", "en_route", "arrived", "in_progress", "completed"])
     );
     const unsub = onSnapshot(q, (snap) => {
       if (snap.empty) {
@@ -143,7 +144,7 @@ function GlobalBookingListener() {
 
       // Prioritize actively ongoing bookings first
       const activeDoc = snap.docs.find((d) =>
-        ["in_progress", "arrived", "en_route", "accepted", "assigned"].includes(d.data().status)
+        ["in_progress", "arrived", "en_route", "accepted", "assigned", "requested"].includes(d.data().status)
       ) || snap.docs[0];
 
       const data = activeDoc.data();
@@ -156,6 +157,21 @@ function GlobalBookingListener() {
         activeBookingId.current = currentId;
         prevStatus.current = newStatus;
         return;
+      }
+
+      // When vendor accepts the booking:
+      if (
+        (newStatus === "accepted" || newStatus === "assigned") &&
+        (prevStatus.current === "requested" || (activeBookingId.current === currentId && prevStatus.current !== "accepted" && prevStatus.current !== "assigned"))
+      ) {
+        sendBookingConfirmation(
+          data.serviceCategory || "Service",
+          data.subServiceName || "Service",
+          data.scheduledAt || data.bookingDate || "Scheduled Date",
+          data.bookingTime,
+          String(data.otp || ""),
+          currentId
+        ).catch(console.log);
       }
 
       // If transition to arrived, fire notification!

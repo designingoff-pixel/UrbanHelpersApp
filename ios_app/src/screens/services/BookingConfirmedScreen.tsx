@@ -11,7 +11,7 @@
  * All existing booking data props, navigation and business logic are
  * preserved exactly as before.  Only the presentation layer changed.
  */
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View, Text, Pressable, StyleSheet,
   ScrollView, Platform,
@@ -24,10 +24,12 @@ import Animated, {
   withSpring, withDelay, withTiming,
   FadeInDown, FadeIn,
 } from "react-native-reanimated";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/services/firebase";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 import { SERVICE_CATEGORIES } from "./servicesData";
-import { sendBookingConfirmation } from "@/services/notificationService";
+import { sendBookingConfirmation, sendBookingPlaced } from "@/services/notificationService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BookingConfirmed">;
 
@@ -48,6 +50,10 @@ const NEXT_STEPS = [
 export default function BookingConfirmedScreen({ navigation, route }: Props) {
   const { bookingId, otp, categoryId, subServiceId, dayIndex, scheduledDate } =
     route.params;
+
+  const [booking, setBooking] = useState<any>((route.params as any)?.booking || {});
+  const prevVendorIdRef = useRef<string | null>(booking.vendorId || null);
+  const prevStatusRef = useRef<string | null>(booking.status || null);
 
   const category = SERVICE_CATEGORIES.find((c) => c.id === categoryId);
   const sub      = category?.subServices.find((s) => s.id === subServiceId);
@@ -83,9 +89,53 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
     checkScale.value = withDelay(320, withSpring(1, { damping: 11, stiffness: 260 }));
 
     if (category && sub) {
-      sendBookingConfirmation(category.name, sub.name, bookingDateStr, undefined, otp);
+      const isAlreadyAccepted =
+        Boolean(booking.vendorId) ||
+        booking.status === "accepted" ||
+        booking.status === "assigned";
+      if (!isAlreadyAccepted) {
+        sendBookingPlaced(category.name, sub.name, bookingDateStr, undefined, bookingId);
+      }
     }
   }, []);
+
+  // Live Firestore subscription for real-time vendor assignment updates
+  useEffect(() => {
+    if (!bookingId || !category || !sub) return;
+    try {
+      const unsub = onSnapshot(doc(db, "bookings", bookingId), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setBooking((prev: any) => ({ ...prev, ...data }));
+
+          const newlyAccepted =
+            (!prevVendorIdRef.current && Boolean(data.vendorId)) ||
+            (prevStatusRef.current !== "accepted" &&
+              prevStatusRef.current !== "assigned" &&
+              (data.status === "accepted" || data.status === "assigned"));
+
+          if (newlyAccepted) {
+            const dateStr = data.scheduledAt || data.bookingDate || bookingDateStr;
+            const otpCode = data.otp || otp;
+            sendBookingConfirmation(
+              category.name,
+              sub.name,
+              dateStr,
+              data.bookingTime,
+              String(otpCode),
+              bookingId
+            );
+          }
+
+          if (data.vendorId) prevVendorIdRef.current = data.vendorId;
+          if (data.status) prevStatusRef.current = data.status;
+        }
+      });
+      return () => unsub();
+    } catch (err) {
+      console.warn("Firestore subscription error in iOS BookingConfirmed:", err);
+    }
+  }, [bookingId, category, sub, bookingDateStr, otp]);
 
   const ring2Style  = useAnimatedStyle(() => ({ transform: [{ scale: ring2Scale.value }], opacity: ring2Op.value }));
   const ring1Style  = useAnimatedStyle(() => ({ transform: [{ scale: ring1Scale.value }], opacity: ring1Op.value }));
@@ -122,12 +172,22 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
           {/* Status pill */}
           <View style={s.statusPill}>
             <View style={s.statusDot} />
-            <Text style={s.statusPillText}>BOOKING CONFIRMED</Text>
+            <Text style={s.statusPillText}>
+              {Boolean(booking?.vendorId) || booking?.status === "accepted" || booking?.status === "assigned"
+                ? "BOOKING CONFIRMED"
+                : "BOOKING PLACED"}
+            </Text>
           </View>
 
-          <Text style={s.headingBig}>You're all set!</Text>
+          <Text style={s.headingBig}>
+            {Boolean(booking?.vendorId) || booking?.status === "accepted" || booking?.status === "assigned"
+              ? "You're all set!"
+              : "Booking Placed!"}
+          </Text>
           <Text style={s.headingSub}>
-            Your service has been scheduled successfully.
+            {Boolean(booking?.vendorId) || booking?.status === "accepted" || booking?.status === "assigned"
+              ? "Your service partner has accepted and will arrive on time."
+              : "Your booking has been placed. Waiting for partner confirmation."}
           </Text>
         </Animated.View>
 

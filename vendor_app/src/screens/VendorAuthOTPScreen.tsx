@@ -16,6 +16,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { store } from '../store/AppStore';
+import { db } from '../services/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { registerVendorPushNotifications } from '../services/notificationService';
 
 interface Props {
   route: any;
@@ -121,6 +124,18 @@ export default function VendorAuthOTPScreen({ route, navigation }: Props) {
 
       await AsyncStorage.setItem('@vendor_session', JSON.stringify(sessionData));
       store.setFirebaseUser(vendorId, name, mobile);
+
+      // Register push token so vendor gets loud alerts when outside the app
+      registerVendorPushNotifications().then(async (token) => {
+        if (token && vendorId) {
+          try {
+            await setDoc(doc(db, 'vendors', vendorId), {
+              pushToken: token,
+              isOnline: true,
+            }, { merge: true });
+          } catch (_) {}
+        }
+      }).catch(() => {});
 
       navigation.reset({
         index: 0,

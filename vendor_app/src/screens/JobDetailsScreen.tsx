@@ -22,6 +22,7 @@ import OTPInput from '../components/OTPInput';
 import SOSModal from '../components/SOSModal';
 import DiagnosticModal from '../components/DiagnosticModal';
 import NearbySuppliersModal from '../components/NearbySuppliersModal';
+import { stopLoudOrderAlert } from '../hooks/useNewOrderSound';
 
 const { width } = Dimensions.get('window');
 
@@ -38,7 +39,10 @@ export default function JobDetailsScreen({ route, navigation }: any) {
   const [otpLoading, setOtpLoading] = useState(false);
   const job = store.getJob(jobId);
 
-  useEffect(() => store.subscribe(() => forceUpdate((n) => n + 1)), []);
+  useEffect(() => {
+    stopLoudOrderAlert();
+    return store.subscribe(() => forceUpdate((n) => n + 1));
+  }, []);
 
   // Continuous GPS broadcast to customer app while en route
   useEffect(() => {
@@ -136,6 +140,7 @@ export default function JobDetailsScreen({ route, navigation }: any) {
 
   // ── Accept Action ────────────────────────────────────────────────────────
   const handleAccept = async () => {
+    stopLoudOrderAlert();
     setSubmitting(true);
     try {
       store.updateJobStatus(job.jobId, 'ACCEPTED', { acceptedAt: Date.now() });
@@ -176,7 +181,7 @@ export default function JobDetailsScreen({ route, navigation }: any) {
             try {
               store.updateJobStatus(job.jobId, 'REJECTED');
               const cancelRes = store.recordCancellation();
-              const res = await rejectJob(job.jobId, store.vendorId || undefined);
+              const res = await rejectJob(job.jobId, store.vendorId || undefined, store.vendor?.name || undefined);
               if (res.locked || cancelRes.blocked) {
                 Alert.alert('🔒 Account Locked', 'Your profile has been locked due to 3 skipped/cancelled service requests. Please contact Admin to unlock.');
               } else {
@@ -212,7 +217,7 @@ export default function JobDetailsScreen({ route, navigation }: any) {
           setSubmitting(true);
           try {
             store.updateJobStatus(job.jobId, 'CANCELLED');
-            await cancelBooking(job.jobId, store.vendorId || undefined);
+            await cancelBooking(job.jobId, store.vendorId || undefined, store.vendor?.name || undefined);
             const result = store.recordCancellation();
             if (result.blocked) {
               Alert.alert(

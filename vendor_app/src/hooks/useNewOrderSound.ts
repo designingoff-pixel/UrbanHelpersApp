@@ -1,71 +1,100 @@
 /**
- * useNewOrderSound — plays a distinctive alert sound whenever a new
- * NEW_REQUEST job appears in the store.
+ * useNewOrderSound — plays a loud alert siren & vibrates whenever a new
+ * booking request arrives in the vendor store.
  *
- * Usage: call once inside HomeScreen (or App root).
- * The hook tracks the count of NEW_REQUEST jobs and fires the sound
- * whenever the count increases (i.e. a new order arrived).
+ * Designed to shout loud and alert the vendor even when running in the background.
  */
 
 import { useEffect, useRef } from 'react';
+import { Vibration, Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import { store } from '../store/AppStore';
+import { triggerLoudNewOrderNotification } from '../services/notificationService';
 
-// ─── Free-to-use short "new order" chime (hosted on a public CDN) ────────────
-// A crisp, professional 3-tone cash-register / notification ding.
-// Replace with your own asset URI (e.g. require('../../assets/new_order.mp3'))
-// once you add an audio file to the assets folder.
-const NEW_ORDER_SOUND_URI =
-  'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
+// ─── High-intensity loud alert siren (alarm / dispatch siren) ─────────────
+const LOUD_ALARM_SOUND_URI =
+  'https://assets.mixkit.co/active_storage/sfx/995/995-preview.mp3';
+
+let activeSoundInstance: Audio.Sound | null = null;
+
+export function stopLoudOrderAlert() {
+  Vibration.cancel();
+  if (activeSoundInstance) {
+    activeSoundInstance.stopAsync().catch(() => {});
+  }
+}
 
 export function useNewOrderSound() {
-  const soundRef      = useRef<Audio.Sound | null>(null);
-  const prevCountRef  = useRef<number>(-1);   // -1 = not yet initialised
+  const soundRef     = useRef<Audio.Sound | null>(null);
+  const prevCountRef = useRef<number>(-1);
 
-  // ── Load sound once on mount ───────────────────────────────────────────────
+  // ── Load sound and configure maximum volume & audio mode ───────────────────
   useEffect(() => {
     let mounted = true;
 
     (async () => {
       try {
         await Audio.setAudioModeAsync({
-          playsInSilentModeIOS: true,   // plays even when iOS silent switch is ON
-          staysActiveInBackground: false,
-          shouldDuckAndroid: true,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          shouldDuckAndroid: false,
+          playThroughEarpieceAndroid: false,
         });
 
         const { sound } = await Audio.Sound.createAsync(
-          { uri: NEW_ORDER_SOUND_URI },
-          { shouldPlay: false, volume: 1.0 }
+          { uri: LOUD_ALARM_SOUND_URI },
+          { shouldPlay: false, volume: 1.0, isLooping: false }
         );
 
         if (mounted) {
           soundRef.current = sound;
+          activeSoundInstance = sound;
         } else {
           await sound.unloadAsync();
         }
       } catch (err) {
-        console.warn('[useNewOrderSound] Could not load sound:', err);
+        console.warn('[useNewOrderSound] Could not load loud alert sound:', err);
       }
     })();
 
     return () => {
       mounted = false;
+      Vibration.cancel();
       soundRef.current?.unloadAsync().catch(() => {});
       soundRef.current = null;
+      if (activeSoundInstance === soundRef.current) {
+        activeSoundInstance = null;
+      }
     };
   }, []);
 
-  // ── Watch store for new NEW_REQUEST jobs ───────────────────────────────────
+  // ── Watch store for new incoming requests ──────────────────────────────────
   useEffect(() => {
-    const playSound = async () => {
+    const playLoudAlert = async () => {
       try {
-        if (!soundRef.current) return;
-        // Rewind to start in case it was already played
-        await soundRef.current.setPositionAsync(0);
-        await soundRef.current.playAsync();
+        // 1. Heavy urgent vibration pattern: 1s vibrate, 400ms pause, 1s vibrate...
+        Vibration.vibrate([0, 1000, 400, 1000, 400, 1000, 400, 1000]);
+
+        // 2. Play alert sound at max volume
+        if (soundRef.current) {
+          await soundRef.current.setVolumeAsync(1.0);
+          await soundRef.current.setPositionAsync(0);
+          await soundRef.current.playAsync();
+        }
+
+        // 3. Post a loud heads-up local notification
+        const latestJobs = store.getJobsForTab('requests');
+        const latest = latestJobs[0];
+        if (latest) {
+          triggerLoudNewOrderNotification(
+            latest.serviceName || 'New Service',
+            `₹${latest.vendorEarnings || 600}`,
+            latest.address || 'Nearby',
+            latest.jobId
+          );
+        }
       } catch (err) {
-        console.warn('[useNewOrderSound] Playback error:', err);
+        console.warn('[useNewOrderSound] Loud playback error:', err);
       }
     };
 
@@ -73,14 +102,13 @@ export function useNewOrderSound() {
       const currentCount = store.getJobsForTab('requests').length;
 
       if (prevCountRef.current === -1) {
-        // First snapshot — just record baseline, don't play
         prevCountRef.current = currentCount;
         return;
       }
 
       if (currentCount > prevCountRef.current) {
-        // A new order just arrived!
-        playSound();
+        // A new customer booking just placed! Shout loud!
+        playLoudAlert();
       }
 
       prevCountRef.current = currentCount;

@@ -1,14 +1,16 @@
 import React, { useEffect, useState, useMemo } from "react";
 import {
   ActivityIndicator,
-  ScrollView,
-  Text,
-  View,
-  Pressable,
-  StyleSheet,
-  TextInput,
-  Modal,
+  Alert,
   Dimensions,
+  Linking,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -80,8 +82,18 @@ const CANCELLABLE_STATUSES = new Set<BookingStatus>([
   "accepted",
 ]);
 
-function isCancellable(status: BookingStatus): boolean {
-  return CANCELLABLE_STATUSES.has(status);
+function isCancellable(booking: Booking): boolean {
+  if (
+    booking.status === "in_progress" ||
+    booking.status === "service_ended" ||
+    booking.status === "completed" ||
+    booking.status === "cancelled" ||
+    (booking as any).startedAt ||
+    (booking as any).otpVerified
+  ) {
+    return false;
+  }
+  return CANCELLABLE_STATUSES.has(booking.status);
 }
 
 export default function MyBookingsScreen({ navigation }: Props) {
@@ -102,6 +114,22 @@ export default function MyBookingsScreen({ navigation }: Props) {
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
   const openCancelModal = (booking: Booking) => {
+    if (
+      booking.status === "in_progress" ||
+      booking.status === "service_ended" ||
+      (booking as any).startedAt ||
+      (booking as any).otpVerified
+    ) {
+      Alert.alert(
+        "Service in Progress",
+        "The professional has already started performing this service. Customer cancellation is locked once service commences.\n\nOnly Urban Helpers Admin can cancel an in-progress service allotment. Please contact Support/Admin for assistance.",
+        [
+          { text: "Contact Support", onPress: () => Linking.openURL("mailto:support@urbanhelpers.com?subject=Cancellation%20Request%20Booking%20" + booking.id) },
+          { text: "OK", style: "cancel" }
+        ]
+      );
+      return;
+    }
     setCancelTarget(booking);
     setCancelReason("Changed my mind");
     setCancelError(null);
@@ -118,6 +146,9 @@ export default function MyBookingsScreen({ navigation }: Props) {
     const raw: string = err?.message ?? "";
     // Log the actual error for debugging without exposing it to the user.
     console.error("[cancelBooking] error:", raw);
+    if (raw.includes("Service has already started") || raw.includes("Admin can cancel")) {
+      return "Service has already started. Only Urban Helpers Admin can cancel an in-progress service.";
+    }
     if (
       raw.includes("Missing or insufficient permissions") ||
       raw.includes("permission-denied") ||
@@ -354,7 +385,7 @@ export default function MyBookingsScreen({ navigation }: Props) {
                       <Text style={s.invoiceText}>{invoiceId}</Text>
                     </View>
                     <View style={s.footerActions}>
-                      {isCancellable(booking.status) && (
+                      {isCancellable(booking) && (
                         <Pressable
                           style={s.cancelBtn}
                           onPress={() => openCancelModal(booking)}

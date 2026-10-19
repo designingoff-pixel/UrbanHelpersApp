@@ -124,24 +124,42 @@ export function subscribeToVendorProfile(
   );
 }
 
-// ── Direct unassigned broadcasts (managed via Admin portal) ───────────────────
+// ── Direct unassigned broadcasts (all incoming customer bookings) ────────────
 export function subscribeToNewRequests(
   onChange: (bookings: FirestoreBooking[]) => void
 ) {
-  onChange([]);
-  return () => {};
+  const q = query(
+    collection(db, "bookings"),
+    where("status", "==", "requested")
+  );
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const jobs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as FirestoreBooking));
+      onChange(jobs);
+    },
+    (err) => {
+      console.warn("[subscribeToNewRequests] Error:", err);
+    }
+  );
 }
 
 // ── Vendor cancels an accepted job ────────────────────────────────────────────
 export async function cancelBooking(
   bookingId: string,
-  vendorId?: string
+  vendorId?: string,
+  vendorName?: string
 ): Promise<void> {
   await updateDoc(doc(db, "bookings", bookingId), {
-    status: "cancelled",
-    cancelledAt: serverTimestamp(),
-    cancelledBy: "vendor",
-    vendorId: vendorId ?? null,
+    status:                "cancelled",
+    cancelledAt:           serverTimestamp(),
+    cancelledBy:           "vendor",
+    vendorId:              vendorId ?? null,
+    vendorName:            vendorName ?? "Vendor",
+    rejected:              true,
+    rejectedAt:            serverTimestamp(),
+    lastRejectionNoticeId: Date.now().toString(),
   });
 
   if (vendorId) {
@@ -180,6 +198,7 @@ export async function acceptJob(
 ): Promise<void> {
   const { runTransaction } = await import("firebase/firestore");
 
+  let customerBookingData: FirestoreBooking | null = null;
   await runTransaction(db, async (transaction) => {
     const bookingRef  = doc(db, "bookings", bookingId);
     const bookingSnap = await transaction.get(bookingRef);
@@ -189,6 +208,7 @@ export async function acceptJob(
     }
 
     const data = bookingSnap.data() as FirestoreBooking;
+    customerBookingData = data;
 
     if (
       data.status === "accepted" ||
@@ -209,6 +229,18 @@ export async function acceptJob(
     });
   });
 
+  // Notify customer that booking is confirmed with vendor assignment
+  if (customerBookingData && (customerBookingData as any).customerId) {
+    const d = customerBookingData as any;
+    notifyCustomerBookingConfirmed(
+      d.customerId,
+      d.serviceCategory || "Service",
+      d.subServiceName || "Service",
+      d.scheduledAt || d.bookingDate || "Scheduled Date",
+      d.otp || ""
+    ).catch((err) => console.warn("[acceptJob] Failed to push confirmed notif to customer:", err));
+  }
+
   // Reset consecutive skip count upon successfully accepting an order
   if (vendorId) {
     try {
@@ -225,13 +257,21 @@ export async function acceptJob(
 }
 
 // ── Reject / Skip a job with 3-Skip Auto-Lock enforcement ────────────────────
-export async function rejectJob(bookingId: string, vendorId?: string): Promise<{ locked: boolean; skippedCount: number }> {
+export async function rejectJob(
+  bookingId: string,
+  vendorId?: string,
+  vendorName?: string
+): Promise<{ locked: boolean; skippedCount: number }> {
   await updateDoc(doc(db, "bookings", bookingId), {
-    status:     "requested",
-    vendorId:   null,
-    vendorName: "Pending Admin Assignment",
-    vendorImage: null,
-    rejectedAt: serverTimestamp(),
+    status:                "requested",
+    vendorId:              null,
+    vendorName:            "Pending Admin Assignment",
+    vendorImage:           null,
+    rejected:              true,
+    rejectedBy:            vendorId || null,
+    rejectedByName:        vendorName || "Vendor",
+    rejectedAt:            serverTimestamp(),
+    lastRejectionNoticeId: Date.now().toString(),
   });
 
   let locked = false;
@@ -431,3 +471,40 @@ export async function notifyCustomerOTP(customerId: string, otp: string) {
     console.error("Failed to send OTP push notification:", error);
   }
 }
+
+// ── Send Booking Confirmed via Expo Push API to Customer ───────────────────────
+export async function notifyCustomerBookingConfirmed(
+  customerId: string,
+  serviceName: string,
+  subServiceName: string,
+  scheduledAt: string,
+  otp: string
+) {
+  try {
+    const userDoc = await getDoc(doc(db, "users", customerId));
+    if (userDoc.exists()) {
+      const data = userDoc.data();
+      if (data.pushToken) {
+        await fetch("https://exp.host/--/api/v2/push/send", {
+          method: "POST",
+          headers: {
+            "Accept": "application/json",
+            "Accept-encoding": "gzip, deflate",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            to: data.pushToken,
+            sound: "default",
+            title: "✅ Booking Confirmed!",
+            body: `${subServiceName} (${serviceName}) on ${scheduledAt}. Your OTP for the vendor is: ${otp}`,
+            data: { screen: "MyBookings" },
+          }),
+        });
+        console.log("Booking Confirmed Push sent to customer");
+      }
+    }
+  } catch (error) {
+    console.error("Failed to send booking confirmed push notification:", error);
+  }
+}
+

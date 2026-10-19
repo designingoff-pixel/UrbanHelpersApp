@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View, Text, Pressable, StyleSheet,
   ScrollView, Platform, Image, Alert, Linking, ActivityIndicator,
@@ -16,7 +16,7 @@ import { db } from "@/services/firebase";
 import { RootStackParamList } from "@/navigation/types";
 import { useTheme } from "@/context/ThemeContext";
 import { SERVICE_CATEGORIES } from "./servicesData";
-import { sendBookingConfirmation } from "@/services/notificationService";
+import { sendBookingConfirmation, sendBookingPlaced } from "@/services/notificationService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BookingConfirmed">;
 
@@ -40,21 +40,8 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
 
   const bookingId = params.bookingId || initialBookingData.bookingId || initialBookingData.id || "AP4" + Math.random().toString(36).substring(2, 7).toUpperCase();
   const [booking, setBooking] = useState<any>(initialBookingData);
-
-  // Live Firestore subscription for real-time vendor assignment updates
-  useEffect(() => {
-    if (!bookingId) return;
-    try {
-      const unsub = onSnapshot(doc(db, "bookings", bookingId), (docSnap) => {
-        if (docSnap.exists()) {
-          setBooking((prev: any) => ({ ...prev, ...docSnap.data() }));
-        }
-      });
-      return () => unsub();
-    } catch (err) {
-      console.warn("Firestore subscription error in BookingConfirmed:", err);
-    }
-  }, [bookingId]);
+  const prevVendorIdRef = useRef<string | null>(initialBookingData.vendorId || null);
+  const prevStatusRef = useRef<string | null>(initialBookingData.status || null);
 
   const rawOtp = booking.otp || params.otp || initialBookingData.otp || "5461";
   const categoryId = params.categoryId || booking.serviceId || initialBookingData.serviceId || "cleaning";
@@ -90,6 +77,45 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
           weekday: "short", month: "short", day: "numeric", year: "numeric",
         }));
 
+  // Live Firestore subscription for real-time vendor assignment updates
+  useEffect(() => {
+    if (!bookingId) return;
+    try {
+      const unsub = onSnapshot(doc(db, "bookings", bookingId), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setBooking((prev: any) => ({ ...prev, ...data }));
+
+          // Trigger Booking Confirmed notification when vendor accepts
+          const newlyAccepted =
+            (!prevVendorIdRef.current && Boolean(data.vendorId)) ||
+            (prevStatusRef.current !== "accepted" &&
+              prevStatusRef.current !== "assigned" &&
+              (data.status === "accepted" || data.status === "assigned"));
+
+          if (newlyAccepted) {
+            const dateStr = data.scheduledAt || data.bookingDate || bookingDateStr;
+            const otpCode = data.otp || rawOtp;
+            sendBookingConfirmation(
+              category.name,
+              sub.name,
+              dateStr,
+              data.bookingTime,
+              String(otpCode),
+              bookingId
+            );
+          }
+
+          if (data.vendorId) prevVendorIdRef.current = data.vendorId;
+          if (data.status) prevStatusRef.current = data.status;
+        }
+      });
+      return () => unsub();
+    } catch (err) {
+      console.warn("Firestore subscription error in BookingConfirmed:", err);
+    }
+  }, [bookingId, category.name, sub.name, bookingDateStr, rawOtp]);
+
   // Entrance animations
   const sealScale  = useSharedValue(0);
   const checkScale = useSharedValue(0);
@@ -112,7 +138,14 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
       true
     );
 
-    sendBookingConfirmation(category.name, sub.name, bookingDateStr, undefined, rawOtp);
+    const isAlreadyAccepted =
+      Boolean(initialBookingData.vendorId) ||
+      initialBookingData.status === "accepted" ||
+      initialBookingData.status === "assigned";
+
+    if (!isAlreadyAccepted) {
+      sendBookingPlaced(category.name, sub.name, bookingDateStr, undefined, bookingId);
+    }
   }, []);
 
   const ring1Style  = useAnimatedStyle(() => ({ transform: [{ scale: ring1Scale.value }], opacity: ring1Op.value }));
@@ -137,7 +170,7 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
   const textPrimary = { color: isDark ? "#FFFFFF" : "#0F172A" };
   const textSecondary = { color: isDark ? "#94A3B8" : "#64748B" };
 
-  const isVendorAssigned = Boolean(booking?.vendorId);
+  const isVendorAssigned = Boolean(booking?.vendorId) || booking?.status === "accepted" || booking?.status === "assigned";
   const vendorName = booking?.vendorName || "Assigned Partner";
   const vendorRating = booking?.vendorRating || "4.9";
   const vendorImage = booking?.vendorImage;
@@ -154,7 +187,9 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
         >
           <Ionicons name="arrow-back" size={22} color={isDark ? "#fff" : "#0f172a"} />
         </Pressable>
-        <Text style={[s.headerTitle, textPrimary]}>Booking Confirmed</Text>
+        <Text style={[s.headerTitle, textPrimary]}>
+          {isVendorAssigned ? "Booking Confirmed" : "Booking Placed"}
+        </Text>
         <View style={s.headerRightPlaceholder} />
       </View>
 
@@ -179,9 +214,13 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
 
         {/* 2. Heading Texts */}
         <Animated.View entering={FadeInDown.delay(100).duration(400)} style={s.headingBlock}>
-          <Text style={[s.title, textPrimary]}>Booking Confirmed!</Text>
+          <Text style={[s.title, textPrimary]}>
+            {isVendorAssigned ? "Booking Confirmed!" : "Booking Placed!"}
+          </Text>
           <Text style={[s.subtitle, textSecondary]}>
-            Your service has been scheduled. Our verified professional will arrive on time.
+            {isVendorAssigned
+              ? "Your service partner has accepted and will arrive on time."
+              : "Your booking has been placed. Waiting for partner confirmation."}
           </Text>
         </Animated.View>
 

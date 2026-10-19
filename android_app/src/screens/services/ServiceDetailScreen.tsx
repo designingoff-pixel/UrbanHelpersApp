@@ -38,6 +38,7 @@ import {
   getDocs,
 } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { notifyVendorsBookingPlaced } from "@/services/notificationService";
 import { sendRealSMSViaFast2SMS } from "@/services/smsService";
 import { reverseGeocodeLocation, searchAddressSuggestions, GeocodedLocation } from "@/services/geocodingService";
 
@@ -712,6 +713,14 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       // Write booking to Firestore
       try {
         await setDoc(doc(db, "bookings", bookingId), bookingPayload);
+        // Blast loud push alert to all registered vendors (alert even if outside app)
+        notifyVendorsBookingPlaced(
+          category.name,
+          selectedSub.name,
+          `₹${finalPrice}`,
+          serviceAddress.trim(),
+          bookingId
+        ).catch((err) => console.warn("Failed to blast vendors push:", err));
       } catch (err) {
         console.warn("Firestore booking write warning:", err);
       }

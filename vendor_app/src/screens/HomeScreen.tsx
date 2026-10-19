@@ -10,14 +10,16 @@ import { store } from '../store/AppStore';
 import {
   subscribeToVendorJobs,
   subscribeToVendorProfile,
+  subscribeToNewRequests,
   FirestoreBooking,
 } from '../services/firestoreService';
 import { db } from '../services/firebase';
-import { getDoc, doc } from 'firebase/firestore';
+import { getDoc, doc, updateDoc } from 'firebase/firestore';
 import SOSModal from '../components/SOSModal';
 import CalendarModal from '../components/CalendarModal';
 import JobCard from '../components/JobCard';
-import { useNewOrderSound } from '../hooks/useNewOrderSound';
+import { useNewOrderSound, stopLoudOrderAlert } from '../hooks/useNewOrderSound';
+import { registerVendorPushNotifications } from '../services/notificationService';
 
 const { width } = Dimensions.get('window');
 
@@ -51,12 +53,13 @@ export default function HomeScreen({ navigation }: any) {
     setTimeout(() => setRefreshing(false), 700);
   };
 
-  // 🔔 Play a chime whenever a new order arrives
+  // 🔔 Play a loud alert siren whenever a new order arrives
   useNewOrderSound();
 
   useEffect(() => {
     let unsubV: (() => void) | null = null;
     let unsubP: (() => void) | null = null;
+    let unsubReq: (() => void) | null = null;
     let currentSubscribedId = '';
 
     const startSubscriptions = (uid: string) => {
@@ -81,6 +84,23 @@ export default function HomeScreen({ navigation }: any) {
       });
     };
 
+    // 🚨 Live broadcast subscription for all incoming unassigned customer bookings
+    unsubReq = subscribeToNewRequests((openBookings) => {
+      store.syncNewRequests(openBookings);
+    });
+
+    // 📲 Register vendor push notifications to shout loud when outside app
+    registerVendorPushNotifications().then(async (token) => {
+      if (token && store.vendorId) {
+        try {
+          await updateDoc(doc(db, 'vendors', store.vendorId), {
+            pushToken: token,
+            isOnline: true,
+          });
+        } catch (_) {}
+      }
+    }).catch(() => {});
+
     if (store.vendorId) {
       startSubscriptions(store.vendorId);
     }
@@ -96,6 +116,7 @@ export default function HomeScreen({ navigation }: any) {
       unsubStore();
       unsubV?.();
       unsubP?.();
+      unsubReq?.();
     };
   }, []);
 
@@ -281,7 +302,10 @@ export default function HomeScreen({ navigation }: any) {
             return (
               <TouchableOpacity
                 key={t.key}
-                onPress={() => setActiveTab(t.key)}
+                onPress={() => {
+                  stopLoudOrderAlert();
+                  setActiveTab(t.key);
+                }}
                 style={[s.tabPill, isActive && s.tabPillActive]}
                 activeOpacity={0.8}
               >

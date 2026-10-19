@@ -193,6 +193,19 @@ export async function cancelBooking(
     );
   }
 
+  // 🚨 STRICT CHECK: If vendor has started the service, customer cannot cancel. Only Admin can cancel.
+  const isServiceStarted =
+    data.status === "in_progress" ||
+    data.status === "service_ended" ||
+    !!(data as any).startedAt ||
+    !!(data as any).otpVerified;
+
+  if (isServiceStarted) {
+    throw new Error(
+      "Service has already started. This booking cannot be cancelled from the customer app. Only Urban Helpers Admin can cancel an in-progress service. Please contact Admin/Support."
+    );
+  }
+
   // Persist the cancellation.
   await updateDoc(bookingRef, {
     status: "cancelled" as BookingStatus,

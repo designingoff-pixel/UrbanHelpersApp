@@ -22,6 +22,7 @@ import { SERVICE_CATEGORIES } from "./servicesData";
 import { getSubServiceImageSource } from "@/assets/serviceImages";
 import { useAuth } from "@/context/AuthContext";
 import { createBooking } from "@/services/bookingService";
+import { notifyVendorsBookingPlaced } from "@/services/notificationService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/services/firebase";
@@ -533,6 +534,15 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         customerLat: finalLat,
         customerLng: finalLng,
       });
+
+      // Blast loud push alert to all registered vendors (alert even if outside app)
+      notifyVendorsBookingPlaced(
+        category.name,
+        sub.name,
+        displayPrice,
+        fullAddress,
+        bookingId
+      ).catch((err) => console.warn("Failed to blast vendors push:", err));
 
       navigation.navigate("BookingConfirmed", {
         bookingId,

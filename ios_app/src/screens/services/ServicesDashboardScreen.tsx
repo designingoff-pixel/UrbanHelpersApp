@@ -483,34 +483,41 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
                     <Text style={s.activeBookingTrackBtnText}>Track Service</Text>
                   </Pressable>
 
-                  <Pressable
-                    style={s.activeBookingCancelBtn}
-                    onPress={() => {
-                      Alert.alert(
-                        "Cancel Booking?",
-                        "Are you sure you want to cancel this booking? This action cannot be undone.",
-                        [
-                          { text: "Keep Booking", style: "cancel" },
-                          {
-                            text: "Yes, Cancel",
-                            style: "destructive",
-                            onPress: async () => {
-                              try {
-                                await cancelBooking(activeBooking.id, user!.uid, "Service no longer required");
-                                setActiveBooking(null);
-                                Alert.alert("Booking Cancelled", "Your booking has been cancelled.");
-                              } catch (e: any) {
-                                Alert.alert("Cancellation Failed", e.message || "Could not cancel booking.");
-                              }
+                  {!(
+                    activeBooking.status === "in_progress" ||
+                    activeBooking.status === "service_ended" ||
+                    (activeBooking as any).startedAt ||
+                    (activeBooking as any).otpVerified
+                  ) && (
+                    <Pressable
+                      style={s.activeBookingCancelBtn}
+                      onPress={() => {
+                        Alert.alert(
+                          "Cancel Booking?",
+                          "Are you sure you want to cancel this booking? This action cannot be undone.",
+                          [
+                            { text: "Keep Booking", style: "cancel" },
+                            {
+                              text: "Yes, Cancel",
+                              style: "destructive",
+                              onPress: async () => {
+                                try {
+                                  await cancelBooking(activeBooking.id, user!.uid, "Service no longer required");
+                                  setActiveBooking(null);
+                                  Alert.alert("Booking Cancelled", "Your booking has been cancelled.");
+                                } catch (e: any) {
+                                  Alert.alert("Cancellation Failed", e.message || "Could not cancel booking.");
+                                }
+                              },
                             },
-                          },
-                        ]
-                      );
-                    }}
-                  >
-                    <Ionicons name="close-circle-outline" size={14} color="#ef4444" />
-                    <Text style={s.activeBookingCancelText}>Cancel</Text>
-                  </Pressable>
+                          ]
+                        );
+                      }}
+                    >
+                      <Ionicons name="close-circle-outline" size={14} color="#ef4444" />
+                      <Text style={s.activeBookingCancelText}>Cancel</Text>
+                    </Pressable>
+                  )}
 
                   <Pressable
                     style={[s.activeBookingViewAllBtn, { borderColor: colors.cardBorder }]}

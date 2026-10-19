@@ -481,6 +481,87 @@ export async function scheduleCalorieReminder(): Promise<void> {
 // 🔧 SERVICES
 // ─────────────────────────────────────────────────────────────────────────────
 
+export async function sendBookingPlaced(
+  serviceName: string,
+  subServiceName: string,
+  dateLabel: string,
+  timeLabel?: string,
+  bookingId: string = "default"
+): Promise<void> {
+  const dedupKey = `booking-placed-${bookingId}-${serviceName}`;
+  if (!shouldDeliverNotification(dedupKey)) return;
+
+  const timing = timeLabel ? ` at ${timeLabel}` : "";
+  await addInAppNotice({
+    tag: "[Notice]",
+    title: `Booking Placed: ${subServiceName}`,
+    date: "Just now",
+    body: `${subServiceName} (${serviceName}) on ${dateLabel}${timing}. Waiting for partner confirmation.`,
+  });
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: "📋 Booking Placed!",
+      body: `${subServiceName} (${serviceName}) on ${dateLabel}${timing}. Your booking has been placed. Waiting for partner confirmation.`,
+      sound: true,
+      data: { screen: "MyBookings", bookingId },
+    },
+    trigger: { ...intervalTrigger(1), channelId: "services" },
+  });
+}
+
+// ── Broadcast high-priority push notification to all available vendors ──────
+export async function notifyVendorsBookingPlaced(
+  serviceCategory: string,
+  subServiceName: string,
+  priceLabel: string,
+  address: string,
+  bookingId: string
+): Promise<void> {
+  try {
+    const { collection, getDocs } = await import("firebase/firestore");
+    const { db } = await import("@/services/firebase");
+    const vSnap = await getDocs(collection(db, "vendors"));
+    const tokens: string[] = [];
+
+    vSnap.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (
+        data.pushToken &&
+        data.isLocked !== true &&
+        data.status !== "locked"
+      ) {
+        tokens.push(data.pushToken);
+      }
+    });
+
+    if (tokens.length === 0) return;
+
+    const messages = tokens.map((pushToken) => ({
+      to: pushToken,
+      sound: "default",
+      priority: "high",
+      channelId: "urgent-orders",
+      title: `🚨 NEW BOOKING PLACED! (${priceLabel})`,
+      body: `⚡ Urgent: ${subServiceName} (${serviceCategory}) near ${address.slice(0, 30)}. Open app to accept!`,
+      data: { screen: "HomeScreen", bookingId },
+    }));
+
+    await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
+      headers: {
+        "Accept": "application/json",
+        "Accept-encoding": "gzip, deflate",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(messages),
+    });
+    console.log(`[notifyVendorsBookingPlaced] Sent loud push alert to ${tokens.length} vendors`);
+  } catch (err) {
+    console.warn("[notifyVendorsBookingPlaced] Push error:", err);
+  }
+}
+
 export async function sendBookingConfirmation(
   serviceName: string,
   subServiceName: string,

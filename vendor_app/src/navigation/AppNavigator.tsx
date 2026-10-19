@@ -5,8 +5,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { onAuthStateChanged } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
+import { registerVendorPushNotifications } from '../services/notificationService';
 
 import LoginScreen from '../screens/LoginScreen';
 import VendorRegisterScreen from '../screens/VendorRegisterScreen';
@@ -123,6 +124,18 @@ export default function AppNavigator() {
               session.name || 'Vendor Captain',
               session.mobile || ''
             );
+            // Register vendor push notifications to shout loud when outside app
+            registerVendorPushNotifications().then(async (token) => {
+              if (token && session.vendorId) {
+                try {
+                  await setDoc(doc(db, 'vendors', session.vendorId), {
+                    pushToken: token,
+                    isOnline: true,
+                  }, { merge: true });
+                } catch (_) {}
+              }
+            }).catch(() => {});
+
             if (active) {
               setInitialRoute('MainTabs');
               setCheckingAuth(false);

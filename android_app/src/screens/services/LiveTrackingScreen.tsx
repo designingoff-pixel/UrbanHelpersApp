@@ -63,7 +63,7 @@ const TEAL_D = "#0097a7";
 
 // 6 Full Milestones matching exact workflow
 const MILESTONES = [
-  { key: "requested",   label: "Booking Confirmed",     icon: "checkmark-circle" },
+  { key: "requested",   label: "Booking Placed",        icon: "checkmark-circle" },
   { key: "assigned",    label: "Vendor Assigned",       icon: "person" },
   { key: "en_route",    label: "On The Way",            icon: "bicycle" },
   { key: "arrived",     label: "Arrived at Location",   icon: "location" },
@@ -164,6 +164,8 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
   const isCompleted = booking?.status === "completed";
   const isPreService = isVendorAssigned && !isServiceActive && !isCompleted && booking?.status !== "cancelled";
   const isTrackingActive = isPreService;
+  // Service has started: customer cannot cancel, only Admin can cancel
+  const isServiceStarted = isServiceActive || booking?.status === "in_progress" || booking?.status === "service_ended" || !!(booking as any)?.startedAt || !!(booking as any)?.otpVerified;
 
   // Subscribe to Vendor's live GPS coords ONLY when assigned
   useEffect(() => {
@@ -668,52 +670,81 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
             <Text style={s.rateBtnText}>Rate Professional &amp; View Bill</Text>
           </Pressable>
         ) : (
-          <View style={s.ctaRow}>
-            <Pressable
-              style={[s.callFullBtn, !isVendorAssigned && { opacity: 0.7 }]}
-              onPress={handleCall}
-            >
-              <LinearGradient
-                colors={[TEAL, TEAL_D]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={s.callFullGradient}
-              >
-                <Ionicons name="call" size={18} color="#fff" />
-                <Text style={s.callFullText}>
-                  {isVendorAssigned ? `Call ${proName.split(" ")[0]}` : "Assigning Contact..."}
-                </Text>
-              </LinearGradient>
-            </Pressable>
-
-            {booking && booking.status !== "cancelled" && (
+          <View>
+            <View style={s.ctaRow}>
               <Pressable
-                style={[s.cancelBtn, { backgroundColor: isDark ? "rgba(239,68,68,0.12)" : "#FEF2F2" }]}
+                style={[s.callFullBtn, !isVendorAssigned && { opacity: 0.7 }]}
+                onPress={handleCall}
+              >
+                <LinearGradient
+                  colors={[TEAL, TEAL_D]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={s.callFullGradient}
+                >
+                  <Ionicons name="call" size={18} color="#fff" />
+                  <Text style={s.callFullText}>
+                    {isVendorAssigned ? `Call ${proName.split(" ")[0]}` : "Assigning Contact..."}
+                  </Text>
+                </LinearGradient>
+              </Pressable>
+
+              {/* Only show Cancel button if vendor has NOT started service yet */}
+              {booking && !isServiceStarted && (booking.status as string) !== "cancelled" && (
+                <Pressable
+                  style={[s.cancelBtn, { backgroundColor: isDark ? "rgba(239,68,68,0.12)" : "#FEF2F2" }]}
+                  onPress={() => {
+                    Alert.alert(
+                      "Cancel Service?",
+                      "Are you sure you want to cancel this booking?",
+                      [
+                        { text: "Keep Service", style: "cancel" },
+                        {
+                          text: "Yes, Cancel",
+                          style: "destructive",
+                          onPress: async () => {
+                            try {
+                              await cancelBooking(booking.id, user!.uid, "Service no longer required");
+                              Alert.alert("Cancelled", "Your booking has been cancelled.");
+                              navigation.goBack();
+                            } catch (e: any) {
+                              Alert.alert("Cancellation Failed", e.message || "Could not cancel booking.");
+                            }
+                          },
+                        },
+                      ]
+                    );
+                  }}
+                >
+                  <Ionicons name="close" size={18} color="#ef4444" />
+                  <Text style={s.cancelText}>Cancel</Text>
+                </Pressable>
+              )}
+            </View>
+
+            {/* When service has started, customer cannot cancel directly; only Admin can cancel */}
+            {isServiceStarted && (booking?.status as string) !== "cancelled" && (
+              <Pressable
+                style={s.inProgressLockBadge}
                 onPress={() => {
                   Alert.alert(
-                    "Cancel Service?",
-                    "Are you sure you want to cancel this booking?",
+                    "Service In Progress",
+                    "The professional has already started performing this service. Customer cancellation is locked once service commences.\n\nOnly Urban Helpers Admin can cancel an in-progress service allotment. Please contact Support/Admin if you need assistance.",
                     [
-                      { text: "Keep Service", style: "cancel" },
                       {
-                        text: "Yes, Cancel",
-                        style: "destructive",
-                        onPress: async () => {
-                          try {
-                            await cancelBooking(booking.id, user!.uid, "Service no longer required");
-                            Alert.alert("Cancelled", "Your booking has been cancelled.");
-                            navigation.goBack();
-                          } catch (e: any) {
-                            Alert.alert("Cancellation Failed", e.message || "Could not cancel booking.");
-                          }
-                        },
+                        text: "Contact Support",
+                        onPress: () => Linking.openURL("mailto:support@urbanhelpers.com?subject=Cancellation%20Request%20Booking%20" + (booking?.id || "")),
                       },
+                      { text: "OK", style: "cancel" },
                     ]
                   );
                 }}
               >
-                <Ionicons name="close" size={18} color="#ef4444" />
-                <Text style={s.cancelText}>Cancel</Text>
+                <Ionicons name="lock-closed" size={12} color="#f59e0b" />
+                <Text style={s.inProgressLockText}>
+                  Service in progress • Cancellation restricted to Admin only
+                </Text>
+                <Ionicons name="information-circle-outline" size={13} color="#f59e0b" />
               </Pressable>
             )}
           </View>
@@ -1233,5 +1264,23 @@ const s = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     color: "#081826",
+  },
+  inProgressLockBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "rgba(245,158,11,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(245,158,11,0.3)",
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginTop: 8,
+  },
+  inProgressLockText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: "#f59e0b",
   },
 });
