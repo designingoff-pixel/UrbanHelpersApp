@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Image,
   Linking, Dimensions, ImageBackground, RefreshControl, ActivityIndicator,
+  Platform,
 } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -288,7 +290,38 @@ export default function JobDetailsScreen({ route, navigation }: any) {
     }
   };
 
-  const isAssigned = job.status === 'ADMIN_ASSIGNED';
+  // ── Mark Arrived at Customer Location ─────────────────────────────────────
+  const handleArrived = async () => {
+    setSubmitting(true);
+    try {
+      store.updateJobStatus(job.jobId, 'ARRIVED');
+      await updateBookingStatus(job.bookingId, 'arrived');
+      if (job.customerId && job.otp) {
+        await notifyCustomerOTP(job.customerId, job.otp);
+      }
+      Alert.alert(
+        '📍 Arrived at Location',
+        'Customer has been notified that you arrived on-site! Please ask the customer for their 4-digit OTP to verify and begin service.'
+      );
+    } catch (e: any) {
+      console.warn('[handleArrived] Error:', e);
+      Alert.alert('Status Updated', 'Marked as arrived at customer premises.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ── Start En Route / Navigation ──────────────────────────────────────────
+  const handleStartNavigation = async () => {
+    try {
+      store.updateJobStatus(job.jobId, 'NAVIGATING');
+      await updateBookingStatus(job.bookingId, 'en_route');
+    } catch (_) {}
+    handleOpenNavigation();
+  };
+
+  const isPendingAccept = job.status === 'NEW_REQUEST' || job.status === 'ADMIN_ASSIGNED';
+  const isAssigned = isPendingAccept;
   const isAccepted = job.status === 'ACCEPTED';
   const isNavigating = job.status === 'NAVIGATING';
   const isArrived = job.status === 'ARRIVED';
@@ -399,10 +432,99 @@ export default function JobDetailsScreen({ route, navigation }: any) {
           </View>
         </View>
 
-        {/* Vendor Verification */}
-        {['ACCEPTED', 'NAVIGATING', 'ARRIVED', 'CUSTOMER_VERIFIED', 'SERVICE_STARTED', 'RECORDING_ACTIVE'].includes(job.status) && (
-          <View style={s.card}>
-            <Text style={s.cardHeading}>VENDOR VERIFICATION</Text>
+        {/* Service Address & Interactive Map */}
+        <View style={s.card}>
+          <Text style={s.cardHeading}>SERVICE ADDRESS &amp; LOCATION</Text>
+          <View style={s.addressRow}>
+            <Ionicons name="location" size={20} color="#EF4444" style={{ marginTop: 2 }} />
+            <Text style={s.addressText}>{job.address}</Text>
+          </View>
+
+          {/* Interactive Map shown when job is Accepted / Navigating / Arrived */}
+          {['ACCEPTED', 'UPCOMING', 'NAVIGATING', 'ARRIVED'].includes(job.status) && (
+            <View style={s.mapContainer}>
+              <MapView
+                style={s.map}
+                provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+                initialRegion={{
+                  latitude: (typeof job.latitude === 'number' && job.latitude !== 0) ? job.latitude : 11.6643,
+                  longitude: (typeof job.longitude === 'number' && job.longitude !== 0) ? job.longitude : 78.1460,
+                  latitudeDelta: 0.015,
+                  longitudeDelta: 0.015,
+                }}
+                scrollEnabled={false}
+                zoomEnabled={false}
+              >
+                <Marker
+                  coordinate={{
+                    latitude: (typeof job.latitude === 'number' && job.latitude !== 0) ? job.latitude : 11.6643,
+                    longitude: (typeof job.longitude === 'number' && job.longitude !== 0) ? job.longitude : 78.1460,
+                  }}
+                  title="Customer Location"
+                  description={job.address}
+                >
+                  <View style={s.markerPin}>
+                    <Ionicons name="location" size={24} color="#EF4444" />
+                  </View>
+                </Marker>
+              </MapView>
+              <TouchableOpacity
+                style={s.mapNavigateOverlayBtn}
+                onPress={handleStartNavigation}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="navigate" size={16} color="#FFFFFF" />
+                <Text style={s.mapNavigateOverlayText}>Start Turn-by-Turn GPS Navigation</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Navigation status actions */}
+          {['ACCEPTED', 'UPCOMING', 'NAVIGATING'].includes(job.status) ? (
+            <TouchableOpacity style={s.navBtn} onPress={handleStartNavigation} activeOpacity={0.85}>
+              <Ionicons name="navigate-circle" size={20} color="#0D3325" />
+              <Text style={s.navBtnText}>Open Turn-by-Turn Voice Navigation</Text>
+            </TouchableOpacity>
+          ) : job.status === 'ARRIVED' ? (
+            <View style={s.navSecuredBadge}>
+              <Ionicons name="location" size={18} color="#059669" />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={s.navSecuredTitle}>Arrived at Customer Location</Text>
+                <Text style={s.navSecuredSub}>Live GPS has concluded. Please enter customer OTP below to begin service.</Text>
+              </View>
+            </View>
+          ) : ['CUSTOMER_VERIFIED', 'SERVICE_STARTED', 'RECORDING_ACTIVE'].includes(job.status) ? (
+            <View style={s.navSecuredBadge}>
+              <Ionicons name="shield-checkmark" size={18} color="#059669" />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={s.navSecuredTitle}>On-Site Location Verified</Text>
+                <Text style={s.navSecuredSub}>Map navigation is disabled during active service for customer security &amp; privacy.</Text>
+              </View>
+            </View>
+          ) : isPendingAccept ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 8, padding: 10, marginTop: 10, borderWidth: 1, borderColor: '#E2E8F0' }}>
+              <Ionicons name="lock-closed-outline" size={16} color="#64748B" />
+              <Text style={{ fontSize: 12, color: '#64748B', marginLeft: 6, fontWeight: '500' }}>
+                Accept request to unlock turn-by-turn navigation map
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Vendor Verification & OTP Input */}
+        {['ARRIVED', 'CUSTOMER_VERIFIED', 'SERVICE_STARTED', 'RECORDING_ACTIVE'].includes(job.status) && (
+          <View style={[s.card, job.status === 'ARRIVED' && { borderWidth: 2, borderColor: '#10B981', backgroundColor: '#F0FDF4' }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <Text style={[s.cardHeading, job.status === 'ARRIVED' && { color: '#047857', fontWeight: '800' }]}>
+                {job.status === 'ARRIVED' ? '📍 ON-SITE OTP VERIFICATION' : 'VENDOR VERIFICATION'}
+              </Text>
+              {job.status === 'ARRIVED' && (
+                <View style={{ backgroundColor: '#10B981', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 }}>
+                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>ARRIVED ON-SITE</Text>
+                </View>
+              )}
+            </View>
+
             {job.status === 'CUSTOMER_VERIFIED' || job.status === 'SERVICE_STARTED' || job.status === 'RECORDING_ACTIVE' || job.status === 'COMPLETED' ? (
               <View style={s.otpSuccessContainer}>
                 <Ionicons name="checkmark-circle" size={24} color="#10B981" />
@@ -413,7 +535,9 @@ export default function JobDetailsScreen({ route, navigation }: any) {
               </View>
             ) : (
               <View style={s.otpFormContainer}>
-                <Text style={s.otpPrompt}>Enter OTP provided by customer</Text>
+                <Text style={[s.otpPrompt, { color: '#065F46', fontWeight: '700' }]}>
+                  Ask customer for their 4-digit OTP shown on their screen:
+                </Text>
                 <OTPInput
                   value={otp}
                   onChange={v => { setOtp(v); setHasError(false); }}
@@ -421,57 +545,25 @@ export default function JobDetailsScreen({ route, navigation }: any) {
                 />
                 {hasError && (
                   <Text style={s.otpErrorText}>
-                    Invalid OTP. Please enter the OTP provided by the customer.
+                    Invalid OTP. Please enter the 4-digit OTP provided by the customer.
                   </Text>
                 )}
                 <TouchableOpacity
                   onPress={handleVerifyOTP}
                   disabled={otpLoading}
-                  style={s.verifyOtpBtn}
+                  style={[s.verifyOtpBtn, { backgroundColor: '#059669' }]}
                   activeOpacity={0.85}
                 >
                   {otpLoading ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={s.verifyOtpBtnText}>Verify OTP</Text>
+                    <Text style={s.verifyOtpBtnText}>✓ Verify OTP &amp; Unlock Service</Text>
                   )}
                 </TouchableOpacity>
               </View>
             )}
           </View>
         )}
-
-        {/* Service Address & Voice Navigation */}
-        <View style={s.card}>
-          <Text style={s.cardHeading}>SERVICE ADDRESS &amp; LOCATION</Text>
-          <View style={s.addressRow}>
-            <Ionicons name="location" size={20} color="#EF4444" style={{ marginTop: 2 }} />
-            <Text style={s.addressText}>{job.address}</Text>
-          </View>
-
-          {/* Navigation only available AFTER job is accepted while travelling to site */}
-          {['ACCEPTED', 'UPCOMING', 'NAVIGATING', 'ARRIVED'].includes(job.status) ? (
-            <TouchableOpacity style={s.navBtn} onPress={handleOpenNavigation} activeOpacity={0.85}>
-              <Ionicons name="navigate-circle" size={20} color="#0D3325" />
-              <Text style={s.navBtnText}>Open Turn-by-Turn Voice Navigation</Text>
-            </TouchableOpacity>
-          ) : ['CUSTOMER_VERIFIED', 'SERVICE_STARTED', 'RECORDING_ACTIVE'].includes(job.status) ? (
-            <View style={s.navSecuredBadge}>
-              <Ionicons name="shield-checkmark" size={18} color="#059669" />
-              <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={s.navSecuredTitle}>On-Site Location Verified</Text>
-                <Text style={s.navSecuredSub}>Map navigation is disabled during active service for customer security & privacy.</Text>
-              </View>
-            </View>
-          ) : isAssigned ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 8, padding: 10, marginTop: 10, borderWidth: 1, borderColor: '#E2E8F0' }}>
-              <Ionicons name="lock-closed-outline" size={16} color="#64748B" />
-              <Text style={{ fontSize: 12, color: '#64748B', marginLeft: 6, fontWeight: '500' }}>
-                Accept request to unlock turn-by-turn navigation map
-              </Text>
-            </View>
-          ) : null}
-        </View>
 
         {/* Work Verification Photos (only for active/completed jobs, hidden on unaccepted/reassigned jobs) */}
         {!isAssigned && (job.beforePhoto || job.afterPhoto) && (
@@ -561,9 +653,9 @@ export default function JobDetailsScreen({ route, navigation }: any) {
       </ScrollView>
 
       {/* Dynamic Action Bottom Bar */}
-      {(isAssigned || job.status === 'CUSTOMER_VERIFIED' || isStarted) && (
-        <View style={s.bottomBar}>
-        {isAssigned && (
+      <View style={s.bottomBar}>
+        {/* 1. Pending Acceptance: Accept or Decline */}
+        {isPendingAccept && (
           <View style={s.btnRow}>
             <TouchableOpacity
               style={[s.actionBtn, s.rejectBtn]}
@@ -580,11 +672,88 @@ export default function JobDetailsScreen({ route, navigation }: any) {
               disabled={submitting}
               activeOpacity={0.85}
             >
-              <Text style={s.acceptBtnText}>Accept Request</Text>
+              {submitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={s.acceptBtnText}>Accept Request</Text>
+              )}
             </TouchableOpacity>
           </View>
         )}
 
+        {/* 2. Accepted / Upcoming: Start Navigation or Mark Arrived */}
+        {(job.status === 'ACCEPTED' || job.status === 'UPCOMING') && (
+          <View style={s.btnRow}>
+            <TouchableOpacity
+              style={[s.actionBtn, s.startNavBtn]}
+              onPress={handleStartNavigation}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="navigate-circle" size={18} color="#FFFFFF" />
+              <Text style={s.actionBtnText}>Start Navigation</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[s.actionBtn, s.arrivedBtn]}
+              onPress={handleArrived}
+              disabled={submitting}
+              activeOpacity={0.85}
+            >
+              {submitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="location" size={18} color="#FFFFFF" />
+                  <Text style={s.actionBtnText}>Mark Arrived</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* 3. Navigating: On the way, single tap Mark Arrived */}
+        {job.status === 'NAVIGATING' && (
+          <View style={s.btnRow}>
+            <TouchableOpacity
+              style={[s.actionBtn, s.arrivedBtn, { flex: 1 }]}
+              onPress={handleArrived}
+              disabled={submitting}
+              activeOpacity={0.85}
+            >
+              {submitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
+                  <Text style={[s.actionBtnText, { fontSize: 16 }]}>I Have Arrived at Location</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* 4. Arrived: Enter & Verify OTP */}
+        {job.status === 'ARRIVED' && (
+          <View style={s.btnRow}>
+            <TouchableOpacity
+              style={[s.actionBtn, s.otpBtn, { flex: 1 }]}
+              onPress={handleVerifyOTP}
+              disabled={otpLoading}
+              activeOpacity={0.85}
+            >
+              {otpLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="keypad" size={18} color="#FFFFFF" />
+                  <Text style={[s.actionBtnText, { fontSize: 15 }]}>Verify Customer OTP</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* 5. Customer Verified: Start Service */}
         {job.status === 'CUSTOMER_VERIFIED' && (
           <View style={s.btnRow}>
             <TouchableOpacity
@@ -601,6 +770,7 @@ export default function JobDetailsScreen({ route, navigation }: any) {
           </View>
         )}
 
+        {/* 6. In Progress: Continue Service */}
         {isStarted && (
           <TouchableOpacity
             style={[s.actionBtn, s.serviceBtn]}
@@ -612,7 +782,6 @@ export default function JobDetailsScreen({ route, navigation }: any) {
           </TouchableOpacity>
         )}
       </View>
-      )}
 
       {/* Modals */}
       <SOSModal visible={sosVisible} onClose={() => setSosVisible(false)} currentJobId={job.jobId} />
@@ -995,5 +1164,51 @@ const s = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     color: '#FFFFFF',
+  },
+  mapContainer: {
+    height: 180,
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginTop: 10,
+    marginBottom: 6,
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  map: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  mapNavigateOverlayBtn: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    right: 8,
+    backgroundColor: '#0D3325',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 6,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  mapNavigateOverlayText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  markerPin: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#EF4444',
   },
 });

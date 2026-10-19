@@ -15,10 +15,10 @@ Notifications.setNotificationHandler({
 export async function registerVendorPushNotifications(): Promise<string | null> {
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("urgent-orders", {
-      name: "🚨 Urgent Booking Alerts",
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 1000, 400, 1000, 400, 1000, 400, 1000],
-      lightColor: "#FF0000",
+      name: "🔔 New Booking Assignments",
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 200, 100, 200],
+      lightColor: "#00BCD4",
       sound: "default",
       enableVibrate: true,
       showBadge: true,
@@ -64,10 +64,10 @@ export async function triggerLoudNewOrderNotification(
   try {
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: `🚨 NEW BOOKING: ${serviceName} (${price})`,
-        body: `A new customer booking just arrived near ${address.slice(0, 30)}! Tap to accept now.`,
+        title: `⚡ New Booking Allotment: ${serviceName} (${price})`,
+        body: `You have been assigned a service near ${address.slice(0, 30)}. Tap to review and accept.`,
         sound: true,
-        priority: Notifications.AndroidNotificationPriority.MAX,
+        priority: Notifications.AndroidNotificationPriority.HIGH,
         data: { screen: "HomeScreen", bookingId },
       },
       trigger: null, // deliver immediately

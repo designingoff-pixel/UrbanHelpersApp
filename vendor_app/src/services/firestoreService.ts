@@ -136,7 +136,45 @@ export function subscribeToNewRequests(
   return onSnapshot(
     q,
     (snapshot) => {
-      const jobs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as FirestoreBooking));
+      const now = Date.now();
+      const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+      const jobs = snapshot.docs
+        .map((d) => ({ id: d.id, ...d.data() } as FirestoreBooking))
+        .filter((b) => {
+          // Do not show if rejected by vendor or already handled
+          if (b.rejected === true || b.status === "cancelled" || b.status === "completed") {
+            return false;
+          }
+
+          // Check creation time
+          let createdTime = 0;
+          if (b.createdAt) {
+            if (b.createdAt.toMillis) createdTime = b.createdAt.toMillis();
+            else if (typeof b.createdAt === "string") createdTime = new Date(b.createdAt).getTime();
+            else if (typeof b.createdAt === "number") createdTime = b.createdAt;
+          }
+
+          // Check scheduled time
+          let scheduledTime = 0;
+          if (b.scheduledAt) {
+            const d = new Date(b.scheduledAt).getTime();
+            if (!isNaN(d)) scheduledTime = d;
+          }
+
+          // Do not show old bookings whose scheduled slot was in the past (> 12 hours ago)
+          if (scheduledTime > 0 && scheduledTime < (now - 12 * 60 * 60 * 1000)) {
+            return false;
+          }
+
+          // Do not show stale bookings created more than 24h ago without a future slot
+          if (createdTime > 0 && (now - createdTime) > ONE_DAY_MS && (!scheduledTime || scheduledTime < now)) {
+            return false;
+          }
+
+          return true;
+        });
+
       onChange(jobs);
     },
     (err) => {

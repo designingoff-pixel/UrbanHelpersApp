@@ -84,7 +84,18 @@ class AppStore {
   // ── Sync New Requests ────────────────────────────────────────────────────
   syncNewRequests(firestoreJobs: FirestoreBooking[]) {
     const otherJobs = this.jobs.filter(j => j.status !== 'NEW_REQUEST');
-    const mapped = this._mapFirestore(firestoreJobs);
+    const now = Date.now();
+    const fresh = firestoreJobs.filter(b => {
+      if (b.status === 'cancelled' || b.status === 'completed' || b.rejected === true) return false;
+      let sTime = 0;
+      if (b.scheduledAt) {
+        const d = new Date(b.scheduledAt).getTime();
+        if (!isNaN(d)) sTime = d;
+      }
+      if (sTime > 0 && sTime < (now - 12 * 60 * 60 * 1000)) return false;
+      return true;
+    });
+    const mapped = this._mapFirestore(fresh);
     this.jobs = [...mapped, ...otherJobs];
     this.notify();
   }

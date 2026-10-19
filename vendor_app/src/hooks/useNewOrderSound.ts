@@ -1,19 +1,25 @@
 /**
- * useNewOrderSound — plays a loud alert siren & vibrates whenever a new
- * booking request arrives in the vendor store.
+ * useNewOrderSound — plays a pleasant notification chime & vibrates
+ * ONCE when a new booking is assigned to the vendor.
  *
- * Designed to shout loud and alert the vendor even when running in the background.
+ * Prevents replaying sounds on app startup or for old bookings:
+ * - Persists notified booking IDs in AsyncStorage so each booking only chimes ONCE.
+ * - Suppresses sound during initial load of existing bookings on app open.
+ * - Pleasant, professional dispatch alert chime (comfortable volume, no harsh sirens).
  */
 
 import { useEffect, useRef } from 'react';
-import { Vibration, Platform } from 'react-native';
+import { Vibration } from 'react-native';
 import { Audio } from 'expo-av';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { store } from '../store/AppStore';
 import { triggerLoudNewOrderNotification } from '../services/notificationService';
 
-// ─── High-intensity loud alert siren (alarm / dispatch siren) ─────────────
-const LOUD_ALARM_SOUND_URI =
-  'https://assets.mixkit.co/active_storage/sfx/995/995-preview.mp3';
+// ─── Pleasant, modern notification chime (crisp dispatch chime) ────────────
+const PLEASANT_CHIME_URI =
+  'https://assets.mixkit.co/active_storage/sfx/2874/2874-preview.mp3';
+
+const NOTIFIED_STORAGE_KEY = '@urban_helpers_notified_job_ids';
 
 let activeSoundInstance: Audio.Sound | null = null;
 
@@ -25,10 +31,11 @@ export function stopLoudOrderAlert() {
 }
 
 export function useNewOrderSound() {
-  const soundRef     = useRef<Audio.Sound | null>(null);
-  const prevCountRef = useRef<number>(-1);
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const notifiedIdsRef = useRef<Set<string>>(new Set());
+  const isInitializedRef = useRef<boolean>(false);
 
-  // ── Load sound and configure maximum volume & audio mode ───────────────────
+  // ── 1. Load sound and configure pleasant audio mode ────────────────────────
   useEffect(() => {
     let mounted = true;
 
@@ -37,13 +44,13 @@ export function useNewOrderSound() {
         await Audio.setAudioModeAsync({
           playsInSilentModeIOS: true,
           staysActiveInBackground: true,
-          shouldDuckAndroid: false,
+          shouldDuckAndroid: true,
           playThroughEarpieceAndroid: false,
         });
 
         const { sound } = await Audio.Sound.createAsync(
-          { uri: LOUD_ALARM_SOUND_URI },
-          { shouldPlay: false, volume: 1.0, isLooping: false }
+          { uri: PLEASANT_CHIME_URI },
+          { shouldPlay: false, volume: 0.7, isLooping: false }
         );
 
         if (mounted) {
@@ -53,7 +60,7 @@ export function useNewOrderSound() {
           await sound.unloadAsync();
         }
       } catch (err) {
-        console.warn('[useNewOrderSound] Could not load loud alert sound:', err);
+        console.warn('[useNewOrderSound] Could not load alert sound:', err);
       }
     })();
 
@@ -68,52 +75,95 @@ export function useNewOrderSound() {
     };
   }, []);
 
-  // ── Watch store for new incoming requests ──────────────────────────────────
+  // ── 2. Load previously notified IDs from storage & listen for new jobs ────
   useEffect(() => {
-    const playLoudAlert = async () => {
-      try {
-        // 1. Heavy urgent vibration pattern: 1s vibrate, 400ms pause, 1s vibrate...
-        Vibration.vibrate([0, 1000, 400, 1000, 400, 1000, 400, 1000]);
+    let active = true;
 
-        // 2. Play alert sound at max volume
+    // Load persisted notified IDs from AsyncStorage
+    AsyncStorage.getItem(NOTIFIED_STORAGE_KEY)
+      .then((stored) => {
+        if (!active) return;
+        if (stored) {
+          try {
+            const arr = JSON.parse(stored);
+            if (Array.isArray(arr)) {
+              arr.forEach((id: string) => notifiedIdsRef.current.add(id));
+            }
+          } catch (_) {}
+        }
+        // Mark all existing jobs currently in the store as already known
+        // so opening the app NEVER plays sounds for old or already-loaded orders!
+        const initialJobs = store.getJobsForTab('requests');
+        initialJobs.forEach((j) => notifiedIdsRef.current.add(j.jobId));
+        isInitializedRef.current = true;
+      })
+      .catch(() => {
+        if (!active) return;
+        const initialJobs = store.getJobsForTab('requests');
+        initialJobs.forEach((j) => notifiedIdsRef.current.add(j.jobId));
+        isInitializedRef.current = true;
+      });
+
+    const playChimeAlert = async (job: any) => {
+      try {
+        // 1. Gentle, distinct double-haptic vibration
+        Vibration.vibrate([0, 200, 100, 200]);
+
+        // 2. Play pleasant chime sound at comfortable 0.7 volume
         if (soundRef.current) {
-          await soundRef.current.setVolumeAsync(1.0);
+          await soundRef.current.setVolumeAsync(0.7);
           await soundRef.current.setPositionAsync(0);
           await soundRef.current.playAsync();
         }
 
-        // 3. Post a loud heads-up local notification
-        const latestJobs = store.getJobsForTab('requests');
-        const latest = latestJobs[0];
-        if (latest) {
-          triggerLoudNewOrderNotification(
-            latest.serviceName || 'New Service',
-            `₹${latest.vendorEarnings || 600}`,
-            latest.address || 'Nearby',
-            latest.jobId
-          );
-        }
+        // 3. Post notification
+        triggerLoudNewOrderNotification(
+          job.serviceName || 'New Service',
+          `₹${job.vendorEarnings || 600}`,
+          job.address || 'Nearby',
+          job.jobId
+        );
       } catch (err) {
-        console.warn('[useNewOrderSound] Loud playback error:', err);
+        console.warn('[useNewOrderSound] Playback error:', err);
       }
     };
 
-    const unsubscribe = store.subscribe(() => {
-      const currentCount = store.getJobsForTab('requests').length;
+    const persistNotifiedIds = async () => {
+      try {
+        const arr = Array.from(notifiedIdsRef.current).slice(-200); // keep last 200 IDs
+        await AsyncStorage.setItem(NOTIFIED_STORAGE_KEY, JSON.stringify(arr));
+      } catch (_) {}
+    };
 
-      if (prevCountRef.current === -1) {
-        prevCountRef.current = currentCount;
+    const unsubscribe = store.subscribe(() => {
+      // If we haven't finished loading the persisted notified IDs yet, seed them and return
+      if (!isInitializedRef.current) {
+        const currentRequests = store.getJobsForTab('requests');
+        currentRequests.forEach((j) => notifiedIdsRef.current.add(j.jobId));
         return;
       }
 
-      if (currentCount > prevCountRef.current) {
-        // A new customer booking just placed! Shout loud!
-        playLoudAlert();
-      }
+      const currentRequests = store.getJobsForTab('requests');
+      let playedAny = false;
 
-      prevCountRef.current = currentCount;
+      // Find any incoming request that has NEVER been notified to the vendor
+      for (const job of currentRequests) {
+        if (!notifiedIdsRef.current.has(job.jobId)) {
+          // This is a brand new assignment!
+          notifiedIdsRef.current.add(job.jobId);
+          persistNotifiedIds();
+
+          if (!playedAny) {
+            playedAny = true;
+            playChimeAlert(job);
+          }
+        }
+      }
     });
 
-    return unsubscribe;
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, []);
 }
