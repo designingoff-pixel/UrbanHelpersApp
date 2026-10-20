@@ -315,12 +315,17 @@ export async function acceptJob(
   // Notify customer that booking is confirmed with vendor assignment
   if (customerBookingData && (customerBookingData as any).customerId) {
     const d = customerBookingData as any;
+    const serviceName = d.subServiceName || d.serviceCategory || "Service";
+    const dateStr = d.bookingDate || d.scheduledAt || "Scheduled Date";
+    const timeStr = d.bookingTime || "";
     notifyCustomerBookingConfirmed(
       d.customerId,
-      d.serviceCategory || "Service",
-      d.subServiceName || "Service",
-      d.scheduledAt || d.bookingDate || "Scheduled Date",
-      d.otp || ""
+      serviceName,
+      vendorName,
+      dateStr,
+      timeStr,
+      d.otp || "",
+      bookingId
     ).catch((err) => console.warn("[acceptJob] Failed to push confirmed notif to customer:", err));
   }
 
@@ -434,21 +439,48 @@ export async function updateBookingStatus(
 
 export async function updateBookingPhotos(
   bookingId: string,
-  photos: { beforePhoto?: string | null; afterPhoto?: string | null }
+  photos: { beforePhoto?: string | null; afterPhoto?: string | null; beforePhotoPath?: string; afterPhotoPath?: string }
 ): Promise<void> {
   const updateData: Record<string, any> = {};
-  if (photos.beforePhoto !== undefined) updateData.beforePhoto = photos.beforePhoto;
-  if (photos.afterPhoto !== undefined) updateData.afterPhoto = photos.afterPhoto;
+  if (photos.beforePhoto !== undefined) {
+    // Safety: never store oversized data URIs directly in the booking document
+    if (typeof photos.beforePhoto === 'string' && photos.beforePhoto.startsWith('data:') && photos.beforePhoto.length > 50000) {
+      console.warn('[updateBookingPhotos] Prevented oversized Base64 photo string from being written directly to Firestore document.');
+      return;
+    }
+    updateData.beforePhoto = photos.beforePhoto;
+  }
+  if (photos.afterPhoto !== undefined) {
+    if (typeof photos.afterPhoto === 'string' && photos.afterPhoto.startsWith('data:') && photos.afterPhoto.length > 50000) {
+      console.warn('[updateBookingPhotos] Prevented oversized Base64 photo string from being written directly to Firestore document.');
+      return;
+    }
+    updateData.afterPhoto = photos.afterPhoto;
+  }
+  if (photos.beforePhotoPath) updateData.beforePhotoPath = photos.beforePhotoPath;
+  if (photos.afterPhotoPath) updateData.afterPhotoPath = photos.afterPhotoPath;
   await updateDoc(doc(db, "bookings", bookingId), updateData);
 }
 
 export async function updateBookingAudio(
   bookingId: string,
-  audioUrl: string
+  audioUrl: string,
+  metadata?: { storagePath?: string; audioMetadata?: Record<string, any> }
 ): Promise<void> {
-  await updateDoc(doc(db, "bookings", bookingId), {
-    audioUrl,
-  });
+  // Safety: never store oversized audio data URIs directly in the booking document
+  if (typeof audioUrl === 'string' && audioUrl.startsWith('data:') && audioUrl.length > 50000) {
+    console.warn('[updateBookingAudio] Prevented oversized Base64 audio string from being written directly to Firestore document.');
+    return;
+  }
+
+  const updatePayload: Record<string, any> = { audioUrl };
+  if (metadata?.storagePath) {
+    updatePayload.audioPath = metadata.storagePath;
+  }
+  if (metadata?.audioMetadata) {
+    updatePayload.audioMetadata = metadata.audioMetadata;
+  }
+  await updateDoc(doc(db, "bookings", bookingId), updatePayload);
 }
 
 export async function updateVendorLocation(
@@ -559,15 +591,30 @@ export async function notifyCustomerOTP(customerId: string, otp: string) {
 export async function notifyCustomerBookingConfirmed(
   customerId: string,
   serviceName: string,
-  subServiceName: string,
-  scheduledAt: string,
-  otp: string
+  vendorName: string,
+  scheduledDate: string,
+  scheduledTime?: string,
+  otp?: string,
+  bookingId?: string
 ) {
   try {
     const userDoc = await getDoc(doc(db, "users", customerId));
     if (userDoc.exists()) {
       const data = userDoc.data();
       if (data.pushToken) {
+        let cleanDate = (scheduledDate || "").trim();
+        let cleanTime = (scheduledTime || "").trim();
+        if (cleanDate.includes(" at ")) {
+          const parts = cleanDate.split(" at ");
+          cleanDate = parts[0].trim();
+          if (!cleanTime) cleanTime = parts[1].trim();
+        }
+
+        const timePart = cleanTime ? ` at ${cleanTime}` : "";
+        const baseMessage = `Your ${serviceName} booking has been accepted by ${vendorName || "Service Partner"} for ${cleanDate || "the scheduled date"}${timePart}.`;
+        const otpPart = otp ? ` Your OTP for the service is ${otp}.` : "";
+        const bodyText = `${baseMessage}${otpPart}`;
+
         await fetch("https://exp.host/--/api/v2/push/send", {
           method: "POST",
           headers: {
@@ -578,9 +625,9 @@ export async function notifyCustomerBookingConfirmed(
           body: JSON.stringify({
             to: data.pushToken,
             sound: "default",
-            title: "✅ Booking Confirmed!",
-            body: `${subServiceName} (${serviceName}) on ${scheduledAt}. Your OTP for the vendor is: ${otp}`,
-            data: { screen: "MyBookings" },
+            title: "Booking Confirmed!",
+            body: bodyText,
+            data: { screen: "MyBookings", bookingId },
           }),
         });
         console.log("Booking Confirmed Push sent to customer");

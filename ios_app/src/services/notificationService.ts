@@ -280,6 +280,7 @@ export async function scheduleWorkoutReminder(
 
 // ── Deduplication Tracker ───────────────────────────────────────────────────
 const recentNotificationKeys = new Map<string, number>();
+const deliveredNotificationKeys = new Set<string>();
 
 export function shouldDeliverNotification(key: string, cooldownMs = 25000): boolean {
   const now = Date.now();
@@ -290,6 +291,29 @@ export function shouldDeliverNotification(key: string, cooldownMs = 25000): bool
   }
   recentNotificationKeys.set(key, now);
   return true;
+}
+
+export async function hasDeliveredOnce(key: string): Promise<boolean> {
+  if (deliveredNotificationKeys.has(key)) return true;
+  try {
+    const val = await AsyncStorage.getItem(`@notif_delivered_${key}`);
+    if (val) {
+      deliveredNotificationKeys.add(key);
+      return true;
+    }
+  } catch {
+    // Ignore AsyncStorage read errors
+  }
+  return false;
+}
+
+export async function markAsDelivered(key: string): Promise<void> {
+  deliveredNotificationKeys.add(key);
+  try {
+    await AsyncStorage.setItem(`@notif_delivered_${key}`, "1");
+  } catch {
+    // Ignore AsyncStorage write errors
+  }
 }
 
 export interface InAppNotice {
@@ -483,31 +507,63 @@ export async function scheduleCalorieReminder(): Promise<void> {
 
 export async function sendBookingPlaced(
   serviceName: string,
-  subServiceName: string,
-  dateLabel: string,
+  arg2: string = "default", // bookingId or subServiceName
+  dateLabel?: string,
   timeLabel?: string,
-  bookingId: string = "default"
+  explicitBookingId?: string
 ): Promise<void> {
-  const dedupKey = `booking-placed-${bookingId}-${serviceName}`;
-  if (!shouldDeliverNotification(dedupKey)) return;
+  let resolvedServiceName = serviceName;
+  let bookingId = "default";
 
-  const timing = timeLabel ? ` at ${timeLabel}` : "";
+  if (explicitBookingId) {
+    resolvedServiceName = arg2 || serviceName;
+    bookingId = explicitBookingId;
+  } else if (arg2 && arg2 !== "default") {
+    if (arg2.startsWith("AP4") || arg2.startsWith("booking-") || !arg2.includes(" ")) {
+      bookingId = arg2;
+    } else {
+      resolvedServiceName = arg2;
+      bookingId = dateLabel || "default";
+    }
+  }
+
+  const dedupKey = `booking-placed-${bookingId}`;
+  if (bookingId && bookingId !== "default") {
+    if (await hasDeliveredOnce(dedupKey)) {
+      console.log(`[Notification Deduplication] Dropped duplicate booking placed: ${dedupKey}`);
+      return;
+    }
+  } else if (!shouldDeliverNotification(dedupKey)) {
+    return;
+  }
+
+  const title = "Booking Placed Successfully";
+  const body = `Your booking for ${resolvedServiceName} has been placed successfully. We’ll notify you when a service partner accepts your booking.`;
+
   await addInAppNotice({
     tag: "[Notice]",
-    title: `Booking Placed: ${subServiceName}`,
+    title,
     date: "Just now",
-    body: `${subServiceName} (${serviceName}) on ${dateLabel}${timing}. Waiting for partner confirmation.`,
+    body,
   });
 
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: "📋 Booking Placed!",
-      body: `${subServiceName} (${serviceName}) on ${dateLabel}${timing}. Your booking has been placed. Waiting for partner confirmation.`,
-      sound: true,
-      data: { screen: "MyBookings", bookingId },
-    },
-    trigger: { ...intervalTrigger(1), channelId: "services" },
-  });
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        sound: true,
+        data: { screen: "MyBookings", bookingId },
+      },
+      trigger: { ...intervalTrigger(1), channelId: "services" },
+    });
+  } catch (err) {
+    console.warn("[sendBookingPlaced] Error scheduling notification:", err);
+  }
+
+  if (bookingId && bookingId !== "default") {
+    await markAsDelivered(dedupKey);
+  }
 }
 
 // ── Broadcast high-priority push notification to all available vendors ──────
@@ -564,32 +620,60 @@ export async function notifyVendorsBookingPlaced(
 
 export async function sendBookingConfirmation(
   serviceName: string,
-  subServiceName: string,
-  dateLabel: string,
-  timeLabel?: string,
+  vendorName: string,
+  scheduledDate: string,
+  scheduledTime?: string,
   otp: string = "",
   bookingId: string = "default"
 ): Promise<void> {
-  const dedupKey = `booking-confirm-${bookingId}-${serviceName}-${otp}`;
-  if (!shouldDeliverNotification(dedupKey)) return;
+  const dedupKey = `booking-confirm-${bookingId}`;
+  if (bookingId && bookingId !== "default") {
+    if (await hasDeliveredOnce(dedupKey)) {
+      console.log(`[Notification Deduplication] Dropped duplicate booking confirmation: ${dedupKey}`);
+      return;
+    }
+  } else if (!shouldDeliverNotification(dedupKey)) {
+    return;
+  }
 
-  const timing = timeLabel ? ` at ${timeLabel}` : "";
+  let cleanDate = (scheduledDate || "").trim();
+  let cleanTime = (scheduledTime || "").trim();
+  if (cleanDate.includes(" at ")) {
+    const parts = cleanDate.split(" at ");
+    cleanDate = parts[0].trim();
+    if (!cleanTime) cleanTime = parts[1].trim();
+  }
+
+  const timePart = cleanTime ? ` at ${cleanTime}` : "";
+  const title = "Booking Confirmed!";
+  const baseMessage = `Your ${serviceName} booking has been accepted by ${vendorName || "Service Partner"} for ${cleanDate || "the scheduled date"}${timePart}.`;
+  const otpPart = otp ? ` Your OTP for the service is ${otp}.` : "";
+  const body = `${baseMessage}${otpPart}`;
+
   await addInAppNotice({
     tag: "[Notice]",
-    title: `Booking Confirmed: ${subServiceName}`,
+    title,
     date: "Just now",
-    body: `${subServiceName} (${serviceName}) on ${dateLabel}${timing}. OTP: ${otp}`,
+    body,
   });
 
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: "✅ Booking Confirmed!",
-      body: `${subServiceName} (${serviceName}) on ${dateLabel}${timing}. Your OTP for the vendor is: ${otp}`,
-      sound: true,
-      data: { screen: "MyBookings" },
-    },
-    trigger: { ...intervalTrigger(1), channelId: "services" },
-  });
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        sound: true,
+        data: { screen: "MyBookings", bookingId },
+      },
+      trigger: { ...intervalTrigger(1), channelId: "services" },
+    });
+  } catch (err) {
+    console.warn("[sendBookingConfirmation] Error scheduling notification:", err);
+  }
+
+  if (bookingId && bookingId !== "default") {
+    await markAsDelivered(dedupKey);
+  }
 }
 
 export async function scheduleBookingReminder(

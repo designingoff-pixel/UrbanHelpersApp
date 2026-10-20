@@ -701,7 +701,7 @@ export default function JobDetailsScreen({ route, navigation }: any) {
         )}
 
         {/* Voice Recording Proof (only for active/completed jobs, raw path hidden) */}
-        {!isAssigned && job.audioUrl ? (
+        {!isAssigned && job.audioUrl && !job.audioUrl.startsWith('file://') ? (
           <View style={s.card}>
             <Text style={s.cardHeading}>🎙 VOICE RECORDING</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDF4', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#BBF7D0' }}>

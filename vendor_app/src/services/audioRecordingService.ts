@@ -14,7 +14,7 @@ import { Audio } from 'expo-av';
 import { AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage';
 import { storage } from './firebase';
 import { updateBookingAudio } from './firestoreService';
 import { store } from '../store/AppStore';
@@ -254,49 +254,83 @@ class AudioRecordingService {
       this.notify();
 
       if (!localUri) {
+        console.warn('[AudioRecordingService] No local audio URI found after stopping recording.');
         return null;
       }
 
-      // 1. Attempt to upload audio to Firebase Storage
-      let finalAudioUrl: string | null = null;
-      try {
-        const storagePath = `audio_proofs/${jobId}_${Date.now()}.m4a`;
-        const audioRef = ref(storage, storagePath);
-        const response = await fetch(localUri);
-        const blob = await response.blob();
-        await uploadBytes(audioRef, blob, { contentType: 'audio/mp4' });
-        finalAudioUrl = await getDownloadURL(audioRef);
-      } catch (uploadErr) {
-        console.warn('[AudioRecordingService] Firebase Storage upload error:', uploadErr);
+      // Verify recorded file exists on device
+      const fileInfo = await FileSystem.getInfoAsync(localUri);
+      if (!fileInfo.exists) {
+        console.warn('[AudioRecordingService] Local recording file not found:', localUri);
+        return null;
       }
 
-      // 2. Guaranteed Fallback: Encode as high-fidelity Base64 Data URI
-      // This guarantees in-browser playback without needing external storage buckets
-      if (!finalAudioUrl || finalAudioUrl.startsWith('file://')) {
+      // Read file as Base64 for reliable React Native transfer
+      let base64Str: string | null = null;
+      try {
+        base64Str = await FileSystem.readAsStringAsync(localUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+      } catch (readErr) {
+        console.warn('[AudioRecordingService] FileSystem base64 read error:', readErr);
+      }
+
+      let finalAudioUrl: string | null = null;
+      let storagePath: string | null = null;
+      const recordedTimestamp = Date.now();
+
+      // 1. Upload audio directly to Firebase Storage via uploadString (direct Base64 transfer)
+      if (storage && base64Str) {
+        storagePath = `audio_proofs/${jobId}_${recordedTimestamp}.m4a`;
+        const audioRef = ref(storage, storagePath);
         try {
-          const base64Str = await FileSystem.readAsStringAsync(localUri, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          if (base64Str) {
-            finalAudioUrl = `data:audio/mp4;base64,${base64Str}`;
+          await uploadString(audioRef, base64Str, 'base64', { contentType: 'audio/mp4' });
+          finalAudioUrl = await getDownloadURL(audioRef);
+          console.log('[AudioRecordingService] Firebase Storage upload successful:', finalAudioUrl);
+        } catch (uploadStringErr) {
+          console.warn('[AudioRecordingService] uploadString error, attempting uploadBytes fallback:', uploadStringErr);
+          try {
+            const response = await fetch(localUri);
+            const blob = await response.blob();
+            await uploadBytes(audioRef, blob, { contentType: 'audio/mp4' });
+            finalAudioUrl = await getDownloadURL(audioRef);
+            console.log('[AudioRecordingService] uploadBytes fallback successful:', finalAudioUrl);
+          } catch (uploadBytesErr) {
+            console.warn('[AudioRecordingService] uploadBytes fallback error:', uploadBytesErr);
           }
-        } catch (fsErr) {
-          console.warn('[AudioRecordingService] FileSystem base64 encoding error:', fsErr);
-          finalAudioUrl = localUri;
         }
       }
 
-      // 3. Save to Firestore
-      if (finalAudioUrl) {
-        await updateBookingAudio(jobId, finalAudioUrl).catch((err) =>
-          console.warn('[AudioRecordingService] Firestore updateBookingAudio error:', err)
-        );
+      // 2. Persist compact cloud reference and metadata to Firestore (NEVER full Base64 binary payload)
+      if (finalAudioUrl && !finalAudioUrl.startsWith('file://') && !finalAudioUrl.startsWith('data:')) {
+        const audioMetadata = {
+          storagePath: storagePath || '',
+          fileName: `${jobId}_${recordedTimestamp}.m4a`,
+          contentType: 'audio/mp4',
+          sizeBytes: fileInfo.size || (base64Str ? Math.round(base64Str.length * 0.75) : 0),
+          recordedAt: new Date(recordedTimestamp).toISOString(),
+          uploadStatus: 'completed',
+          bookingId: jobId,
+          evidenceType: 'voice_proof',
+        };
+
+        await updateBookingAudio(jobId, finalAudioUrl, {
+          storagePath: storagePath || undefined,
+          audioMetadata,
+        });
+
+        const job = store.getJob(jobId);
+        if (job) {
+          job.audioUrl = finalAudioUrl;
+        }
+        return finalAudioUrl;
       }
 
-      return finalAudioUrl;
+      console.warn('[AudioRecordingService] Audio could not be uploaded to Firebase Storage.');
+      return null;
     } catch (err) {
       console.warn('[AudioRecordingService] stopAndSaveRecording error:', err);
-      return localUri;
+      return null;
     }
   }
 

@@ -22,7 +22,7 @@ import { SERVICE_CATEGORIES } from "./servicesData";
 import { getSubServiceImageSource } from "@/assets/serviceImages";
 import { useAuth } from "@/context/AuthContext";
 import { createBooking } from "@/services/bookingService";
-import { notifyVendorsBookingPlaced } from "@/services/notificationService";
+import { notifyVendorsBookingPlaced, sendBookingPlaced } from "@/services/notificationService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/services/firebase";
@@ -543,6 +543,25 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         fullAddress,
         bookingId
       ).catch((err) => console.warn("Failed to blast vendors push:", err));
+
+      const scheduledDateFormatted = selectedDate.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+      const scheduledTimeFormatted = selectedTime.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+      });
+
+      // Immediately trigger Stage 1 notification: Booking Placed Successfully
+      await sendBookingPlaced(
+        sub.name || category.name,
+        bookingId,
+        scheduledDateFormatted,
+        scheduledTimeFormatted
+      );
 
       navigation.navigate("BookingConfirmed", {
         bookingId,

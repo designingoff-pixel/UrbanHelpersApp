@@ -124,101 +124,111 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 function GlobalBookingListener() {
   const { user } = useAuth();
   const navigation = useNavigation<any>();
-  const activeBookingId = useRef<string | null>(null);
-  const prevStatus = useRef<string | null>(null);
-  const isInitialMount = useRef<boolean>(true);
+  const prevBookingStatuses = useRef<Map<string, string>>(new Map());
+  const isInitialLoad = useRef<boolean>(true);
 
   useEffect(() => {
     if (!user) return;
     const q = query(
       collection(db, "bookings"),
       where("customerId", "==", user.uid),
-      where("status", "in", ["requested", "assigned", "accepted", "en_route", "arrived", "in_progress", "service_ended", "completed", "cancelled"])
+      where("status", "in", [
+        "requested",
+        "assigned",
+        "accepted",
+        "en_route",
+        "arrived",
+        "in_progress",
+        "service_ended",
+        "completed",
+        "cancelled",
+      ])
     );
+
     const unsub = onSnapshot(q, (snap) => {
-      if (snap.empty) {
-        prevStatus.current = null;
-        activeBookingId.current = null;
-        isInitialMount.current = false;
-        return;
-      }
-
-      // Prioritize actively ongoing or awaiting-review bookings first
-      const activeDoc = snap.docs.find((d) =>
-        ["service_ended", "in_progress", "arrived", "en_route", "accepted", "assigned", "requested", "cancelled"].includes(d.data().status)
-      ) || snap.docs[0];
-
-      const data = activeDoc.data();
-      const newStatus = data.status;
-      const currentId = activeDoc.id;
-
-      // On initial load, record initial state without firing transition notifications
-      if (isInitialMount.current) {
-        isInitialMount.current = false;
-        activeBookingId.current = currentId;
-        prevStatus.current = newStatus;
-        return;
-      }
-
-      // When booking is cancelled by admin or vendor:
-      if (
-        activeBookingId.current === currentId &&
-        prevStatus.current &&
-        prevStatus.current !== "cancelled" &&
-        newStatus === "cancelled"
-      ) {
-        Alert.alert(
-          "Booking Cancelled",
-          data.cancellationReason || "This booking was cancelled by the administrator. Any payment will be refunded."
-        );
-      }
-
-      // When vendor accepts the booking:
-      if (
-        (newStatus === "accepted" || newStatus === "assigned") &&
-        (prevStatus.current === "requested" || (activeBookingId.current === currentId && prevStatus.current !== "accepted" && prevStatus.current !== "assigned"))
-      ) {
-        sendBookingConfirmation(
-          data.serviceCategory || "Service",
-          data.subServiceName || "Service",
-          data.scheduledAt || data.bookingDate || "Scheduled Date",
-          data.bookingTime,
-          String(data.otp || ""),
-          currentId
-        ).catch(console.log);
-      }
-
-      // If transition to arrived, fire notification!
-      if (
-        activeBookingId.current === currentId &&
-        prevStatus.current &&
-        prevStatus.current !== "arrived" &&
-        newStatus === "arrived"
-      ) {
-        if (data.otp) {
-          sendVendorArrivedOTPNotification(String(data.otp));
-        }
-      }
-
-      // When vendor finishes job (service_ended) or completes:
-      if (
-        activeBookingId.current === currentId &&
-        (prevStatus.current === "in_progress" || prevStatus.current === "arrived") &&
-        (newStatus === "service_ended" || newStatus === "completed")
-      ) {
-        sendServiceCompletedNotification(data.serviceCategory ?? "Service").catch(console.log);
-        navigation.navigate("RatingFeedback", {
-          bookingId: currentId,
-          categoryId: data.serviceCategory,
-          subServiceId: data.subServiceName,
-          vendorName: data.vendorName,
-          serviceCategory: data.serviceCategory,
+      // On the initial query snapshot, populate all current booking statuses without triggering transition alerts
+      if (isInitialLoad.current) {
+        snap.docs.forEach((d) => {
+          prevBookingStatuses.current.set(d.id, d.data().status);
         });
+        isInitialLoad.current = false;
+        return;
       }
 
-      activeBookingId.current = currentId;
-      prevStatus.current = newStatus;
+      // Process per-document changes accurately for every booking
+      snap.docChanges().forEach((change) => {
+        const docId = change.doc.id;
+        const data = change.doc.data();
+        const prevStatus = prevBookingStatuses.current.get(docId);
+        const newStatus = data.status;
+
+        if (change.type === "added") {
+          // Newly placed booking loaded into query
+          prevBookingStatuses.current.set(docId, newStatus);
+          return;
+        }
+
+        if (change.type === "modified") {
+          prevBookingStatuses.current.set(docId, newStatus);
+
+          // 1. Vendor accepts the booking: transition from requested/pending to accepted/assigned
+          const wasUnaccepted =
+            prevStatus === "requested" ||
+            (prevStatus !== undefined && prevStatus !== "accepted" && prevStatus !== "assigned");
+          const isNowAccepted =
+            (newStatus === "accepted" || newStatus === "assigned") && Boolean(data.vendorId);
+
+          if (wasUnaccepted && isNowAccepted) {
+            const serviceName = data.subServiceName || data.serviceCategory || "Service";
+            const vendorName = data.vendorName || "Service Partner";
+            const scheduledDate = data.bookingDate || data.scheduledAt || "Scheduled Date";
+            const scheduledTime = data.bookingTime || "";
+            const otp = String(data.otp || "");
+
+            sendBookingConfirmation(
+              serviceName,
+              vendorName,
+              scheduledDate,
+              scheduledTime,
+              otp,
+              docId
+            ).catch(console.warn);
+          }
+
+          // 2. Transition to arrived: vendor arrived notification with OTP
+          if (prevStatus && prevStatus !== "arrived" && newStatus === "arrived") {
+            if (data.otp) {
+              sendVendorArrivedOTPNotification(String(data.otp), docId);
+            }
+          }
+
+          // 3. Service completed / ended: prompt for rating & feedback
+          if (
+            prevStatus &&
+            (prevStatus === "in_progress" || prevStatus === "arrived" || prevStatus === "accepted") &&
+            (newStatus === "service_ended" || newStatus === "completed")
+          ) {
+            sendServiceCompletedNotification(data.serviceCategory ?? "Service", docId).catch(console.warn);
+            navigation.navigate("RatingFeedback", {
+              bookingId: docId,
+              categoryId: data.serviceCategory,
+              subServiceId: data.subServiceName,
+              vendorName: data.vendorName,
+              serviceCategory: data.serviceCategory,
+            });
+          }
+
+          // 4. Booking cancelled
+          if (prevStatus && prevStatus !== "cancelled" && newStatus === "cancelled") {
+            Alert.alert(
+              "Booking Cancelled",
+              data.cancellationReason || "This booking was cancelled. Any payment made will be refunded."
+            );
+          }
+        }
+      });
     });
+
     return () => unsub();
   }, [user, navigation]);
 

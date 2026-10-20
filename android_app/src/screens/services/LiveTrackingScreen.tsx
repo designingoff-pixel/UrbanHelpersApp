@@ -49,6 +49,8 @@ interface LiveBooking {
   otp?: string;
   vendorPhone?: string;
   rated?: boolean;
+  cancellationReason?: string;
+  cancelledBy?: string;
 }
 
 interface VendorCoords {

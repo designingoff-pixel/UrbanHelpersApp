@@ -36,8 +36,12 @@ import {
   getDocs,
 } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { notifyVendorsBookingPlaced } from "@/services/notificationService";
-import { sendRealSMSViaFast2SMS } from "@/services/smsService";
+import { notifyVendorsBookingPlaced, sendBookingPlaced } from "@/services/notificationService";
+import {
+  normalizeAndValidatePhone,
+  sendBookingVerificationOTP,
+  NormalizedPhone,
+} from "@/services/smsService";
 import { reverseGeocodeLocation, searchAddressSuggestions, GeocodedLocation } from "@/services/geocodingService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceDetail">;
@@ -286,11 +290,31 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
   );
   const [isEditingPhone, setIsEditingPhone] = useState(false);
 
-  const [verifiedPhone, setVerifiedPhone] = useState(activeUser?.phoneNumber || "");
+  const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
+  const [targetPhoneNorm, setTargetPhoneNorm] = useState<NormalizedPhone | null>(null);
+  const [resendCooldown, setResendCooldown] = useState<number>(0);
+  const [otpExpiresAt, setOtpExpiresAt] = useState<number>(0);
+  const [isTestModeOtp, setIsTestModeOtp] = useState<boolean>(false);
+  const isSubmittingBooking = useRef<boolean>(false);
   const [otpModalVisible, setOtpModalVisible] = useState(false);
   const [generatedOtp, setGeneratedOtp] = useState("");
   const [enteredOtp, setEnteredOtp] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
+
+  // Active countdown timer for OTP resend cooldown
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   const [serviceAddress, setServiceAddress] = useState(
     "Fetching current location..."
@@ -431,7 +455,6 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
       // Apply results
       if (foundPhone) {
         setContactNumber(foundPhone);
-        setVerifiedPhone(foundPhone);
       }
       if (foundAddress) {
         setServiceAddress(foundAddress);
@@ -488,7 +511,10 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
   const handleSaveContactNumber = async (text: string) => {
     const trimmed = text.trim();
     setContactNumber(trimmed);
-    setVerifiedPhone(trimmed);
+    // Invalidate previous verification if edited
+    if (verifiedPhone && verifiedPhone !== trimmed) {
+      setVerifiedPhone(null);
+    }
     setIsEditingPhone(false);
     if (!trimmed) return;
     try {
@@ -778,47 +804,128 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
     }
   };
 
-  const handleConfirmBooking = async () => {
-    if (!contactNumber.trim()) {
-      Alert.alert("Phone Required", "Please enter your contact number for booking confirmation.");
-      return;
-    }
-    if (!serviceAddress.trim()) {
-      Alert.alert("Address Required", "Please select or type the service address.");
+  const requestAndSendOTP = async (phoneNorm: NormalizedPhone, isResend = false) => {
+    if (otpLoading) return;
+    if (isResend && resendCooldown > 0) {
+      Alert.alert("Please Wait", `You can request a new OTP in ${resendCooldown} seconds.`);
       return;
     }
 
-    if (contactNumber.trim() !== verifiedPhone) {
-      setOtpLoading(true);
-      const newOtp = Math.floor(1000 + Math.random() * 9000).toString();
-      setGeneratedOtp(newOtp);
-      try {
-        await sendRealSMSViaFast2SMS(contactNumber.trim(), newOtp, "Phone Verification");
-        setOtpModalVisible(true);
-      } catch {
-        Alert.alert("SMS Error", "Failed to send OTP. Please check your number.");
-      } finally {
-        setOtpLoading(false);
+    setOtpLoading(true);
+    // Generate secure 4-digit numeric OTP (1000 - 9999)
+    const newOtp = Math.floor(1000 + Math.random() * 9000).toString();
+
+    try {
+      const res = await sendBookingVerificationOTP(
+        phoneNorm.clean10,
+        newOtp,
+        selectedSub.name || category.name
+      );
+
+      if (!res.success) {
+        Alert.alert(
+          "SMS Delivery Failed",
+          res.message || "Failed to deliver OTP SMS. Please check your phone number and SMS quota."
+        );
+        return;
       }
+
+      setGeneratedOtp(newOtp);
+      setEnteredOtp("");
+      setTargetPhoneNorm(phoneNorm);
+      setOtpExpiresAt(Date.now() + 10 * 60 * 1000); // 10 minute expiry
+      setResendCooldown(30); // 30-second cooldown
+      setIsTestModeOtp(Boolean(res.isTestMode));
+      setOtpModalVisible(true);
+    } catch (err: any) {
+      Alert.alert("SMS Error", err?.message || "An unexpected error occurred while requesting OTP.");
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    if (!targetPhoneNorm) {
+      const norm = normalizeAndValidatePhone(contactNumber);
+      if (!norm.isValid) {
+        Alert.alert("Invalid Phone", norm.error || "Please enter a valid mobile number.");
+        return;
+      }
+      await requestAndSendOTP(norm, true);
+      return;
+    }
+    await requestAndSendOTP(targetPhoneNorm, true);
+  };
+
+  const handleConfirmBooking = async () => {
+    // 1. Read latest Contact Number entered
+    const phoneNorm = normalizeAndValidatePhone(contactNumber);
+    if (!phoneNorm.isValid) {
+      Alert.alert("Phone Required", phoneNorm.error || "Please enter a valid 10-digit mobile number.");
       return;
     }
 
-    await executeBooking();
+    // 2. Validate service address and location
+    const trimmedAddress = serviceAddress.trim();
+    if (!trimmedAddress || trimmedAddress === "Fetching current location..." || trimmedAddress === "Location unavailable") {
+      Alert.alert("Address Required", "Please select or confirm your service location on the map.");
+      return;
+    }
+
+    // 3. Check if phone is verified for this exact number
+    if (verifiedPhone !== phoneNorm.clean10) {
+      await requestAndSendOTP(phoneNorm);
+      return;
+    }
+
+    // Already verified for this exact number
+    await executeBooking(phoneNorm);
   };
 
   const handleVerifyOtpSubmit = () => {
-    if (enteredOtp.trim() === generatedOtp) {
+    if (!targetPhoneNorm) {
+      Alert.alert("Verification Error", "Target phone number is missing. Please try again.");
       setOtpModalVisible(false);
-      setVerifiedPhone(contactNumber.trim());
-      void executeBooking();
-    } else {
-      Alert.alert("Invalid OTP", "The code you entered is incorrect.");
+      return;
     }
+
+    const trimmedInput = enteredOtp.trim();
+    if (trimmedInput.length !== 4) {
+      Alert.alert("Incomplete OTP", "Please enter the complete 4-digit OTP sent to your phone.");
+      return;
+    }
+
+    if (Date.now() > otpExpiresAt) {
+      Alert.alert("OTP Expired", "The OTP code has expired. Please tap 'Resend OTP' to request a new code.");
+      return;
+    }
+
+    if (trimmedInput !== generatedOtp) {
+      Alert.alert("Invalid OTP", "The code you entered is incorrect. Please check and try again.");
+      return;
+    }
+
+    // OTP Verified successfully!
+    const verifiedClean10 = targetPhoneNorm.clean10;
+    setVerifiedPhone(verifiedClean10);
+    setOtpModalVisible(false);
+    setEnteredOtp("");
+
+    void executeBooking(targetPhoneNorm);
   };
 
-  const executeBooking = async () => {
+  const executeBooking = async (phoneNorm: NormalizedPhone) => {
+    if (isSubmittingBooking.current) return;
+    isSubmittingBooking.current = true;
     setLoading(true);
+
     try {
+      // Final security guard: ensure verified phone matches booking phone
+      if (verifiedPhone !== phoneNorm.clean10) {
+        Alert.alert("Verification Required", "Please verify your mobile number via OTP before booking.");
+        return;
+      }
+
       const bookingId = "AP4" + Math.random().toString(36).substring(2, 7).toUpperCase();
       const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
       const uid = activeUser?.uid || `guest_${Date.now()}`;
@@ -830,7 +937,7 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
         bookingId,
         customerId: uid,
         customerName: custName,
-        customerPhone: contactNumber.trim(),
+        customerPhone: phoneNorm.e164,
         customerEmail: activeUser?.email || "",
         address: serviceAddress.trim(),
         customerLat: addressCoords.latitude,
@@ -858,7 +965,7 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
       // Write booking to Firestore
       try {
         await setDoc(doc(db, "bookings", bookingId), bookingPayload);
-        // Blast loud push alert to all registered vendors (alert even if outside app)
+        // Blast loud push alert to all registered vendors
         notifyVendorsBookingPlaced(
           category.name,
           selectedSub.name,
@@ -866,6 +973,14 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
           serviceAddress.trim(),
           bookingId
         ).catch((err) => console.warn("Failed to blast vendors push:", err));
+
+        // Immediately trigger Stage 1 notification: Booking Placed Successfully
+        await sendBookingPlaced(
+          selectedSub.name || category.name,
+          bookingId,
+          bookingDate,
+          bookingTime
+        );
       } catch (err) {
         console.warn("Firestore booking write warning:", err);
       }
@@ -882,17 +997,15 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
       }
 
       // Save newly verified phone to profile
-      if (contactNumber.trim() !== verifiedPhone) {
-        if (uid && !uid.includes("guest_")) {
-          try {
-            await setDoc(doc(db, "users", uid), { phone: contactNumber.trim(), mobile: contactNumber.trim() }, { merge: true });
-            const prev = await AsyncStorage.getItem(`@customer_profile_${uid}`);
-            const p = prev ? JSON.parse(prev) : {};
-            p.phone = contactNumber.trim();
-            await AsyncStorage.setItem(`@customer_profile_${uid}`, JSON.stringify(p));
-          } catch {
-            // Ignore customer profile background save errors
-          }
+      if (uid && !uid.includes("guest_")) {
+        try {
+          await setDoc(doc(db, "users", uid), { phone: phoneNorm.e164, mobile: phoneNorm.e164 }, { merge: true });
+          const prev = await AsyncStorage.getItem(`@customer_profile_${uid}`);
+          const p = prev ? JSON.parse(prev) : {};
+          p.phone = phoneNorm.e164;
+          await AsyncStorage.setItem(`@customer_profile_${uid}`, JSON.stringify(p));
+        } catch {
+          // Ignore customer profile background save errors
         }
       }
 
@@ -908,6 +1021,7 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
     } catch (e: any) {
       Alert.alert("Booking Error", e.message || "Failed to confirm booking. Please try again.");
     } finally {
+      isSubmittingBooking.current = false;
       setLoading(false);
     }
   };
@@ -1119,11 +1233,16 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
             {isEditingPhone ? (
               <TextInput
                 value={contactNumber}
-                onChangeText={setContactNumber}
+                onChangeText={(text) => {
+                  setContactNumber(text);
+                  if (verifiedPhone !== null) {
+                    setVerifiedPhone(null);
+                  }
+                }}
                 onBlur={() => handleSaveContactNumber(contactNumber)}
                 onSubmitEditing={() => handleSaveContactNumber(contactNumber)}
                 keyboardType="phone-pad"
-                placeholder="Enter mobile"
+                placeholder="Enter 10-digit mobile"
                 placeholderTextColor={isDark ? themeColors.textMuted : "#94A3B8"}
                 style={[styles.phoneInputActive, { backgroundColor: isDark ? themeColors.surface : "#FFFFFF", color: isDark ? themeColors.text : "#0F172A", borderColor: themeColors.primary }]}
                 autoFocus
@@ -1143,7 +1262,13 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
                 >
                   {contactNumber || "Tap to enter phone"}
                 </Text>
-                <Ionicons name="pencil" size={14} color={isDark ? themeColors.textMuted : "#64748B"} style={{ marginLeft: "auto" }} />
+                {verifiedPhone && contactNumber && normalizeAndValidatePhone(contactNumber).clean10 === verifiedPhone ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", marginLeft: "auto", marginRight: 6 }}>
+                    <Ionicons name="checkmark-circle" size={15} color="#10B981" />
+                    <Text style={{ fontSize: 11, color: "#10B981", fontWeight: "600", marginLeft: 3 }}>Verified</Text>
+                  </View>
+                ) : null}
+                <Ionicons name="pencil" size={14} color={isDark ? themeColors.textMuted : "#64748B"} style={{ marginLeft: verifiedPhone ? 0 : "auto" }} />
               </TouchableOpacity>
             )}
           </View>
@@ -1828,8 +1953,17 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
           <View style={[styles.otpModalContent, { backgroundColor: isDark ? themeColors.card : "#FFFFFF", borderColor: themeColors.cardBorder }]}>
             <Text style={[styles.otpModalTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>Verify Phone Number</Text>
             <Text style={[styles.otpModalDesc, { color: isDark ? themeColors.textSecondary : "#64748B" }]}>
-              Enter the 4-digit OTP sent to {contactNumber}
+              Enter the 4-digit OTP sent to {targetPhoneNorm?.displayMasked || contactNumber}
             </Text>
+
+            {isTestModeOtp ? (
+              <View style={{ backgroundColor: "#FEF3C7", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, marginVertical: 8, borderWidth: 1, borderColor: "#FCD34D" }}>
+                <Text style={{ fontSize: 12, color: "#92400E", textAlign: "center", fontWeight: "600" }}>
+                  🧪 Test Environment Active • Simulated OTP: {generatedOtp}
+                </Text>
+              </View>
+            ) : null}
+
             <TextInput
               style={[
                 styles.otpInput,
@@ -1848,10 +1982,35 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
               textAlign="center"
               autoFocus
             />
+
+            {/* Resend OTP button with cooldown */}
+            <TouchableOpacity
+              disabled={resendCooldown > 0 || otpLoading}
+              onPress={handleResendOTP}
+              style={{ marginVertical: 10, alignItems: "center" }}
+            >
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: "600",
+                  color: resendCooldown > 0 || otpLoading ? (isDark ? "#64748B" : "#94A3B8") : themeColors.primary,
+                }}
+              >
+                {otpLoading
+                  ? "Sending OTP..."
+                  : resendCooldown > 0
+                  ? `Resend OTP in ${resendCooldown}s`
+                  : "Didn't receive SMS? Resend OTP"}
+              </Text>
+            </TouchableOpacity>
+
             <View style={styles.otpModalButtons}>
               <TouchableOpacity
                 style={[styles.otpModalCancel, { backgroundColor: isDark ? themeColors.surface : "#F1F5F9" }]}
-                onPress={() => setOtpModalVisible(false)}
+                onPress={() => {
+                  setOtpModalVisible(false);
+                  setEnteredOtp("");
+                }}
               >
                 <Text style={[styles.otpModalCancelText, { color: isDark ? themeColors.textSecondary : "#475569" }]}>Cancel</Text>
               </TouchableOpacity>

@@ -11,7 +11,7 @@ import { Colors, Typography, Spacing, Radius } from '../theme';
 import { updateBookingStatus, updateBookingAudio, updateBookingPhotos, updateBookingChecklist } from '../services/firestoreService';
 import { db, storage } from '../services/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Audio } from 'expo-av';
@@ -242,42 +242,47 @@ export default function ServiceScreen({ route, navigation }: any) {
     setUploadingPhoto(type);
     try {
       let finalPhotoUrl = '';
+      const photoTimestamp = Date.now();
+      const storagePath = `proofs/${job.bookingId || job.jobId}_${type}_${photoTimestamp}.jpg`;
 
-      // 1. Upload photo to Firebase Storage
-      try {
-        const storagePath = `proofs/${job.bookingId || job.jobId}_${type}_${Date.now()}.jpg`;
-        const storageRef = ref(storage, storagePath);
-        const response = await fetch(asset.uri);
-        const blob = await response.blob();
-        await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
-        finalPhotoUrl = await getDownloadURL(storageRef);
-      } catch (storageErr) {
-        console.warn('[savePhotoData] Storage upload failed, using safe fallback:', storageErr);
+      // 1. Upload photo directly to Firebase Storage
+      if (storage) {
+        try {
+          const storageRef = ref(storage, storagePath);
+          if (asset.base64) {
+            await uploadString(storageRef, asset.base64, 'base64', { contentType: 'image/jpeg' });
+            finalPhotoUrl = await getDownloadURL(storageRef);
+          } else {
+            const response = await fetch(asset.uri);
+            const blob = await response.blob();
+            await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
+            finalPhotoUrl = await getDownloadURL(storageRef);
+          }
+          console.log(`[savePhotoData] ${type} photo successfully uploaded to Firebase Storage:`, finalPhotoUrl);
+        } catch (storageErr) {
+          console.warn('[savePhotoData] Storage upload failed:', storageErr);
+        }
       }
 
-      // 2. Safe fallback if storage upload failed
-      if (!finalPhotoUrl) {
-        if (asset.base64 && asset.base64.length < 500000) {
-          finalPhotoUrl = `data:image/jpeg;base64,${asset.base64}`;
-        } else {
-          finalPhotoUrl = asset.uri;
-        }
+      // 2. Strict validation: Never store oversized Base64 data URIs into Firestore document
+      if (!finalPhotoUrl || finalPhotoUrl.startsWith('data:') || finalPhotoUrl.startsWith('file://')) {
+        throw new Error('Photo could not be uploaded to cloud storage. Please check your internet connection and try again.');
       }
 
       if (type === 'before') {
         setBeforePhoto(finalPhotoUrl);
         store.updateJobPhotos(job.jobId, finalPhotoUrl, undefined);
-        await updateBookingPhotos(job.jobId, { beforePhoto: finalPhotoUrl });
+        await updateBookingPhotos(job.jobId, { beforePhoto: finalPhotoUrl, beforePhotoPath: storagePath });
       } else {
         setAfterPhoto(finalPhotoUrl);
         store.updateJobPhotos(job.jobId, undefined, finalPhotoUrl);
-        await updateBookingPhotos(job.jobId, { afterPhoto: finalPhotoUrl });
+        await updateBookingPhotos(job.jobId, { afterPhoto: finalPhotoUrl, afterPhotoPath: storagePath });
       }
 
       Alert.alert('✅ Photo Saved', `${type === 'before' ? 'Before' : 'After'} service proof attached successfully.`);
     } catch (err: any) {
-      console.warn('savePhotoData error:', err);
-      Alert.alert('Upload Error', err.message || 'Could not save photo proof.');
+      console.warn('[savePhotoData] Upload error:', err?.message || err);
+      Alert.alert('Upload Error', err?.message || 'Could not save photo proof. Please retry.');
     } finally {
       setUploadingPhoto(null);
     }
@@ -302,17 +307,18 @@ export default function ServiceScreen({ route, navigation }: any) {
     setSavingAudio(true);
     try {
       const finalUrl = await audioRecordingService.stopAndSaveRecording(job.jobId);
-      if (finalUrl) {
+      if (finalUrl && !finalUrl.startsWith('file://')) {
         setAudioUri(finalUrl);
         job.audioUrl = finalUrl;
         return finalUrl;
       }
+      return null;
     } catch (e: any) {
       console.warn('Stop recording error:', e);
+      return null;
     } finally {
       setSavingAudio(false);
     }
-    return audioUri || job?.audioUrl || null;
   };
 
   const handleTogglePlayback = async () => {
@@ -407,11 +413,70 @@ export default function ServiceScreen({ route, navigation }: any) {
     }
   };
 
+  // ── Helper to ensure any evidence (photo or audio) is hosted in Firebase Storage as a compact URL ──
+  const ensureCloudUrl = async (
+    rawVal: string | null,
+    type: 'before' | 'after' | 'audio',
+    jobId: string
+  ): Promise<{ url: string; storagePath?: string } | null> => {
+    if (!rawVal) return null;
+    // Already a remote cloud download URL
+    if (rawVal.startsWith('http://') || rawVal.startsWith('https://')) {
+      return { url: rawVal };
+    }
+
+    if (!storage) {
+      console.warn('[ensureCloudUrl] Firebase storage instance not available');
+      return null;
+    }
+
+    const isAudio = type === 'audio';
+    const ext = isAudio ? 'm4a' : 'jpg';
+    const contentType = isAudio ? 'audio/mp4' : 'image/jpeg';
+    const storagePath = isAudio
+      ? `audio_proofs/${jobId}_${Date.now()}.${ext}`
+      : `proofs/${jobId}_${type}_${Date.now()}.${ext}`;
+    const storageRef = ref(storage, storagePath);
+
+    // If it's a Base64 Data URI from a legacy or offline state, migrate it to Firebase Storage immediately
+    if (rawVal.startsWith('data:')) {
+      try {
+        const base64Content = rawVal.split(',')[1] || rawVal;
+        await uploadString(storageRef, base64Content, 'base64', { contentType });
+        const downloadUrl = await getDownloadURL(storageRef);
+        console.log(`[ensureCloudUrl] Successfully migrated Base64 ${type} to Firebase Storage:`, downloadUrl);
+        return { url: downloadUrl, storagePath };
+      } catch (err) {
+        console.warn(`[ensureCloudUrl] Failed to migrate Base64 ${type} to Storage:`, err);
+        return null;
+      }
+    }
+
+    // If it's a local file URI (file:///...), read and upload to Firebase Storage
+    if (rawVal.startsWith('file://')) {
+      try {
+        const base64Content = await FileSystem.readAsStringAsync(rawVal, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        await uploadString(storageRef, base64Content, 'base64', { contentType });
+        const downloadUrl = await getDownloadURL(storageRef);
+        console.log(`[ensureCloudUrl] Successfully uploaded local ${type} file to Firebase Storage:`, downloadUrl);
+        return { url: downloadUrl, storagePath };
+      } catch (err) {
+        console.warn(`[ensureCloudUrl] Failed to upload local ${type} file to Storage:`, err);
+        return null;
+      }
+    }
+
+    return null;
+  };
+
   // ── Finish & Complete Service ─────────────────────────────────────────────
   const handleConfirmComplete = async () => {
+    if (isFinishing) return;
+
     const currentBefore = beforePhoto || job.beforePhoto || null;
     const currentAfter = afterPhoto || job.afterPhoto || null;
-    const currentAudio = audioUri || job.audioUrl || null;
     const currentChecklistItems = job.checklist && job.checklist.length > 0
       ? job.checklist
       : getDynamicChecklist(job.serviceType, job.serviceName);
@@ -426,11 +491,6 @@ export default function ServiceScreen({ route, navigation }: any) {
       return;
     }
 
-    if (!currentAudio && !isAudioRecording && !audioRecordingService.isRecordingForJob(job.jobId) && recordingDurationSecs === 0) {
-      Alert.alert('Missing Voice Proof', 'Please record the voice recording proof before finalizing.');
-      return;
-    }
-
     if (job.checklistDone.length < currentChecklistItems.length) {
       Alert.alert(
         'Incomplete Checklist',
@@ -439,45 +499,92 @@ export default function ServiceScreen({ route, navigation }: any) {
       return;
     }
 
+    const hasActiveAudio = isAudioRecording || audioRecordingService.isRecordingForJob(job.jobId);
+    const existingAudio = audioUri || job.audioUrl;
+    if (!hasActiveAudio && (!existingAudio || existingAudio.startsWith('file://')) && recordingDurationSecs === 0) {
+      Alert.alert('Missing Voice Proof', 'Please record the voice recording proof before finalizing.');
+      return;
+    }
+
     setIsFinishing(true);
     try {
-      let finalAudioUrl: string | null = audioUri || job.audioUrl || null;
-      if (isAudioRecording || audioRecordingService.isRecordingForJob(job.jobId)) {
+      let finalAudioUrl: string | null = (existingAudio && !existingAudio.startsWith('file://') && !existingAudio.startsWith('data:'))
+        ? existingAudio
+        : null;
+
+      // If audio is actively recording or not yet uploaded, stop & upload to cloud now
+      if (hasActiveAudio || !finalAudioUrl) {
         try {
           const uploadedUrl = await handleStopAudioRecording();
-          if (uploadedUrl) finalAudioUrl = uploadedUrl;
+          if (uploadedUrl && !uploadedUrl.startsWith('file://') && !uploadedUrl.startsWith('data:')) {
+            finalAudioUrl = uploadedUrl;
+          }
         } catch (audioErr) {
           console.warn('Final audio capture error:', audioErr);
         }
       }
 
-      const currentBefore = beforePhoto || job.beforePhoto || null;
-      const currentAfter = afterPhoto || job.afterPhoto || null;
+      // 1. Ensure all evidence pieces are uploaded to Firebase Storage (migrating any Base64/local files)
+      const beforeUploaded = await ensureCloudUrl(currentBefore, 'before', job.jobId);
+      const afterUploaded = await ensureCloudUrl(currentAfter, 'after', job.jobId);
+      const audioUploaded = await ensureCloudUrl(finalAudioUrl || existingAudio || null, 'audio', job.jobId);
+
+      // Verify that all required evidence is hosted in cloud storage
+      if (!beforeUploaded?.url || !afterUploaded?.url || !audioUploaded?.url) {
+        Alert.alert(
+          'Unable to Finalize Service',
+          'Unable to finalize the service because some evidence could not be saved. Your service has not been marked as completed. Please retry.'
+        );
+        setIsFinishing(false);
+        return;
+      }
+
+      const cleanBefore = beforeUploaded.url;
+      const cleanAfter = afterUploaded.url;
+      const cleanAudio = audioUploaded.url;
+      const audioStoragePath = audioUploaded.storagePath || `audio_proofs/${job.jobId}.m4a`;
+
+      const audioMetadata = {
+        storagePath: audioStoragePath,
+        contentType: 'audio/mp4',
+        uploadStatus: 'completed',
+        recordedAt: new Date().toISOString(),
+        bookingId: job.jobId,
+        evidenceType: 'voice_proof',
+      };
 
       store.completeJob(job.jobId);
-      if (finalAudioUrl) job.audioUrl = finalAudioUrl;
-      if (currentBefore) job.beforePhoto = currentBefore;
-      if (currentAfter) job.afterPhoto = currentAfter;
+      job.audioUrl = cleanAudio;
+      job.beforePhoto = cleanBefore;
+      job.afterPhoto = cleanAfter;
 
-      // Update booking directly in Firestore - marked as service_ended (awaiting customer feedback/sign-off)
+      // 2. Persist compact metadata to Firestore (under 2KB payload, guaranteed << 1MB limit)
       await updateDoc(doc(db, 'bookings', job.jobId), {
         status: 'service_ended',
         serviceEndedAt: serverTimestamp(),
         paymentStatus: 'paid',
-        beforePhoto: currentBefore,
-        afterPhoto: currentAfter,
-        audioUrl: finalAudioUrl,
+        beforePhoto: cleanBefore,
+        afterPhoto: cleanAfter,
+        beforePhotoPath: beforeUploaded.storagePath || null,
+        afterPhotoPath: afterUploaded.storagePath || null,
+        audioUrl: cleanAudio,
+        audioPath: audioStoragePath,
+        audioMetadata,
         checklistDone: job.checklistDone,
         checklist: checklistItems,
       });
 
-      // Also trigger stats update in firestoreService
+      // 3. Also trigger stats update in firestoreService
       await updateBookingStatus(job.jobId, 'service_ended', store.vendorId || undefined, job.vendorEarnings);
 
       setCompleteModalVisible(false);
       navigation.navigate('Complete', { jobId: job.jobId });
     } catch (err: any) {
-      Alert.alert('Error', err.message);
+      console.error('[handleConfirmComplete] Service finalization failed:', err?.message || err);
+      Alert.alert(
+        'Unable to Finalize Service',
+        'Unable to finalize the service because some evidence could not be saved. Your service has not been marked as completed. Please retry.'
+      );
     } finally {
       setIsFinishing(false);
     }
@@ -666,9 +773,15 @@ export default function ServiceScreen({ route, navigation }: any) {
             ) : (
               <View style={styles.audioSavedWrap}>
                 <View style={styles.audioSavedInfo}>
-                  <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                  <Ionicons
+                    name={audioUri ? "checkmark-circle" : "mic-circle"}
+                    size={20}
+                    color={audioUri ? "#10B981" : "#F59E0B"}
+                  />
                   <Text style={styles.audioSavedText}>
-                    Audio proof recorded &amp; securely attached to booking
+                    {audioUri
+                      ? "Audio proof recorded & securely attached to booking"
+                      : "Voice recording standing by • Active during service"}
                   </Text>
                 </View>
                 {audioUri && (
@@ -800,7 +913,7 @@ export default function ServiceScreen({ route, navigation }: any) {
                 />
                 <Text style={styles.proofLabel}>3. Voice Recording Proof</Text>
                 <Text style={[styles.proofBadge, hasAudio ? styles.proofBadgeDone : styles.proofBadgePending]}>
-                  {hasAudio ? "Recorded" : "Missing"}
+                  {audioUri ? "Attached" : isAudioRecording ? "Recording" : recordingDurationSecs > 0 ? "Recorded" : "Missing"}
                 </Text>
               </View>
 

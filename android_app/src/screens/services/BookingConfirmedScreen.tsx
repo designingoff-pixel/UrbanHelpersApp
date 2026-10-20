@@ -82,6 +82,8 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
           weekday: "short", month: "short", day: "numeric", year: "numeric",
         }));
 
+  const isInitialSnapshot = useRef(true);
+
   // Live Firestore subscription for real-time vendor assignment updates
   useEffect(() => {
     if (!bookingId) return;
@@ -91,19 +93,31 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
           const data = docSnap.data();
           setBooking((prev: any) => ({ ...prev, ...data }));
 
-          // Trigger Booking Confirmed notification when vendor accepts
-          const newlyAccepted =
-            (!prevVendorIdRef.current && Boolean(data.vendorId)) ||
-            (prevStatusRef.current !== "accepted" &&
-              prevStatusRef.current !== "assigned" &&
-              (data.status === "accepted" || data.status === "assigned"));
+          if (isInitialSnapshot.current) {
+            isInitialSnapshot.current = false;
+            prevVendorIdRef.current = data.vendorId || null;
+            prevStatusRef.current = data.status || null;
+            return;
+          }
+
+          // Trigger Booking Confirmed notification strictly when vendor accepts
+          const wasPending =
+            prevStatusRef.current === "requested" ||
+            (prevStatusRef.current !== null &&
+              prevStatusRef.current !== "accepted" &&
+              prevStatusRef.current !== "assigned");
+          const isNowAccepted =
+            (data.status === "accepted" || data.status === "assigned") &&
+            Boolean(data.vendorId);
+          const newlyAccepted = wasPending && isNowAccepted;
 
           if (newlyAccepted) {
-            const dateStr = data.scheduledAt || data.bookingDate || bookingDateStr;
+            const dateStr = data.bookingDate || data.scheduledAt || bookingDateStr;
             const otpCode = data.otp || rawOtp;
+            const vendorName = data.vendorName || "Service Partner";
             sendBookingConfirmation(
-              category.name,
-              sub.name,
+              sub.name || category.name,
+              vendorName,
               dateStr,
               data.bookingTime,
               String(otpCode),
@@ -149,7 +163,7 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
       initialBookingData.status === "assigned";
 
     if (!isAlreadyAccepted) {
-      sendBookingPlaced(category.name, sub.name, bookingDateStr, undefined, bookingId);
+      sendBookingPlaced(sub.name || category.name, bookingId, bookingDateStr);
     }
   }, []);
 
