@@ -104,11 +104,169 @@ const ALL_TIME_SLOTS = [
   "09:00 PM", "09:30 PM", "10:00 PM"
 ];
 
-export default function ServiceDetailScreen({ navigation, route }: Props) {
+const EMPTY_CALENDAR_PAD_KEYS = [
+  "cal-pad-0", "cal-pad-1", "cal-pad-2", "cal-pad-3", "cal-pad-4", "cal-pad-5", "cal-pad-6"
+];
+
+interface ResolvedUserContact {
+  phone?: string;
+  address?: string;
+}
+
+const getPhoneFromDedicatedKeys = async (): Promise<string> => {
+  const p1 = await AsyncStorage.getItem("@customer_contact_phone");
+  if (p1?.trim()) return p1.trim();
+  const p2 = await AsyncStorage.getItem("@customer_phone");
+  return p2?.trim() || "";
+};
+
+const parseProfileContact = (raw: string | null): ResolvedUserContact => {
+  if (!raw) return {};
+  try {
+    const p = JSON.parse(raw);
+    const phone = p.phone?.trim() || p.mobile?.trim() || "";
+    const address = p.address?.trim() || p.deliveryAddress?.trim() || "";
+    return { phone, address };
+  } catch {
+    return {};
+  }
+};
+
+const scanAllStorageProfiles = async (): Promise<ResolvedUserContact> => {
+  try {
+    const allKeys = await AsyncStorage.getAllKeys();
+    const profileKeys = allKeys.filter(
+      (k) => k.startsWith("@customer_profile_") || k.includes("profile")
+    );
+    let phone = "";
+    let address = "";
+    for (const k of profileKeys) {
+      const data = await AsyncStorage.getItem(k);
+      const parsed = parseProfileContact(data);
+      phone = phone || parsed.phone || "";
+      address = address || parsed.address || "";
+      if (phone && address) break;
+    }
+    return { phone, address };
+  } catch {
+    return {};
+  }
+};
+
+const findPhoneAndAddressInStorage = async (uid?: string): Promise<ResolvedUserContact> => {
+  let phone = await getPhoneFromDedicatedKeys();
+  let address = "";
+
+  if (uid) {
+    const userProfile = parseProfileContact(await AsyncStorage.getItem(`@customer_profile_${uid}`));
+    phone = phone || userProfile.phone || "";
+    address = address || userProfile.address || "";
+  }
+
+  if (!phone || !address) {
+    const guestProfile = parseProfileContact(await AsyncStorage.getItem("@customer_profile_guest"));
+    phone = phone || guestProfile.phone || "";
+    address = address || guestProfile.address || "";
+  }
+
+  if (!phone || !address) {
+    const scanned = await scanAllStorageProfiles();
+    phone = phone || scanned.phone || "";
+    address = address || scanned.address || "";
+  }
+
+  return { phone, address };
+};
+
+const getContactFromUserDoc = async (uid: string): Promise<ResolvedUserContact> => {
+  try {
+    const snap = await getDoc(doc(db, "users", uid));
+    if (!snap.exists()) return {};
+    const d = snap.data();
+    const phone = d.phone || d.mobile || d.phoneNumber || d.contactNumber || d.contact || d.emergencyPhone;
+    const address = d.address || d.deliveryAddress;
+    return {
+      phone: phone ? String(phone).trim() : "",
+      address: address ? String(address).trim() : "",
+    };
+  } catch (err) {
+    console.warn("[ServiceDetail] Firestore user fetch error:", err);
+    return {};
+  }
+};
+
+const getContactFromUserEmail = async (email: string): Promise<ResolvedUserContact> => {
+  try {
+    const qUsers = query(collection(db, "users"), where("email", "==", email), limit(1));
+    const snap = await getDocs(qUsers);
+    if (snap.empty) return {};
+    const d = snap.docs[0].data();
+    const phone = d.phone || d.mobile || d.phoneNumber || d.contactNumber || d.contact;
+    const address = d.address || d.deliveryAddress;
+    return {
+      phone: phone ? String(phone).trim() : "",
+      address: address ? String(address).trim() : "",
+    };
+  } catch {
+    return {};
+  }
+};
+
+const getPhoneFromPreviousBookings = async (uid?: string, email?: string | null): Promise<string> => {
+  try {
+    const qB = uid
+      ? query(collection(db, "bookings"), where("customerId", "==", uid), limit(3))
+      : query(collection(db, "bookings"), where("customerEmail", "==", email), limit(3));
+    const snap = await getDocs(qB);
+    for (const docSnap of snap.docs) {
+      const phone = docSnap.data().customerPhone;
+      if (phone && String(phone).trim()) {
+        return String(phone).trim();
+      }
+    }
+  } catch {
+    // Ignore past booking lookup fallback errors
+  }
+  return "";
+};
+
+const findPhoneAndAddressInFirestore = async (
+  uid?: string,
+  email?: string | null
+): Promise<ResolvedUserContact> => {
+  let phone = "";
+  let address = "";
+
+  if (uid) {
+    const userDoc = await getContactFromUserDoc(uid);
+    phone = userDoc.phone || "";
+    address = userDoc.address || "";
+  }
+
+  if (!phone && email) {
+    const emailDoc = await getContactFromUserEmail(email);
+    phone = emailDoc.phone || "";
+    address = address || emailDoc.address || "";
+  }
+
+  if (!phone && (uid || email)) {
+    phone = await getPhoneFromPreviousBookings(uid, email);
+  }
+
+  return { phone, address };
+};
+
+export default function ServiceDetailScreen({ navigation, route }: Readonly<Props>) {
   const { categoryId, subServiceId } = route.params;
   const { user } = useAuth();
   const { isDark, colors: themeColors } = useTheme();
   const activeUser = auth.currentUser || user;
+
+  const defaultTextColor = isDark ? themeColors.text : "#0F172A";
+  const defaultSubTextColor = isDark ? themeColors.textSecondary : "#64748B";
+  const phoneErrorColor = isDark ? "#f87171" : "#ef4444";
+  const timeChipSelectedBg = isDark ? "rgba(0,198,170,0.22)" : "#CCFBF1";
+  const timeChipUnselectedBg = isDark ? themeColors.surface : "#F8FAFC";
 
   const category =
     SERVICE_CATEGORIES.find((c) => c.id === categoryId) || SERVICE_CATEGORIES[0];
@@ -157,6 +315,16 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   const isTodaySelected = isSameDay(selectedDateObj, today);
   const isTomorrowSelected = isSameDay(selectedDateObj, tomorrowObj);
   const isAdvanceSelected = !isTodaySelected && !isTomorrowSelected;
+
+  let arrivalScheduleLabel = "Advance Arrival Date";
+  let quickScheduleSub = "Advance Arrival";
+  if (isTodaySelected) {
+    arrivalScheduleLabel = "Arrival Today";
+    quickScheduleSub = "Arrival Today";
+  } else if (isTomorrowSelected) {
+    arrivalScheduleLabel = "Arrival Tomorrow";
+    quickScheduleSub = "Arrival Tomorrow";
+  }
 
   const isPrevMonthDisabled =
     calendarYear === today.getFullYear() && calendarMonth === today.getMonth();
@@ -241,137 +409,23 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   // Comprehensive multi-source automatic fetcher for user phone & address
   const loadUserDetails = async (currentUserUid?: string, currentUserEmail?: string | null) => {
     try {
-      let foundPhone = "";
-      let foundAddress = "";
-
       const currUser = auth.currentUser || user;
       const uid = currentUserUid || currUser?.uid;
-      const email = currentUserEmail !== undefined ? currentUserEmail : currUser?.email;
+      const email = currentUserEmail ?? currUser?.email;
 
-      // 1. Direct Firebase Auth phone number
-      if (currUser?.phoneNumber && currUser.phoneNumber.trim()) {
-        foundPhone = currUser.phoneNumber.trim();
-      }
+      let foundPhone = currUser?.phoneNumber?.trim() || "";
+      let foundAddress = "";
 
-      // 2. Global dedicated phone keys in AsyncStorage
-      if (!foundPhone) {
-        const p1 = await AsyncStorage.getItem("@customer_contact_phone");
-        if (p1 && p1.trim()) foundPhone = p1.trim();
-      }
-      if (!foundPhone) {
-        const p2 = await AsyncStorage.getItem("@customer_phone");
-        if (p2 && p2.trim()) foundPhone = p2.trim();
-      }
-
-      // 3. User-specific profile in AsyncStorage
-      if (uid) {
-        const raw = await AsyncStorage.getItem(`@customer_profile_${uid}`);
-        if (raw) {
-          try {
-            const p = JSON.parse(raw);
-            if (!foundPhone && p.phone && p.phone.trim()) foundPhone = p.phone.trim();
-            if (!foundPhone && p.mobile && p.mobile.trim()) foundPhone = p.mobile.trim();
-            if (p.address && p.address.trim()) foundAddress = foundAddress || p.address.trim();
-            if (p.deliveryAddress && p.deliveryAddress.trim()) foundAddress = foundAddress || p.deliveryAddress.trim();
-          } catch (_) {}
-        }
-      }
-
-      // 4. Guest profile in AsyncStorage
-      const guestRaw = await AsyncStorage.getItem("@customer_profile_guest");
-      if (guestRaw) {
-        try {
-          const p = JSON.parse(guestRaw);
-          if (!foundPhone && p.phone && p.phone.trim()) foundPhone = p.phone.trim();
-          if (!foundPhone && p.mobile && p.mobile.trim()) foundPhone = p.mobile.trim();
-          if (p.address && p.address.trim()) foundAddress = foundAddress || p.address.trim();
-        } catch (_) {}
-      }
-
-      // 5. Scan all profile keys in AsyncStorage for any stored customer details
       if (!foundPhone || !foundAddress) {
-        try {
-          const allKeys = await AsyncStorage.getAllKeys();
-          const profileKeys = allKeys.filter(
-            (k) => k.startsWith("@customer_profile_") || k.includes("profile")
-          );
-          for (const k of profileKeys) {
-            const data = await AsyncStorage.getItem(k);
-            if (data) {
-              try {
-                const p = JSON.parse(data);
-                if (!foundPhone && (p.phone || p.mobile)) {
-                  foundPhone = (p.phone || p.mobile).trim();
-                }
-                if (!foundAddress && (p.address || p.deliveryAddress)) {
-                  foundAddress = (p.address || p.deliveryAddress).trim();
-                }
-              } catch (_) {}
-            }
-            if (foundPhone && foundAddress) break;
-          }
-        } catch (_) {}
+        const local = await findPhoneAndAddressInStorage(uid);
+        foundPhone = foundPhone || local.phone || "";
+        foundAddress = foundAddress || local.address || "";
       }
 
-      // 6. Firestore document for users/{uid}
-      if (uid) {
-        try {
-          const snap = await getDoc(doc(db, "users", uid));
-          if (snap.exists()) {
-            const d = snap.data();
-            const p =
-              d.phone ||
-              d.mobile ||
-              d.phoneNumber ||
-              d.contactNumber ||
-              d.contact ||
-              d.emergencyPhone;
-            if (p && String(p).trim()) foundPhone = String(p).trim();
-            const a = d.address || d.deliveryAddress;
-            if (a && String(a).trim()) foundAddress = String(a).trim();
-          }
-        } catch (err) {
-          console.warn("[ServiceDetail] Firestore user fetch error:", err);
-        }
-      }
-
-      // 7. Firestore query by email if phone not yet found
-      if (!foundPhone && email) {
-        try {
-          const qUsers = query(collection(db, "users"), where("email", "==", email), limit(1));
-          const snap = await getDocs(qUsers);
-          if (!snap.empty) {
-            const d = snap.docs[0].data();
-            const p =
-              d.phone ||
-              d.mobile ||
-              d.phoneNumber ||
-              d.contactNumber ||
-              d.contact;
-            if (p && String(p).trim()) foundPhone = String(p).trim();
-            const a = d.address || d.deliveryAddress;
-            if (a && String(a).trim()) foundAddress = String(a).trim();
-          }
-        } catch (_) {}
-      }
-
-      // 8. Firestore previous customer bookings
-      if (!foundPhone && (uid || email)) {
-        try {
-          const qB = uid
-            ? query(collection(db, "bookings"), where("customerId", "==", uid), limit(3))
-            : query(collection(db, "bookings"), where("customerEmail", "==", email), limit(3));
-          const snap = await getDocs(qB);
-          if (!snap.empty) {
-            for (const docSnap of snap.docs) {
-              const bd = docSnap.data();
-              if (bd.customerPhone && String(bd.customerPhone).trim()) {
-                foundPhone = String(bd.customerPhone).trim();
-                break;
-              }
-            }
-          }
-        } catch (_) {}
+      if (!foundPhone || !foundAddress) {
+        const remote = await findPhoneAndAddressInFirestore(uid, email);
+        foundPhone = foundPhone || remote.phone || "";
+        foundAddress = foundAddress || remote.address || "";
       }
 
       // Apply results
@@ -390,12 +444,12 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 
   // Real-time auth and user details listener
   useEffect(() => {
-    loadUserDetails(activeUser?.uid, activeUser?.email);
+    void loadUserDetails(activeUser?.uid, activeUser?.email);
 
     // Listen to Firebase Auth state
     const authUnsub = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        loadUserDetails(firebaseUser.uid, firebaseUser.email);
+        void loadUserDetails(firebaseUser.uid, firebaseUser.email);
       }
     });
 
@@ -452,7 +506,43 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
           { merge: true }
         );
       }
-    } catch (_) {}
+    } catch {
+      // Ignore background persistence errors
+    }
+  };
+
+  const loadCachedAddressFallback = async () => {
+    const cached = await AsyncStorage.getItem("@customer_last_address");
+    if (cached?.trim()) {
+      setServiceAddress(cached.trim());
+      setDraggedAddress(cached.trim());
+      const cachedCoords = await AsyncStorage.getItem("@customer_last_coords");
+      if (cachedCoords) {
+        try {
+          const c = JSON.parse(cachedCoords);
+          if (c.latitude && c.longitude) setAddressCoords(c);
+        } catch {
+          // Ignore corrupted cached coordinates
+        }
+      }
+    } else if (serviceAddress === "Fetching current location...") {
+      setServiceAddress("Select location on map");
+      setDraggedAddress("Select location on map");
+    }
+  };
+
+  const persistCurrentLocation = async (lat: number, lng: number, address: string) => {
+    await AsyncStorage.setItem("@customer_last_address", address).catch(() => {});
+    await AsyncStorage.setItem("@customer_last_coords", JSON.stringify({ latitude: lat, longitude: lng })).catch(() => {});
+
+    const currUid = auth.currentUser?.uid || user?.uid;
+    if (currUid) {
+      await setDoc(
+        doc(db, "users", currUid),
+        { address, deliveryAddress: address, customerLat: lat, customerLng: lng },
+        { merge: true }
+      ).catch(() => {});
+    }
   };
 
   // Ultra-fast doorstep location detection with instant last-known cache and quick GPS race
@@ -467,23 +557,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
             "Please enable location access in settings to automatically fetch your doorstep address."
           );
         }
-        // Fallback to cached address if available
-        const cached = await AsyncStorage.getItem("@customer_last_address");
-        if (cached && cached.trim()) {
-          setServiceAddress(cached.trim());
-          setDraggedAddress(cached.trim());
-          const cachedCoords = await AsyncStorage.getItem("@customer_last_coords");
-          if (cachedCoords) {
-            try {
-              const c = JSON.parse(cachedCoords);
-              if (c.latitude && c.longitude) setAddressCoords(c);
-            } catch (_) {}
-          }
-        } else if (serviceAddress === "Fetching current location...") {
-          setServiceAddress("Select location on map");
-          setDraggedAddress("Select location on map");
-        }
-        setIsFetchingLocation(false);
+        await loadCachedAddressFallback();
         return;
       }
 
@@ -538,32 +612,14 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         setServiceAddress(finalAddress);
         setDraggedAddress(finalAddress);
 
-        // Persist to storage
-        await AsyncStorage.setItem("@customer_last_address", finalAddress).catch(() => {});
-        await AsyncStorage.setItem("@customer_last_coords", JSON.stringify({ latitude: lat, longitude: lng })).catch(() => {});
-
-        const currUid = auth.currentUser?.uid || user?.uid;
-        if (currUid) {
-          await setDoc(
-            doc(db, "users", currUid),
-            { address: finalAddress, deliveryAddress: finalAddress, customerLat: lat, customerLng: lng },
-            { merge: true }
-          ).catch(() => {});
-        }
+        await persistCurrentLocation(lat, lng, finalAddress);
       }
     } catch (err: any) {
       console.warn("[ServiceDetail] Error fetching auto location:", err);
       if (showAlertOnError) {
         Alert.alert("Location Error", "Could not retrieve your current location. Please check your GPS connection or select on the map.");
       }
-      const cached = await AsyncStorage.getItem("@customer_last_address");
-      if (cached && cached.trim()) {
-        setServiceAddress(cached.trim());
-        setDraggedAddress(cached.trim());
-      } else if (serviceAddress === "Fetching current location...") {
-        setServiceAddress("Select location on map");
-        setDraggedAddress("Select location on map");
-      }
+      await loadCachedAddressFallback();
     } finally {
       setIsFetchingLocation(false);
     }
@@ -571,7 +627,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 
   // Trigger automatic location fetch on component mount
   useEffect(() => {
-    fetchCurrentLocation();
+    void fetchCurrentLocation();
   }, []);
 
   // Open Map: Defaults automatically to current location with live camera animation
@@ -683,7 +739,8 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
           }
         }
       }
-    } catch (_) {
+    } catch {
+      // Reverse geocoding failed, retain current coordinates
     } finally {
       setIsGeocodingAddress(false);
     }
@@ -698,7 +755,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   };
 
   // Calculate pricing
-  const basePriceNum = parseInt(selectedSub.price.replace(/[^\d]/g, ""), 10) || 399;
+  const basePriceNum = Number.parseInt(selectedSub.price.replace(/[^\d]/g, ""), 10) || 399;
   const originalPrice = basePriceNum >= 500 ? basePriceNum + 300 : 699;
   const finalPrice = Math.max(99, basePriceNum - couponDiscount);
 
@@ -738,7 +795,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       try {
         await sendRealSMSViaFast2SMS(contactNumber.trim(), newOtp, "Phone Verification");
         setOtpModalVisible(true);
-      } catch (err) {
+      } catch {
         Alert.alert("SMS Error", "Failed to send OTP. Please check your number.");
       } finally {
         setOtpLoading(false);
@@ -746,14 +803,14 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       return;
     }
 
-    executeBooking();
+    await executeBooking();
   };
 
   const handleVerifyOtpSubmit = () => {
     if (enteredOtp.trim() === generatedOtp) {
       setOtpModalVisible(false);
       setVerifiedPhone(contactNumber.trim());
-      executeBooking();
+      void executeBooking();
     } else {
       Alert.alert("Invalid OTP", "The code you entered is incorrect.");
     }
@@ -820,18 +877,22 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         const list = prev ? JSON.parse(prev) : [];
         list.unshift(bookingPayload);
         await AsyncStorage.setItem(localKey, JSON.stringify(list));
-      } catch (_) {}
+      } catch {
+        // Ignore local booking cache errors
+      }
 
       // Save newly verified phone to profile
       if (contactNumber.trim() !== verifiedPhone) {
-        if (uid && uid.indexOf("guest_") === -1) {
+        if (uid && !uid.includes("guest_")) {
           try {
             await setDoc(doc(db, "users", uid), { phone: contactNumber.trim(), mobile: contactNumber.trim() }, { merge: true });
             const prev = await AsyncStorage.getItem(`@customer_profile_${uid}`);
             const p = prev ? JSON.parse(prev) : {};
             p.phone = contactNumber.trim();
             await AsyncStorage.setItem(`@customer_profile_${uid}`, JSON.stringify(p));
-          } catch (_) {}
+          } catch {
+            // Ignore customer profile background save errors
+          }
         }
       }
 
@@ -1076,7 +1137,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                 <Text
                   style={[
                     styles.phoneTextMain,
-                    { color: contactNumber ? (isDark ? themeColors.text : "#0F172A") : (isDark ? "#f87171" : "#ef4444") },
+                    { color: contactNumber ? defaultTextColor : phoneErrorColor },
                   ]}
                   numberOfLines={1}
                 >
@@ -1096,7 +1157,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               <View style={{ flex: 1, marginLeft: 8 }}>
                 <Text style={[styles.smallCardTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>Schedule Slot</Text>
                 <Text style={[styles.smallCardSub, { color: isDark ? themeColors.textSecondary : "#64748B" }]}>
-                  {isTodaySelected ? "Arrival Today" : isTomorrowSelected ? "Arrival Tomorrow" : "Advance Arrival"}
+                  {quickScheduleSub}
                 </Text>
               </View>
             </View>
@@ -1114,7 +1175,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                 activeOpacity={0.8}
               >
                 <Ionicons name="flash" size={11} color={isTodaySelected ? "#FFFFFF" : "#F59E0B"} style={{ marginRight: 3 }} />
-                <Text style={[styles.quickDayChipText, { color: isTodaySelected ? "#FFFFFF" : (isDark ? themeColors.text : "#0F172A") }]}>
+                <Text style={[styles.quickDayChipText, { color: isTodaySelected ? "#FFFFFF" : defaultTextColor }]}>
                   Today
                 </Text>
               </TouchableOpacity>
@@ -1130,7 +1191,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                 activeOpacity={0.8}
               >
                 <Ionicons name="calendar-outline" size={11} color={isTomorrowSelected ? "#FFFFFF" : "#0284C7"} style={{ marginRight: 3 }} />
-                <Text style={[styles.quickDayChipText, { color: isTomorrowSelected ? "#FFFFFF" : (isDark ? themeColors.text : "#0F172A") }]}>
+                <Text style={[styles.quickDayChipText, { color: isTomorrowSelected ? "#FFFFFF" : defaultTextColor }]}>
                   Tomorrow
                 </Text>
               </TouchableOpacity>
@@ -1151,7 +1212,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               <Ionicons
                 name="calendar"
                 size={14}
-                color={isAdvanceSelected ? "#7C3AED" : (isDark ? themeColors.textSecondary : "#64748B")}
+                color={isAdvanceSelected ? "#7C3AED" : defaultSubTextColor}
                 style={{ marginRight: 6 }}
               />
               <Text
@@ -1174,7 +1235,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                 { marginTop: 6, backgroundColor: isDark ? themeColors.surface : "#FFFFFF", borderColor: themeColors.cardBorder },
               ]}
               onPress={() => {
-                setCustomTimeInput(bookingTime.replace(/\s*(AM|PM)/i, ""));
+                setCustomTimeInput(bookingTime.replace(/[AP]M/gi, "").trim());
                 setCustomAmPm(bookingTime.toUpperCase().includes("PM") ? "PM" : "AM");
                 setTimeModalVisible(true);
               }}
@@ -1288,19 +1349,20 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                 <TextInput
                   style={[styles.mapSearchInput, { color: isDark ? themeColors.text : "#0F172A" }]}
                   placeholder="Search locality, street, or landmark..."
-                  placeholderTextColor={isDark ? "#94A3B8" : "#94A3B8"}
+                  placeholderTextColor="#94A3B8"
                   value={mapSearchQuery}
                   onChangeText={handleMapSearchChange}
                   clearButtonMode="while-editing"
                   autoCorrect={false}
                 />
-                {isSearchingLocation ? (
+                {isSearchingLocation && (
                   <ActivityIndicator size="small" color={themeColors.primary} style={{ marginLeft: 6 }} />
-                ) : mapSearchQuery.length > 0 ? (
+                )}
+                {!isSearchingLocation && mapSearchQuery.length > 0 && (
                   <TouchableOpacity onPress={() => { setMapSearchQuery(""); setMapSuggestions([]); }} style={{ padding: 4 }}>
                     <Ionicons name="close-circle" size={18} color="#94A3B8" />
                   </TouchableOpacity>
-                ) : null}
+                )}
               </View>
 
               {/* Suggestions Dropdown */}
@@ -1309,7 +1371,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                   <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled style={{ maxHeight: 220 }}>
                     {mapSuggestions.map((item, idx) => (
                       <TouchableOpacity
-                        key={idx}
+                        key={item.placeId ?? `${item.lat}-${item.lng}-${idx}`}
                         style={[styles.suggestionItem, { borderBottomColor: isDark ? "rgba(255,255,255,0.08)" : "#F1F5F9" }]}
                         onPress={() => handleSelectSuggestion(item)}
                         activeOpacity={0.7}
@@ -1321,7 +1383,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                           <Text style={[styles.suggestionLabelText, { color: isDark ? themeColors.text : "#0F172A" }]} numberOfLines={1}>
                             {item.label}
                           </Text>
-                          {item.city && (
+                          {Boolean(item.city) && (
                             <Text style={[styles.suggestionSubText, { color: isDark ? "#94A3B8" : "#64748B" }]}>
                               {item.city}{item.state ? `, ${item.state}` : ""}
                             </Text>
@@ -1514,8 +1576,8 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 
               {/* Calendar Days 7-Column Grid */}
               <View style={styles.calendarGrid}>
-                {Array.from({ length: getFirstDayOfMonth(calendarYear, calendarMonth) }).map((_, i) => (
-                  <View key={`empty-${i}`} style={styles.calendarDayCell} />
+                {EMPTY_CALENDAR_PAD_KEYS.slice(0, getFirstDayOfMonth(calendarYear, calendarMonth)).map((padKey) => (
+                  <View key={padKey} style={styles.calendarDayCell} />
                 ))}
 
                 {Array.from({ length: getDaysInMonth(calendarYear, calendarMonth) }).map((_, i) => {
@@ -1567,7 +1629,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                   <TouchableOpacity
                     onPress={() => {
                       setDateModalVisible(false);
-                      setCustomTimeInput(bookingTime.replace(/\s*(AM|PM)/i, ""));
+                      setCustomTimeInput(bookingTime.replace(/[AP]M/gi, "").trim());
                       setCustomAmPm(bookingTime.toUpperCase().includes("PM") ? "PM" : "AM");
                       setTimeModalVisible(true);
                     }}
@@ -1593,13 +1655,13 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                         <Ionicons
                           name="time-outline"
                           size={13}
-                          color={isSelected ? "#FFFFFF" : (isDark ? themeColors.textSecondary : "#64748B")}
+                          color={isSelected ? "#FFFFFF" : defaultSubTextColor}
                           style={{ marginRight: 4 }}
                         />
                         <Text
                           style={[
                             styles.quickTimeSlotPillText,
-                            { color: isSelected ? "#FFFFFF" : (isDark ? themeColors.text : "#0F172A") },
+                            { color: isSelected ? "#FFFFFF" : defaultTextColor },
                             isSelected && { fontWeight: "800" },
                           ]}
                         >
@@ -1624,7 +1686,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                 <Ionicons name="calendar-outline" size={20} color={themeColors.primary} style={{ marginRight: 10 }} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.scheduleSummaryTitle, { color: isDark ? themeColors.textSecondary : "#0F766E" }]}>
-                    {isTodaySelected ? "Arrival Today" : isTomorrowSelected ? "Arrival Tomorrow" : "Advance Arrival Date"}
+                    {arrivalScheduleLabel}
                   </Text>
                   <Text style={[styles.scheduleSummaryVal, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
                     {bookingDate} • {bookingTime}
@@ -1727,13 +1789,11 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                   const isSelected = bookingTime === t;
                   return (
                     <TouchableOpacity
-                      key={idx}
+                      key={t}
                       style={[
                         styles.timeChip,
                         {
-                          backgroundColor: isSelected
-                            ? (isDark ? "rgba(0,198,170,0.22)" : "#CCFBF1")
-                            : (isDark ? themeColors.surface : "#F8FAFC"),
+                          backgroundColor: isSelected ? timeChipSelectedBg : timeChipUnselectedBg,
                           borderColor: isSelected ? themeColors.primary : themeColors.cardBorder,
                         },
                       ]}
@@ -1746,9 +1806,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
                         style={[
                           styles.timeChipText,
                           {
-                            color: isSelected
-                              ? themeColors.primary
-                              : (isDark ? themeColors.text : "#0F172A"),
+                            color: isSelected ? themeColors.primary : defaultTextColor,
                             fontWeight: isSelected ? "800" : "600",
                           },
                         ]}
