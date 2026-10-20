@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import {
   View, Text, Pressable, StyleSheet,
-  ScrollView, Platform, Image, Alert, Linking, ActivityIndicator,
+  ScrollView, Platform, Image, Alert, Linking, ActivityIndicator, Share,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -16,7 +16,12 @@ import { db } from "@/services/firebase";
 import { RootStackParamList } from "@/navigation/types";
 import { useTheme } from "@/context/ThemeContext";
 import { SERVICE_CATEGORIES } from "./servicesData";
-import { sendBookingConfirmation, sendBookingPlaced } from "@/services/notificationService";
+import {
+  sendBookingConfirmation,
+  sendBookingPlaced,
+  scheduleApplianceRepeatReminder,
+  APPLIANCE_REPEAT_INTERVALS,
+} from "@/services/notificationService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BookingConfirmed">;
 
@@ -156,6 +161,45 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
   const copyBookingId = () => {
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
+  };
+
+  const [copiedRef, setCopiedRef] = useState(false);
+  const [repeatReminderScheduled, setRepeatReminderScheduled] = useState(false);
+
+  const refCode = "URBAN-" + bookingId.slice(-6).toUpperCase();
+
+  // Automatic match for appliances that require periodic repeat cleaning
+  const matchedAppliance = APPLIANCE_REPEAT_INTERVALS.find(
+    (a) =>
+      sub.name.toLowerCase().includes(a.id) ||
+      sub.name.toLowerCase().includes(a.name.toLowerCase()) ||
+      category.name.toLowerCase().includes(a.id) ||
+      (a.id === "chimney" && (sub.name.toLowerCase().includes("chimney") || sub.name.toLowerCase().includes("kitchen"))) ||
+      (a.id === "refrigerator" && (sub.name.toLowerCase().includes("fridge") || sub.name.toLowerCase().includes("refrigerator"))) ||
+      (a.id === "ac" && (sub.name.toLowerCase().includes("ac") || sub.name.toLowerCase().includes("air conditioner")))
+  );
+
+  useEffect(() => {
+    if (matchedAppliance && booking?.status !== "cancelled") {
+      scheduleApplianceRepeatReminder(matchedAppliance.id, sub.name);
+      setRepeatReminderScheduled(true);
+    }
+  }, [matchedAppliance?.id, booking?.status]);
+
+  const handleShareReferral = async () => {
+    try {
+      await Share.share({
+        title: "₹100 Off on Urban Helpers",
+        message: `Hey! I just booked ${sub.name} on Urban Helpers. Use my exclusive referral code *${refCode}* to get ₹100 OFF on your first booking!\n\nDownload the app: https://urbanhelpers.app/download`,
+      });
+    } catch (e) {
+      Alert.alert("Referral Code", `Share this code with your friends: ${refCode}`);
+    }
+  };
+
+  const handleCopyReferral = () => {
+    setCopiedRef(true);
+    setTimeout(() => setCopiedRef(false), 2500);
   };
 
   const accent  = category.accent || TEAL;
@@ -426,6 +470,162 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
             </View>
           ))}
         </Animated.View>
+
+        {/* 6.1 Appliance Repeat Cleaning & Maintenance Cadence */}
+        {!isCancelled && (
+          <Animated.View entering={FadeInDown.delay(440).duration(400)} style={[s.applianceCard, cardBgStyle]}>
+            <View style={s.applianceHeader}>
+              <View style={s.applianceBadge}>
+                <Ionicons name="repeat" size={13} color="#059669" />
+                <Text style={s.applianceBadgeText}>APPLIANCE HEALTH CADENCE</Text>
+              </View>
+              <View style={s.applianceActiveTag}>
+                <Ionicons name="notifications" size={13} color="#059669" />
+                <Text style={s.applianceActiveText}>Repeat Alert Active</Text>
+              </View>
+            </View>
+
+            <View style={s.applianceContentRow}>
+              <View style={s.applianceIconBox}>
+                <Ionicons
+                  name={matchedAppliance ? (matchedAppliance.icon as any) : "sparkles"}
+                  size={24}
+                  color="#059669"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.applianceTitle, textPrimary]}>
+                  {matchedAppliance ? `${matchedAppliance.name} Repeat Cleaning` : "Periodic Appliance Maintenance"}
+                </Text>
+                <Text style={[s.applianceDesc, textSecondary]}>
+                  {matchedAppliance
+                    ? `Heavy buildup requires servicing every ${matchedAppliance.intervalDays} days. We've set your automatic repeat reminder!`
+                    : "Kitchen chimneys need filter degreasing every 60 days, and refrigerators need coil sanitization every 90 days to save electricity and prevent bacteria."}
+                </Text>
+              </View>
+            </View>
+
+            {/* Quick reminder pills for key appliances */}
+            <View style={s.appliancePillsRow}>
+              <View style={s.applianceIntervalPill}>
+                <Ionicons name="flame" size={12} color="#D97706" />
+                <Text style={s.applianceIntervalText}>Chimney: Every 60d</Text>
+              </View>
+              <View style={s.applianceIntervalPill}>
+                <Ionicons name="snow" size={12} color="#0284C7" />
+                <Text style={s.applianceIntervalText}>Fridge: Every 90d</Text>
+              </View>
+              <View style={s.applianceIntervalPill}>
+                <Ionicons name="thermometer" size={12} color="#059669" />
+                <Text style={s.applianceIntervalText}>AC Jet: Every 90d</Text>
+              </View>
+            </View>
+          </Animated.View>
+        )}
+
+        {/* 6.2 Referral Booking & Cross-Sell Privilege Card */}
+        {!isCancelled && (
+          <Animated.View entering={FadeInDown.delay(460).duration(400)} style={[s.referralCard, cardBgStyle]}>
+            <LinearGradient
+              colors={isDark ? ["#064e3b", "#022c22"] : ["#ECFDF5", "#D1FAE5"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={s.referralGradient}
+            >
+              <View style={s.referralTopRow}>
+                <View style={s.referralIconBox}>
+                  <Ionicons name="gift" size={24} color="#059669" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[s.referralTitle, { color: isDark ? "#A7F3D0" : "#065F46" }]}>
+                    Refer a Friend & Earn ₹100
+                  </Text>
+                  <Text style={[s.referralSub, { color: isDark ? "#6EE7B7" : "#047857" }]}>
+                    Give friends ₹100 off on their first service. You earn ₹100 Urban Coins when they book!
+                  </Text>
+                </View>
+              </View>
+
+              {/* Referral Code Box */}
+              <View style={s.refCodeRow}>
+                <View style={s.refCodeBox}>
+                  <Text style={s.refCodeLabel}>YOUR REFERRAL CODE</Text>
+                  <Text style={s.refCodeText}>{refCode}</Text>
+                </View>
+                <Pressable
+                  onPress={handleCopyReferral}
+                  style={[s.refCopyBtn, copiedRef && s.refCopyBtnActive]}
+                >
+                  <Ionicons
+                    name={copiedRef ? "checkmark-done" : "copy-outline"}
+                    size={16}
+                    color="#FFFFFF"
+                  />
+                  <Text style={s.refCopyBtnText}>{copiedRef ? "Copied!" : "Copy"}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleShareReferral}
+                  style={s.refShareBtn}
+                >
+                  <Ionicons name="share-social" size={16} color="#FFFFFF" />
+                  <Text style={s.refShareBtnText}>Share</Text>
+                </Pressable>
+              </View>
+
+              {/* Cross-Sell Popular Companion Services */}
+              <View style={s.crossSellSection}>
+                <View style={s.crossSellHeader}>
+                  <Ionicons name="sparkles" size={14} color="#D97706" />
+                  <Text style={[s.crossSellHeaderText, { color: isDark ? "#FCD34D" : "#92400E" }]}>
+                    Frequently Booked Together (₹100 Referral Applied)
+                  </Text>
+                </View>
+
+                <View style={s.crossSellList}>
+                  {[
+                    {
+                      name: "Kitchen Chimney Degreasing",
+                      desc: "Heavy grease suction wash • Every 60d",
+                      price: "₹499",
+                      icon: "flame-outline",
+                    },
+                    {
+                      name: "Refrigerator Coil Sanitization",
+                      desc: "Deep bacterial clean & coil wash • Every 90d",
+                      price: "₹399",
+                      icon: "snow-outline",
+                    },
+                    {
+                      name: "AC Jet Pump Deep Cleaning",
+                      desc: "Jet foam filter & coil wash • Every 90d",
+                      price: "₹599",
+                      icon: "thermometer-outline",
+                    },
+                  ].map((item, idx) => (
+                    <View key={idx} style={[s.crossSellItem, { backgroundColor: isDark ? "rgba(0,0,0,0.35)" : "#FFFFFF" }]}>
+                      <View style={s.crossSellIconWrap}>
+                        <Ionicons name={item.icon as any} size={18} color="#059669" />
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 10 }}>
+                        <Text style={[s.crossSellItemName, textPrimary]} numberOfLines={1}>{item.name}</Text>
+                        <Text style={[s.crossSellItemDesc, textSecondary]} numberOfLines={1}>
+                          {item.desc}
+                        </Text>
+                      </View>
+                      <Pressable
+                        onPress={() => navigation.navigate("ServicesDashboard")}
+                        style={s.crossSellAddBtn}
+                      >
+                        <Text style={s.crossSellPrice}>{item.price}</Text>
+                        <Text style={s.crossSellBookText}>+ Book</Text>
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </LinearGradient>
+          </Animated.View>
+        )}
 
         {/* 7. Action Buttons */}
         <Animated.View entering={FadeInDown.delay(500).duration(400)} style={s.actionBlock}>
@@ -922,6 +1122,251 @@ const s = StyleSheet.create({
   },
   featureDesc: {
     fontSize: 11,
+  },
+
+  // Appliance Cadence Card
+  applianceCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 16,
+    elevation: 3,
+  },
+  applianceHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  applianceBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(5, 150, 105, 0.12)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  applianceBadgeText: {
+    fontSize: 10.5,
+    fontWeight: "800",
+    color: "#059669",
+    letterSpacing: 0.8,
+  },
+  applianceActiveTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  applianceActiveText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: "#059669",
+  },
+  applianceContentRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  applianceIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(5, 150, 105, 0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  applianceTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 3,
+  },
+  applianceDesc: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  appliancePillsRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.06)",
+  },
+  applianceIntervalPill: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    backgroundColor: "rgba(0,0,0,0.04)",
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  applianceIntervalText: {
+    fontSize: 10.5,
+    fontWeight: "700",
+    color: "#475569",
+  },
+
+  // Referral Card
+  referralCard: {
+    borderRadius: 22,
+    borderWidth: 1,
+    overflow: "hidden",
+    marginBottom: 20,
+    elevation: 4,
+  },
+  referralGradient: {
+    padding: 16,
+  },
+  referralTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  referralIconBox: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  referralTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    marginBottom: 2,
+  },
+  referralSub: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  refCodeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    padding: 8,
+    paddingLeft: 12,
+    borderWidth: 1.5,
+    borderColor: "#A7F3D0",
+    marginBottom: 16,
+  },
+  refCodeBox: {
+    flex: 1,
+  },
+  refCodeLabel: {
+    fontSize: 9.5,
+    fontWeight: "800",
+    color: "#059669",
+    letterSpacing: 0.8,
+  },
+  refCodeText: {
+    fontSize: 15,
+    fontWeight: "900",
+    color: "#0F172A",
+    letterSpacing: 1.2,
+  },
+  refCopyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#0D9488",
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 10,
+  },
+  refCopyBtnActive: {
+    backgroundColor: "#059669",
+  },
+  refCopyBtnText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  refShareBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#0F766E",
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 10,
+  },
+  refShareBtnText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+
+  // Cross Sell Section
+  crossSellSection: {
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(5, 150, 105, 0.2)",
+  },
+  crossSellHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 10,
+  },
+  crossSellHeaderText: {
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  crossSellList: {
+    gap: 8,
+  },
+  crossSellItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.06)",
+  },
+  crossSellIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(5, 150, 105, 0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  crossSellItemName: {
+    fontSize: 12.5,
+    fontWeight: "700",
+  },
+  crossSellItemDesc: {
+    fontSize: 11,
+    marginTop: 1,
+  },
+  crossSellAddBtn: {
+    alignItems: "flex-end",
+    backgroundColor: "#059669",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginLeft: 6,
+  },
+  crossSellPrice: {
+    fontSize: 11.5,
+    fontWeight: "800",
+    color: "#FFFFFF",
+  },
+  crossSellBookText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#D1FAE5",
   },
 
   // Actions

@@ -885,6 +885,57 @@ export default function HomeDashboardScreen({ navigation }: Props) {
         </View>
       </Modal>
 
+      {/* ── Top Submenu: Reminders, Points, Nearby Updates ──────── */}
+      <View style={s.submenuRow}>
+        <Pressable
+          style={[
+            s.submenuPill,
+            {
+              backgroundColor: isDark ? "#161f2e" : "#f0fdf4",
+              borderColor: isDark ? "#1f2937" : "#bbf7d0",
+            },
+          ]}
+          onPress={() => navigation.navigate("SmartReminders")}
+        >
+          <LinearGradient colors={["#059669", "#10b981"]} style={s.submenuIconWrap}>
+            <Ionicons name="alarm" size={12} color="#ffffff" />
+          </LinearGradient>
+          <Text style={[s.submenuPillText, { color: isDark ? "#ffffff" : "#065f46" }]} numberOfLines={1}>Reminders</Text>
+        </Pressable>
+
+        <Pressable
+          style={[
+            s.submenuPill,
+            {
+              backgroundColor: isDark ? "#161f2e" : "#fffbeb",
+              borderColor: isDark ? "#1f2937" : "#fde68a",
+            },
+          ]}
+          onPress={() => navigation.navigate("Points")}
+        >
+          <LinearGradient colors={["#d97706", "#f59e0b"]} style={s.submenuIconWrap}>
+            <Ionicons name="trophy" size={12} color="#ffffff" />
+          </LinearGradient>
+          <Text style={[s.submenuPillText, { color: isDark ? "#ffffff" : "#92400e" }]} numberOfLines={1}>Points</Text>
+        </Pressable>
+
+        <Pressable
+          style={[
+            s.submenuPill,
+            {
+              backgroundColor: isDark ? "#161f2e" : "#fef2f2",
+              borderColor: isDark ? "#1f2937" : "#fecaca",
+            },
+          ]}
+          onPress={() => navigation.navigate("NearbyUpdates")}
+        >
+          <LinearGradient colors={["#dc2626", "#ef4444"]} style={s.submenuIconWrap}>
+            <Ionicons name="radio" size={12} color="#ffffff" />
+          </LinearGradient>
+          <Text style={[s.submenuPillText, { color: isDark ? "#ffffff" : "#991b1b" }]} numberOfLines={1}>Nearby Updates</Text>
+        </Pressable>
+      </View>
+
       {/* ── Quick-action Pills Bar (Persistent within Home) ──── */}
       <Animated.View entering={FadeIn.delay(120).duration(400)} style={s.pillsOuter}>
         <View style={s.pillsContainer}>
@@ -3915,6 +3966,38 @@ const s = StyleSheet.create({
     backgroundColor: "#f43f5e",
     flexShrink: 0,
   },
+  // Top Submenu (Unified Pill Style matching Services dashboard)
+  submenuRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    gap: 8,
+    marginBottom: 8,
+  },
+  submenuPill: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  submenuIconWrap: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  submenuPillText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+  },
+
   // (Legacy top submenu styles kept for any reuse)
   topSubmenuOuter: {
     marginHorizontal: 16,

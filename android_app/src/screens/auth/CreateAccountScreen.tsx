@@ -24,6 +24,7 @@ type Props = NativeStackScreenProps<RootStackParamList, "CreateAccount">;
 export default function CreateAccountScreen({ navigation }: Props) {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [mobile, setMobile] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(true);
@@ -31,16 +32,20 @@ export default function CreateAccountScreen({ navigation }: Props) {
 
   const handleSignUp = async () => {
     const cleanName = fullName.trim();
-    const cleanEmail = email.trim();
+    const cleanMobile = mobile.replace(/\D/g, "").slice(-10);
+    let cleanEmail = email.trim().toLowerCase();
     const cleanPass = password;
 
     if (!cleanName) {
       Alert.alert("Name Required", "Please enter your full name.");
       return;
     }
-    if (!cleanEmail) {
-      Alert.alert("Email Required", "Please enter your email address.");
+    if (!cleanEmail && !cleanMobile) {
+      Alert.alert("Email or Mobile Required", "Please provide either your email address or 10-digit mobile number.");
       return;
+    }
+    if (!cleanEmail && cleanMobile) {
+      cleanEmail = `${cleanMobile}@urbanhelpers.app`;
     }
     if (!cleanPass || cleanPass.length < 6) {
       Alert.alert("Password Too Short", "Password must be at least 6 characters long.");
@@ -64,7 +69,9 @@ export default function CreateAccountScreen({ navigation }: Props) {
         {
           name: cleanName,
           displayName: cleanName,
-          email: cleanEmail,
+          email: cleanEmail.endsWith("@urbanhelpers.app") ? "" : cleanEmail,
+          phone: cleanMobile,
+          mobile: cleanMobile,
           role: "customer",
           profileCompleted: false,
           createdAt: new Date().toISOString(),
@@ -79,7 +86,8 @@ export default function CreateAccountScreen({ navigation }: Props) {
             name: "CreateProfile",
             params: {
               name: cleanName,
-              email: cleanEmail,
+              email: cleanEmail.endsWith("@urbanhelpers.app") ? "" : cleanEmail,
+              phone: cleanMobile,
             } as any,
           },
         ],
@@ -136,10 +144,27 @@ export default function CreateAccountScreen({ navigation }: Props) {
             <TextInput
               value={email}
               onChangeText={setEmail}
-              placeholder="you@example.com"
+              placeholder="you@example.com (optional if phone provided)"
               placeholderTextColor="#94A3B8"
               keyboardType="email-address"
               autoCapitalize="none"
+              style={styles.inputField}
+            />
+          </View>
+        </View>
+
+        {/* Mobile Number */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Mobile Number (for SMS & OTP)</Text>
+          <View style={styles.inputBox}>
+            <Ionicons name="call-outline" size={18} color="#64748B" style={{ marginRight: 10 }} />
+            <TextInput
+              value={mobile}
+              onChangeText={setMobile}
+              placeholder="e.g. 98765 43210"
+              placeholderTextColor="#94A3B8"
+              keyboardType="phone-pad"
+              maxLength={15}
               style={styles.inputField}
             />
           </View>

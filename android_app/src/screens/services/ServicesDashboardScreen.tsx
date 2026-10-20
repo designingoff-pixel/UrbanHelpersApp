@@ -428,39 +428,54 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
               </Pressable>
             </View>
 
-            {/* Submenu Grid: Reminders, Points, Nearby Updates */}
-            <View style={s.submenuGrid}>
+            {/* Top Submenu: Reminders, Points, Nearby Updates */}
+            <View style={s.submenuRow}>
               <Pressable
-                style={[s.submenuGridCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
+                style={[
+                  s.submenuPill,
+                  {
+                    backgroundColor: isDark ? "#161f2e" : "#f0fdf4",
+                    borderColor: isDark ? "#1f2937" : "#bbf7d0",
+                  },
+                ]}
                 onPress={() => navigation.navigate("SmartReminders")}
               >
-                <View style={[s.submenuIconCircle, { backgroundColor: isDark ? "rgba(16,185,129,0.2)" : "#d1fae5" }]}>
-                  <Ionicons name="alarm" size={17} color="#10b981" />
-                </View>
-                <Text style={[s.submenuGridTitle, { color: colors.text }]} numberOfLines={1}>Reminders</Text>
-                <Text style={[s.submenuGridSub, { color: colors.textMuted }]}>Tasks &amp; Meds</Text>
+                <LinearGradient colors={["#059669", "#10b981"]} style={s.submenuIconWrap}>
+                  <Ionicons name="alarm" size={12} color="#ffffff" />
+                </LinearGradient>
+                <Text style={[s.submenuPillText, { color: isDark ? "#ffffff" : "#065f46" }]} numberOfLines={1}>Reminders</Text>
               </Pressable>
 
               <Pressable
-                style={[s.submenuGridCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
+                style={[
+                  s.submenuPill,
+                  {
+                    backgroundColor: isDark ? "#161f2e" : "#fffbeb",
+                    borderColor: isDark ? "#1f2937" : "#fde68a",
+                  },
+                ]}
                 onPress={() => navigation.navigate("Points")}
               >
-                <View style={[s.submenuIconCircle, { backgroundColor: isDark ? "rgba(245,158,11,0.2)" : "#fef3c7" }]}>
-                  <Ionicons name="trophy" size={17} color="#f59e0b" />
-                </View>
-                <Text style={[s.submenuGridTitle, { color: colors.text }]} numberOfLines={1}>Points</Text>
-                <Text style={[s.submenuGridSub, { color: colors.textMuted }]}>Earn Rewards</Text>
+                <LinearGradient colors={["#d97706", "#f59e0b"]} style={s.submenuIconWrap}>
+                  <Ionicons name="trophy" size={12} color="#ffffff" />
+                </LinearGradient>
+                <Text style={[s.submenuPillText, { color: isDark ? "#ffffff" : "#92400e" }]} numberOfLines={1}>Points</Text>
               </Pressable>
 
               <Pressable
-                style={[s.submenuGridCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
+                style={[
+                  s.submenuPill,
+                  {
+                    backgroundColor: isDark ? "#161f2e" : "#fef2f2",
+                    borderColor: isDark ? "#1f2937" : "#fecaca",
+                  },
+                ]}
                 onPress={() => navigation.navigate("NearbyUpdates")}
               >
-                <View style={[s.submenuIconCircle, { backgroundColor: isDark ? "rgba(239,68,68,0.2)" : "#fee2e2" }]}>
-                  <Ionicons name="radio" size={17} color="#ef4444" />
-                </View>
-                <Text style={[s.submenuGridTitle, { color: colors.text }]} numberOfLines={1}>Nearby</Text>
-                <Text style={[s.submenuGridSub, { color: colors.textMuted }]}>Live Updates</Text>
+                <LinearGradient colors={["#dc2626", "#ef4444"]} style={s.submenuIconWrap}>
+                  <Ionicons name="radio" size={12} color="#ffffff" />
+                </LinearGradient>
+                <Text style={[s.submenuPillText, { color: isDark ? "#ffffff" : "#991b1b" }]} numberOfLines={1}>Nearby Updates</Text>
               </Pressable>
             </View>
           </View>
@@ -800,56 +815,6 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
               </Pressable>
             </View>
 
-            {/* Sticky Submenu: Reminders, Points, Nearby Updates */}
-            <View style={s.submenuRow}>
-              <Pressable
-                style={[
-                  s.submenuPill,
-                  {
-                    backgroundColor: isDark ? "#161f2e" : "#f0fdf4",
-                    borderColor: isDark ? "#1f2937" : "#bbf7d0",
-                  },
-                ]}
-                onPress={() => navigation.navigate("SmartReminders")}
-              >
-                <LinearGradient colors={["#059669", "#10b981"]} style={s.submenuIconWrap}>
-                  <Ionicons name="alarm" size={12} color="#ffffff" />
-                </LinearGradient>
-                <Text style={[s.submenuPillText, { color: isDark ? "#ffffff" : "#065f46" }]}>Reminders</Text>
-              </Pressable>
-
-              <Pressable
-                style={[
-                  s.submenuPill,
-                  {
-                    backgroundColor: isDark ? "#161f2e" : "#fffbeb",
-                    borderColor: isDark ? "#1f2937" : "#fde68a",
-                  },
-                ]}
-                onPress={() => navigation.navigate("Points")}
-              >
-                <LinearGradient colors={["#d97706", "#f59e0b"]} style={s.submenuIconWrap}>
-                  <Ionicons name="trophy" size={12} color="#ffffff" />
-                </LinearGradient>
-                <Text style={[s.submenuPillText, { color: isDark ? "#ffffff" : "#92400e" }]}>Points</Text>
-              </Pressable>
-
-              <Pressable
-                style={[
-                  s.submenuPill,
-                  {
-                    backgroundColor: isDark ? "#161f2e" : "#fef2f2",
-                    borderColor: isDark ? "#1f2937" : "#fecaca",
-                  },
-                ]}
-                onPress={() => navigation.navigate("NearbyUpdates")}
-              >
-                <LinearGradient colors={["#dc2626", "#ef4444"]} style={s.submenuIconWrap}>
-                  <Ionicons name="radio" size={12} color="#ffffff" />
-                </LinearGradient>
-                <Text style={[s.submenuPillText, { color: isDark ? "#ffffff" : "#991b1b" }]}>Nearby Updates</Text>
-              </Pressable>
-            </View>
           </View>
 
           {/* ── 3. Service Categories 10-Card Grid ────────────────────── */}

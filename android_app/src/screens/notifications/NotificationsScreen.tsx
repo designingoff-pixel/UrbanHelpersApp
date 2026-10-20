@@ -26,6 +26,7 @@ export default function NotificationsScreen({ navigation }: Props) {
   const [notices, setNotices] = useState<InAppNotice[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedNotice, setSelectedNotice] = useState<InAppNotice | null>(null);
+  const [filterTab, setFilterTab] = useState<"ALL" | "APPLIANCE" | "ORDERS" | "NOTICES">("ALL");
 
   useEffect(() => {
     loadNotices();
@@ -62,6 +63,25 @@ export default function NotificationsScreen({ navigation }: Props) {
   };
 
   const unreadCount = notices.filter((n) => !n.isRead).length;
+
+  const filteredNotices = notices.filter((item) => {
+    if (filterTab === "APPLIANCE") {
+      return (
+        item.tag?.includes("Appliance") ||
+        item.title?.toLowerCase().includes("chimney") ||
+        item.title?.toLowerCase().includes("refrigerator") ||
+        item.title?.toLowerCase().includes("ac ") ||
+        item.title?.toLowerCase().includes("clean")
+      );
+    }
+    if (filterTab === "ORDERS") {
+      return item.tag?.includes("Order") || item.title?.includes("Order") || item.tag?.includes("Booking");
+    }
+    if (filterTab === "NOTICES") {
+      return !item.tag?.includes("Appliance") && !item.tag?.includes("Order");
+    }
+    return true;
+  });
 
   return (
     <View style={styles.container}>
@@ -100,6 +120,39 @@ export default function NotificationsScreen({ navigation }: Props) {
         )}
       </View>
 
+      {/* ── Filter Tabs ── */}
+      <View style={styles.filterRow}>
+        <TouchableOpacity
+          style={[styles.filterChip, filterTab === "ALL" && styles.filterChipActive]}
+          onPress={() => setFilterTab("ALL")}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.filterChipText, filterTab === "ALL" && styles.filterChipTextActive]}>All</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterChip, filterTab === "APPLIANCE" && styles.filterChipActive]}
+          onPress={() => setFilterTab("APPLIANCE")}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="sparkles" size={12} color={filterTab === "APPLIANCE" ? "#fff" : "#94A3B8"} style={{ marginRight: 4 }} />
+          <Text style={[styles.filterChipText, filterTab === "APPLIANCE" && styles.filterChipTextActive]}>Appliance Care</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterChip, filterTab === "ORDERS" && styles.filterChipActive]}
+          onPress={() => setFilterTab("ORDERS")}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.filterChipText, filterTab === "ORDERS" && styles.filterChipTextActive]}>Orders</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterChip, filterTab === "NOTICES" && styles.filterChipActive]}
+          onPress={() => setFilterTab("NOTICES")}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.filterChipText, filterTab === "NOTICES" && styles.filterChipTextActive]}>Updates</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* ── Notices List ── */}
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -113,18 +166,20 @@ export default function NotificationsScreen({ navigation }: Props) {
           />
         }
       >
-        {notices.length === 0 ? (
+        {filteredNotices.length === 0 ? (
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconCircle}>
               <Ionicons name="notifications-outline" size={42} color="rgba(255, 255, 255, 0.3)" />
             </View>
             <Text style={styles.emptyTitle}>No Notifications</Text>
             <Text style={styles.emptySub}>
-              You're all caught up! Real-time alerts, medicine reminders, and service updates will appear here.
+              {filterTab === "APPLIANCE"
+                ? "No appliance reminders at the moment. Repeat maintenance alerts will appear here."
+                : "You're all caught up! Real-time alerts, medicine reminders, and service updates will appear here."}
             </Text>
           </View>
         ) : (
-          notices.map((item, index) => {
+          filteredNotices.map((item, index) => {
             const isUnread = !item.isRead;
             const isImportant = item.tag?.includes("Important") || item.tag?.includes("Emergency");
 
@@ -212,6 +267,23 @@ export default function NotificationsScreen({ navigation }: Props) {
               {selectedNotice?.body || "No additional details available."}
             </Text>
 
+            {selectedNotice?.tag?.includes("Appliance") ||
+            selectedNotice?.title?.toLowerCase().includes("chimney") ||
+            selectedNotice?.title?.toLowerCase().includes("refrigerator") ||
+            selectedNotice?.title?.toLowerCase().includes("clean") ? (
+              <TouchableOpacity
+                style={styles.modalBookBtn}
+                onPress={() => {
+                  setSelectedNotice(null);
+                  navigation.navigate("ServicesDashboard");
+                }}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+                <Text style={styles.modalBookBtnText}>Book Repeat Cleaning Service</Text>
+              </TouchableOpacity>
+            ) : null}
+
             <TouchableOpacity
               style={styles.modalCloseBtn}
               onPress={() => setSelectedNotice(null)}
@@ -240,6 +312,34 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255, 255, 255, 0.08)",
   },
+  filterRow: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255, 255, 255, 0.06)",
+  },
+  filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+  },
+  filterChipActive: {
+    backgroundColor: "#059669",
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#94A3B8",
+  },
+  filterChipTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
   backBtn: {
     width: 40,
     height: 40,
@@ -249,21 +349,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerTitleWrap: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    marginLeft: 12,
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: "700",
     color: "#ffffff",
-    letterSpacing: 0.3,
   },
   unreadCountBadge: {
     backgroundColor: "#10b981",
-    paddingHorizontal: 7,
-    paddingVertical: 2,
     borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginLeft: 8,
   },
   unreadCountText: {
     color: "#ffffff",
@@ -273,45 +374,39 @@ const styles = StyleSheet.create({
   markAllBtn: {
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: "rgba(16, 185, 129, 0.15)",
   },
   markAllBtnText: {
     color: "#10b981",
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "600",
   },
   headerRightSpace: {
     width: 40,
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    flexGrow: 1,
+    paddingTop: 8,
   },
   emptyContainer: {
-    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 100,
-    paddingHorizontal: 32,
+    paddingVertical: 80,
+    paddingHorizontal: 24,
   },
   emptyIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: "rgba(255, 255, 255, 0.05)",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 16,
+    fontWeight: "600",
     color: "#ffffff",
-    marginBottom: 8,
+    marginBottom: 6,
   },
   emptySub: {
     fontSize: 13,
@@ -323,60 +418,51 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderRadius: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
     marginBottom: 8,
-    borderBottomWidth: 1,
+    borderWidth: 1,
   },
   noticeRowUnread: {
-    backgroundColor: "rgba(16, 185, 129, 0.08)",
-    borderBottomColor: "rgba(16, 185, 129, 0.25)",
-    borderWidth: 1,
+    backgroundColor: "rgba(16, 185, 129, 0.06)",
     borderColor: "rgba(16, 185, 129, 0.2)",
   },
   noticeRowRead: {
-    backgroundColor: "transparent",
-    borderBottomColor: "rgba(255, 255, 255, 0.06)",
-    borderWidth: 0,
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    borderColor: "rgba(255, 255, 255, 0.05)",
   },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#00e676",
+    backgroundColor: "#10b981",
     marginRight: 10,
-    shadowColor: "#00e676",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
-    elevation: 3,
   },
   noticeTextCol: {
     flex: 1,
-    justifyContent: "center",
   },
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
+    marginBottom: 4,
   },
   noticeTitle: {
-    fontSize: 14.5,
-    letterSpacing: 0.15,
-    lineHeight: 20,
+    fontSize: 14,
+    lineHeight: 19,
   },
   titleUnread: {
     color: "#ffffff",
-    fontWeight: "700",
+    fontWeight: "600",
   },
   titleRead: {
-    color: "rgba(255, 255, 255, 0.48)",
+    color: "rgba(255, 255, 255, 0.6)",
     fontWeight: "400",
   },
   importantNoticeTitle: {
-    color: "#fb7185",
-    fontWeight: "700",
+    color: "#f87171",
   },
   noticeTag: {
+    fontSize: 11,
     fontWeight: "700",
   },
   tagUnread: {
@@ -386,11 +472,10 @@ const styles = StyleSheet.create({
     color: "rgba(255, 255, 255, 0.35)",
   },
   noticeDate: {
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: 11.5,
   },
   dateUnread: {
-    color: "rgba(255, 255, 255, 0.7)",
+    color: "rgba(255, 255, 255, 0.45)",
     fontWeight: "500",
   },
   dateRead: {
@@ -461,8 +546,23 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     marginBottom: 20,
   },
-  modalCloseBtn: {
+  modalBookBtn: {
     backgroundColor: "#059669",
+    flexDirection: "row",
+    paddingVertical: 13,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginBottom: 10,
+  },
+  modalBookBtnText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  modalCloseBtn: {
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: "center",

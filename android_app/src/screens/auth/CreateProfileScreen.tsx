@@ -116,37 +116,52 @@ export default function CreateProfileScreen({ navigation, route }: Props) {
 
   if (isSuccess) {
     return (
-      <ImageBackground
-        source={require("../../../assets/success_art.png")}
-        style={styles.successBg}
-        resizeMode="cover"
-      >
-        <SafeAreaView style={{ flex: 1, justifyContent: "space-between", padding: 24 }}>
-          <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <SafeAreaView style={styles.successRoot} edges={["top", "bottom"]}>
+        <View style={styles.successContent}>
+          {/* Green Checkmark Circle with Soft Ring */}
+          <View style={styles.successCheckOuter}>
             <View style={styles.successCheckCircle}>
-              <Ionicons name="checkmark" size={48} color="#FFFFFF" />
+              <Ionicons name="checkmark-sharp" size={44} color="#FFFFFF" />
             </View>
-            <Text style={styles.successTitle}>You're All Set!</Text>
-            <Text style={styles.successSub}>
-              Your account has been created successfully. Start exploring our services now.
-            </Text>
-
-            <TouchableOpacity
-              style={styles.dashboardBtn}
-              onPress={() => {
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: "ServicesDashboard" }],
-                });
-              }}
-              activeOpacity={0.88}
-            >
-              <Text style={styles.dashboardBtnText}>Go to Dashboard</Text>
-              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
-            </TouchableOpacity>
           </View>
-        </SafeAreaView>
-      </ImageBackground>
+
+          {/* Title and Subtitle */}
+          <Text style={styles.successTitle}>You're All Set!</Text>
+          <Text style={styles.successSub}>
+            Your account has been created successfully. Start exploring our services now.
+          </Text>
+
+          {/* Welcome Bonus Reward Badge */}
+          <View style={styles.successRewardBadge}>
+            <Ionicons name="gift" size={17} color="#059669" />
+            <Text style={styles.successRewardText}>100 Urban Coins credited to your wallet</Text>
+          </View>
+
+          {/* Single, Perfectly Aligned Go to Dashboard Button */}
+          <TouchableOpacity
+            style={styles.dashboardBtn}
+            onPress={() => {
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "ServicesDashboard" }],
+              });
+            }}
+            activeOpacity={0.88}
+          >
+            <Text style={styles.dashboardBtnText}>Go to Dashboard</Text>
+            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Welcome to Urban Helpers City Illustration at Bottom */}
+        <View style={styles.successBottomArtWrap}>
+          <Image
+            source={require("../../../assets/welcome_city.png")}
+            style={styles.successBottomArt}
+            resizeMode="cover"
+          />
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -382,44 +397,74 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "800",
   },
-  successBg: {
-    width,
-    height,
+  successRoot: {
     flex: 1,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "space-between",
+  },
+  successContent: {
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingTop: 36,
+  },
+  successCheckOuter: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "rgba(16, 185, 129, 0.14)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
   },
   successCheckCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     backgroundColor: "#10B981",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 24,
     shadowColor: "#10B981",
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
-    shadowRadius: 16,
+    shadowRadius: 14,
     elevation: 8,
   },
   successTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: "900",
     color: "#0F172A",
     marginBottom: 8,
     textAlign: "center",
   },
   successSub: {
-    fontSize: 14.5,
+    fontSize: 14,
     color: "#475569",
     textAlign: "center",
-    lineHeight: 21,
-    paddingHorizontal: 20,
-    marginBottom: 32,
+    lineHeight: 20,
+    paddingHorizontal: 16,
+    marginBottom: 20,
+  },
+  successRewardBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#ECFDF5",
+    borderWidth: 1,
+    borderColor: "#A7F3D0",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 24,
+  },
+  successRewardText: {
+    fontSize: 12.5,
+    fontWeight: "700",
+    color: "#065F46",
   },
   dashboardBtn: {
     width: "100%",
-    height: 54,
-    borderRadius: 27,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: "#0056D2",
     flexDirection: "row",
     justifyContent: "center",
@@ -432,7 +477,16 @@ const styles = StyleSheet.create({
   },
   dashboardBtnText: {
     color: "#FFFFFF",
-    fontSize: 16.5,
+    fontSize: 16,
     fontWeight: "800",
+  },
+  successBottomArtWrap: {
+    width: "100%",
+    height: 190,
+    overflow: "hidden",
+  },
+  successBottomArt: {
+    width: "100%",
+    height: "100%",
   },
 });

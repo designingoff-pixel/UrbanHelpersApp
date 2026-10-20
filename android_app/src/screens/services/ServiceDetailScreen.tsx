@@ -45,25 +45,56 @@ import { reverseGeocodeLocation, searchAddressSuggestions, GeocodedLocation } fr
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceDetail">;
 const { width } = Dimensions.get("window");
 
-// Generate upcoming 14 days dynamically
-const getUpcomingDates = (daysCount = 14) => {
-  const dates: { label: string; value: string }[] = [];
-  const now = new Date();
-  for (let i = 0; i < daysCount; i++) {
-    const d = new Date(now);
-    d.setDate(d.getDate() + i);
-    const value = d.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-    const prefix = i === 0 ? "Today, " : i === 1 ? "Tomorrow, " : "";
-    const label = `${prefix}${d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}`;
-    dates.push({ label, value });
-  }
-  return dates;
+// Calendar & Date helpers for advance booking
+const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
+const formatReadableDate = (d: Date): string => {
+  return d.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 };
+
+const formatShortDate = (d: Date): string => {
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+};
+
+const isSameDay = (d1: Date, d2: Date): boolean => {
+  return (
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate()
+  );
+};
+
+const isDateInPast = (d: Date): boolean => {
+  const today = new Date();
+  const dZero = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const todayZero = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return dZero.getTime() < todayZero.getTime();
+};
+
+const getFirstDayOfMonth = (year: number, month: number) => {
+  return new Date(year, month, 1).getDay();
+};
+
+const getDaysInMonth = (year: number, month: number) => {
+  return new Date(year, month + 1, 0).getDate();
+};
+
+const POPULAR_TIME_SLOTS = [
+  "08:00 AM", "09:00 AM", "10:00 AM", "11:00 AM",
+  "12:00 PM", "02:00 PM", "04:00 PM", "06:00 PM", "08:00 PM"
+];
 
 // Comprehensive time slots from morning to night
 const ALL_TIME_SLOTS = [
@@ -114,8 +145,70 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   });
   const [isFetchingLocation, setIsFetchingLocation] = useState(true);
 
-  const [bookingDate, setBookingDate] = useState(getUpcomingDates(1)[0]?.value || "Today");
-  const [bookingTime, setBookingTime] = useState("10:00 AM");
+  // Advance Date & Calendar selection states
+  const today = new Date();
+  const tomorrowObj = new Date();
+  tomorrowObj.setDate(tomorrowObj.getDate() + 1);
+
+  const [selectedDateObj, setSelectedDateObj] = useState<Date>(() => new Date());
+  const [calendarYear, setCalendarYear] = useState<number>(() => new Date().getFullYear());
+  const [calendarMonth, setCalendarMonth] = useState<number>(() => new Date().getMonth());
+  const [bookingDate, setBookingDate] = useState<string>(() => formatReadableDate(new Date()));
+  const [bookingTime, setBookingTime] = useState<string>("10:00 AM");
+
+  const isTodaySelected = isSameDay(selectedDateObj, today);
+  const isTomorrowSelected = isSameDay(selectedDateObj, tomorrowObj);
+  const isAdvanceSelected = !isTodaySelected && !isTomorrowSelected;
+
+  const isPrevMonthDisabled =
+    calendarYear === today.getFullYear() && calendarMonth === today.getMonth();
+  const maxNavDate = new Date(today.getFullYear(), today.getMonth() + 11, 1);
+  const isNextMonthDisabled =
+    calendarYear > maxNavDate.getFullYear() ||
+    (calendarYear === maxNavDate.getFullYear() && calendarMonth >= maxNavDate.getMonth());
+
+  const handleSelectToday = () => {
+    const t = new Date();
+    setSelectedDateObj(t);
+    setCalendarYear(t.getFullYear());
+    setCalendarMonth(t.getMonth());
+    setBookingDate(formatReadableDate(t));
+  };
+
+  const handleSelectTomorrow = () => {
+    const tom = new Date();
+    tom.setDate(tom.getDate() + 1);
+    setSelectedDateObj(tom);
+    setCalendarYear(tom.getFullYear());
+    setCalendarMonth(tom.getMonth());
+    setBookingDate(formatReadableDate(tom));
+  };
+
+  const handleSelectCalendarDay = (dayNum: number) => {
+    const picked = new Date(calendarYear, calendarMonth, dayNum);
+    setSelectedDateObj(picked);
+    setBookingDate(formatReadableDate(picked));
+  };
+
+  const handlePrevMonth = () => {
+    if (isPrevMonthDisabled) return;
+    if (calendarMonth === 0) {
+      setCalendarYear((y) => y - 1);
+      setCalendarMonth(11);
+    } else {
+      setCalendarMonth((m) => m - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (isNextMonthDisabled) return;
+    if (calendarMonth === 11) {
+      setCalendarYear((y) => y + 1);
+      setCalendarMonth(0);
+    } else {
+      setCalendarMonth((m) => m + 1);
+    }
+  };
 
   // Dynamic Date & Any-Time Selection Modal States
   const [dateModalVisible, setDateModalVisible] = useState(false);
@@ -1007,32 +1100,95 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
               </View>
               <View style={{ flex: 1, marginLeft: 8 }}>
                 <Text style={[styles.smallCardTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>Schedule Slot</Text>
-                <Text style={[styles.smallCardSub, { color: isDark ? themeColors.textSecondary : "#64748B" }]}>Preferred arrival</Text>
+                <Text style={[styles.smallCardSub, { color: isDark ? themeColors.textSecondary : "#64748B" }]}>
+                  {isTodaySelected ? "Arrival Today" : isTomorrowSelected ? "Arrival Tomorrow" : "Advance Arrival"}
+                </Text>
               </View>
             </View>
 
-            {/* Date Pill (Opens dynamic 14-day selector) */}
+            {/* Quick 1-tap Day Chips: Today & Tomorrow */}
+            <View style={styles.quickDayChipsRow}>
+              <TouchableOpacity
+                style={[
+                  styles.quickDayChip,
+                  isTodaySelected
+                    ? { backgroundColor: "#7C3AED", borderColor: "#7C3AED" }
+                    : { backgroundColor: isDark ? themeColors.surface : "#FFFFFF", borderColor: themeColors.cardBorder },
+                ]}
+                onPress={handleSelectToday}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="flash" size={11} color={isTodaySelected ? "#FFFFFF" : "#F59E0B"} style={{ marginRight: 3 }} />
+                <Text style={[styles.quickDayChipText, { color: isTodaySelected ? "#FFFFFF" : (isDark ? themeColors.text : "#0F172A") }]}>
+                  Today
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.quickDayChip,
+                  isTomorrowSelected
+                    ? { backgroundColor: "#7C3AED", borderColor: "#7C3AED" }
+                    : { backgroundColor: isDark ? themeColors.surface : "#FFFFFF", borderColor: themeColors.cardBorder },
+                ]}
+                onPress={handleSelectTomorrow}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="calendar-outline" size={11} color={isTomorrowSelected ? "#FFFFFF" : "#0284C7"} style={{ marginRight: 3 }} />
+                <Text style={[styles.quickDayChipText, { color: isTomorrowSelected ? "#FFFFFF" : (isDark ? themeColors.text : "#0F172A") }]}>
+                  Tomorrow
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Date Pill (Opens interactive advance calendar) */}
             <TouchableOpacity
-              style={[styles.whiteInputPill, { backgroundColor: isDark ? themeColors.surface : "#FFFFFF", borderColor: themeColors.cardBorder }]}
+              style={[
+                styles.whiteInputPill,
+                {
+                  marginTop: 6,
+                  backgroundColor: isDark ? themeColors.surface : "#FFFFFF",
+                  borderColor: isAdvanceSelected ? "#7C3AED" : themeColors.cardBorder,
+                },
+              ]}
               onPress={() => setDateModalVisible(true)}
             >
-              <Ionicons name="calendar-outline" size={15} color={isDark ? themeColors.textSecondary : "#64748B"} style={{ marginRight: 6 }} />
-              <Text style={[styles.schedulePillText, { color: isDark ? themeColors.text : "#0F172A" }]} numberOfLines={1}>{bookingDate}</Text>
-              <Ionicons name="chevron-forward" size={14} color={isDark ? themeColors.textMuted : "#94A3B8"} style={{ marginLeft: "auto" }} />
+              <Ionicons
+                name="calendar"
+                size={14}
+                color={isAdvanceSelected ? "#7C3AED" : (isDark ? themeColors.textSecondary : "#64748B")}
+                style={{ marginRight: 6 }}
+              />
+              <Text
+                style={[
+                  styles.schedulePillText,
+                  { color: isDark ? themeColors.text : "#0F172A", fontSize: 11 },
+                  isAdvanceSelected && { fontWeight: "800", color: "#7C3AED" },
+                ]}
+                numberOfLines={1}
+              >
+                {bookingDate}
+              </Text>
+              <Ionicons name="chevron-forward" size={13} color={isDark ? themeColors.textMuted : "#94A3B8"} style={{ marginLeft: "auto" }} />
             </TouchableOpacity>
 
             {/* Time Pill (Opens comprehensive any-time slot picker) */}
             <TouchableOpacity
-              style={[styles.whiteInputPill, { marginTop: 6, backgroundColor: isDark ? themeColors.surface : "#FFFFFF", borderColor: themeColors.cardBorder }]}
+              style={[
+                styles.whiteInputPill,
+                { marginTop: 6, backgroundColor: isDark ? themeColors.surface : "#FFFFFF", borderColor: themeColors.cardBorder },
+              ]}
               onPress={() => {
                 setCustomTimeInput(bookingTime.replace(/\s*(AM|PM)/i, ""));
                 setCustomAmPm(bookingTime.toUpperCase().includes("PM") ? "PM" : "AM");
                 setTimeModalVisible(true);
               }}
             >
-              <Ionicons name="time-outline" size={15} color={isDark ? themeColors.textSecondary : "#64748B"} style={{ marginRight: 6 }} />
-              <Text style={[styles.schedulePillText, { color: isDark ? themeColors.text : "#0F172A" }]} numberOfLines={1}>{bookingTime}</Text>
-              <Ionicons name="chevron-forward" size={14} color={isDark ? themeColors.textMuted : "#94A3B8"} style={{ marginLeft: "auto" }} />
+              <Ionicons name="time-outline" size={14} color={isDark ? themeColors.textSecondary : "#64748B"} style={{ marginRight: 6 }} />
+              <Text style={[styles.schedulePillText, { color: isDark ? themeColors.text : "#0F172A", fontSize: 11 }]} numberOfLines={1}>
+                {bookingTime}
+              </Text>
+              <Ionicons name="chevron-forward" size={13} color={isDark ? themeColors.textMuted : "#94A3B8"} style={{ marginLeft: "auto" }} />
             </TouchableOpacity>
           </View>
         </View>
@@ -1255,61 +1411,241 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         </SafeAreaView>
       </Modal>
 
-      {/* ── 8. Dynamic Date Selector Modal ────────────────────────────── */}
+      {/* ── 8. Advance Calendar & Date Selector Modal ──────────────────── */}
       <Modal visible={dateModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlayDark}>
           <View style={[styles.dateModalSheet, { backgroundColor: isDark ? themeColors.card : "#FFFFFF", borderColor: themeColors.cardBorder }]}>
             <View style={styles.modalHeaderRow}>
-              <Text style={[styles.modalTitleText, { color: isDark ? themeColors.text : "#0F172A" }]}>
-                Select Service Date
-              </Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.modalTitleText, { color: isDark ? themeColors.text : "#0F172A" }]}>
+                  Select Arrival Date
+                </Text>
+                <Text style={{ fontSize: 11.5, color: isDark ? themeColors.textSecondary : "#64748B", marginTop: 2 }}>
+                  Book for today, tomorrow, or any date in advance
+                </Text>
+              </View>
               <TouchableOpacity onPress={() => setDateModalVisible(false)} style={styles.modalCloseIconBtn}>
                 <Ionicons name="close" size={22} color={isDark ? themeColors.textSecondary : "#64748B"} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
-              {getUpcomingDates(14).map((d, index) => {
-                const isSelected = bookingDate === d.value;
-                return (
-                  <TouchableOpacity
-                    key={index}
+            <ScrollView style={{ maxHeight: Dimensions.get("window").height * 0.72 }} showsVerticalScrollIndicator={false}>
+              {/* Quick Choice Buttons: Today & Tomorrow (NO Saturday) */}
+              <View style={styles.modalQuickRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.modalQuickBtn,
+                    isTodaySelected
+                      ? { backgroundColor: themeColors.primary, borderColor: themeColors.primary }
+                      : { backgroundColor: isDark ? themeColors.surface : "#F8FAFC", borderColor: themeColors.cardBorder },
+                  ]}
+                  onPress={handleSelectToday}
+                  activeOpacity={0.8}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Ionicons name="flash" size={15} color={isTodaySelected ? "#FFFFFF" : "#F59E0B"} style={{ marginRight: 6 }} />
+                    <Text style={[styles.modalQuickBtnTitle, isTodaySelected ? { color: "#FFFFFF" } : { color: isDark ? themeColors.text : "#0F172A" }]}>
+                      Today
+                    </Text>
+                  </View>
+                  <Text style={[styles.modalQuickBtnSub, isTodaySelected ? { color: "rgba(255,255,255,0.85)" } : { color: isDark ? themeColors.textSecondary : "#64748B" }]}>
+                    {formatShortDate(today)}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.modalQuickBtn,
+                    isTomorrowSelected
+                      ? { backgroundColor: themeColors.primary, borderColor: themeColors.primary }
+                      : { backgroundColor: isDark ? themeColors.surface : "#F8FAFC", borderColor: themeColors.cardBorder },
+                  ]}
+                  onPress={handleSelectTomorrow}
+                  activeOpacity={0.8}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Ionicons name="calendar-outline" size={15} color={isTomorrowSelected ? "#FFFFFF" : "#0284C7"} style={{ marginRight: 6 }} />
+                    <Text style={[styles.modalQuickBtnTitle, isTomorrowSelected ? { color: "#FFFFFF" } : { color: isDark ? themeColors.text : "#0F172A" }]}>
+                      Tomorrow
+                    </Text>
+                  </View>
+                  <Text style={[styles.modalQuickBtnSub, isTomorrowSelected ? { color: "rgba(255,255,255,0.85)" } : { color: isDark ? themeColors.textSecondary : "#64748B" }]}>
+                    {formatShortDate(tomorrowObj)}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Advance Booking Month Navigation Header */}
+              <View style={styles.calendarNavHeader}>
+                <TouchableOpacity
+                  style={[styles.calMonthArrowBtn, isPrevMonthDisabled && { opacity: 0.25 }]}
+                  onPress={handlePrevMonth}
+                  disabled={isPrevMonthDisabled}
+                >
+                  <Ionicons name="chevron-back" size={18} color={isDark ? themeColors.text : "#0F172A"} />
+                </TouchableOpacity>
+
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Ionicons name="calendar" size={16} color={themeColors.primary} />
+                  <Text style={[styles.calMonthTitleText, { color: isDark ? themeColors.text : "#0F172A" }]}>
+                    {MONTH_NAMES[calendarMonth]} {calendarYear}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.calMonthArrowBtn, isNextMonthDisabled && { opacity: 0.25 }]}
+                  onPress={handleNextMonth}
+                  disabled={isNextMonthDisabled}
+                >
+                  <Ionicons name="chevron-forward" size={18} color={isDark ? themeColors.text : "#0F172A"} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Days of Week Row */}
+              <View style={styles.calendarWeekdaysRow}>
+                {WEEKDAY_NAMES.map((w, idx) => (
+                  <Text
+                    key={idx}
                     style={[
-                      styles.dateItemRow,
-                      {
-                        backgroundColor: isSelected
-                          ? (isDark ? "rgba(0,198,170,0.18)" : "#CCFBF1")
-                          : (isDark ? themeColors.surface : "#F8FAFC"),
-                        borderColor: isSelected ? themeColors.primary : themeColors.cardBorder,
-                      },
+                      styles.calendarWeekdayText,
+                      { color: isDark ? themeColors.textSecondary : "#94A3B8" },
+                      (idx === 0 || idx === 6) && { color: "#EF4444" },
                     ]}
+                  >
+                    {w}
+                  </Text>
+                ))}
+              </View>
+
+              {/* Calendar Days 7-Column Grid */}
+              <View style={styles.calendarGrid}>
+                {Array.from({ length: getFirstDayOfMonth(calendarYear, calendarMonth) }).map((_, i) => (
+                  <View key={`empty-${i}`} style={styles.calendarDayCell} />
+                ))}
+
+                {Array.from({ length: getDaysInMonth(calendarYear, calendarMonth) }).map((_, i) => {
+                  const dayNum = i + 1;
+                  const cellDate = new Date(calendarYear, calendarMonth, dayNum);
+                  const isPast = isDateInPast(cellDate);
+                  const isCellToday = isSameDay(cellDate, today);
+                  const isCellSelected = isSameDay(cellDate, selectedDateObj);
+
+                  return (
+                    <TouchableOpacity
+                      key={`day-${dayNum}`}
+                      style={[
+                        styles.calendarDayCell,
+                        isCellSelected && { backgroundColor: themeColors.primary, borderRadius: 20 },
+                        isCellToday && !isCellSelected && {
+                          borderWidth: 1.5,
+                          borderColor: themeColors.primary,
+                          borderRadius: 20,
+                        },
+                        isPast && { opacity: 0.28 },
+                      ]}
+                      disabled={isPast}
+                      onPress={() => handleSelectCalendarDay(dayNum)}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.calendarDayText,
+                          { color: isDark ? themeColors.text : "#0F172A" },
+                          isCellSelected && { color: "#FFFFFF", fontWeight: "900" },
+                          isCellToday && !isCellSelected && { color: themeColors.primary, fontWeight: "900" },
+                          isPast && { color: isDark ? "#64748B" : "#94A3B8" },
+                        ]}
+                      >
+                        {dayNum}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Preferred Arrival Time Section */}
+              <View style={{ marginTop: 14 }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <Text style={[styles.modalSectionLabel, { color: isDark ? themeColors.textSecondary : "#64748B", marginBottom: 0 }]}>
+                    Preferred Arrival Time
+                  </Text>
+                  <TouchableOpacity
                     onPress={() => {
-                      setBookingDate(d.value);
                       setDateModalVisible(false);
+                      setCustomTimeInput(bookingTime.replace(/\s*(AM|PM)/i, ""));
+                      setCustomAmPm(bookingTime.toUpperCase().includes("PM") ? "PM" : "AM");
+                      setTimeModalVisible(true);
                     }}
                   >
-                    <Ionicons
-                      name={isSelected ? "checkmark-circle" : "calendar-outline"}
-                      size={20}
-                      color={isSelected ? themeColors.primary : (isDark ? themeColors.textSecondary : "#64748B")}
-                      style={{ marginRight: 10 }}
-                    />
-                    <Text
-                      style={[
-                        styles.dateItemText,
-                        {
-                          color: isSelected
-                            ? themeColors.primary
-                            : (isDark ? themeColors.text : "#0F172A"),
-                          fontWeight: isSelected ? "800" : "600",
-                        },
-                      ]}
-                    >
-                      {d.label}
-                    </Text>
+                    <Text style={{ fontSize: 12, fontWeight: "800", color: themeColors.primary }}>More Times & Custom ›</Text>
                   </TouchableOpacity>
-                );
-              })}
+                </View>
+
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 2 }}>
+                  {POPULAR_TIME_SLOTS.map((slot) => {
+                    const isSelected = bookingTime === slot;
+                    return (
+                      <TouchableOpacity
+                        key={slot}
+                        style={[
+                          styles.quickTimeSlotPill,
+                          isSelected
+                            ? { backgroundColor: themeColors.primary, borderColor: themeColors.primary }
+                            : { backgroundColor: isDark ? themeColors.surface : "#F1F5F9", borderColor: themeColors.cardBorder },
+                        ]}
+                        onPress={() => setBookingTime(slot)}
+                      >
+                        <Ionicons
+                          name="time-outline"
+                          size={13}
+                          color={isSelected ? "#FFFFFF" : (isDark ? themeColors.textSecondary : "#64748B")}
+                          style={{ marginRight: 4 }}
+                        />
+                        <Text
+                          style={[
+                            styles.quickTimeSlotPillText,
+                            { color: isSelected ? "#FFFFFF" : (isDark ? themeColors.text : "#0F172A") },
+                            isSelected && { fontWeight: "800" },
+                          ]}
+                        >
+                          {slot}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              {/* Schedule Summary Banner */}
+              <View
+                style={[
+                  styles.scheduleSummaryBanner,
+                  {
+                    backgroundColor: isDark ? "rgba(15,118,110,0.15)" : "#F0FDFA",
+                    borderColor: isDark ? "rgba(15,118,110,0.3)" : "#CCFBF1",
+                  },
+                ]}
+              >
+                <Ionicons name="calendar-outline" size={20} color={themeColors.primary} style={{ marginRight: 10 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.scheduleSummaryTitle, { color: isDark ? themeColors.textSecondary : "#0F766E" }]}>
+                    {isTodaySelected ? "Arrival Today" : isTomorrowSelected ? "Arrival Tomorrow" : "Advance Arrival Date"}
+                  </Text>
+                  <Text style={[styles.scheduleSummaryVal, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
+                    {bookingDate} • {bookingTime}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Confirm Schedule Button */}
+              <TouchableOpacity
+                style={[styles.confirmScheduleBtn, { backgroundColor: themeColors.primary }]}
+                onPress={() => setDateModalVisible(false)}
+                activeOpacity={0.88}
+              >
+                <Text style={styles.confirmScheduleBtnText}>Confirm Date & Time</Text>
+                <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+              </TouchableOpacity>
             </ScrollView>
           </View>
         </View>
@@ -2363,6 +2699,146 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     marginBottom: 10,
+  },
+  // Quick day chips on Card 2
+  quickDayChipsRow: {
+    flexDirection: "row",
+    gap: 6,
+    marginBottom: 2,
+  },
+  quickDayChip: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 30,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  quickDayChipText: {
+    fontSize: 10.5,
+    fontWeight: "700",
+  },
+
+  // Advance Calendar Modal Styles
+  modalQuickRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 16,
+  },
+  modalQuickBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    justifyContent: "space-between",
+  },
+  modalQuickBtnTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  modalQuickBtnSub: {
+    fontSize: 11.5,
+    fontWeight: "600",
+    marginTop: 4,
+  },
+  calendarNavHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  calMonthArrowBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(0,0,0,0.05)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  calMonthTitleText: {
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  calendarWeekdaysRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 6,
+    paddingHorizontal: 2,
+  },
+  calendarWeekdayText: {
+    width: "14.28%",
+    textAlign: "center",
+    fontSize: 11.5,
+    fontWeight: "700",
+  },
+  calendarGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginBottom: 12,
+  },
+  calendarDayCell: {
+    width: "14.28%",
+    height: 38,
+    justifyContent: "center",
+    alignItems: "center",
+    marginVertical: 2,
+  },
+  calendarDayText: {
+    fontSize: 13.5,
+    fontWeight: "600",
+  },
+  quickTimeSlotPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  quickTimeSlotPillText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  scheduleSummaryBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 14,
+    marginBottom: 14,
+  },
+  scheduleSummaryTitle: {
+    fontSize: 11,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  scheduleSummaryVal: {
+    fontSize: 13.5,
+    fontWeight: "800",
+    marginTop: 2,
+  },
+  confirmScheduleBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    borderRadius: 16,
+    marginBottom: 10,
+    shadowColor: "#0F766E",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  confirmScheduleBtnText: {
+    color: "#FFFFFF",
+    fontSize: 14.5,
+    fontWeight: "900",
   },
   dateItemRow: {
     flexDirection: "row",

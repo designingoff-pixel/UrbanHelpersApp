@@ -307,7 +307,7 @@ export async function getInAppNotices(): Promise<InAppNotice[]> {
     const data = await AsyncStorage.getItem(IN_APP_NOTICES_KEY);
     if (data) {
       const parsed = JSON.parse(data);
-      if (Array.isArray(parsed)) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         // Strip out any legacy mock items
         const real = parsed.filter(
           (n: InAppNotice) =>
@@ -319,9 +319,39 @@ export async function getInAppNotices(): Promise<InAppNotice[]> {
         if (real.length !== parsed.length) {
           await AsyncStorage.setItem(IN_APP_NOTICES_KEY, JSON.stringify(real));
         }
-        return real;
+        if (real.length > 0) return real;
       }
     }
+
+    // Default Seed Reminders for repeat appliance maintenance
+    const defaultReminders: InAppNotice[] = [
+      {
+        id: "appliance-chimney-init",
+        tag: "[Appliance Reminder]",
+        title: "🔔 Kitchen Chimney Cleaning Due!",
+        date: "Recommended: Every 60 Days",
+        body: "Heavy oil, soot and grease build up in filters every 60 days. Schedule suction degreasing now to keep your kitchen fresh & safe.",
+        isRead: false,
+      },
+      {
+        id: "appliance-fridge-init",
+        tag: "[Appliance Reminder]",
+        title: "❄️ Refrigerator Deep Clean & Coil Sanitation Due!",
+        date: "Recommended: Every 90 Days",
+        body: "90 days since your fridge check. Regular coil cleaning cuts power bills by 20% and prevents food odor & bacteria.",
+        isRead: false,
+      },
+      {
+        id: "appliance-ac-init",
+        tag: "[Appliance Reminder]",
+        title: "💨 AC Jet Foam Wash Due!",
+        date: "Recommended: Every 90 Days",
+        body: "Keep cooling efficiency at 100% and eliminate indoor allergens. Scheduled every 90 days for peak compressor life.",
+        isRead: false,
+      },
+    ];
+    await AsyncStorage.setItem(IN_APP_NOTICES_KEY, JSON.stringify(defaultReminders));
+    return defaultReminders;
   } catch (e) {
     console.warn("Error reading in-app notices", e);
   }
@@ -683,6 +713,169 @@ export async function sendPaymentSuccessNotification(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 🧼 APPLIANCE REPEAT CLEANING & MAINTENANCE REMINDERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ApplianceReminderConfig {
+  id: string;
+  name: string;
+  intervalDays: number;
+  icon: string;
+  title: string;
+  body: string;
+  category: string;
+  recommendedSubService: string;
+}
+
+export const APPLIANCE_REPEAT_INTERVALS: ApplianceReminderConfig[] = [
+  {
+    id: "chimney",
+    name: "Kitchen Chimney",
+    intervalDays: 60,
+    icon: "flame-outline",
+    title: "🔔 Kitchen Chimney Cleaning Due!",
+    body: "Heavy oil, soot and grease build up in filters every 60 days. Schedule suction degreasing now to keep your kitchen fresh & safe.",
+    category: "Appliances",
+    recommendedSubService: "Chimney Deep Clean",
+  },
+  {
+    id: "refrigerator",
+    name: "Refrigerator",
+    intervalDays: 90,
+    icon: "snow-outline",
+    title: "❄️ Refrigerator Deep Clean & Coil Sanitation Due!",
+    body: "90 days since your fridge check. Regular coil cleaning cuts power bills by 20% and prevents food odor & bacteria.",
+    category: "Appliances",
+    recommendedSubService: "Refrigerator Sanitization",
+  },
+  {
+    id: "ac",
+    name: "Air Conditioner (AC)",
+    intervalDays: 90,
+    icon: "thermometer-outline",
+    title: "💨 AC Jet Foam Wash Due!",
+    body: "Keep cooling efficiency at 100% and eliminate indoor allergens. Scheduled every 90 days for peak compressor life.",
+    category: "Appliances",
+    recommendedSubService: "AC Jet Wash & Service",
+  },
+  {
+    id: "water_purifier",
+    name: "Water Purifier (RO)",
+    intervalDays: 90,
+    icon: "water-outline",
+    title: "💧 RO & Water Purifier Filter Check Due!",
+    body: "Safe drinking water requires sediment filter and membrane check every 90 days. Keep your family protected.",
+    category: "Appliances",
+    recommendedSubService: "RO Water Purifier Service",
+  },
+  {
+    id: "washing_machine",
+    name: "Washing Machine",
+    intervalDays: 60,
+    icon: "sync-outline",
+    title: "🫧 Washing Machine Tub Descaling Due!",
+    body: "Limescale & detergent sludge build up in 60 days. Deep drum descaling prevents clothes odor and pump damage.",
+    category: "Appliances",
+    recommendedSubService: "Washing Machine Descaling",
+  },
+];
+
+export async function scheduleApplianceRepeatReminder(
+  applianceId: string,
+  serviceName?: string,
+  customDays?: number
+): Promise<string> {
+  const config = APPLIANCE_REPEAT_INTERVALS.find(
+    (a) => a.id === applianceId || (serviceName && serviceName.toLowerCase().includes(a.id))
+  );
+  if (!config) return "";
+
+  const days = customDays || config.intervalDays;
+  const seconds = days * 86400; // in seconds
+  const identifier = `appliance_repeat_${config.id}`;
+
+  try {
+    await Notifications.cancelScheduledNotificationAsync(identifier);
+  } catch {}
+
+  // 1. In-App Notice for immediate visibility & record
+  await addInAppNotice({
+    tag: "[Appliance Reminder]",
+    title: config.title,
+    date: `Repeat in ${days} days`,
+    body: config.body,
+  });
+
+  // 2. Schedule push notification
+  return Notifications.scheduleNotificationAsync({
+    identifier,
+    content: {
+      title: config.title,
+      body: config.body,
+      sound: true,
+      data: {
+        screen: "ServicesDashboard",
+        category: config.category,
+        subService: config.recommendedSubService,
+        applianceId: config.id,
+      },
+    },
+    trigger: { ...intervalTrigger(seconds), channelId: "services" },
+  });
+}
+
+export async function scheduleAllApplianceReminders(): Promise<void> {
+  for (const config of APPLIANCE_REPEAT_INTERVALS) {
+    const identifier = `appliance_repeat_${config.id}`;
+    const seconds = config.intervalDays * 86400;
+    try {
+      await Notifications.cancelScheduledNotificationAsync(identifier);
+    } catch {}
+
+    await Notifications.scheduleNotificationAsync({
+      identifier,
+      content: {
+        title: config.title,
+        body: config.body,
+        sound: true,
+        data: {
+          screen: "ServicesDashboard",
+          category: config.category,
+          subService: config.recommendedSubService,
+          applianceId: config.id,
+        },
+      },
+      trigger: { ...intervalTrigger(seconds), channelId: "services" },
+    });
+  }
+}
+
+export async function triggerImmediateApplianceReminder(applianceId: string): Promise<void> {
+  const config =
+    APPLIANCE_REPEAT_INTERVALS.find((a) => a.id === applianceId) || APPLIANCE_REPEAT_INTERVALS[0];
+  await addInAppNotice({
+    tag: "[Appliance Reminder]",
+    title: config.title,
+    date: "Just now",
+    body: config.body,
+  });
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: config.title,
+      body: config.body,
+      sound: true,
+      data: {
+        screen: "ServicesDashboard",
+        category: config.category,
+        subService: config.recommendedSubService,
+        applianceId: config.id,
+      },
+    },
+    trigger: { ...intervalTrigger(1), channelId: "services" },
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 🛍️ SHOP ORDERS NOTIFICATIONS
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -819,9 +1012,10 @@ export async function setupDefaultNotifications(): Promise<void> {
     await scheduleHydrationReminders();      // +2 hrs
     await scheduleCalorieReminder();         // 6:00 PM
     await scheduleSleepReminder(22, 30);     // 10:30 PM
+    await scheduleAllApplianceReminders();   // Periodic Chimney, Fridge, AC, RO cleaning
 
     await AsyncStorage.setItem(NOTIF_SETUP_KEY, today);
-    console.log("[Notifications] Wellness reminders configured (1 instance each, future dates only).");
+    console.log("[Notifications] Wellness and appliance reminders configured.");
   } catch (e) {
     console.log("[Notifications] Setup error:", e);
   }

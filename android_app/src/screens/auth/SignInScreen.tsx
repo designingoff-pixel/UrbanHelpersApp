@@ -16,25 +16,27 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "@/services/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, setDoc } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/AuthContext";
 
 type Props = NativeStackScreenProps<RootStackParamList, "SignIn">;
 
 export default function SignInScreen({ navigation }: Props) {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { signInWithGoogle } = useAuth();
 
+  const isPhone = !identifier.includes("@") && /^[0-9+\s-]{6,15}$/.test(identifier.trim());
+
   const handleSignIn = async () => {
-    const cleanEmail = email.trim();
+    const rawInput = identifier.trim();
     const cleanPass = password;
 
-    if (!cleanEmail) {
-      Alert.alert("Email Required", "Please enter your email address to sign in.");
+    if (!rawInput) {
+      Alert.alert("Input Required", "Please enter your email address or 10-digit mobile number.");
       return;
     }
     if (!cleanPass) {
@@ -44,9 +46,53 @@ export default function SignInScreen({ navigation }: Props) {
 
     setLoading(true);
     try {
+      let resolvedEmail = rawInput.toLowerCase();
+      let extractedPhone = "";
+
+      const isMobileInput = !rawInput.includes("@") && /^[0-9+\s-]{7,15}$/.test(rawInput);
+
+      if (isMobileInput) {
+        const digits = rawInput.replace(/\D/g, "");
+        extractedPhone = digits.length >= 10 ? digits.slice(-10) : digits;
+
+        if (extractedPhone.length < 10) {
+          Alert.alert("Invalid Mobile Number", "Please enter a valid 10-digit mobile number.");
+          setLoading(false);
+          return;
+        }
+
+        // Try looking up registered user by phone or mobile
+        try {
+          const usersRef = collection(db, "users");
+          const qPhone = query(usersRef, where("phone", "==", extractedPhone));
+          const phoneSnap = await getDocs(qPhone);
+
+          if (!phoneSnap.empty && phoneSnap.docs[0].data()?.email) {
+            resolvedEmail = phoneSnap.docs[0].data().email;
+          } else {
+            const qPhone91 = query(usersRef, where("phone", "==", `+91${extractedPhone}`));
+            const phone91Snap = await getDocs(qPhone91);
+            if (!phone91Snap.empty && phone91Snap.docs[0].data()?.email) {
+              resolvedEmail = phone91Snap.docs[0].data().email;
+            } else {
+              const qMobile = query(usersRef, where("mobile", "==", extractedPhone));
+              const mobileSnap = await getDocs(qMobile);
+              if (!mobileSnap.empty && mobileSnap.docs[0].data()?.email) {
+                resolvedEmail = mobileSnap.docs[0].data().email;
+              } else {
+                resolvedEmail = `${extractedPhone}@urbanhelpers.app`;
+              }
+            }
+          }
+        } catch (lookupErr) {
+          console.warn("[SignIn] Phone lookup failed, fallback to phone-email:", lookupErr);
+          resolvedEmail = `${extractedPhone}@urbanhelpers.app`;
+        }
+      }
+
       let firebaseUser = null;
       try {
-        const res = await signInWithEmailAndPassword(auth, cleanEmail, cleanPass);
+        const res = await signInWithEmailAndPassword(auth, resolvedEmail, cleanPass);
         firebaseUser = res.user;
       } catch (signInErr: any) {
         if (
@@ -54,7 +100,7 @@ export default function SignInScreen({ navigation }: Props) {
           signInErr.code === "auth/invalid-credential" ||
           signInErr.code === "auth/invalid-email"
         ) {
-          const createRes = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPass);
+          const createRes = await createUserWithEmailAndPassword(auth, resolvedEmail, cleanPass);
           firebaseUser = createRes.user;
         } else {
           throw signInErr;
@@ -67,6 +113,19 @@ export default function SignInScreen({ navigation }: Props) {
         const userDocRef = doc(db, "users", firebaseUser.uid);
         const userDocSnap = await getDoc(userDocRef);
 
+        // If logged in via mobile number, ensure phone field is recorded in user doc
+        if (extractedPhone) {
+          await setDoc(
+            userDocRef,
+            {
+              phone: extractedPhone,
+              mobile: extractedPhone,
+              updatedAt: new Date().toISOString(),
+            },
+            { merge: true }
+          );
+        }
+
         if (!userDocSnap.exists() || !userDocSnap.data()?.profileCompleted) {
           navigation.reset({
             index: 0,
@@ -74,8 +133,9 @@ export default function SignInScreen({ navigation }: Props) {
               {
                 name: "CreateProfile",
                 params: {
-                  email: cleanEmail,
-                  name: firebaseUser.displayName || cleanEmail.split("@")[0],
+                  email: resolvedEmail.endsWith("@urbanhelpers.app") ? "" : resolvedEmail,
+                  phone: extractedPhone,
+                  name: firebaseUser.displayName || (extractedPhone ? `User ${extractedPhone.slice(-4)}` : resolvedEmail.split("@")[0]),
                 } as any,
               },
             ],
@@ -131,18 +191,34 @@ export default function SignInScreen({ navigation }: Props) {
         <Text style={styles.title}>Welcome Back</Text>
         <Text style={styles.subtitle}>Sign in to continue to Urban Helpers.</Text>
 
-        {/* Email Input */}
+        {/* Email or Mobile Number Input */}
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Email Address</Text>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+            <Text style={styles.inputLabel}>Email or Mobile Number</Text>
+            {identifier.trim().length > 0 && (
+              <View style={[styles.typeBadge, isPhone ? styles.phoneBadge : styles.emailBadge]}>
+                <Ionicons name={isPhone ? "call" : "mail"} size={11} color={isPhone ? "#0D9488" : "#2563EB"} />
+                <Text style={[styles.typeBadgeText, { color: isPhone ? "#0D9488" : "#2563EB" }]}>
+                  {isPhone ? "Mobile Number" : "Email Address"}
+                </Text>
+              </View>
+            )}
+          </View>
           <View style={styles.inputBox}>
-            <Ionicons name="mail-outline" size={18} color="#64748B" style={{ marginRight: 10 }} />
+            <Ionicons
+              name={isPhone ? "call-outline" : "mail-outline"}
+              size={18}
+              color="#64748B"
+              style={{ marginRight: 10 }}
+            />
             <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder="you@example.com"
+              value={identifier}
+              onChangeText={setIdentifier}
+              placeholder="e.g. you@example.com or 98765 43210"
               placeholderTextColor="#94A3B8"
               keyboardType="email-address"
               autoCapitalize="none"
+              autoCorrect={false}
               style={styles.inputField}
             />
           </View>
@@ -285,7 +361,25 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     fontWeight: "700",
     color: "#334155",
-    marginBottom: 6,
+    marginBottom: 0,
+  },
+  typeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    gap: 4,
+  },
+  phoneBadge: {
+    backgroundColor: "#CCFBF1",
+  },
+  emailBadge: {
+    backgroundColor: "#DBEAFE",
+  },
+  typeBadgeText: {
+    fontSize: 10.5,
+    fontWeight: "700",
   },
   inputBox: {
     flexDirection: "row",

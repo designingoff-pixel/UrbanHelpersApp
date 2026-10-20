@@ -33,16 +33,24 @@ export default function SamsungBottomNav({ activeRoute, activeTab, onTabPress }:
   const { colors, isDark } = useTheme();
   const isShopActive = activeRoute === "Shop";
 
-  const inactiveIconColor = isDark ? "rgba(255,255,255,0.65)" : "#64748b";
-  const activeIconColor = isDark ? "#FFFFFF" : "#0f172a";
-  const activeWrapperBg = isDark ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.08)";
-  const inactiveLabelColor = isDark ? "rgba(255,255,255,0.6)" : "#64748b";
-  const activeLabelColor = isDark ? "#FFFFFF" : "#0f172a";
+  // High-contrast accessibility colors so elderly users can clearly identify current page
+  const activeColor = isDark ? "#00E5FF" : "#0F766E";
+  const activePillBg = isDark ? "#0F766E" : "#0F766E";
+  const inactiveIconColor = isDark ? "rgba(255,255,255,0.48)" : "#64748B";
+  const inactiveLabelColor = isDark ? "rgba(255,255,255,0.52)" : "#64748B";
 
   return (
     <View style={s.bottomContainer} pointerEvents="box-none">
-      {/* Main navigation pill */}
-      <View style={[s.navBar, { backgroundColor: isDark ? "rgba(24, 28, 36, 0.95)" : "#ffffff", borderColor: colors.cardBorder }]}>
+      {/* Main navigation pill (100% solid background prevents page content bleeding through) */}
+      <View
+        style={[
+          s.navBar,
+          {
+            backgroundColor: isDark ? "#0F172A" : "#FFFFFF",
+            borderColor: isDark ? "rgba(255, 255, 255, 0.16)" : "#E2E8F0",
+          },
+        ]}
+      >
         {NAV_TABS.map((n) => {
           const isActive = activeRoute ? activeRoute === n.route : activeTab === n.label;
           return (
@@ -56,17 +64,45 @@ export default function SamsungBottomNav({ activeRoute, activeTab, onTabPress }:
                 }
               }}
               style={s.navBtn}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isActive }}
+              accessibilityLabel={`${n.label} tab${isActive ? ", currently selected" : ""}`}
             >
-              <View style={[s.navIconWrapper, isActive && { backgroundColor: activeWrapperBg }]}>
+              {/* Senior-friendly Top Active Indicator Notch */}
+              {isActive && (
+                <View style={[s.activeTopNotch, { backgroundColor: activeColor }]} />
+              )}
+
+              {/* Icon Capsule Pill: prominent solid highlight when active */}
+              <View
+                style={[
+                  s.navIconWrapper,
+                  isActive
+                    ? [
+                        s.navIconWrapperActive,
+                        {
+                          backgroundColor: activePillBg,
+                          borderColor: isDark ? "#00E5FF" : "#0D9488",
+                        },
+                      ]
+                    : null,
+                ]}
+              >
                 <Ionicons
                   name={isActive ? n.activeIcon : n.icon}
-                  size={19}
-                  color={isActive ? activeIconColor : inactiveIconColor}
+                  size={isActive ? 20 : 19}
+                  color={isActive ? "#FFFFFF" : inactiveIconColor}
                 />
-                {n.hasDot && <View style={s.tabOrangeDot} />}
+                {n.hasDot && !isActive && <View style={s.tabOrangeDot} />}
               </View>
+
+              {/* Large, bold, high-contrast label */}
               <Text
-                style={[s.navLabel, { color: isActive ? activeLabelColor : inactiveLabelColor }, isActive && s.navLabelActive]}
+                style={[
+                  s.navLabel,
+                  { color: isActive ? activeColor : inactiveLabelColor },
+                  isActive && s.navLabelActive,
+                ]}
                 numberOfLines={1}
                 ellipsizeMode="tail"
               >
@@ -77,25 +113,45 @@ export default function SamsungBottomNav({ activeRoute, activeTab, onTabPress }:
         })}
       </View>
 
-      {/* Floating Shop button on right (replaces scan icon) */}
+      {/* Floating Shop button on right */}
       <Pressable
         style={[
           s.shopBtn,
           {
-            backgroundColor: isShopActive ? "#124330" : (isDark ? "rgba(35, 42, 53, 0.96)" : "#ffffff"),
-            borderColor: isShopActive ? "#2d6a4f" : colors.cardBorder,
+            backgroundColor: isShopActive
+              ? "#0F766E"
+              : isDark
+              ? "#1E293B"
+              : "#FFFFFF",
+            borderColor: isShopActive
+              ? "#00E5FF"
+              : isDark
+              ? "rgba(255, 255, 255, 0.16)"
+              : "#E2E8F0",
           },
-          isShopActive && s.shopBtnActive
+          isShopActive && s.shopBtnActive,
         ]}
         onPress={() => navigation.navigate("Shop")}
+        accessibilityRole="button"
         accessibilityLabel="Shop"
       >
+        {isShopActive && (
+          <View style={[s.activeShopNotch, { backgroundColor: "#00E5FF" }]} />
+        )}
         <Ionicons
           name={isShopActive ? "bag-handle" : "bag-handle-outline"}
-          size={21}
-          color={isShopActive ? "#ffffff" : (isDark ? "rgba(255,255,255,0.9)" : "#124330")}
+          size={isShopActive ? 22 : 20}
+          color={isShopActive ? "#FFFFFF" : isDark ? "rgba(255,255,255,0.85)" : "#0F766E"}
         />
-        <Text style={[s.shopBtnLabel, { color: isShopActive ? "#ffffff" : (isDark ? "rgba(255,255,255,0.75)" : "#124330") }, isShopActive && s.shopBtnLabelActive]}>Shop</Text>
+        <Text
+          style={[
+            s.shopBtnLabel,
+            { color: isShopActive ? "#FFFFFF" : isDark ? "rgba(255,255,255,0.75)" : "#0F766E" },
+            isShopActive && s.shopBtnLabelActive,
+          ]}
+        >
+          Shop
+        </Text>
       </Pressable>
     </View>
   );
@@ -104,95 +160,125 @@ export default function SamsungBottomNav({ activeRoute, activeTab, onTabPress }:
 const s = StyleSheet.create({
   bottomContainer: {
     position: "absolute",
-    bottom: 14,
-    left: 12,
-    right: 12,
+    bottom: 12,
+    left: 10,
+    right: 10,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    zIndex: 9999,
   },
   navBar: {
     flex: 1,
     flexDirection: "row",
-    height: 60,
-    backgroundColor: "rgba(24, 28, 36, 0.95)",
+    height: 64,
     borderRadius: 32,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    elevation: 20,
+    borderWidth: 1.5,
+    elevation: 24,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.45,
-    shadowRadius: 15,
+    shadowOpacity: 0.5,
+    shadowRadius: 18,
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 4,
+    overflow: "hidden",
   },
   navBtn: {
     flex: 1,
+    height: "100%",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 2,
+    position: "relative",
+    paddingTop: 4,
+    paddingBottom: 4,
+  },
+  activeTopNotch: {
+    position: "absolute",
+    top: 0,
+    width: 26,
+    height: 3.5,
+    borderBottomLeftRadius: 3,
+    borderBottomRightRadius: 3,
+    shadowColor: "#00E5FF",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 4,
   },
   navIconWrapper: {
-    width: 36,
-    height: 26,
-    borderRadius: 13,
+    width: 44,
+    height: 28,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "transparent",
   },
   navIconWrapperActive: {
-    backgroundColor: "rgba(255,255,255,0.16)",
+    borderWidth: 1.5,
+    shadowColor: "#00BCD4",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.45,
+    shadowRadius: 6,
+    elevation: 5,
   },
   tabOrangeDot: {
     position: "absolute",
     top: 2,
-    right: 4,
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: "#ff6a00",
+    right: 7,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#FF5722",
   },
   navLabel: {
-    fontSize: 9,
-    color: "rgba(255,255,255,0.6)",
-    marginTop: 1,
-    fontWeight: "500",
-    letterSpacing: -0.2,
+    fontSize: 10,
+    marginTop: 2,
+    fontWeight: "600",
+    letterSpacing: -0.1,
   },
   navLabelActive: {
-    color: "#FFFFFF",
-    fontWeight: "700",
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 0.1,
   },
   shopBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "rgba(35, 42, 53, 0.96)",
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.15)",
-    elevation: 18,
+    elevation: 20,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.45,
     shadowRadius: 12,
     justifyContent: "center",
     alignItems: "center",
     gap: 1,
+    position: "relative",
+  },
+  activeShopNotch: {
+    position: "absolute",
+    top: 0,
+    width: 20,
+    height: 3,
+    borderBottomLeftRadius: 2,
+    borderBottomRightRadius: 2,
   },
   shopBtnActive: {
-    backgroundColor: "#2563eb",
-    borderColor: "#60a5fa",
+    shadowColor: "#00E5FF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 8,
   },
   shopBtnLabel: {
-    fontSize: 8.5,
-    color: "rgba(255,255,255,0.75)",
-    fontWeight: "700",
-    letterSpacing: 0.2,
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 0.3,
     textTransform: "uppercase",
   },
   shopBtnLabelActive: {
-    color: "#ffffff",
+    fontWeight: "900",
   },
 });

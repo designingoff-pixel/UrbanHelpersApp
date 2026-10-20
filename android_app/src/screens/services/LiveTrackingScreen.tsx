@@ -61,14 +61,15 @@ interface VendorCoords {
 const TEAL = "#00bcd4";
 const TEAL_D = "#0097a7";
 
-// 6 Full Milestones matching exact workflow
+// 7 Full Milestones matching exact workflow with Payment timeline after service in progress
 const MILESTONES = [
-  { key: "requested",   label: "Booking Placed",        icon: "checkmark-circle" },
-  { key: "assigned",    label: "Vendor Assigned",       icon: "person" },
-  { key: "en_route",    label: "On The Way",            icon: "bicycle" },
-  { key: "arrived",     label: "Arrived at Location",   icon: "location" },
-  { key: "in_progress", label: "Service in Progress",   icon: "sparkles" },
-  { key: "completed",   label: "Completed",             icon: "star" },
+  { key: "requested",   label: "Booking Confirmed",            icon: "checkmark-circle" },
+  { key: "assigned",    label: "Vendor Assigned",              icon: "person" },
+  { key: "en_route",    label: "On The Way",                   icon: "bicycle" },
+  { key: "arrived",     label: "Arrived at Location",          icon: "location" },
+  { key: "in_progress", label: "Service in Progress",          icon: "sparkles" },
+  { key: "payment",     label: "Payment (Pay After Service)",  icon: "card" },
+  { key: "completed",   label: "Completed",                    icon: "star" },
 ];
 
 export default function LiveTrackingScreen({ navigation, route }: Props) {
@@ -248,16 +249,38 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
   const proPhone = booking?.vendorPhone || "+91 98765 43210";
   const proCategory = booking?.serviceCategory || "Cleaning";
 
+  const isPaid = (booking as any)?.paymentStatus === "paid";
+  const isServiceEnded = status === "service_ended";
+
   // Step milestone status calculations
   const getStepState = (stepKey: string) => {
     if (status === "cancelled") return "pending";
-    const order = ["requested", "assigned", "en_route", "arrived", "in_progress", "completed"];
-    const currentMapped = status === "service_ended" ? "in_progress" : status === "accepted" ? "assigned" : status;
+
+    // Handle payment milestone specifically
+    if (stepKey === "payment") {
+      if (status === "completed" || isPaid) return "done";
+      if (status === "service_ended") return "active";
+      return "pending";
+    }
+
+    // Handle completed milestone
+    if (stepKey === "completed") {
+      if (status === "completed") return "done";
+      return "pending";
+    }
+
+    // Milestone progression: requested -> assigned -> en_route -> arrived -> in_progress
+    const order = ["requested", "assigned", "en_route", "arrived", "in_progress"];
+    const currentMapped =
+      status === "service_ended" || status === "completed"
+        ? "in_progress"
+        : status === "accepted"
+        ? "assigned"
+        : status;
     const currentIdx = order.indexOf(currentMapped);
     const stepIdx = order.indexOf(stepKey);
 
-    if (status === "completed") return "done";
-    if (status === "service_ended" && stepKey === "completed") return "active";
+    if (status === "completed" || status === "service_ended") return "done";
     if (stepIdx < currentIdx) return "done";
     if (stepIdx === currentIdx) return "active";
     return "pending";
@@ -490,7 +513,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
                     >
                       {step.label}
                     </Text>
-                    {isActive && (
+                    {isActive ? (
                       <Text style={s.timelineStepActiveHint}>
                         {step.key === "requested"
                           ? "We are locating the best professional near your address."
@@ -502,9 +525,17 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
                           ? "Technician is outside. Please provide the OTP below to begin."
                           : step.key === "in_progress"
                           ? "Service is actively being performed with care."
+                          : step.key === "payment"
+                          ? `Service finished! Please pay ${booking?.priceLabel || "₹" + (booking?.price ?? "1999")} via Cash or UPI after inspecting work.`
                           : "Job completed! Rate your experience."}
                       </Text>
-                    )}
+                    ) : step.key === "payment" ? (
+                      <Text style={[s.timelineStepSubHint, { color: isDone ? "#16A34A" : (isDark ? "#64748B" : "#94A3B8") }]}>
+                        {isDone
+                          ? `Payment verified (${booking?.priceLabel || "₹" + (booking?.price ?? "1999")})`
+                          : `Pay ${booking?.priceLabel || "₹" + (booking?.price ?? "1999")} after service is done`}
+                      </Text>
+                    ) : null}
                   </View>
                 </View>
               );
@@ -641,6 +672,76 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
             <Text style={[s.liveLocText, { color: isDark ? TEAL : "#059669" }]}>
               {isPreService ? "Live GPS" : "On-Site"}
             </Text>
+          </View>
+        </Animated.View>
+
+        {/* ── 5. Payment Information Card (Clear visibility so customer knows) ── */}
+        <Animated.View entering={FadeInDown.delay(240).duration(380)} style={[s.paymentInfoCard, cardBgStyle]}>
+          <View style={s.paymentInfoTop}>
+            <View style={[s.paymentIconCircle, { backgroundColor: isDark ? "rgba(15,118,110,0.2)" : "#CCFBF1" }]}>
+              <Ionicons name="card" size={20} color={isDark ? TEAL : "#0F766E"} />
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <Text style={[s.paymentCardTitle, textPrimary]}>Payment Timeline</Text>
+                <View style={[
+                  s.paymentStatusBadge,
+                  {
+                    backgroundColor: isPaid || isCompleted
+                      ? (isDark ? "rgba(34,197,94,0.18)" : "#DCFCE7")
+                      : isServiceEnded
+                      ? (isDark ? "rgba(234,88,12,0.18)" : "#FFEDD5")
+                      : (isDark ? "rgba(0,188,212,0.15)" : "#F0FDFA")
+                  }
+                ]}>
+                  <Text style={[
+                    s.paymentStatusText,
+                    {
+                      color: isPaid || isCompleted
+                        ? "#16A34A"
+                        : isServiceEnded
+                        ? "#EA580C"
+                        : (isDark ? TEAL : "#0F766E")
+                    }
+                  ]}>
+                    {isPaid || isCompleted ? "PAID" : isServiceEnded ? "PAYMENT DUE" : "PAY AFTER SERVICE"}
+                  </Text>
+                </View>
+              </View>
+              <Text style={[s.paymentCardSub, textSecondary]}>
+                {isPaid || isCompleted
+                  ? "Payment successfully received & verified"
+                  : isServiceEnded
+                  ? "Service completed. Please pay the professional now."
+                  : "No advance payment needed. Pay after service is finished & inspected."}
+              </Text>
+            </View>
+          </View>
+
+          <View style={[s.paymentDivider, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#E2E8F0" }]} />
+
+          <View style={s.paymentBottomRow}>
+            <View>
+              <Text style={[s.paymentAmountLabel, textSecondary]}>Total Payable</Text>
+              <Text style={[s.paymentAmountVal, { color: isDark ? TEAL : "#0F766E" }]}>
+                {booking?.priceLabel || `₹${booking?.price ?? 1999}`}
+              </Text>
+            </View>
+
+            <View style={s.paymentModesRow}>
+              <View style={[s.payModeChip, { backgroundColor: isDark ? themeColors.surface : "#F1F5F9" }]}>
+                <Ionicons name="qr-code-outline" size={13} color={isDark ? themeColors.text : "#0F172A"} />
+                <Text style={[s.payModeText, textSecondary]}>UPI</Text>
+              </View>
+              <View style={[s.payModeChip, { backgroundColor: isDark ? themeColors.surface : "#F1F5F9" }]}>
+                <Ionicons name="cash-outline" size={13} color={isDark ? themeColors.text : "#0F172A"} />
+                <Text style={[s.payModeText, textSecondary]}>Cash</Text>
+              </View>
+              <View style={[s.payModeChip, { backgroundColor: isDark ? themeColors.surface : "#F1F5F9" }]}>
+                <Ionicons name="card-outline" size={13} color={isDark ? themeColors.text : "#0F172A"} />
+                <Text style={[s.payModeText, textSecondary]}>Card</Text>
+              </View>
+            </View>
           </View>
         </Animated.View>
 
@@ -1014,6 +1115,82 @@ const s = StyleSheet.create({
     color: "#059669",
     marginTop: 2,
     lineHeight: 16,
+  },
+  timelineStepSubHint: {
+    fontSize: 11,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+
+  // Payment Info Card
+  paymentInfoCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 16,
+  },
+  paymentInfoTop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  paymentIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  paymentCardTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  paymentStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  paymentStatusText: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  paymentCardSub: {
+    fontSize: 11.5,
+    marginTop: 3,
+    lineHeight: 16,
+  },
+  paymentDivider: {
+    height: 1,
+    marginVertical: 12,
+  },
+  paymentBottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  paymentAmountLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  paymentAmountVal: {
+    fontSize: 18,
+    fontWeight: "900",
+  },
+  paymentModesRow: {
+    flexDirection: "row",
+    gap: 6,
+  },
+  payModeChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  payModeText: {
+    fontSize: 11,
+    fontWeight: "700",
   },
 
   // 3. Map Container
