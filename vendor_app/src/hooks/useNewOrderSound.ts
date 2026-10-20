@@ -116,42 +116,46 @@ export function useNewOrderSound() {
     };
 
     const unsubscribe = store.subscribe(() => {
-      if (!isInitializedRef.current) {
-        const currentRequests = store.getJobsForTab('requests');
-        currentRequests.forEach((j) => notifiedIdsRef.current.add(j.jobId));
-        return;
-      }
+      try {
+        if (!isInitializedRef.current) {
+          const currentRequests = store.getJobsForTab('requests') || [];
+          currentRequests.forEach((j) => notifiedIdsRef.current.add(j.jobId));
+          return;
+        }
 
-      // 1. Check for incoming new order requests
-      const currentRequests = store.getJobsForTab('requests');
-      let playedAny = false;
+        // 1. Check for incoming new order requests
+        const currentRequests = store.getJobsForTab('requests') || [];
+        let playedAny = false;
 
-      for (const job of currentRequests) {
-        if (!notifiedIdsRef.current.has(job.jobId)) {
-          notifiedIdsRef.current.add(job.jobId);
-          persistNotifiedIds();
+        for (const job of currentRequests) {
+          if (!notifiedIdsRef.current.has(job.jobId)) {
+            notifiedIdsRef.current.add(job.jobId);
+            persistNotifiedIds();
 
-          if (!playedAny) {
-            playedAny = true;
-            playOrderChimeSound('new_order');
-            triggerLoudNewOrderNotification(
-              job.serviceName || 'New Service Assignment',
-              `₹${job.vendorEarnings || 600}`,
-              job.address || 'Nearby',
-              job.jobId
-            );
+            if (!playedAny) {
+              playedAny = true;
+              playOrderChimeSound('new_order');
+              triggerLoudNewOrderNotification(
+                job.serviceName || 'New Service Assignment',
+                `₹${job.vendorEarnings || 600}`,
+                job.address || 'Nearby',
+                job.jobId
+              );
+            }
           }
         }
-      }
 
-      // 2. Check for newly cancelled jobs
-      const allJobs = [...store.activeJobs, ...store.upcomingJobs];
-      for (const job of allJobs) {
-        if (job.status === 'CANCELLED' && !notifiedCancelledIdsRef.current.has(job.jobId)) {
-          notifiedCancelledIdsRef.current.add(job.jobId);
-          persistNotifiedIds();
-          playOrderChimeSound('cancelled');
+        // 2. Check for newly cancelled jobs
+        const allJobs = store.jobs || [];
+        for (const job of allJobs) {
+          if (job.status === 'CANCELLED' && !notifiedCancelledIdsRef.current.has(job.jobId)) {
+            notifiedCancelledIdsRef.current.add(job.jobId);
+            persistNotifiedIds();
+            playOrderChimeSound('cancelled');
+          }
         }
+      } catch (listenerErr) {
+        console.warn('[useNewOrderSound] Listener error safely caught:', listenerErr);
       }
     });
 

@@ -60,6 +60,19 @@ export interface FirestoreBooking {
   createdAt?:      any;
   cancelledAt?:    any;
   cancelledBy?:    string;
+  rejected?:       boolean;
+  rejectedBy?:     string | null;
+  rejectedByName?: string;
+  rejectedAt?:     any;
+  lastRejectionNoticeId?: string;
+  acceptedAt?:     any;
+  serviceEndedAt?: any;
+  startedAt?:      any;
+  otpVerified?:    boolean;
+  vendorLat?:      number;
+  vendorLng?:      number;
+  vendorHeading?:  number;
+  vendorSpeed?:    number;
 }
 
 // ── JOBS: Listen for all bookings assigned to this vendor ───────────────────
@@ -68,6 +81,12 @@ export function subscribeToVendorJobs(
   onChange: (bookings: FirestoreBooking[]) => void,
   alternateIds: (string | undefined | null)[] = []
 ) {
+  if (!db) {
+    console.warn("[subscribeToVendorJobs] Firestore db is not initialized");
+    onChange([]);
+    return () => {};
+  }
+
   const idSet = new Set<string>();
   const clean = (vendorId || '').trim();
   if (clean) {
@@ -92,20 +111,26 @@ export function subscribeToVendorJobs(
     return () => {};
   }
 
-  const q = ids.length === 1
-    ? query(collection(db, "bookings"), where("vendorId", "==", ids[0]))
-    : query(collection(db, "bookings"), where("vendorId", "in", ids));
+  try {
+    const q = ids.length === 1
+      ? query(collection(db, "bookings"), where("vendorId", "==", ids[0]))
+      : query(collection(db, "bookings"), where("vendorId", "in", ids));
 
-  return onSnapshot(
-    q,
-    (snapshot) => {
-      const jobs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as FirestoreBooking));
-      onChange(jobs);
-    },
-    (err) => {
-      console.warn("[subscribeToVendorJobs] Error:", err);
-    }
-  );
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const jobs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as FirestoreBooking));
+        onChange(jobs);
+      },
+      (err) => {
+        console.warn("[subscribeToVendorJobs] Error:", err);
+      }
+    );
+  } catch (err) {
+    console.warn("[subscribeToVendorJobs] Failed to establish listener:", err);
+    onChange([]);
+    return () => {};
+  }
 }
 
 // ── Listen for live vendor profile rating & earnings from Admin / Customers ───
@@ -113,74 +138,94 @@ export function subscribeToVendorProfile(
   vendorId: string,
   onChange: (vendorData: any) => void
 ) {
-  return onSnapshot(
-    doc(db, "vendors", vendorId),
-    (snap) => {
-      if (snap.exists()) {
-        onChange(snap.data());
-      }
-    },
-    (err) => console.warn("[subscribeToVendorProfile] Error:", err)
-  );
+  if (!db || !vendorId) {
+    return () => {};
+  }
+  try {
+    return onSnapshot(
+      doc(db, "vendors", vendorId),
+      (snap) => {
+        if (snap.exists()) {
+          onChange(snap.data());
+        }
+      },
+      (err) => console.warn("[subscribeToVendorProfile] Error:", err)
+    );
+  } catch (err) {
+    console.warn("[subscribeToVendorProfile] Failed to establish listener:", err);
+    return () => {};
+  }
 }
 
 // ── Direct unassigned broadcasts (all incoming customer bookings) ────────────
 export function subscribeToNewRequests(
   onChange: (bookings: FirestoreBooking[]) => void
 ) {
-  const q = query(
-    collection(db, "bookings"),
-    where("status", "==", "requested")
-  );
+  if (!db) {
+    console.warn("[subscribeToNewRequests] Firestore db is not initialized");
+    onChange([]);
+    return () => {};
+  }
 
-  return onSnapshot(
-    q,
-    (snapshot) => {
-      const now = Date.now();
-      const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+  try {
+    const q = query(
+      collection(db, "bookings"),
+      where("status", "==", "requested")
+    );
 
-      const jobs = snapshot.docs
-        .map((d) => ({ id: d.id, ...d.data() } as FirestoreBooking))
-        .filter((b) => {
-          // Do not show if rejected by vendor or already handled
-          if (b.rejected === true || b.status === "cancelled" || b.status === "completed") {
-            return false;
-          }
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const now = Date.now();
+        const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-          // Check creation time
-          let createdTime = 0;
-          if (b.createdAt) {
-            if (b.createdAt.toMillis) createdTime = b.createdAt.toMillis();
-            else if (typeof b.createdAt === "string") createdTime = new Date(b.createdAt).getTime();
-            else if (typeof b.createdAt === "number") createdTime = b.createdAt;
-          }
+        const jobs = snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() } as FirestoreBooking))
+          .filter((b) => {
+            // Do not show if rejected by vendor or already handled
+            if (b.rejected === true || b.status === "cancelled" || b.status === "completed") {
+              return false;
+            }
 
-          // Check scheduled time
-          let scheduledTime = 0;
-          if (b.scheduledAt) {
-            const d = new Date(b.scheduledAt).getTime();
-            if (!isNaN(d)) scheduledTime = d;
-          }
+            // Check creation time
+            let createdTime = 0;
+            if (b.createdAt) {
+              if (b.createdAt.toMillis) createdTime = b.createdAt.toMillis();
+              else if (typeof b.createdAt === "string") createdTime = new Date(b.createdAt).getTime();
+              else if (typeof b.createdAt === "number") createdTime = b.createdAt;
+            }
 
-          // Do not show old bookings whose scheduled slot was in the past (> 12 hours ago)
-          if (scheduledTime > 0 && scheduledTime < (now - 12 * 60 * 60 * 1000)) {
-            return false;
-          }
+            // Check scheduled time
+            let scheduledTime = 0;
+            if (b.scheduledAt) {
+              const d = new Date(b.scheduledAt).getTime();
+              if (!isNaN(d)) scheduledTime = d;
+            }
 
-          // Do not show stale bookings created more than 24h ago without a future slot
-          if (createdTime > 0 && (now - createdTime) > ONE_DAY_MS && (!scheduledTime || scheduledTime < now)) {
-            return false;
-          }
+            // Do not show old bookings whose scheduled slot was in the past (> 12 hours ago)
+            if (scheduledTime > 0 && scheduledTime < (now - 12 * 60 * 60 * 1000)) {
+              return false;
+            }
 
-          return true;
-        });
+            // Do not show stale bookings created more than 24h ago without a future slot
+            if (createdTime > 0 && (now - createdTime) > ONE_DAY_MS && (!scheduledTime || scheduledTime < now)) {
+              return false;
+            }
 
-      onChange(jobs);
-    },
-    (err) => {
-      console.warn("[subscribeToNewRequests] Error:", err);
-    }
-  );
+            return true;
+          });
+
+        onChange(jobs);
+      },
+      (err) => {
+        console.warn("[subscribeToNewRequests] Error:", err);
+      }
+    );
+  } catch (err) {
+    console.warn("[subscribeToNewRequests] Failed to establish listener:", err);
+    onChange([]);
+    return () => {};
+  }
 }
 
 // ── Vendor cancels an accepted job ────────────────────────────────────────────

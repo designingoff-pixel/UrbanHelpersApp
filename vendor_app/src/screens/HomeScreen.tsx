@@ -39,7 +39,7 @@ export default function HomeScreen({ navigation }: any) {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    if (store.vendorId) {
+    if (store.vendorId && db) {
       try {
         const vSnap = await getDoc(doc(db, 'vendors', store.vendorId));
         if (vSnap.exists()) {
@@ -91,7 +91,7 @@ export default function HomeScreen({ navigation }: any) {
 
     // 📲 Register vendor push notifications to shout loud when outside app
     registerVendorPushNotifications().then(async (token) => {
-      if (token && store.vendorId) {
+      if (token && store.vendorId && db) {
         try {
           await updateDoc(doc(db, 'vendors', store.vendorId), {
             pushToken: token,

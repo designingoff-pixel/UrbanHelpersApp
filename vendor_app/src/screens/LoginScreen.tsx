@@ -47,6 +47,14 @@ export default function LoginScreen({ navigation }: Props) {
       return;
     }
 
+    if (!db) {
+      Alert.alert(
+        'Connection Initializing',
+        'Unable to connect to service backend. Please verify your internet connection and try again.'
+      );
+      return;
+    }
+
     setLoading(true);
     try {
       // 1. Direct doc lookup by ID (e.g. VND-1042)

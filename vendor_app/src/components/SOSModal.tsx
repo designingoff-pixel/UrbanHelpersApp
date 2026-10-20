@@ -39,8 +39,9 @@ export default function SOSModal({ visible, onClose, currentJobId }: SOSModalPro
       const vendor = store.vendor;
       const activeJob = currentJobId ? store.getJob(currentJobId) : store.getCurrentJob();
 
-      await addDoc(collection(db, 'sos_alerts'), {
-        vendorId: store.vendorId || vendor.vendorId,
+      if (db) {
+        await addDoc(collection(db, 'sos_alerts'), {
+          vendorId: store.vendorId || vendor.vendorId,
         vendorName: vendor.name || 'Vendor Captain',
         vendorMobile: vendor.mobile || '',
         alertType: type,
@@ -52,7 +53,8 @@ export default function SOSModal({ visible, onClose, currentJobId }: SOSModalPro
         customerPhone: activeJob?.customerPhone || null,
         status: 'OPEN_EMERGENCY',
         createdAt: serverTimestamp(),
-      });
+        });
+      }
 
       setSentSuccess(true);
 

@@ -14,17 +14,21 @@ Notifications.setNotificationHandler({
 // ── Register for Push Notifications + Loud Channel Setup ─────────────────────
 export async function registerVendorPushNotifications(): Promise<string | null> {
   if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("urgent-orders", {
-      name: "🔔 New Booking Assignments",
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 200, 100, 200],
-      lightColor: "#00BCD4",
-      sound: "default",
-      enableVibrate: true,
-      showBadge: true,
-      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-      bypassDnd: true,
-    });
+    try {
+      await Notifications.setNotificationChannelAsync("urgent-orders", {
+        name: "🔔 New Booking Assignments",
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 200, 100, 200],
+        lightColor: "#00BCD4",
+        sound: "default",
+        enableVibrate: true,
+        showBadge: true,
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+        bypassDnd: true,
+      });
+    } catch (e) {
+      console.warn("[VendorNotification] Error creating notification channel:", e);
+    }
   }
 
   if (!Device.isDevice) {

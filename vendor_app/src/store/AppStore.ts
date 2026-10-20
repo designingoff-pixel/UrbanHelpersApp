@@ -358,7 +358,23 @@ class AppStore {
       active: ['ACCEPTED', 'UPCOMING', 'NAVIGATING', 'ARRIVED', 'OTP_PENDING', 'CUSTOMER_VERIFIED', 'SERVICE_STARTED', 'RECORDING_ACTIVE', 'RECORDING_STOPPED'],
       completed: ['COMPLETED', 'REJECTED', 'CANCELLED'],
     };
-    return this.jobs.filter(j => (map[tab] || []).includes(j.status));
+    return (this.jobs || []).filter(j => (map[tab] || []).includes(j.status));
+  }
+
+  get activeJobs(): Job[] {
+    return this.getJobsForTab('active');
+  }
+
+  get upcomingJobs(): Job[] {
+    return this.getJobsForTab('upcoming');
+  }
+
+  get requestsJobs(): Job[] {
+    return this.getJobsForTab('requests');
+  }
+
+  get completedJobs(): Job[] {
+    return this.getJobsForTab('completed');
   }
 
   // ── Computed Stats ──────────────────────────────────────────────────────────

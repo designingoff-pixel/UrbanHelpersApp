@@ -126,7 +126,7 @@ export default function AppNavigator() {
             );
             // Register vendor push notifications to shout loud when outside app
             registerVendorPushNotifications().then(async (token) => {
-              if (token && session.vendorId) {
+              if (token && session.vendorId && db) {
                 try {
                   await setDoc(doc(db, 'vendors', session.vendorId), {
                     pushToken: token,
@@ -142,18 +142,20 @@ export default function AppNavigator() {
             }
 
             // In background: sync with Firestore if online (non-blocking)
-            try {
-              const snap = await getDoc(doc(db, 'vendors', session.vendorId));
-              if (snap.exists() && active) {
-                const data = snap.data();
-                store.setFirebaseUser(
-                  session.vendorId,
-                  data.name || session.name,
-                  data.mobile || session.mobile
-                );
+            if (db) {
+              try {
+                const snap = await getDoc(doc(db, 'vendors', session.vendorId));
+                if (snap.exists() && active) {
+                  const data = snap.data();
+                  store.setFirebaseUser(
+                    session.vendorId,
+                    data.name || session.name,
+                    data.mobile || session.mobile
+                  );
+                }
+              } catch (fsErr) {
+                console.warn('[AppNavigator] Background sync warn:', fsErr);
               }
-            } catch (fsErr) {
-              console.warn('[AppNavigator] Background sync warn:', fsErr);
             }
             return;
           }

@@ -7,6 +7,21 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import AppNavigator from './src/navigation/AppNavigator';
 
+// ── Global Error Handler to safeguard native runtime against abrupt closure ──
+// @ts-ignore
+if (typeof ErrorUtils !== 'undefined') {
+  // @ts-ignore
+  const defaultHandler = ErrorUtils.getGlobalHandler && ErrorUtils.getGlobalHandler();
+  // @ts-ignore
+  ErrorUtils.setGlobalHandler((error: any, isFatal?: boolean) => {
+    console.error('[GlobalErrorHandler] Uncaught JS error:', error, 'isFatal:', isFatal);
+    if (defaultHandler && isFatal) {
+      // In development / release, delegate safely without closing immediately if non-fatal
+      defaultHandler(error, false);
+    }
+  });
+}
+
 // ── Error Boundary — catches JS errors and shows message instead of blank crash ──
 interface State { hasError: boolean; error: string }
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, State> {

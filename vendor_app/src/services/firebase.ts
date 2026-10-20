@@ -38,7 +38,21 @@ try {
   }
 }
 
+let _db: any = null;
+try {
+  _db = getFirestore(app);
+} catch (e) {
+  console.warn("[Firebase] getFirestore init error:", e);
+}
+
+let _storage: any = null;
+try {
+  _storage = getStorage(app);
+} catch (e) {
+  console.warn("[Firebase] getStorage init error:", e);
+}
+
 export const auth    = _auth;
-export const db      = getFirestore(app);
-export const storage = getStorage(app);
+export const db      = _db;
+export const storage = _storage;
 
