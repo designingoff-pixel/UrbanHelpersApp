@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Image,
   Linking, Dimensions, ImageBackground, RefreshControl, ActivityIndicator,
   Platform,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,13 +24,14 @@ import OTPInput from '../components/OTPInput';
 import SOSModal from '../components/SOSModal';
 import DiagnosticModal from '../components/DiagnosticModal';
 import NearbySuppliersModal from '../components/NearbySuppliersModal';
-import { stopLoudOrderAlert } from '../hooks/useNewOrderSound';
+import { stopLoudOrderAlert, playOrderChimeSound } from '../hooks/useNewOrderSound';
 
 const { width } = Dimensions.get('window');
 
 export default function JobDetailsScreen({ route, navigation }: any) {
   const { jobId } = route.params;
   const [, forceUpdate] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [sosVisible, setSosVisible] = useState(false);
@@ -39,6 +40,7 @@ export default function JobDetailsScreen({ route, navigation }: any) {
   const [otp, setOtp] = useState(['', '', '', '']);
   const [hasError, setHasError] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
+  const [vendorCoords, setVendorCoords] = useState<{ lat: number; lng: number } | null>(null);
   const job = store.getJob(jobId);
 
   useEffect(() => {
@@ -57,6 +59,7 @@ export default function JobDetailsScreen({ route, navigation }: any) {
         if (status !== 'granted') return;
         const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         if (active && pos?.coords) {
+          setVendorCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
           await updateVendorLocation(
             store.vendorId || 'v1',
             pos.coords.latitude,
@@ -181,6 +184,7 @@ export default function JobDetailsScreen({ route, navigation }: any) {
           onPress: async () => {
             setSubmitting(true);
             try {
+              playOrderChimeSound('cancelled');
               store.updateJobStatus(job.jobId, 'REJECTED');
               const cancelRes = store.recordCancellation();
               const res = await rejectJob(job.jobId, store.vendorId || undefined, store.vendor?.name || undefined);
@@ -342,11 +346,25 @@ export default function JobDetailsScreen({ route, navigation }: any) {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         style={s.scroll}
         contentContainerStyle={s.content}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#10B981']} />}
       >
+        {/* Cancellation Notice if cancelled by admin */}
+        {job.status === 'CANCELLED' && (
+          <View style={[s.card, { backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1.5, marginBottom: 12 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <Ionicons name="alert-circle" size={20} color="#DC2626" />
+              <Text style={{ fontSize: 15, fontWeight: '800', color: '#DC2626' }}>Order Cancelled</Text>
+            </View>
+            <Text style={{ fontSize: 13, color: '#991B1B', lineHeight: 18 }}>
+              This service order has been cancelled by the administrator. No further action or travel is required.
+            </Text>
+          </View>
+        )}
+
         {/* Status Hero Card */}
         <View style={s.heroCard}>
           <LinearGradient colors={['#0D3325', '#164E3A']} style={s.heroGrad}>
@@ -441,43 +459,89 @@ export default function JobDetailsScreen({ route, navigation }: any) {
           </View>
 
           {/* Interactive Map shown when job is Accepted / Navigating / Arrived */}
-          {['ACCEPTED', 'UPCOMING', 'NAVIGATING', 'ARRIVED'].includes(job.status) && (
-            <View style={s.mapContainer}>
-              <MapView
-                style={s.map}
-                provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-                initialRegion={{
-                  latitude: (typeof job.latitude === 'number' && job.latitude !== 0) ? job.latitude : 11.6643,
-                  longitude: (typeof job.longitude === 'number' && job.longitude !== 0) ? job.longitude : 78.1460,
-                  latitudeDelta: 0.015,
-                  longitudeDelta: 0.015,
-                }}
-                scrollEnabled={false}
-                zoomEnabled={false}
-              >
-                <Marker
-                  coordinate={{
-                    latitude: (typeof job.latitude === 'number' && job.latitude !== 0) ? job.latitude : 11.6643,
-                    longitude: (typeof job.longitude === 'number' && job.longitude !== 0) ? job.longitude : 78.1460,
+          {['ACCEPTED', 'UPCOMING', 'NAVIGATING', 'ARRIVED'].includes(job.status) && (() => {
+            const custLat = (typeof job.latitude === 'number' && job.latitude !== 0) ? job.latitude : 11.6643;
+            const custLng = (typeof job.longitude === 'number' && job.longitude !== 0) ? job.longitude : 78.1460;
+            const vLat = vendorCoords ? vendorCoords.lat : (custLat + 0.007);
+            const vLng = vendorCoords ? vendorCoords.lng : (custLng - 0.006);
+            const midLat = (custLat + vLat) / 2;
+            const midLng = (custLng + vLng) / 2;
+            const latDelta = Math.max(0.016, Math.abs(custLat - vLat) * 1.6);
+            const lngDelta = Math.max(0.016, Math.abs(custLng - vLng) * 1.6);
+
+            return (
+              <View style={s.mapContainer}>
+                <MapView
+                  style={s.map}
+                  provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+                  initialRegion={{
+                    latitude: midLat,
+                    longitude: midLng,
+                    latitudeDelta: latDelta,
+                    longitudeDelta: lngDelta,
                   }}
-                  title="Customer Location"
-                  description={job.address}
+                  scrollEnabled={true}
+                  zoomEnabled={true}
                 >
-                  <View style={s.markerPin}>
-                    <Ionicons name="location" size={24} color="#EF4444" />
-                  </View>
-                </Marker>
-              </MapView>
-              <TouchableOpacity
-                style={s.mapNavigateOverlayBtn}
-                onPress={handleStartNavigation}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="navigate" size={16} color="#FFFFFF" />
-                <Text style={s.mapNavigateOverlayText}>Start Turn-by-Turn GPS Navigation</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+                  {/* 1. Customer Location Marker */}
+                  <Marker
+                    coordinate={{ latitude: custLat, longitude: custLng }}
+                    title="Customer Location"
+                    description={job.address}
+                  >
+                    <View style={s.markerPin}>
+                      <Ionicons name="home" size={17} color="#FFFFFF" />
+                    </View>
+                  </Marker>
+
+                  {/* 2. Vendor Specialist Live Marker */}
+                  <Marker
+                    coordinate={{ latitude: vLat, longitude: vLng }}
+                    title="Your Location (Specialist)"
+                    description="Urban Captain Partner"
+                  >
+                    <View style={s.vendorMarkerPin}>
+                      <Ionicons name="bicycle" size={17} color="#FFFFFF" />
+                    </View>
+                  </Marker>
+
+                  {/* 3. Direct Route Polyline */}
+                  <Polyline
+                    coordinates={[
+                      { latitude: vLat, longitude: vLng },
+                      { latitude: custLat, longitude: custLng },
+                    ]}
+                    strokeColor="#059669"
+                    strokeWidth={4}
+                    lineDashPattern={[6, 4]}
+                  />
+                </MapView>
+
+                {/* Floating Map Actions: Start Navigation & Verify OTP */}
+                <View style={s.mapOverlayRow}>
+                  <TouchableOpacity
+                    style={s.mapNavigateOverlayBtn}
+                    onPress={handleStartNavigation}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="navigate" size={15} color="#FFFFFF" />
+                    <Text style={s.mapNavigateOverlayText} numberOfLines={1}>Start Navigation</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={s.mapOtpOverlayBtn}
+                    onPress={() => {
+                      scrollRef.current?.scrollTo({ y: 480, animated: true });
+                    }}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="keypad" size={15} color="#FFFFFF" />
+                    <Text style={s.mapOtpOverlayText} numberOfLines={1}>Verify OTP</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })()}
 
           {/* Navigation status actions */}
           {['ACCEPTED', 'UPCOMING', 'NAVIGATING'].includes(job.status) ? (
@@ -512,7 +576,7 @@ export default function JobDetailsScreen({ route, navigation }: any) {
         </View>
 
         {/* Vendor Verification & OTP Input */}
-        {['ARRIVED', 'CUSTOMER_VERIFIED', 'SERVICE_STARTED', 'RECORDING_ACTIVE'].includes(job.status) && (
+        {['ACCEPTED', 'UPCOMING', 'NAVIGATING', 'ARRIVED', 'CUSTOMER_VERIFIED', 'SERVICE_STARTED', 'RECORDING_ACTIVE'].includes(job.status) && (
           <View style={[s.card, job.status === 'ARRIVED' && { borderWidth: 2, borderColor: '#10B981', backgroundColor: '#F0FDF4' }]}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
               <Text style={[s.cardHeading, job.status === 'ARRIVED' && { color: '#047857', fontWeight: '800' }]}>
@@ -1178,11 +1242,16 @@ const s = StyleSheet.create({
   map: {
     ...StyleSheet.absoluteFillObject,
   },
-  mapNavigateOverlayBtn: {
+  mapOverlayRow: {
     position: 'absolute',
     bottom: 8,
     left: 8,
     right: 8,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  mapNavigateOverlayBtn: {
+    flex: 1,
     backgroundColor: '#0D3325',
     flexDirection: 'row',
     alignItems: 'center',
@@ -1198,17 +1267,57 @@ const s = StyleSheet.create({
   },
   mapNavigateOverlayText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  mapOtpOverlayBtn: {
+    flex: 1,
+    backgroundColor: '#059669',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 6,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  mapOtpOverlayText: {
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '800',
   },
   markerPin: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    backgroundColor: '#EF4444',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#EF4444',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+  },
+  vendorMarkerPin: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#059669',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
   },
 });

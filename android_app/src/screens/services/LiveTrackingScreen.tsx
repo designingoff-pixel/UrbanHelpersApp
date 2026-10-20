@@ -243,12 +243,14 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
   }, [booking?.status, booking?.id, booking?.rated]);
 
   const status = booking?.status ?? "requested";
+  const isCancelled = status === "cancelled";
   const proName = booking?.vendorName || (isVendorAssigned ? "Ramesh Kumar" : "Assigning Professional...");
   const proPhone = booking?.vendorPhone || "+91 98765 43210";
   const proCategory = booking?.serviceCategory || "Cleaning";
 
   // Step milestone status calculations
   const getStepState = (stepKey: string) => {
+    if (status === "cancelled") return "pending";
     const order = ["requested", "assigned", "en_route", "arrived", "in_progress", "completed"];
     const currentMapped = status === "service_ended" ? "in_progress" : status === "accepted" ? "assigned" : status;
     const currentIdx = order.indexOf(currentMapped);
@@ -326,9 +328,11 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
           <Ionicons name="arrow-back" size={22} color={isDark ? "#fff" : "#0f172a"} />
         </Pressable>
         <View style={s.headerCenter}>
-          <Text style={[s.headerTitle, textPrimary]}>Live Tracking</Text>
+          <Text style={[s.headerTitle, textPrimary, isCancelled && { color: "#ef4444" }]}>
+            {isCancelled ? "Booking Cancelled" : "Live Tracking"}
+          </Text>
           <Text style={s.headerSubtitle}>
-            {isVendorAssigned ? "Professional is on the way" : "Finding nearest professional"}
+            {isCancelled ? "Service was cancelled" : isVendorAssigned ? "Professional is on the way" : "Finding nearest professional"}
           </Text>
         </View>
         <View style={s.headerRight}>
@@ -345,10 +349,40 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={s.scroll}
       >
+        {/* ── Cancellation Banner (When Cancelled by Admin/Vendor) ── */}
+        {isCancelled && (
+          <Animated.View entering={FadeInDown.duration(380)} style={[s.stepperCard, cardBgStyle, { borderColor: "#ef4444", borderWidth: 1.5, backgroundColor: isDark ? "rgba(239,68,68,0.12)" : "#FEF2F2", marginBottom: 14 }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }}>
+              <Ionicons name="ban" size={24} color="#ef4444" />
+              <Text style={{ fontSize: 16, fontWeight: "800", color: "#ef4444" }}>Booking Cancelled</Text>
+            </View>
+            <Text style={{ fontSize: 13, color: isDark ? "#FCA5A5" : "#991B1B", lineHeight: 20 }}>
+              {booking?.cancellationReason || (booking?.cancelledBy === "admin" ? "This booking was cancelled by Urban Helpers Administrator." : "This booking has been cancelled.")}
+            </Text>
+            <Text style={{ fontSize: 12, color: isDark ? "#F87171" : "#B91C1C", marginTop: 6, fontWeight: "600" }}>
+              No specialist will visit your premises. If any advance payment was deducted, it will be automatically refunded.
+            </Text>
+            <View style={{ marginTop: 14, flexDirection: "row", gap: 10 }}>
+              <Pressable
+                onPress={() => navigation.navigate("ServicesDashboard")}
+                style={{ flex: 1, backgroundColor: "#0284c7", paddingVertical: 12, borderRadius: 10, alignItems: "center" }}
+              >
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>Book New Service</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => navigation.navigate("HomeDashboard")}
+                style={{ flex: 1, backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "#E2E8F0", paddingVertical: 12, borderRadius: 10, alignItems: "center" }}
+              >
+                <Text style={{ color: isDark ? "#fff" : "#0F172A", fontWeight: "700", fontSize: 13 }}>Back to Home</Text>
+              </Pressable>
+            </View>
+          </Animated.View>
+        )}
+
         {/* ── 1. Assigned Vendor Hero Card ────────────────────────────── */}
         <Animated.View entering={FadeInDown.duration(380)} style={s.proCard}>
           <LinearGradient
-            colors={isDark ? ["#0f2e46", "#091f33"] : ["#0F766E", "#0D5E58"]}
+            colors={isCancelled ? ["#450a0a", "#1c1917"] : isDark ? ["#0f2e46", "#091f33"] : ["#0F766E", "#0D5E58"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={s.proCardGradient}

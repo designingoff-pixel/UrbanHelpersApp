@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { Alert } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { RootStackParamList } from "./types";
@@ -132,7 +133,7 @@ function GlobalBookingListener() {
     const q = query(
       collection(db, "bookings"),
       where("customerId", "==", user.uid),
-      where("status", "in", ["requested", "assigned", "accepted", "en_route", "arrived", "in_progress", "service_ended", "completed"])
+      where("status", "in", ["requested", "assigned", "accepted", "en_route", "arrived", "in_progress", "service_ended", "completed", "cancelled"])
     );
     const unsub = onSnapshot(q, (snap) => {
       if (snap.empty) {
@@ -144,7 +145,7 @@ function GlobalBookingListener() {
 
       // Prioritize actively ongoing or awaiting-review bookings first
       const activeDoc = snap.docs.find((d) =>
-        ["service_ended", "in_progress", "arrived", "en_route", "accepted", "assigned", "requested"].includes(d.data().status)
+        ["service_ended", "in_progress", "arrived", "en_route", "accepted", "assigned", "requested", "cancelled"].includes(d.data().status)
       ) || snap.docs[0];
 
       const data = activeDoc.data();
@@ -157,6 +158,19 @@ function GlobalBookingListener() {
         activeBookingId.current = currentId;
         prevStatus.current = newStatus;
         return;
+      }
+
+      // When booking is cancelled by admin or vendor:
+      if (
+        activeBookingId.current === currentId &&
+        prevStatus.current &&
+        prevStatus.current !== "cancelled" &&
+        newStatus === "cancelled"
+      ) {
+        Alert.alert(
+          "Booking Cancelled",
+          data.cancellationReason || "This booking was cancelled by the administrator. Any payment will be refunded."
+        );
       }
 
       // When vendor accepts the booking:

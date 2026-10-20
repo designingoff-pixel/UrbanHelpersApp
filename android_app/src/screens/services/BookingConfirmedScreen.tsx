@@ -170,7 +170,8 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
   const textPrimary = { color: isDark ? "#FFFFFF" : "#0F172A" };
   const textSecondary = { color: isDark ? "#94A3B8" : "#64748B" };
 
-  const isVendorAssigned = Boolean(booking?.vendorId) || booking?.status === "accepted" || booking?.status === "assigned";
+  const isCancelled = booking?.status === "cancelled";
+  const isVendorAssigned = !isCancelled && (Boolean(booking?.vendorId) || booking?.status === "accepted" || booking?.status === "assigned");
   const vendorName = booking?.vendorName || "Assigned Partner";
   const vendorRating = booking?.vendorRating || "4.9";
   const vendorImage = booking?.vendorImage;
@@ -187,8 +188,8 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
         >
           <Ionicons name="arrow-back" size={22} color={isDark ? "#fff" : "#0f172a"} />
         </Pressable>
-        <Text style={[s.headerTitle, textPrimary]}>
-          {isVendorAssigned ? "Booking Confirmed" : "Booking Placed"}
+        <Text style={[s.headerTitle, textPrimary, isCancelled && { color: "#ef4444" }]}>
+          {isCancelled ? "Booking Cancelled" : isVendorAssigned ? "Booking Confirmed" : "Booking Placed"}
         </Text>
         <View style={s.headerRightPlaceholder} />
       </View>
@@ -197,16 +198,16 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
         contentContainerStyle={s.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {/* 1. Big Success Checkmark Seal */}
+        {/* 1. Big Seal (Success or Cancelled) */}
         <Animated.View entering={FadeIn.duration(400)} style={s.sealWrapper}>
-          <Animated.View style={[s.ringOuter, ring1Style]} />
+          <Animated.View style={[s.ringOuter, ring1Style, isCancelled && { borderColor: "rgba(239,68,68,0.25)" }]} />
           <Animated.View style={[s.sealCircle, sealStyle]}>
             <LinearGradient
-              colors={["#22c55e", "#16a34a"]}
+              colors={isCancelled ? ["#ef4444", "#b91c1c"] : ["#22c55e", "#16a34a"]}
               style={s.sealInner}
             >
               <Animated.View style={checkStyle}>
-                <Ionicons name="checkmark-sharp" size={38} color="#fff" />
+                <Ionicons name={isCancelled ? "close-sharp" : "checkmark-sharp"} size={38} color="#fff" />
               </Animated.View>
             </LinearGradient>
           </Animated.View>
@@ -214,11 +215,13 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
 
         {/* 2. Heading Texts */}
         <Animated.View entering={FadeInDown.delay(100).duration(400)} style={s.headingBlock}>
-          <Text style={[s.title, textPrimary]}>
-            {isVendorAssigned ? "Booking Confirmed!" : "Booking Placed!"}
+          <Text style={[s.title, textPrimary, isCancelled && { color: "#ef4444" }]}>
+            {isCancelled ? "Booking Cancelled" : isVendorAssigned ? "Booking Confirmed!" : "Booking Placed!"}
           </Text>
           <Text style={[s.subtitle, textSecondary]}>
-            {isVendorAssigned
+            {isCancelled
+              ? (booking?.cancellationReason || "This booking was cancelled by administrator. Any payment made will be refunded.")
+              : isVendorAssigned
               ? "Your service partner has accepted and will arrive on time."
               : "Your booking has been placed. Waiting for partner confirmation."}
           </Text>
@@ -281,23 +284,35 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
             </View>
           </View>
 
-          {/* OTP Section (4 digits) */}
-          <View style={[s.otpSection, { backgroundColor: isDark ? "rgba(0,188,212,0.08)" : "#F0FDFA", borderColor: isDark ? "rgba(0,188,212,0.25)" : "#99F6E4" }]}>
-            <View style={s.otpHeader}>
-              <Ionicons name="shield-checkmark" size={14} color={TEAL} />
-              <Text style={s.otpHeading}>START-SERVICE OTP</Text>
+          {/* OTP Section (4 digits) or Cancelled Notice */}
+          {isCancelled ? (
+            <View style={[s.otpSection, { backgroundColor: isDark ? "rgba(239,68,68,0.08)" : "#FEF2F2", borderColor: isDark ? "rgba(239,68,68,0.25)" : "#FECACA" }]}>
+              <View style={s.otpHeader}>
+                <Ionicons name="ban" size={14} color="#ef4444" />
+                <Text style={[s.otpHeading, { color: "#ef4444" }]}>SERVICE CANCELLED</Text>
+              </View>
+              <Text style={[s.otpNotice, { color: isDark ? "#F87171" : "#B91C1C", marginTop: 4 }]}>
+                {booking?.cancellationReason || "This booking was cancelled. No technician will arrive, and OTP verification is deactivated."}
+              </Text>
             </View>
-            <View style={s.otpDigitsRow}>
-              {otpDigits.map((digit, i) => (
-                <View key={i} style={[s.otpDigitBox, { backgroundColor: isDark ? "rgba(0,188,212,0.15)" : "#CCFBF1", borderColor: isDark ? "rgba(0,188,212,0.35)" : "#5EEAD4" }]}>
-                  <Text style={[s.otpDigit, { color: isDark ? "#fff" : "#0F766E" }]}>{digit}</Text>
-                </View>
-              ))}
+          ) : (
+            <View style={[s.otpSection, { backgroundColor: isDark ? "rgba(0,188,212,0.08)" : "#F0FDFA", borderColor: isDark ? "rgba(0,188,212,0.25)" : "#99F6E4" }]}>
+              <View style={s.otpHeader}>
+                <Ionicons name="shield-checkmark" size={14} color={TEAL} />
+                <Text style={s.otpHeading}>START-SERVICE OTP</Text>
+              </View>
+              <View style={s.otpDigitsRow}>
+                {otpDigits.map((digit, i) => (
+                  <View key={i} style={[s.otpDigitBox, { backgroundColor: isDark ? "rgba(0,188,212,0.15)" : "#CCFBF1", borderColor: isDark ? "rgba(0,188,212,0.35)" : "#5EEAD4" }]}>
+                    <Text style={[s.otpDigit, { color: isDark ? "#fff" : "#0F766E" }]}>{digit}</Text>
+                  </View>
+                ))}
+              </View>
+              <Text style={[s.otpNotice, textSecondary]}>
+                Share this 4-digit code with the technician only when they arrive at your location.
+              </Text>
             </View>
-            <Text style={[s.otpNotice, textSecondary]}>
-              Share this 4-digit code with the technician only when they arrive at your location.
-            </Text>
-          </View>
+          )}
 
           {/* Booking ID & Copy Button */}
           <View style={s.bookingIdRow}>
@@ -321,8 +336,24 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
           </View>
         </Animated.View>
 
-        {/* 5. Assigned Professional Preview Card (Dynamic: Finding vs Assigned) */}
-        {isVendorAssigned ? (
+        {/* 5. Assigned Professional Preview Card (Dynamic: Cancelled vs Assigned vs Finding) */}
+        {isCancelled ? (
+          <Animated.View entering={FadeInDown.delay(340).duration(400)} style={[s.proCard, cardBgStyle, { borderColor: "#ef4444", borderWidth: 1 }]}>
+            <View style={[s.proAvatar, s.proAvatarFallback, { backgroundColor: "rgba(239, 68, 68, 0.15)" }]}>
+              <Ionicons name="ban" size={26} color="#ef4444" />
+            </View>
+            <View style={s.proInfo}>
+              <Text style={[s.proName, { color: "#ef4444" }]}>Booking Cancelled</Text>
+              <Text style={[s.proSkill, textSecondary]}>
+                {booking?.cancellationReason || "This service request was cancelled by administrator."}
+              </Text>
+              <View style={s.proVerifiedRow}>
+                <Ionicons name="shield-checkmark-outline" size={13} color="#64748B" />
+                <Text style={s.proVerifiedText}>Refund processing active (if pre-paid)</Text>
+              </View>
+            </View>
+          </Animated.View>
+        ) : isVendorAssigned ? (
           <Animated.View entering={FadeInDown.delay(340).duration(400)} style={[s.proCard, cardBgStyle]}>
             <View style={s.proAvatarContainer}>
               {vendorImage ? (
@@ -400,22 +431,26 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
         <Animated.View entering={FadeInDown.delay(500).duration(400)} style={s.actionBlock}>
           <Pressable
             style={({ pressed }) => [s.primaryBtn, { opacity: pressed ? 0.88 : 1 }]}
-            onPress={() =>
-              navigation.navigate("LiveTracking", {
-                bookingId,
-                categoryId: category.id,
-                subServiceId: sub.id,
-              })
-            }
+            onPress={() => {
+              if (isCancelled) {
+                navigation.navigate("ServicesDashboard");
+              } else {
+                navigation.navigate("LiveTracking", {
+                  bookingId,
+                  categoryId: category.id,
+                  subServiceId: sub.id,
+                });
+              }
+            }}
           >
             <LinearGradient
-              colors={[TEAL, TEAL_D]}
+              colors={isCancelled ? ["#0284C7", "#0369A1"] : [TEAL, TEAL_D]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={s.primaryGradient}
             >
-              <Ionicons name="navigate-circle-outline" size={22} color="#fff" />
-              <Text style={s.primaryBtnText}>View Booking Details</Text>
+              <Ionicons name={isCancelled ? "grid-outline" : "navigate-circle-outline"} size={22} color="#fff" />
+              <Text style={s.primaryBtnText}>{isCancelled ? "Explore Other Services" : "View Booking Details"}</Text>
               <Ionicons name="arrow-forward" size={18} color="#fff" />
             </LinearGradient>
           </Pressable>
