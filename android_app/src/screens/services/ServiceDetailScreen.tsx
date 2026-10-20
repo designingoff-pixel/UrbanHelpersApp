@@ -3,10 +3,8 @@ import {
   ScrollView,
   Text,
   View,
-  Pressable,
   StyleSheet,
   Dimensions,
-  Image,
   TextInput,
   TouchableOpacity,
   Alert,
@@ -18,7 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import MapView, { Marker, PROVIDER_GOOGLE, Region } from "react-native-maps";
+import MapView, { PROVIDER_GOOGLE, Region } from "react-native-maps";
 import * as Location from "expo-location";
 import { RootStackParamList } from "@/navigation/types";
 import { SERVICE_CATEGORIES, SubService } from "./servicesData";
@@ -224,7 +222,6 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 
   // Map Picker Modal States
   const [mapModalVisible, setMapModalVisible] = useState(false);
-  const [mapLoading, setMapLoading] = useState(false);
   const [mapRegion, setMapRegion] = useState<Region>({
     latitude: 12.9141,
     longitude: 77.6411,
@@ -614,8 +611,6 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
       }
     } catch (err) {
       console.warn("Location fetch error:", err);
-    } finally {
-      setMapLoading(false);
     }
   };
 
@@ -1240,10 +1235,10 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
         <TouchableOpacity
           style={styles.confirmBookingMainBtn}
           onPress={handleConfirmBooking}
-          disabled={loading}
+          disabled={loading || otpLoading}
           activeOpacity={0.88}
         >
-          {loading ? (
+          {loading || otpLoading ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
             <>
