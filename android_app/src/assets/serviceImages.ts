@@ -55,7 +55,7 @@ export function getSubServiceImageSource(
   categoryId: string,
   customUrl?: string | null
 ): any {
-  if (customUrl && typeof customUrl === "string" && customUrl.startsWith("http")) {
+  if (customUrl && typeof customUrl === "string" && (customUrl.startsWith("http") || customUrl.startsWith("data:image"))) {
     return { uri: customUrl };
   }
   if (CLEANING_SUB_SERVICE_IMAGES[subServiceId]) {

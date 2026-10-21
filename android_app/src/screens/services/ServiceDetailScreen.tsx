@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Modal,
   Platform,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,6 +21,8 @@ import MapView, { PROVIDER_GOOGLE, Region } from "react-native-maps";
 import * as Location from "expo-location";
 import { RootStackParamList } from "@/navigation/types";
 import { SERVICE_CATEGORIES, SubService } from "./servicesData";
+import { useServiceCategories } from "@/services/firestoreServices";
+import { getSubServiceImageSource } from "@/assets/serviceImages";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { auth, db } from "@/services/firebase";
@@ -272,11 +275,21 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
   const timeChipSelectedBg = isDark ? "rgba(0,198,170,0.22)" : "#CCFBF1";
   const timeChipUnselectedBg = isDark ? themeColors.surface : "#F8FAFC";
 
-  const category =
+  const { categories } = useServiceCategories();
+  const firestoreCategory = categories.find((c) => c.id === categoryId);
+  const staticCategory =
     SERVICE_CATEGORIES.find((c) => c.id === categoryId) || SERVICE_CATEGORIES[0];
+  const category = firestoreCategory ? { ...staticCategory, ...firestoreCategory } : staticCategory;
+
+  const allSubServices = [
+    ...(firestoreCategory?.subServices || []),
+    ...(staticCategory.subServices || []).filter(
+      (s) => !(firestoreCategory?.subServices || []).some((fs) => fs.id === s.id)
+    ),
+  ];
   const selectedSub: SubService =
-    category.subServices.find((s) => s.id === subServiceId) ||
-    category.subServices[0] || {
+    allSubServices.find((s) => s.id === subServiceId) ||
+    allSubServices[0] || {
       id: "cl-restroom",
       name: "Restroom Cleaning",
       price: "₹399",
@@ -1098,9 +1111,11 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
         {/* ── 2. Service Summary Card ───────────────────────────────── */}
         <View style={[styles.serviceSummaryCard, { backgroundColor: isDark ? themeColors.card : "#F0FDFA", borderColor: isDark ? themeColors.cardBorder : "#CCFBF1" }]}>
           <View style={styles.serviceSummaryLeft}>
-            <View style={[styles.mintIconBox, { backgroundColor: isDark ? "rgba(0,198,170,0.15)" : "#CCFBF1" }]}>
-              <Ionicons name="sparkles" size={24} color={themeColors.primary} />
-            </View>
+            <Image
+              source={getSubServiceImageSource(selectedSub.id, category.id, selectedSub.imageUrl)}
+              style={{ width: 48, height: 48, borderRadius: 12, marginRight: 12 }}
+              resizeMode="cover"
+            />
             <View style={styles.serviceSummaryTextCol}>
               <Text style={[styles.serviceSummaryTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>{selectedSub.name}</Text>
               <Text style={[styles.serviceSummaryDesc, { color: isDark ? themeColors.textSecondary : "#64748B" }]} numberOfLines={2}>

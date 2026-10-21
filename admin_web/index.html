@@ -1213,6 +1213,38 @@
           <label>Package Description *</label>
           <textarea class="form-control" id="subModalDesc" rows="3" placeholder="Explain what is included..." required></textarea>
         </div>
+        <!-- Sub-Category Photo Upload & Live Preview -->
+        <div class="form-group">
+          <label style="display:flex; justify-content:space-between; align-items:center;">
+            <span>Package / Sub-Category Photo</span>
+            <span style="font-size:11px; color:#10b981; font-weight:700;"><i class="fa-solid fa-bolt"></i> Live sync to Customer App</span>
+          </label>
+          <div style="display:flex; gap:14px; align-items:center; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px; margin-top:4px;">
+            <div id="subModalPreviewWrap" style="width:72px; height:72px; border-radius:12px; border:2px dashed #cbd5e1; background:#ffffff; display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; position:relative;">
+              <img id="subModalPreviewImg" src="" style="width:100%; height:100%; object-fit:cover; display:none;" onerror="this.style.display='none'; document.getElementById('subModalPreviewPlaceholder').style.display='flex';">
+              <div id="subModalPreviewPlaceholder" style="display:flex; flex-direction:column; align-items:center; justify-content:center; color:#94a3b8; font-size:20px;">
+                <i class="fa-solid fa-image"></i>
+              </div>
+            </div>
+            <div style="flex:1;">
+              <input type="file" id="subModalFileInput" accept="image/*" style="display:none;" onchange="handleSubServiceFileSelect(event)">
+              <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
+                <button type="button" class="btn-outline-action" onclick="document.getElementById('subModalFileInput').click()" style="padding:6px 14px; font-size:12px; font-weight:700; border-radius:8px; background:#ffffff; border:1px solid #cbd5e1; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                  <i class="fa-solid fa-cloud-arrow-up" style="color:#0f8a5f;"></i> Upload Photo
+                </button>
+                <button type="button" class="btn-outline-action" onclick="clearSubServicePhoto()" style="padding:6px 12px; font-size:12px; font-weight:600; border-radius:8px; background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; cursor:pointer;">
+                  Remove
+                </button>
+              </div>
+              <div style="font-size:11px; color:#64748b;">Upload from your computer or phone. Auto-compressed for 100% free hosting.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top:6px;">
+          <label style="font-size:11.5px; color:#64748b;">Or paste an Image URL (optional)</label>
+          <input type="url" class="form-control" id="subModalImage" placeholder="https://images.unsplash.com/... or upload photo above" oninput="updateSubPhotoPreviewFromUrl(this.value)">
+        </div>
         <div class="form-group" style="display:flex; align-items:center; gap:8px;">
           <input type="checkbox" id="subModalPopular" style="width:16px; height:16px;">
           <label for="subModalPopular" style="margin:0; font-weight:600; cursor:pointer;">Mark as Most Popular Package</label>
@@ -3323,6 +3355,17 @@
       }
 
       SERVICE_CATEGORIES.forEach(cat => {
+        if (cat.subServices) {
+          cat.subServices = cat.subServices.map((s, idx) => ({
+            id: s.id || (cat.id + '_' + (s.name ? s.name.toLowerCase().replace(/[^a-z0-9]/g, '_') : ('sub_' + idx))),
+            name: s.name || '',
+            price: s.price || '₹499',
+            duration: s.duration || '60 min',
+            description: s.description || s.desc || '',
+            popular: !!s.popular,
+            imageUrl: s.imageUrl || ''
+          }));
+        }
         const cnt = _allBookings.filter(b => b.serviceCategory?.toLowerCase().includes(cat.name.toLowerCase().split(' ')[0])).length;
         cat.providers = cnt > 0 ? cnt + ' bookings' : '—';
       });
@@ -3915,15 +3958,30 @@
                         <div style="font-size:12px; font-weight:700; color:#64748b; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.4px;">Available Packages & Pricing</div>
                         <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:10px;">
                           ${(cat.subServices || []).map(s => `
-                            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 14px; display:flex; justify-content:space-between; align-items:flex-start;">
-                              <div>
-                                <div style="font-weight:700; font-size:13px; color:#0f172a;">${s.name} ${s.popular ? '<span style="font-size:9.5px; background:#fef3c7; color:#92400e; padding:1px 5px; border-radius:4px; font-weight:800; margin-left:4px;">POPULAR</span>' : ''}</div>
-                                <div style="font-size:11.5px; color:#64748b; margin-top:2px;">${s.duration || '60 min'} · ${s.description || ''}</div>
-                                <div style="font-size:13.5px; font-weight:900; color:#0f8a5f; margin-top:4px;">${s.price.startsWith('₹') ? s.price : '₹' + s.price}</div>
+                            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; gap:12px; box-shadow:0 1px 2px rgba(0,0,0,0.02);">
+                              <div style="display:flex; align-items:center; gap:12px; flex:1; min-width:0;">
+                                <div style="width:50px; height:50px; border-radius:10px; overflow:hidden; background:#f8fafc; flex-shrink:0; display:flex; align-items:center; justify-content:center; border:1px solid #e2e8f0;">
+                                  ${s.imageUrl ? `<img src="${s.imageUrl}" style="width:100%; height:100%; object-fit:cover;" onerror="this.parentElement.innerHTML='<i class=\\\'fa-solid fa-sparkles\\\' style=\\\'color:#94a3b8; font-size:18px;\\\'></i>'">` : `<i class="fa-solid fa-sparkles" style="color:#94a3b8; font-size:18px;"></i>`}
+                                </div>
+                                <div style="flex:1; min-width:0;">
+                                  <div style="font-weight:700; font-size:13px; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                    ${s.name} ${s.popular ? '<span style="font-size:9.5px; background:#fef3c7; color:#92400e; padding:1px 5px; border-radius:4px; font-weight:800; margin-left:4px;">POPULAR</span>' : ''}
+                                  </div>
+                                  <div style="font-size:11.5px; color:#64748b; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                    ${s.duration || '60 min'} · ${s.description || ''}
+                                  </div>
+                                  <div style="font-size:13.5px; font-weight:900; color:#0f8a5f; margin-top:3px;">
+                                    ${s.price.startsWith('₹') ? s.price : '₹' + s.price}
+                                  </div>
+                                </div>
                               </div>
-                              <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">
-                                <button class="btn-sm-action" onclick="openEditSubServicePrice('${cat.id}', '${s.id}')" style="font-size:11px; padding:3px 8px; border-radius:6px; background:#ffffff; border:1px solid #cbd5e1; cursor:pointer;">Edit Price</button>
-                                <button class="btn-sm-action" onclick="handleDeleteSubService('${cat.id}', '${s.id}')" style="font-size:11px; padding:3px 8px; border-radius:6px; background:#ffffff; color:#dc2626; border:1px solid #fecaca; cursor:pointer;">Remove</button>
+                              <div style="display:flex; flex-direction:column; gap:5px; align-items:flex-end; flex-shrink:0;">
+                                <button class="btn-sm-action" onclick="openEditSubServicePrice('${cat.id}', '${s.id}')" style="font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:6px; background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+                                  <i class="fa-solid fa-pen-to-square"></i> Edit
+                                </button>
+                                <button class="btn-sm-action" onclick="handleDeleteSubService('${cat.id}', '${s.id}')" style="font-size:11px; padding:3px 8px; border-radius:6px; background:#ffffff; color:#dc2626; border:1px solid #fecaca; cursor:pointer;">
+                                  Remove
+                                </button>
                               </div>
                             </div>
                           `).join('')}
@@ -4204,6 +4262,56 @@
       }
     };
 
+    // ─────────────────────────────────────────────
+    // SUB-SERVICE / PACKAGE PHOTO UPLOAD HELPERS (100% Free - Canvas Compressed)
+    // ─────────────────────────────────────────────
+    window.handleSubServiceFileSelect = async function(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      try {
+        const compressedBase64 = await compressCategoryPhoto(file, 640, 0.82);
+        document.getElementById('subModalImage').value = compressedBase64;
+        const previewImg = document.getElementById('subModalPreviewImg');
+        const placeholder = document.getElementById('subModalPreviewPlaceholder');
+        if (previewImg && placeholder) {
+          previewImg.src = compressedBase64;
+          previewImg.style.display = 'block';
+          placeholder.style.display = 'none';
+        }
+      } catch (err) {
+        alert('Could not process selected image: ' + err.message);
+      } finally {
+        event.target.value = '';
+      }
+    };
+
+    window.clearSubServicePhoto = function() {
+      const imgInput = document.getElementById('subModalImage');
+      if (imgInput) imgInput.value = '';
+      const previewImg = document.getElementById('subModalPreviewImg');
+      const placeholder = document.getElementById('subModalPreviewPlaceholder');
+      if (previewImg && placeholder) {
+        previewImg.src = '';
+        previewImg.style.display = 'none';
+        placeholder.style.display = 'flex';
+      }
+    };
+
+    window.updateSubPhotoPreviewFromUrl = function(url) {
+      const previewImg = document.getElementById('subModalPreviewImg');
+      const placeholder = document.getElementById('subModalPreviewPlaceholder');
+      if (!previewImg || !placeholder) return;
+      if (url && (url.startsWith('http') || url.startsWith('data:image'))) {
+        previewImg.src = url;
+        previewImg.style.display = 'block';
+        placeholder.style.display = 'none';
+      } else {
+        previewImg.src = '';
+        previewImg.style.display = 'none';
+        placeholder.style.display = 'flex';
+      }
+    };
+
     window.openAddSubServiceModal = function(catId) {
       document.getElementById('subModalCatId').value = catId;
       document.getElementById('subModalId').value = '';
@@ -4213,6 +4321,8 @@
       document.getElementById('subModalDuration').value = '60 min';
       document.getElementById('subModalDesc').value = '';
       document.getElementById('subModalPopular').checked = false;
+      document.getElementById('subModalImage').value = '';
+      clearSubServicePhoto();
       document.getElementById('subServiceModal').style.display = 'flex';
     };
 
@@ -4224,12 +4334,14 @@
 
       document.getElementById('subModalCatId').value = catId;
       document.getElementById('subModalId').value = sub.id;
-      document.getElementById('subModalTitle').innerHTML = `<i class="fa-solid fa-pen-to-square" style="color:#0f8a5f;"></i> Edit Package & Price: ${sub.name}`;
+      document.getElementById('subModalTitle').innerHTML = `<i class="fa-solid fa-pen-to-square" style="color:#0f8a5f;"></i> Edit Package: ${sub.name}`;
       document.getElementById('subModalName').value = sub.name || '';
       document.getElementById('subModalPrice').value = (sub.price || '').replace(/[^0-9]/g, '');
       document.getElementById('subModalDuration').value = sub.duration || '60 min';
       document.getElementById('subModalDesc').value = sub.description || '';
       document.getElementById('subModalPopular').checked = !!sub.popular;
+      document.getElementById('subModalImage').value = sub.imageUrl || '';
+      updateSubPhotoPreviewFromUrl(sub.imageUrl || '');
       document.getElementById('subServiceModal').style.display = 'flex';
     };
 
@@ -4249,6 +4361,7 @@
       const duration = document.getElementById('subModalDuration').value.trim();
       const description = document.getElementById('subModalDesc').value.trim();
       const popular = document.getElementById('subModalPopular').checked;
+      const imageUrl = document.getElementById('subModalImage').value.trim();
 
       try {
         const cat = SERVICE_CATEGORIES.find(c => c.id === catId);
@@ -4256,7 +4369,7 @@
 
         let subServices = [...(cat.subServices || [])];
         const existingIdx = subServices.findIndex(s => s.id === subId);
-        const subData = { id: subId, name, price, duration, description, popular };
+        const subData = { id: subId, name, price, duration, description, popular, imageUrl };
 
         if (existingIdx !== -1) {
           subServices[existingIdx] = subData;
@@ -4264,14 +4377,18 @@
           subServices.push(subData);
         }
 
+        // Save to Firestore
         await setDoc(doc(db, 'serviceCategories', catId), {
           subServices
         }, { merge: true });
 
+        // Update in-memory copy immediately
+        cat.subServices = subServices;
+
         closeSubServiceModal();
         await enrichServiceCategories();
         renderServices('categories');
-        alert(`Package "${name}" updated with price ${price}! Changes are now live on the mobile app.`);
+        alert(`Package "${name}" with photo saved to Firestore! Changes are now live on the Customer App.`);
       } catch(err) {
         alert('Failed to save subservice: ' + err.message);
       }
