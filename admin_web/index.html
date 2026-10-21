@@ -1306,7 +1306,7 @@
       <div style="border-top:1px solid #e2e8f0; padding-top:14px; margin-top:20px; display:flex; justify-content:space-between; align-items:center;">
         <span style="font-size:11.5px; color:#94a3b8;"><i class="fa-solid fa-shield-halved" style="color:#10b981;"></i> Verified Urban Helpers Service Record</span>
         <div style="display:flex; gap:10px; align-items:center;">
-          <button type="button" class="btn-danger-action" style="padding:8px 16px; border-radius:8px; font-weight:700; border:1px solid #fecaca; background:#fef2f2; cursor:pointer; font-size:12px; color:#dc2626;" onclick="if(window._currentBdmBookingId) adminCancelBooking(window._currentBdmBookingId);"><i class="fa-solid fa-ban"></i> Cancel Booking</button>
+          <button type="button" id="bdmCancelBtn" class="btn-danger-action" style="padding:8px 16px; border-radius:8px; font-weight:700; border:1px solid #fecaca; background:#fef2f2; cursor:pointer; font-size:12px; color:#dc2626;" onclick="if(window._currentBdmBookingId) adminCancelBooking(window._currentBdmBookingId);"><i class="fa-solid fa-ban"></i> Cancel Booking</button>
           <button type="button" class="btn-outline-action" style="padding:8px 16px; border-radius:8px; font-weight:700; border:1px solid #cbd5e1; background:#f8fafc; cursor:pointer; font-size:12px; color:#0f172a;" onclick="closeBookingDetailsModal(); if(window._currentBdmBookingId) openStatusModal(window._currentBdmBookingId);"><i class="fa-solid fa-pen-to-square"></i> Change Status</button>
           <button type="button" class="btn-primary-action" onclick="closeBookingDetailsModal()" style="background:#0f172a; color:#fff; border:none; padding:8px 20px; border-radius:8px; font-weight:700; cursor:pointer;">Close</button>
         </div>
@@ -2025,29 +2025,83 @@
             <span style="background:${col}22;color:${col};font-size:11px;font-weight:800;padding:5px 12px;border-radius:20px;">${(o.status||'').toUpperCase()}</span>
           </div>
           <div style="font-size:13px;color:#334155;margin-bottom:10px;">ðŸ“¦ ${itemNames}</div>
-          <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
             <div>
               <span style="font-size:16px;font-weight:900;color:#0f172a;">${fmtInr(o.totalCash || 0)}</span>
               <span style="font-size:11px;color:#94a3b8;margin-left:6px;">(${o.paymentMethod || 'â€”'})</span>
               ${o.pointsEarned > 0 ? `<span style="font-size:11px;font-weight:700;color:#d97706;margin-left:6px;">+${o.pointsEarned} pts earned</span>` : ''}
             </div>
-            <select onchange="updateOrderStatus('${o.id}', this.value)" style="padding:6px 10px;border-radius:10px;border:1px solid #e2e8f0;font-size:12px;font-weight:700;cursor:pointer;">
-              <option ${o.status==='processing'?'selected':''} value="processing">Processing</option>
-              <option ${o.status==='shipped'?'selected':''} value="shipped">Shipped</option>
-              <option ${o.status==='delivered'?'selected':''} value="delivered">Delivered</option>
-              <option ${o.status==='cancelled'?'selected':''} value="cancelled">Cancelled</option>
-            </select>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <select onchange="updateOrderStatus('${o.id}', this.value)" style="padding:6px 10px;border-radius:10px;border:1px solid #e2e8f0;font-size:12px;font-weight:700;cursor:pointer;">
+                <option ${o.status==='processing'?'selected':''} value="processing">Processing</option>
+                <option ${o.status==='shipped'?'selected':''} value="shipped">Shipped</option>
+                <option ${o.status==='delivered'?'selected':''} value="delivered">Delivered</option>
+                ${(o.status !== 'delivered' && o.status !== 'completed') ? `<option ${o.status==='cancelled'?'selected':''} value="cancelled">Cancelled</option>` : ''}
+              </select>
+              ${(o.status === 'delivered' || o.status === 'completed')
+                ? `<span style="font-size:11px; font-weight:700; color:#15803d; background:#dcfce7; border:1px solid #bbf7d0; padding:5px 10px; border-radius:8px; display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-lock"></i> Delivered</span>`
+                : (o.status === 'cancelled'
+                  ? `<span style="font-size:11px; font-weight:700; color:#b91c1c; background:#fee2e2; border:1px solid #fecaca; padding:5px 10px; border-radius:8px; display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-ban"></i> Cancelled</span>`
+                  : `<button type="button" class="btn-sm-action" onclick="adminCancelShopOrder('${o.id}')" style="background:#fef2f2; color:#dc2626; border:1px solid #fecaca; font-weight:700; border-radius:8px; padding:5px 10px; display:inline-flex; align-items:center; gap:4px; cursor:pointer;" title="Cancel this order (Admin override)"><i class="fa-solid fa-ban"></i> Cancel</button>`
+                )
+              }
+            </div>
           </div>
         </div>`;
       }).join('');
     };
 
     window.updateOrderStatus = async function(orderId, status) {
-      try {
-        await updateDoc(doc(db, 'shop_orders', orderId), { status, updatedAt: serverTimestamp() });
-        _allOrders = _allOrders.map(o => o.id === orderId ? {...o, status} : o);
+      const o = _allOrders.find(x => x.id === orderId);
+      if (o && (o.status === 'delivered' || o.status === 'completed') && status === 'cancelled') {
+        alert('Completed / delivered orders cannot be cancelled. Only non-completed orders can be cancelled by admin.');
         renderOrders();
+        return;
+      }
+      try {
+        const payload = { status, updatedAt: serverTimestamp() };
+        if (status === 'cancelled') {
+          payload.cancelledBy = 'admin';
+          payload.cancelledAt = serverTimestamp();
+          payload.cancellationReason = 'Cancelled by Urban Helpers Admin';
+        }
+        await updateDoc(doc(db, 'shop_orders', orderId), payload);
+        _allOrders = _allOrders.map(x => x.id === orderId ? {...x, ...payload} : x);
+        renderOrders();
+        alert(`Order status updated to "${status.toUpperCase()}".`);
       } catch (e) { alert('Update failed: ' + e.message); }
+    };
+
+    window.adminCancelShopOrder = async function(orderId) {
+      const o = _allOrders.find(x => x.id === orderId);
+      if (!o) return;
+      if (o.status === 'delivered' || o.status === 'completed') {
+        alert('Completed / delivered orders cannot be cancelled. Only non-completed orders can be cancelled by admin.');
+        return;
+      }
+      if (o.status === 'cancelled') {
+        alert('This order is already cancelled.');
+        return;
+      }
+      const reason = prompt('Please enter cancellation reason for this order:', 'Cancelled by Urban Helpers Administrator');
+      if (reason === null) return;
+      try {
+        const cancelReason = (reason.trim() || 'Cancelled by Urban Helpers Administrator');
+        await updateDoc(doc(db, 'shop_orders', orderId), {
+          status: 'cancelled',
+          cancelledBy: 'admin',
+          cancelledAt: serverTimestamp(),
+          cancellationReason: cancelReason,
+          updatedAt: serverTimestamp()
+        });
+        o.status = 'cancelled';
+        o.cancelledBy = 'admin';
+        o.cancellationReason = cancelReason;
+        renderOrders();
+        alert(`Order #${o.orderNumber || orderId.slice(-8).toUpperCase()} has been cancelled!`);
+      } catch (err) {
+        alert('Failed to cancel order: ' + err.message);
+      }
     };
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -3360,7 +3414,13 @@
                         <i class="fa-solid fa-eye" style="color:#0284c7;"></i> View
                       </button>
                       ${actionBtn}
-                      ${!isDoneOrCancelled ? `<button class="btn-sm-action" style="background:#fef2f2; color:#dc2626; border:1px solid #fecaca; font-weight:700; display:inline-flex; align-items:center; gap:4px; padding:5px 10px; border-radius:8px; cursor:pointer;" onclick="adminCancelBooking('${b.id}')" title="Cancel this booking"><i class="fa-solid fa-ban"></i> Cancel</button>` : ''}
+                      ${b.status === 'completed'
+                        ? `<span style="font-size:10.5px; font-weight:700; color:#15803d; background:#dcfce7; border:1px solid #bbf7d0; padding:4px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:3px;"><i class="fa-solid fa-lock"></i> Completed</span>`
+                        : (b.status === 'cancelled'
+                          ? `<span style="font-size:10.5px; font-weight:700; color:#b91c1c; background:#fee2e2; border:1px solid #fecaca; padding:4px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:3px;"><i class="fa-solid fa-ban"></i> Cancelled</span>`
+                          : `<button class="btn-sm-action" style="background:#fef2f2; color:#dc2626; border:1px solid #fecaca; font-weight:700; display:inline-flex; align-items:center; gap:4px; padding:5px 10px; border-radius:8px; cursor:pointer;" onclick="adminCancelBooking('${b.id}')" title="Cancel this booking (Admin override)"><i class="fa-solid fa-ban"></i> Cancel</button>`
+                        )
+                      }
                     </div>
                   </td>
                 </tr>`;
@@ -3693,8 +3753,9 @@
                       const vendorHtml = isUnassigned ? '<span style="color:#f59e0b; font-weight:600; font-style:italic;"><i class="fa-solid fa-user-plus" style="margin-right:4px;"></i> Unassigned</span>' : ('<strong style="color:#0f172a;">' + (b.vendorName || 'Specialist') + '</strong>');
                       const statusBadgeMap = { 'requested': 'badge-blue', 'assigned': 'badge-purple', 'accepted': 'badge-blue', 'en_route': 'badge-yellow', 'arrived': 'badge-yellow', 'in_progress': 'badge-green', 'completed': 'badge-green', 'cancelled': 'badge-red' };
                       const statusBadge = '<span class="status-badge ' + (statusBadgeMap[b.status] || 'badge-blue') + '" style="text-transform:capitalize;">' + (b.status === 'in_progress' ? 'In progress' : b.status) + '</span>';
+                      const viewBtn = '<button class="btn-sm-action" onclick="openBookingDetailsModal(\'' + b.id + '\')" style="background:#f8fafc; color:#0f172a; border:1px solid #cbd5e1; font-weight:700; border-radius:8px; padding:5px 10px; display:inline-flex; align-items:center; gap:4px; cursor:pointer; margin-right:6px;" title="View Details"><i class="fa-solid fa-eye" style="color:#0284c7;"></i> View</button>';
                       const actionBtn = (isUnassigned ? ('<button class="btn-sm-action" onclick="openAssignModal(\'' + b.id + '\')" style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; font-weight:700; border-radius:8px; padding:5px 12px; display:inline-flex; align-items:center; gap:4px; cursor:pointer;"><i class="fa-solid fa-user-plus"></i> Assign</button>') : ('<button class="btn-sm-action" onclick="openStatusModal(\'' + b.id + '\')" style="background:#f8fafc; color:#0f172a; border:1px solid #cbd5e1; font-weight:700; border-radius:8px; padding:5px 12px; display:inline-flex; align-items:center; gap:4px; cursor:pointer;"><i class="fa-solid fa-pen-to-square"></i> Update</button>')) + ((b.status !== 'completed' && b.status !== 'cancelled') ? ('<button class="btn-sm-action" onclick="adminCancelBooking(\'' + b.id + '\')" style="background:#fef2f2; color:#dc2626; border:1px solid #fecaca; font-weight:700; border-radius:8px; padding:5px 10px; display:inline-flex; align-items:center; gap:4px; cursor:pointer; margin-left:6px;"><i class="fa-solid fa-ban"></i> Cancel</button>') : '');
-                      return '<tr><td><strong style="color:#0f8a5f; font-family:monospace;">#' + b.id + '</strong></td><td><strong style="color:#0f172a;">' + (b.customerName || 'Customer') + '</strong></td><td>' + vendorHtml + '</td><td style="color:#0f172a; font-weight:600;">' + (b.serviceCategory || 'Service') + '</td><td>' + statusBadge + '</td><td style="color:#94a3b8;">' + (b.scheduledAt ? b.scheduledAt.slice(-5) : 'â€”') + '</td><td><span style="color:#10b981; font-weight:600; font-size:12px;"><span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#10b981; margin-right:4px;"></span>Normal</span></td><td><strong style="color:#0f172a;">' + (b.priceLabel || fmtInr(b.price || 0)) + '</strong></td><td style="text-align:right;">' + actionBtn + '</td></tr>';
+                      return '<tr><td><strong style="color:#0f8a5f; font-family:monospace;">#' + b.id + '</strong></td><td><strong style="color:#0f172a;">' + (b.customerName || 'Customer') + '</strong></td><td>' + vendorHtml + '</td><td style="color:#0f172a; font-weight:600;">' + (b.serviceCategory || 'Service') + '</td><td>' + statusBadge + '</td><td style="color:#94a3b8;">' + (b.scheduledAt ? b.scheduledAt.slice(-5) : 'â€”') + '</td><td><span style="color:#10b981; font-weight:600; font-size:12px;"><span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#10b981; margin-right:4px;"></span>Normal</span></td><td><strong style="color:#0f172a;">' + (b.priceLabel || fmtInr(b.price || 0)) + '</strong></td><td style="text-align:right;">' + viewBtn + actionBtn + '</td></tr>';
                     }).join('')}
                   </tbody>
                 </table>
@@ -4168,6 +4229,19 @@
       document.getElementById('statusModalBookingId').value = b.id;
       document.getElementById('statusModalSummary').textContent = `#${b.id.slice(-8).toUpperCase()} · ${b.customerName || 'Customer'} (${b.serviceCategory || 'Service'})`;
       document.getElementById('statusModalSelect').value = b.status || 'requested';
+
+      // Rule: Only completed bookings cannot be cancelled by admin
+      const cancelOption = document.querySelector('#statusModalSelect option[value="cancelled"]');
+      if (cancelOption) {
+        if (b.status === 'completed') {
+          cancelOption.disabled = true;
+          cancelOption.textContent = 'Cancelled (Completed bookings cannot be cancelled)';
+        } else {
+          cancelOption.disabled = false;
+          cancelOption.textContent = 'Cancelled';
+        }
+      }
+
       document.getElementById('statusModal').style.display = 'flex';
     };
 
@@ -4179,8 +4253,22 @@
       e.preventDefault();
       const bookingId = document.getElementById('statusModalBookingId').value;
       const newStatus = document.getElementById('statusModalSelect').value;
+      const b = _allBookings.find(x => x.id === bookingId);
+
+      // Guard: Only completed bookings cannot be cancelled
+      if (b && b.status === 'completed' && newStatus === 'cancelled') {
+        alert('Completed bookings cannot be cancelled. Only non-completed bookings can be cancelled by admin.');
+        return;
+      }
 
       try {
+        let cancelReason = 'Cancelled by Urban Helpers Admin';
+        if (newStatus === 'cancelled') {
+          const reasonPrompt = prompt('Please enter cancellation reason for this booking:', 'Cancelled by Urban Helpers Administrator');
+          if (reasonPrompt === null) return; // Admin cancelled the prompt
+          cancelReason = reasonPrompt.trim() || 'Cancelled by Urban Helpers Administrator';
+        }
+
         const payload = {
           status: newStatus,
           updatedAt: serverTimestamp()
@@ -4188,19 +4276,22 @@
         if (newStatus === 'cancelled') {
           payload.cancelledBy = 'admin';
           payload.cancelledAt = serverTimestamp();
-          payload.cancellationReason = 'Cancelled by Urban Helpers Admin';
+          payload.cancellationReason = cancelReason;
         }
         await updateDoc(doc(db, 'bookings', bookingId), payload);
         closeStatusModal();
-        const b = _allBookings.find(x => x.id === bookingId);
         if (b) {
           b.status = newStatus;
           if (newStatus === 'cancelled') {
             b.cancelledBy = 'admin';
-            b.cancellationReason = 'Cancelled by Urban Helpers Admin';
+            b.cancellationReason = cancelReason;
           }
         }
-        renderServices('live');
+        if (_currentServicesSubKey === 'bookings') {
+          renderBookingsBoardView();
+        } else {
+          renderServices(_currentServicesSubKey);
+        }
         if (typeof renderOrders === 'function') renderOrders();
         alert(`Booking status updated to "${newStatus.toUpperCase()}"! Live tracking on customer phone updated.`);
       } catch(err) {
@@ -4212,7 +4303,7 @@
       const b = _allBookings.find(x => x.id === bookingId);
       if (!b) return;
       if (b.status === 'completed') {
-        alert('Completed bookings cannot be cancelled.');
+        alert('Completed bookings cannot be cancelled. Only non-completed bookings can be cancelled by admin.');
         return;
       }
       if (b.status === 'cancelled') {
@@ -4277,6 +4368,39 @@
       badge.className = 'status-badge ' + (statusMap[b.status] || 'badge-blue');
       badge.textContent = (b.status || 'REQUESTED').toUpperCase();
       sub.textContent = (b.serviceCategory || 'Service') + ' • ' + (b.subServiceName || 'Standard Package') + ' • Scheduled: ' + (b.scheduledAt || 'Immediate');
+
+      // Update Cancel Button state: Only completed bookings cannot be cancelled by admin
+      const cancelBtn = document.getElementById('bdmCancelBtn');
+      if (cancelBtn) {
+        if (b.status === 'completed') {
+          cancelBtn.disabled = true;
+          cancelBtn.style.opacity = '0.55';
+          cancelBtn.style.cursor = 'not-allowed';
+          cancelBtn.style.background = '#f1f5f9';
+          cancelBtn.style.color = '#64748b';
+          cancelBtn.style.borderColor = '#cbd5e1';
+          cancelBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Completed (Cannot Cancel)';
+          cancelBtn.title = 'Completed bookings cannot be cancelled.';
+        } else if (b.status === 'cancelled') {
+          cancelBtn.disabled = true;
+          cancelBtn.style.opacity = '0.55';
+          cancelBtn.style.cursor = 'not-allowed';
+          cancelBtn.style.background = '#fee2e2';
+          cancelBtn.style.color = '#dc2626';
+          cancelBtn.style.borderColor = '#fecaca';
+          cancelBtn.innerHTML = '<i class="fa-solid fa-ban"></i> Already Cancelled';
+          cancelBtn.title = 'This booking is already cancelled.';
+        } else {
+          cancelBtn.disabled = false;
+          cancelBtn.style.opacity = '1';
+          cancelBtn.style.cursor = 'pointer';
+          cancelBtn.style.background = '#fef2f2';
+          cancelBtn.style.color = '#dc2626';
+          cancelBtn.style.borderColor = '#fecaca';
+          cancelBtn.innerHTML = '<i class="fa-solid fa-ban"></i> Cancel Booking';
+          cancelBtn.title = 'Cancel this booking (Admin override)';
+        }
+      }
 
       // 1. Vendor Checklist items
       const defaultChecklist = [
