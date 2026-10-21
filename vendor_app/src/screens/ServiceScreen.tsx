@@ -272,7 +272,7 @@ export default function ServiceScreen({ route, navigation }: any) {
     }
   };
 
-  // ── Audio Recording Handlers (Automatic & Storage-Uploaded) ────────────────
+  // ── Audio Recording Handlers (Automatic & Manual) ─────────────────────────
   const handleStartAudioRecording = async () => {
     try {
       if (soundRef.current) {
@@ -281,9 +281,16 @@ export default function ServiceScreen({ route, navigation }: any) {
         soundRef.current = null;
       }
       setIsPlayingAudio(false);
-      await audioRecordingService.startBackgroundRecording(job.jobId);
+      const success = await audioRecordingService.startBackgroundRecording(job.jobId);
+      if (!success) {
+        Alert.alert(
+          'Microphone Permission Required',
+          'Please allow microphone permission to record audio proof for this service.'
+        );
+      }
     } catch (e: any) {
       console.warn('Start recording error:', e);
+      Alert.alert('Recording Error', 'Could not start audio recording. Please try again.');
     }
   };
 
@@ -291,7 +298,7 @@ export default function ServiceScreen({ route, navigation }: any) {
     setSavingAudio(true);
     try {
       const finalUrl = await audioRecordingService.stopAndSaveRecording(job.jobId);
-      if (finalUrl && !finalUrl.startsWith('file://')) {
+      if (finalUrl) {
         setAudioUri(finalUrl);
         job.audioUrl = finalUrl;
         return finalUrl;
@@ -397,7 +404,7 @@ export default function ServiceScreen({ route, navigation }: any) {
     }
   };
 
-  // ── Helper to ensure any evidence (photo or audio) is hosted in Firebase Storage as a compact URL ──
+  // ── Helper to ensure evidence is cleanly formatted for Firestore ──────────
   const ensureCloudUrl = async (
     rawVal: string | null,
     type: 'before' | 'after' | 'audio',
@@ -409,20 +416,7 @@ export default function ServiceScreen({ route, navigation }: any) {
       return { url: rawVal };
     }
 
-    if (!storage) {
-      console.warn('[ensureCloudUrl] Firebase storage instance not available');
-      return null;
-    }
-
-    const isAudio = type === 'audio';
-    const ext = isAudio ? 'm4a' : 'jpg';
-    const contentType = isAudio ? 'audio/mp4' : 'image/jpeg';
-    const storagePath = isAudio
-      ? `audio_proofs/${jobId}_${Date.now()}.${ext}`
-      : `proofs/${jobId}_${type}_${Date.now()}.${ext}`;
-    const storageRef = ref(storage, storagePath);
-
-    // If it's a Data URI or local file, return immediately for instant zero-cost completion
+    // Zero-cost direct storage: Data URIs or local file URIs are returned directly
     if (rawVal.startsWith('data:') || rawVal.startsWith('file://')) {
       return { url: rawVal, storagePath: undefined };
     }
@@ -460,19 +454,24 @@ export default function ServiceScreen({ route, navigation }: any) {
 
     const hasActiveAudio = isAudioRecording || audioRecordingService.isRecordingForJob(job.jobId);
     const existingAudio = audioUri || job.audioUrl;
-    if (!hasActiveAudio && (!existingAudio || existingAudio.startsWith('file://')) && recordingDurationSecs === 0) {
-      Alert.alert('Missing Voice Proof', 'Please record the voice recording proof before finalizing.');
+    if (!hasActiveAudio && !existingAudio && recordingDurationSecs === 0) {
+      Alert.alert(
+        'Missing Voice Proof',
+        'Please record the voice recording proof before finalizing.',
+        [
+          { text: 'Record Now', onPress: handleStartAudioRecording },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
       return;
     }
 
     setIsFinishing(true);
     try {
-      let finalAudioUrl: string | null = (existingAudio && !existingAudio.startsWith('file://') && !existingAudio.startsWith('data:'))
-        ? existingAudio
-        : null;
+      let finalAudioUrl: string | null = existingAudio || null;
 
-      // If audio is actively recording or not yet uploaded, stop & upload to cloud now
-      if (hasActiveAudio || !finalAudioUrl) {
+      // If audio is actively recording, stop and save it now
+      if (hasActiveAudio) {
         try {
           const uploadedUrl = await handleStopAudioRecording();
           if (uploadedUrl) {
@@ -483,7 +482,7 @@ export default function ServiceScreen({ route, navigation }: any) {
         }
       }
 
-      // 1. Ensure all evidence pieces are uploaded to Firebase Storage (or fallback gracefully)
+      // Ensure all evidence pieces are formatted properly
       const beforeUploaded = await ensureCloudUrl(currentBefore, 'before', job.jobId);
       const afterUploaded = await ensureCloudUrl(currentAfter, 'after', job.jobId);
       const audioUploaded = await ensureCloudUrl(finalAudioUrl || existingAudio || null, 'audio', job.jobId);
@@ -501,40 +500,47 @@ export default function ServiceScreen({ route, navigation }: any) {
       const cleanBefore = beforeUploaded.url;
       const cleanAfter = afterUploaded.url;
       const cleanAudio = audioUploaded?.url || finalAudioUrl || existingAudio || '';
-      const audioStoragePath = audioUploaded?.storagePath || `audio_proofs/${job.jobId}.m4a`;
+      const audioStoragePath = audioUploaded?.storagePath || (cleanAudio ? `audio_proofs/${job.jobId}.m4a` : '');
 
-      const audioMetadata = {
-        storagePath: audioStoragePath,
+      const audioMetadata: Record<string, any> = {
         contentType: 'audio/mp4',
         uploadStatus: 'completed',
         recordedAt: new Date().toISOString(),
         bookingId: job.jobId,
         evidenceType: 'voice_proof',
       };
+      if (audioStoragePath) {
+        audioMetadata.storagePath = audioStoragePath;
+      }
 
       store.completeJob(job.jobId);
       job.audioUrl = cleanAudio;
       job.beforePhoto = cleanBefore;
       job.afterPhoto = cleanAfter;
 
-      // 2. Persist compact metadata to Firestore (under 2KB payload, guaranteed << 1MB limit)
-      await updateDoc(doc(db, 'bookings', job.jobId), {
+      // Persist evidence to Firestore with safe fields (never undefined)
+      const updateData: Record<string, any> = {
         status: 'service_ended',
         serviceEndedAt: serverTimestamp(),
         paymentStatus: 'paid',
-        beforePhoto: cleanBefore,
-        afterPhoto: cleanAfter,
-        beforePhotoPath: beforeUploaded.storagePath || null,
-        afterPhotoPath: afterUploaded.storagePath || null,
-        audioUrl: cleanAudio,
-        audioPath: audioStoragePath,
-        audioMetadata,
-        checklistDone: job.checklistDone,
-        checklist: checklistItems,
-      });
+        checklistDone: job.checklistDone || [],
+        checklist: checklistItems || [],
+      };
 
-      // 3. Also trigger stats update in firestoreService
-      await updateBookingStatus(job.jobId, 'service_ended', store.vendorId || undefined, job.vendorEarnings);
+      if (cleanBefore) updateData.beforePhoto = cleanBefore;
+      if (cleanAfter) updateData.afterPhoto = cleanAfter;
+      if (beforeUploaded?.storagePath) updateData.beforePhotoPath = beforeUploaded.storagePath;
+      if (afterUploaded?.storagePath) updateData.afterPhotoPath = afterUploaded.storagePath;
+      if (cleanAudio) updateData.audioUrl = cleanAudio;
+      if (audioStoragePath) updateData.audioPath = audioStoragePath;
+      if (cleanAudio || audioStoragePath) updateData.audioMetadata = audioMetadata;
+
+      await updateDoc(doc(db, 'bookings', job.jobId), updateData);
+
+      // Also trigger stats update in firestoreService
+      await updateBookingStatus(job.jobId, 'service_ended', store.vendorId || undefined, job.vendorEarnings).catch(err => {
+        console.warn('[handleConfirmComplete] updateBookingStatus stats warning:', err);
+      });
 
       setCompleteModalVisible(false);
       navigation.navigate('Complete', { jobId: job.jobId });
@@ -542,7 +548,7 @@ export default function ServiceScreen({ route, navigation }: any) {
       console.error('[handleConfirmComplete] Service finalization failed:', err?.message || err);
       Alert.alert(
         'Unable to Finalize Service',
-        'Unable to finalize the service because some evidence could not be saved. Your service has not been marked as completed. Please retry.'
+        'Unable to finalize the service because some evidence could not be saved. ' + (err?.message || 'Please retry.')
       );
     } finally {
       setIsFinishing(false);
@@ -710,40 +716,51 @@ export default function ServiceScreen({ route, navigation }: any) {
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <Ionicons name="mic" size={18} color="#059669" />
-            <Text style={styles.sectionTitle}>AUTOMATIC SERVICE AUDIO RECORDING</Text>
+            <Text style={styles.sectionTitle}>SERVICE AUDIO RECORDING PROOF</Text>
           </View>
           <Text style={styles.sectionSub}>
-            Automated background audio monitoring for service quality &amp; customer security.
+            Audio monitoring for service quality, customer security &amp; work verification.
           </Text>
 
           <View style={styles.audioRecordBox}>
-            {isAudioRecording ? (
-              <View style={styles.recordingActiveWrap}>
-                <View style={styles.recordingPulseDot} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#0F172A' }}>
-                    Service Audio Monitoring Active
-                  </Text>
-                  <Text style={{ fontSize: 11, color: '#059669', fontWeight: '600', marginTop: 2 }}>
-                    Recording in progress: {formatTime(recordingDurationSecs)} (Auto-stops on completion)
-                  </Text>
-                </View>
+            {savingAudio ? (
+              <View style={[styles.audioSavedWrap, { justifyContent: 'center', paddingVertical: 14 }]}>
+                <ActivityIndicator color="#059669" size="small" />
+                <Text style={[styles.audioSavedText, { color: '#059669', marginLeft: 8 }]}>
+                  Saving audio proof securely...
+                </Text>
               </View>
-            ) : (
+            ) : isAudioRecording ? (
+              <View style={{ gap: 10 }}>
+                <View style={styles.recordingActiveWrap}>
+                  <View style={styles.recordingPulseDot} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: '#0F172A' }}>
+                      Voice Recording in Progress
+                    </Text>
+                    <Text style={{ fontSize: 11, color: '#059669', fontWeight: '600', marginTop: 2 }}>
+                      Duration: {formatTime(recordingDurationSecs)} • Tap Stop when done
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={[styles.playAudioBtn, { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5' }]}
+                  onPress={() => handleStopAudioRecording()}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="stop-circle" size={16} color="#DC2626" />
+                  <Text style={[styles.playAudioText, { color: '#DC2626' }]}>Stop &amp; Save Voice Proof</Text>
+                </TouchableOpacity>
+              </View>
+            ) : audioUri ? (
               <View style={styles.audioSavedWrap}>
                 <View style={styles.audioSavedInfo}>
-                  <Ionicons
-                    name={audioUri ? "checkmark-circle" : "mic-circle"}
-                    size={20}
-                    color={audioUri ? "#10B981" : "#F59E0B"}
-                  />
+                  <Ionicons name="checkmark-circle" size={20} color="#10B981" />
                   <Text style={styles.audioSavedText}>
-                    {audioUri
-                      ? "Audio proof recorded & securely attached to booking"
-                      : "Voice recording standing by • Active during service"}
+                    Audio proof recorded &amp; securely attached to booking
                   </Text>
                 </View>
-                {audioUri && (
+                <View style={styles.audioActionsRow}>
                   <TouchableOpacity
                     style={styles.playAudioBtn}
                     onPress={handleTogglePlayback}
@@ -757,7 +774,33 @@ export default function ServiceScreen({ route, navigation }: any) {
                       {isPlayingAudio ? 'Pause' : 'Play Proof'}
                     </Text>
                   </TouchableOpacity>
-                )}
+                  <TouchableOpacity
+                    style={styles.rerecordBtn}
+                    onPress={handleRerecord}
+                  >
+                    <Ionicons name="refresh" size={14} color="#475569" />
+                    <Text style={styles.rerecordText}>Re-record</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.audioSavedWrap}>
+                <View style={styles.audioSavedInfo}>
+                  <Ionicons name="mic-circle" size={20} color="#F59E0B" />
+                  <Text style={[styles.audioSavedText, { color: '#B45309' }]}>
+                    Voice recording ready • Tap below to start recording
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.playAudioBtn, { backgroundColor: '#DCFCE7', borderColor: '#86EFAC', marginTop: 4 }]}
+                  onPress={handleStartAudioRecording}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="mic" size={16} color="#065F46" />
+                  <Text style={[styles.playAudioText, { color: '#065F46', fontWeight: '800' }]}>
+                    Start Voice Recording
+                  </Text>
+                </TouchableOpacity>
               </View>
             )}
           </View>

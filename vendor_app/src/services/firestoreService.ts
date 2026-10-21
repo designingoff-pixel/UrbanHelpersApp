@@ -443,23 +443,24 @@ export async function updateBookingPhotos(
 ): Promise<void> {
   const updateData: Record<string, any> = {};
   if (photos.beforePhoto !== undefined) {
-    // Safety: never store oversized data URIs directly in the booking document
-    if (typeof photos.beforePhoto === 'string' && photos.beforePhoto.startsWith('data:') && photos.beforePhoto.length > 50000) {
+    if (typeof photos.beforePhoto === 'string' && photos.beforePhoto.startsWith('data:') && photos.beforePhoto.length > 400000) {
       console.warn('[updateBookingPhotos] Prevented oversized Base64 photo string from being written directly to Firestore document.');
-      return;
+    } else {
+      updateData.beforePhoto = photos.beforePhoto;
     }
-    updateData.beforePhoto = photos.beforePhoto;
   }
   if (photos.afterPhoto !== undefined) {
-    if (typeof photos.afterPhoto === 'string' && photos.afterPhoto.startsWith('data:') && photos.afterPhoto.length > 50000) {
+    if (typeof photos.afterPhoto === 'string' && photos.afterPhoto.startsWith('data:') && photos.afterPhoto.length > 400000) {
       console.warn('[updateBookingPhotos] Prevented oversized Base64 photo string from being written directly to Firestore document.');
-      return;
+    } else {
+      updateData.afterPhoto = photos.afterPhoto;
     }
-    updateData.afterPhoto = photos.afterPhoto;
   }
   if (photos.beforePhotoPath) updateData.beforePhotoPath = photos.beforePhotoPath;
   if (photos.afterPhotoPath) updateData.afterPhotoPath = photos.afterPhotoPath;
-  await updateDoc(doc(db, "bookings", bookingId), updateData);
+  if (Object.keys(updateData).length > 0) {
+    await updateDoc(doc(db, "bookings", bookingId), updateData);
+  }
 }
 
 export async function updateBookingAudio(
@@ -467,20 +468,22 @@ export async function updateBookingAudio(
   audioUrl: string,
   metadata?: { storagePath?: string; audioMetadata?: Record<string, any> }
 ): Promise<void> {
-  // Safety: never store oversized audio data URIs directly in the booking document
-  if (typeof audioUrl === 'string' && audioUrl.startsWith('data:') && audioUrl.length > 50000) {
-    console.warn('[updateBookingAudio] Prevented oversized Base64 audio string from being written directly to Firestore document.');
-    return;
+  const updatePayload: Record<string, any> = {};
+  if (typeof audioUrl === 'string' && audioUrl.startsWith('data:') && audioUrl.length > 400000) {
+    console.warn('[updateBookingAudio] Oversized Base64 audio string, saving metadata instead.');
+  } else if (audioUrl !== undefined) {
+    updatePayload.audioUrl = audioUrl;
   }
 
-  const updatePayload: Record<string, any> = { audioUrl };
   if (metadata?.storagePath) {
     updatePayload.audioPath = metadata.storagePath;
   }
   if (metadata?.audioMetadata) {
     updatePayload.audioMetadata = metadata.audioMetadata;
   }
-  await updateDoc(doc(db, "bookings", bookingId), updatePayload);
+  if (Object.keys(updatePayload).length > 0) {
+    await updateDoc(doc(db, "bookings", bookingId), updatePayload);
+  }
 }
 
 export async function updateVendorLocation(

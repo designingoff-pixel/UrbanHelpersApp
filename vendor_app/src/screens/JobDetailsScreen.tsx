@@ -517,39 +517,11 @@ export default function JobDetailsScreen({ route, navigation }: any) {
                   />
                 </MapView>
 
-                {/* Floating Map Actions: Start Navigation & Verify OTP */}
-                <View style={s.mapOverlayRow}>
-                  <TouchableOpacity
-                    style={s.mapNavigateOverlayBtn}
-                    onPress={handleStartNavigation}
-                    activeOpacity={0.85}
-                  >
-                    <Ionicons name="navigate" size={15} color="#FFFFFF" />
-                    <Text style={s.mapNavigateOverlayText} numberOfLines={1}>Start Navigation</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={s.mapOtpOverlayBtn}
-                    onPress={() => {
-                      scrollRef.current?.scrollTo({ y: 480, animated: true });
-                    }}
-                    activeOpacity={0.85}
-                  >
-                    <Ionicons name="keypad" size={15} color="#FFFFFF" />
-                    <Text style={s.mapOtpOverlayText} numberOfLines={1}>Verify OTP</Text>
-                  </TouchableOpacity>
-                </View>
               </View>
             );
           })()}
 
-          {/* Navigation status actions */}
-          {['ACCEPTED', 'UPCOMING', 'NAVIGATING'].includes(job.status) ? (
-            <TouchableOpacity style={s.navBtn} onPress={handleStartNavigation} activeOpacity={0.85}>
-              <Ionicons name="navigate-circle" size={20} color="#0D3325" />
-              <Text style={s.navBtnText}>Open Turn-by-Turn Voice Navigation</Text>
-            </TouchableOpacity>
-          ) : job.status === 'ARRIVED' ? (
+          {job.status === 'ARRIVED' ? (
             <View style={s.navSecuredBadge}>
               <Ionicons name="location" size={18} color="#059669" />
               <View style={{ flex: 1, marginLeft: 10 }}>
@@ -701,7 +673,7 @@ export default function JobDetailsScreen({ route, navigation }: any) {
         )}
 
         {/* Voice Recording Proof (only for active/completed jobs, raw path hidden) */}
-        {!isAssigned && job.audioUrl && !job.audioUrl.startsWith('file://') ? (
+        {!isAssigned && job.audioUrl ? (
           <View style={s.card}>
             <Text style={s.cardHeading}>🎙 VOICE RECORDING</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDF4', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#BBF7D0' }}>
@@ -768,7 +740,7 @@ export default function JobDetailsScreen({ route, navigation }: any) {
               ) : (
                 <>
                   <Ionicons name="location" size={18} color="#FFFFFF" />
-                  <Text style={s.actionBtnText}>Mark Arrived</Text>
+                  <Text style={s.actionBtnText}>I Arrived</Text>
                 </>
               )}
             </TouchableOpacity>
