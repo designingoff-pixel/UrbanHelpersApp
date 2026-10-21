@@ -121,6 +121,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
 
   const [booking,        setBooking]        = useState<LiveBooking | null>(null);
   const [vendorCoords,   setVendorCoords]   = useState<VendorCoords | null>(null);
+  const [vendorAvatar,   setVendorAvatar]   = useState<string | null>(null);
   const [customerCoords, setCustomerCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [etaText,        setEtaText]        = useState("Calculating…");
   const [distanceText,   setDistanceText]   = useState("");
@@ -191,21 +192,28 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
     !!(booking as any)?.otpVerified;
 
   useEffect(() => {
-    if (!isVendorAccepted || !booking?.vendorId) {
+    if (!booking?.vendorId) {
       setVendorCoords(null);
+      setVendorAvatar(null);
       return;
     }
 
     const unsub = onSnapshot(doc(db, "vendors", booking.vendorId), (snap) => {
       if (!snap.exists()) return;
       const data = snap.data();
-      if (data?.location?.lat && data?.location?.lng) {
+      const photo = data?.avatar || data?.photo || data?.photoURL || data?.image || data?.vendorImage || null;
+      if (photo) {
+        setVendorAvatar(photo);
+      }
+      if (isVendorAccepted && data?.location?.lat && data?.location?.lng) {
         setVendorCoords({
           lat: data.location.lat,
           lng: data.location.lng,
           heading: data.location.heading,
           speed: data.location.speed,
         });
+      } else if (!isVendorAccepted) {
+        setVendorCoords(null);
       }
     });
     return () => unsub();
@@ -333,6 +341,16 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
       ]
     );
   };
+
+  const vendorDisplayName = booking?.vendorName ?? "Professional";
+  const initials = vendorDisplayName
+    .split(" ")
+    .map((w) => w[0])
+    .filter(Boolean)
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() || "P";
+  const effectiveVendorImage = vendorAvatar || booking?.vendorImage || null;
 
   return (
     <View style={s.root}>
@@ -478,8 +496,8 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
           <LinearGradient colors={["#1e3a8a", "#0f172a"]} style={s.proCard}>
             <View style={s.proLeft}>
               <View style={s.proAvatarWrap}>
-                {booking?.vendorImage ? (
-                  <Image source={{ uri: booking.vendorImage }} style={s.proAvatar} />
+                {effectiveVendorImage ? (
+                  <Image source={{ uri: effectiveVendorImage }} style={s.proAvatar} resizeMode="cover" />
                 ) : (
                   <LinearGradient colors={["#2563eb", "#8b5cf6"]} style={s.proAvatar}>
                     <Text style={s.proAvatarText}>{initials}</Text>
@@ -491,10 +509,10 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
                   </View>
                 )}
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.proName}>{booking?.vendorName ?? "Assigning Professional…"}</Text>
-                <Text style={s.proSub}>{booking?.serviceCategory ?? "Service Partner"}</Text>
-                {distanceText ? <Text style={s.proETA}>{distanceText} · {etaText}</Text> : null}
+              <View style={{ flex: 1, flexShrink: 1 }}>
+                <Text style={s.proName} numberOfLines={1}>{booking?.vendorName ?? "Assigning Professional…"}</Text>
+                <Text style={s.proSub} numberOfLines={1}>{booking?.serviceCategory ?? "Service Partner"}</Text>
+                {distanceText ? <Text style={s.proETA} numberOfLines={1}>{distanceText} · {etaText}</Text> : null}
               </View>
             </View>
             <View style={s.proActions}>

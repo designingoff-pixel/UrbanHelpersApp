@@ -63,15 +63,14 @@ interface VendorCoords {
 const TEAL = "#00bcd4";
 const TEAL_D = "#0097a7";
 
-// 7 Full Milestones matching exact workflow with Payment timeline after service in progress
+// 6 Standard Milestones matching service execution workflow
 const MILESTONES = [
-  { key: "requested",   label: "Booking Confirmed",            icon: "checkmark-circle" },
-  { key: "assigned",    label: "Vendor Assigned",              icon: "person" },
-  { key: "en_route",    label: "On The Way",                   icon: "bicycle" },
-  { key: "arrived",     label: "Arrived at Location",          icon: "location" },
-  { key: "in_progress", label: "Service in Progress",          icon: "sparkles" },
-  { key: "payment",     label: "Payment (Pay After Service)",  icon: "card" },
-  { key: "completed",   label: "Completed",                    icon: "star" },
+  { key: "requested",   label: "Booking Confirmed",      icon: "checkmark-circle" },
+  { key: "assigned",    label: "Professional Assigned",  icon: "person" },
+  { key: "en_route",    label: "On The Way",             icon: "bicycle" },
+  { key: "arrived",     label: "Arrived at Location",    icon: "location" },
+  { key: "in_progress", label: "Service in Progress",    icon: "sparkles" },
+  { key: "completed",   label: "Service Completed",      icon: "checkmark-done-circle" },
 ];
 
 export default function LiveTrackingScreen({ navigation, route }: Props) {
@@ -103,6 +102,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
 
   const [booking,        setBooking]        = useState<LiveBooking | null>(null);
   const [vendorCoords,   setVendorCoords]   = useState<VendorCoords | null>(null);
+  const [vendorAvatar,   setVendorAvatar]   = useState<string | null>(null);
   const [customerCoords, setCustomerCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [etaText,        setEtaText]        = useState("Calculating...");
   const [distanceText,   setDistanceText]   = useState("");
@@ -170,23 +170,34 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
   // Service has started: customer cannot cancel, only Admin can cancel
   const isServiceStarted = isServiceActive || booking?.status === "in_progress" || booking?.status === "service_ended" || !!(booking as any)?.startedAt || !!(booking as any)?.otpVerified;
 
-  // Subscribe to Vendor's live GPS coords ONLY when assigned
+  // Subscribe to Vendor's profile photo and live GPS coords whenever assigned
   useEffect(() => {
-    if (!isTrackingActive || !booking?.vendorId) {
+    if (!booking?.vendorId) {
       setVendorCoords(null);
+      setVendorAvatar(null);
       return;
     }
 
     const unsub = onSnapshot(doc(db, "vendors", booking.vendorId), (snap) => {
       if (!snap.exists()) return;
       const data = snap.data();
-      if (data?.location?.lat && data?.location?.lng) {
+
+      // Real-time photo extraction from vendor profile
+      const photo = data?.avatar || data?.photo || data?.photoURL || data?.image || data?.vendorImage || null;
+      if (photo) {
+        setVendorAvatar(photo);
+      }
+
+      // Live GPS coords when tracking is active
+      if (isTrackingActive && data?.location?.lat && data?.location?.lng) {
         setVendorCoords({
           lat: data.location.lat,
           lng: data.location.lng,
           heading: data.location.heading,
           speed: data.location.speed,
         });
+      } else if (!isTrackingActive) {
+        setVendorCoords(null);
       }
     });
     return () => unsub();
@@ -251,19 +262,11 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
   const proPhone = booking?.vendorPhone || "+91 98765 43210";
   const proCategory = booking?.serviceCategory || "Cleaning";
 
-  const isPaid = (booking as any)?.paymentStatus === "paid";
-  const isServiceEnded = status === "service_ended";
+  const effectiveVendorImage = vendorAvatar || booking?.vendorImage || null;
 
   // Step milestone status calculations
   const getStepState = (stepKey: string) => {
     if (status === "cancelled") return "pending";
-
-    // Handle payment milestone specifically
-    if (stepKey === "payment") {
-      if (status === "completed" || isPaid) return "done";
-      if (status === "service_ended") return "active";
-      return "pending";
-    }
 
     // Handle completed milestone
     if (stepKey === "completed") {
@@ -271,10 +274,12 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
       return "pending";
     }
 
-    // Milestone progression: requested -> assigned -> en_route -> arrived -> in_progress
-    const order = ["requested", "assigned", "en_route", "arrived", "in_progress"];
+    // Milestone progression: requested -> assigned -> en_route -> arrived -> in_progress -> completed
+    const order = ["requested", "assigned", "en_route", "arrived", "in_progress", "completed"];
     const currentMapped =
-      status === "service_ended" || status === "completed"
+      status === "completed"
+        ? "completed"
+        : status === "service_ended"
         ? "in_progress"
         : status === "accepted"
         ? "assigned"
@@ -282,7 +287,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
     const currentIdx = order.indexOf(currentMapped);
     const stepIdx = order.indexOf(stepKey);
 
-    if (status === "completed" || status === "service_ended") return "done";
+    if (status === "completed") return "done";
     if (stepIdx < currentIdx) return "done";
     if (stepIdx === currentIdx) return "active";
     return "pending";
@@ -353,10 +358,10 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
           <Ionicons name="arrow-back" size={22} color={isDark ? "#fff" : "#0f172a"} />
         </Pressable>
         <View style={s.headerCenter}>
-          <Text style={[s.headerTitle, textPrimary, isCancelled && { color: "#ef4444" }]}>
+          <Text style={[s.headerTitle, textPrimary, isCancelled && { color: "#ef4444" }]} numberOfLines={1}>
             {isCancelled ? "Booking Cancelled" : "Live Tracking"}
           </Text>
-          <Text style={s.headerSubtitle}>
+          <Text style={s.headerSubtitle} numberOfLines={1}>
             {isCancelled ? "Service was cancelled" : isVendorAssigned ? "Professional is on the way" : "Finding nearest professional"}
           </Text>
         </View>
@@ -413,21 +418,25 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
             style={s.proCardGradient}
           >
             <View style={s.proAvatarWrapper}>
-              <Image
-                source={
-                  booking?.vendorImage
-                    ? { uri: booking.vendorImage }
-                    : require("../../../assets/technician_ramesh.png")
-                }
-                style={s.proAvatar}
-                resizeMode="cover"
-              />
+              {effectiveVendorImage ? (
+                <Image
+                  source={{ uri: effectiveVendorImage }}
+                  style={s.proAvatar}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={[s.proAvatar, s.proAvatarFallback, { backgroundColor: isDark ? "#0284C7" : "#0D9488" }]}>
+                  <Text style={s.proAvatarInitial}>
+                    {(proName || "P").charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
               {isVendorAssigned && <View style={s.onlineBadge} />}
             </View>
 
             <View style={s.proInfo}>
               <View style={s.proNameRow}>
-                <Text style={s.proName}>{proName}</Text>
+                <Text style={s.proName} numberOfLines={1}>{proName}</Text>
                 {isVendorAssigned && (
                   <View style={s.ratingBadge}>
                     <Ionicons name="star" size={12} color="#f59e0b" />
@@ -435,7 +444,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
                   </View>
                 )}
               </View>
-              <Text style={s.proSubtitle}>
+              <Text style={s.proSubtitle} numberOfLines={1}>
                 {isVendorAssigned ? `${proCategory} Expert` : "Connecting to nearby partner..."}
               </Text>
               <View style={s.verifiedRow}>
@@ -444,7 +453,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
                   size={13}
                   color={isVendorAssigned ? "#22c55e" : "#f59e0b"}
                 />
-                <Text style={[s.verifiedText, !isVendorAssigned && { color: "#f59e0b" }]}>
+                <Text style={[s.verifiedText, !isVendorAssigned && { color: "#f59e0b" }]} numberOfLines={1}>
                   {isVendorAssigned ? "Verified Professional" : "Assigning Expert..."}
                 </Text>
               </View>
@@ -512,6 +521,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
                         isActive && [s.timelineStepLabelActive, { color: isDark ? TEAL : "#0F766E" }],
                         isDone && [s.timelineStepLabelDone, textPrimary],
                       ]}
+                      numberOfLines={1}
                     >
                       {step.label}
                     </Text>
@@ -524,18 +534,22 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
                           : step.key === "en_route"
                           ? `On the way to your doorstep. Arriving in ~${etaText}.`
                           : step.key === "arrived"
-                          ? "Technician is outside. Please provide the OTP below to begin."
+                          ? "Specialist has arrived outside. Share the 4-digit OTP below to start."
                           : step.key === "in_progress"
-                          ? "Service is actively being performed with care."
-                          : step.key === "payment"
-                          ? `Service finished! Please pay ${booking?.priceLabel || "₹" + (booking?.price ?? "1999")} via Cash or UPI after inspecting work.`
-                          : "Job completed! Rate your experience."}
+                          ? "Service is actively being performed with verified quality."
+                          : "Job completed! Rate your experience & view receipt."}
                       </Text>
-                    ) : step.key === "payment" ? (
-                      <Text style={[s.timelineStepSubHint, { color: isDone ? "#16A34A" : (isDark ? "#64748B" : "#94A3B8") }]}>
-                        {isDone
-                          ? `Payment verified (${booking?.priceLabel || "₹" + (booking?.price ?? "1999")})`
-                          : `Pay ${booking?.priceLabel || "₹" + (booking?.price ?? "1999")} after service is done`}
+                    ) : isDone && step.key !== "completed" ? (
+                      <Text style={[s.timelineStepSubHint, { color: isDark ? "#22C55E" : "#16A34A" }]}>
+                        {step.key === "requested"
+                          ? "✓ Booking placed"
+                          : step.key === "assigned"
+                          ? `✓ Assigned to ${proName.split(" ")[0]}`
+                          : step.key === "en_route"
+                          ? "✓ Transit completed"
+                          : step.key === "arrived"
+                          ? "✓ OTP verified"
+                          : "✓ Service steps completed"}
                       </Text>
                     ) : null}
                   </View>
@@ -641,111 +655,29 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
           </Animated.View>
         )}
 
-        {/* ── 4. Separate Prominent ETA & Distance Stats Bar (Below Map) ── */}
-        <Animated.View entering={FadeInDown.delay(220).duration(380)} style={[s.etaStatsCard, cardBgStyle]}>
-          <View style={s.etaStatsLeft}>
-            <View style={[s.etaStatsIconCircle, { backgroundColor: isDark ? "rgba(0,188,212,0.15)" : "#E0F2FE" }]}>
-              <Ionicons name={isPreService ? "time" : "shield-checkmark"} size={20} color={isDark ? TEAL : "#0284C7"} />
-            </View>
-            <View>
-              <Text style={[s.etaStatsTitle, textPrimary]}>
-                {isCompleted
-                  ? "Completed"
-                  : isServiceActive
-                  ? "Active On-Site"
-                  : isVendorAssigned
-                  ? etaText
-                  : "Assigning..."}
-              </Text>
-              <Text style={[s.etaStatsSub, textSecondary]}>
-                {isCompleted
-                  ? "Service finished & proof verified"
-                  : isServiceActive
-                  ? "Professional is actively performing service"
-                  : distanceText
-                  ? `${distanceText} away from doorstep`
-                  : "Real-time GPS tracking active"}
-              </Text>
-            </View>
-          </View>
-
-          <View style={[s.liveLocBadge, { backgroundColor: isDark ? "rgba(0,188,212,0.12)" : "#F0FDFA" }]}>
-            <Ionicons name={isPreService ? "navigate" : "shield-checkmark"} size={13} color={isDark ? TEAL : "#059669"} />
-            <Text style={[s.liveLocText, { color: isDark ? TEAL : "#059669" }]}>
-              {isPreService ? "Live GPS" : "On-Site"}
-            </Text>
-          </View>
-        </Animated.View>
-
-        {/* ── 5. Payment Information Card (Clear visibility so customer knows) ── */}
-        <Animated.View entering={FadeInDown.delay(240).duration(380)} style={[s.paymentInfoCard, cardBgStyle]}>
-          <View style={s.paymentInfoTop}>
-            <View style={[s.paymentIconCircle, { backgroundColor: isDark ? "rgba(15,118,110,0.2)" : "#CCFBF1" }]}>
-              <Ionicons name="card" size={20} color={isDark ? TEAL : "#0F766E"} />
-            </View>
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                <Text style={[s.paymentCardTitle, textPrimary]}>Payment Timeline</Text>
-                <View style={[
-                  s.paymentStatusBadge,
-                  {
-                    backgroundColor: isPaid || isCompleted
-                      ? (isDark ? "rgba(34,197,94,0.18)" : "#DCFCE7")
-                      : isServiceEnded
-                      ? (isDark ? "rgba(234,88,12,0.18)" : "#FFEDD5")
-                      : (isDark ? "rgba(0,188,212,0.15)" : "#F0FDFA")
-                  }
-                ]}>
-                  <Text style={[
-                    s.paymentStatusText,
-                    {
-                      color: isPaid || isCompleted
-                        ? "#16A34A"
-                        : isServiceEnded
-                        ? "#EA580C"
-                        : (isDark ? TEAL : "#0F766E")
-                    }
-                  ]}>
-                    {isPaid || isCompleted ? "PAID" : isServiceEnded ? "PAYMENT DUE" : "PAY AFTER SERVICE"}
-                  </Text>
-                </View>
+        {/* ── 4. Prominent ETA & Distance Stats Bar (ONLY while specialist is travelling) ── */}
+        {isPreService && (
+          <Animated.View entering={FadeInDown.delay(220).duration(380)} style={[s.etaStatsCard, cardBgStyle]}>
+            <View style={s.etaStatsLeft}>
+              <View style={[s.etaStatsIconCircle, { backgroundColor: isDark ? "rgba(0,188,212,0.15)" : "#E0F2FE" }]}>
+                <Ionicons name="time" size={20} color={isDark ? TEAL : "#0284C7"} />
               </View>
-              <Text style={[s.paymentCardSub, textSecondary]}>
-                {isPaid || isCompleted
-                  ? "Payment successfully received & verified"
-                  : isServiceEnded
-                  ? "Service completed. Please pay the professional now."
-                  : "No advance payment needed. Pay after service is finished & inspected."}
-              </Text>
-            </View>
-          </View>
-
-          <View style={[s.paymentDivider, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#E2E8F0" }]} />
-
-          <View style={s.paymentBottomRow}>
-            <View>
-              <Text style={[s.paymentAmountLabel, textSecondary]}>Total Payable</Text>
-              <Text style={[s.paymentAmountVal, { color: isDark ? TEAL : "#0F766E" }]}>
-                {booking?.priceLabel || `₹${booking?.price ?? 1999}`}
-              </Text>
-            </View>
-
-            <View style={s.paymentModesRow}>
-              <View style={[s.payModeChip, { backgroundColor: isDark ? themeColors.surface : "#F1F5F9" }]}>
-                <Ionicons name="qr-code-outline" size={13} color={isDark ? themeColors.text : "#0F172A"} />
-                <Text style={[s.payModeText, textSecondary]}>UPI</Text>
-              </View>
-              <View style={[s.payModeChip, { backgroundColor: isDark ? themeColors.surface : "#F1F5F9" }]}>
-                <Ionicons name="cash-outline" size={13} color={isDark ? themeColors.text : "#0F172A"} />
-                <Text style={[s.payModeText, textSecondary]}>Cash</Text>
-              </View>
-              <View style={[s.payModeChip, { backgroundColor: isDark ? themeColors.surface : "#F1F5F9" }]}>
-                <Ionicons name="card-outline" size={13} color={isDark ? themeColors.text : "#0F172A"} />
-                <Text style={[s.payModeText, textSecondary]}>Card</Text>
+              <View style={{ flex: 1, flexShrink: 1 }}>
+                <Text style={[s.etaStatsTitle, textPrimary]} numberOfLines={1}>
+                  {isVendorAssigned ? etaText : "Assigning..."}
+                </Text>
+                <Text style={[s.etaStatsSub, textSecondary]} numberOfLines={1}>
+                  {distanceText ? `${distanceText} away from doorstep` : "Real-time GPS tracking active"}
+                </Text>
               </View>
             </View>
-          </View>
-        </Animated.View>
+
+            <View style={[s.liveLocBadge, { backgroundColor: isDark ? "rgba(0,188,212,0.12)" : "#F0FDFA" }]}>
+              <Ionicons name="navigate" size={13} color={isDark ? TEAL : "#059669"} />
+              <Text style={[s.liveLocText, { color: isDark ? TEAL : "#059669" }]}>Live GPS</Text>
+            </View>
+          </Animated.View>
+        )}
 
         {/* ── 5. OTP Display Box (Visible ONLY before OTP is verified) ── */}
         {booking?.otp && isPreService && (
@@ -912,14 +844,16 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   headerCenter: {
+    flex: 1,
     alignItems: "center",
+    marginHorizontal: 8,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "700",
   },
   headerSubtitle: {
-    fontSize: 12,
+    fontSize: 11.5,
     color: TEAL,
     marginTop: 2,
   },
@@ -960,6 +894,15 @@ const s = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#FFFFFF",
   },
+  proAvatarFallback: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  proAvatarInitial: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#FFFFFF",
+  },
   onlineBadge: {
     position: "absolute",
     bottom: 2,
@@ -977,13 +920,15 @@ const s = StyleSheet.create({
   proNameRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 8,
     marginBottom: 2,
   },
   proName: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "700",
     color: "#fff",
+    flex: 1,
+    flexShrink: 1,
   },
   ratingBadge: {
     flexDirection: "row",
@@ -1295,9 +1240,11 @@ const s = StyleSheet.create({
     justifyContent: "space-between",
   },
   etaStatsLeft: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+    marginRight: 8,
   },
   etaStatsIconCircle: {
     width: 40,

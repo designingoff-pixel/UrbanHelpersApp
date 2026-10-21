@@ -2898,6 +2898,7 @@
           vendorId: vendor.vendorId || vendor.id,
           vendorName: vendor.name,
           vendorPhone: vendor.mobile || '',
+          vendorImage: vendor.avatar || vendor.photo || vendor.photoURL || vendor.image || vendor.vendorImage || null,
           status: 'assigned',
           assignedAt: serverTimestamp(),
           // Clear rejection flag
