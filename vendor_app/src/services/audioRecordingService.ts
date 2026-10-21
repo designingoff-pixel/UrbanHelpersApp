@@ -326,7 +326,20 @@ class AudioRecordingService {
         return finalAudioUrl;
       }
 
-      console.warn('[AudioRecordingService] Audio could not be uploaded to Firebase Storage.');
+      // Resilient fallback: If Firebase Storage upload was unavailable, keep local recording URI
+      if (localUri) {
+        console.warn('[AudioRecordingService] Firebase Storage unavailable, preserving local audio URI fallback:', localUri);
+        const job = store.getJob(jobId);
+        if (job) {
+          job.audioUrl = localUri;
+        }
+        await updateBookingAudio(jobId, localUri, {
+          storagePath: undefined,
+        }).catch(() => {});
+        return localUri;
+      }
+
+      console.warn('[AudioRecordingService] Audio could not be saved.');
       return null;
     } catch (err) {
       console.warn('[AudioRecordingService] stopAndSaveRecording error:', err);

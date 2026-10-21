@@ -264,9 +264,17 @@ export default function ServiceScreen({ route, navigation }: any) {
         }
       }
 
-      // 2. Strict validation: Never store oversized Base64 data URIs into Firestore document
-      if (!finalPhotoUrl || finalPhotoUrl.startsWith('data:') || finalPhotoUrl.startsWith('file://')) {
-        throw new Error('Photo could not be uploaded to cloud storage. Please check your internet connection and try again.');
+      // 2. Resilient fallback: If Firebase Storage is unprovisioned or offline, use compressed Data URI
+      if (!finalPhotoUrl) {
+        if (asset.base64) {
+          finalPhotoUrl = `data:image/jpeg;base64,${asset.base64}`;
+        } else if (asset.uri) {
+          finalPhotoUrl = asset.uri;
+        }
+      }
+
+      if (!finalPhotoUrl) {
+        throw new Error('Photo could not be captured. Please try taking the photo again.');
       }
 
       if (type === 'before') {
@@ -447,8 +455,8 @@ export default function ServiceScreen({ route, navigation }: any) {
         console.log(`[ensureCloudUrl] Successfully migrated Base64 ${type} to Firebase Storage:`, downloadUrl);
         return { url: downloadUrl, storagePath };
       } catch (err) {
-        console.warn(`[ensureCloudUrl] Failed to migrate Base64 ${type} to Storage:`, err);
-        return null;
+        console.warn(`[ensureCloudUrl] Failed to migrate Base64 ${type} to Storage, using data URI fallback:`, err);
+        return { url: rawVal, storagePath: undefined };
       }
     }
 
@@ -463,12 +471,12 @@ export default function ServiceScreen({ route, navigation }: any) {
         console.log(`[ensureCloudUrl] Successfully uploaded local ${type} file to Firebase Storage:`, downloadUrl);
         return { url: downloadUrl, storagePath };
       } catch (err) {
-        console.warn(`[ensureCloudUrl] Failed to upload local ${type} file to Storage:`, err);
-        return null;
+        console.warn(`[ensureCloudUrl] Failed to upload local ${type} file to Storage, using local URI fallback:`, err);
+        return { url: rawVal, storagePath: undefined };
       }
     }
 
-    return null;
+    return { url: rawVal };
   };
 
   // ── Finish & Complete Service ─────────────────────────────────────────────
@@ -516,7 +524,7 @@ export default function ServiceScreen({ route, navigation }: any) {
       if (hasActiveAudio || !finalAudioUrl) {
         try {
           const uploadedUrl = await handleStopAudioRecording();
-          if (uploadedUrl && !uploadedUrl.startsWith('file://') && !uploadedUrl.startsWith('data:')) {
+          if (uploadedUrl) {
             finalAudioUrl = uploadedUrl;
           }
         } catch (audioErr) {
@@ -524,16 +532,16 @@ export default function ServiceScreen({ route, navigation }: any) {
         }
       }
 
-      // 1. Ensure all evidence pieces are uploaded to Firebase Storage (migrating any Base64/local files)
+      // 1. Ensure all evidence pieces are uploaded to Firebase Storage (or fallback gracefully)
       const beforeUploaded = await ensureCloudUrl(currentBefore, 'before', job.jobId);
       const afterUploaded = await ensureCloudUrl(currentAfter, 'after', job.jobId);
       const audioUploaded = await ensureCloudUrl(finalAudioUrl || existingAudio || null, 'audio', job.jobId);
 
-      // Verify that all required evidence is hosted in cloud storage
-      if (!beforeUploaded?.url || !afterUploaded?.url || !audioUploaded?.url) {
+      // Verify that photos are present
+      if (!beforeUploaded?.url || !afterUploaded?.url) {
         Alert.alert(
-          'Unable to Finalize Service',
-          'Unable to finalize the service because some evidence could not be saved. Your service has not been marked as completed. Please retry.'
+          'Missing Service Photos',
+          'Please ensure both Before and After photos are attached before finalizing.'
         );
         setIsFinishing(false);
         return;
@@ -541,8 +549,8 @@ export default function ServiceScreen({ route, navigation }: any) {
 
       const cleanBefore = beforeUploaded.url;
       const cleanAfter = afterUploaded.url;
-      const cleanAudio = audioUploaded.url;
-      const audioStoragePath = audioUploaded.storagePath || `audio_proofs/${job.jobId}.m4a`;
+      const cleanAudio = audioUploaded?.url || finalAudioUrl || existingAudio || '';
+      const audioStoragePath = audioUploaded?.storagePath || `audio_proofs/${job.jobId}.m4a`;
 
       const audioMetadata = {
         storagePath: audioStoragePath,

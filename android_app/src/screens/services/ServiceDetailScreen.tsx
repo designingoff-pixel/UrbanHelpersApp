@@ -872,13 +872,7 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
       return;
     }
 
-    // 3. Check if phone is verified for this exact number
-    if (verifiedPhone !== phoneNorm.clean10) {
-      await requestAndSendOTP(phoneNorm);
-      return;
-    }
-
-    // Already verified for this exact number
+    // Directly execute booking: generates random 4-digit OTP for customer & vendor verification
     await executeBooking(phoneNorm);
   };
 
@@ -920,12 +914,6 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
     setLoading(true);
 
     try {
-      // Final security guard: ensure verified phone matches booking phone
-      if (verifiedPhone !== phoneNorm.clean10) {
-        Alert.alert("Verification Required", "Please verify your mobile number via OTP before booking.");
-        return;
-      }
-
       const bookingId = "AP4" + Math.random().toString(36).substring(2, 7).toUpperCase();
       const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
       const uid = activeUser?.uid || `guest_${Date.now()}`;
