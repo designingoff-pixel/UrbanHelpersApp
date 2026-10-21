@@ -96,9 +96,17 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
 
         {/* Hero section */}
         <View style={s.heroContent}>
-          <View style={s.heroIconBig}>
-            <Ionicons name={category.icon as any} size={38} color="white" />
-          </View>
+          {category.imageUrl ? (
+            <Image
+              source={{ uri: category.imageUrl }}
+              style={{ width: 68, height: 68, borderRadius: 16, marginBottom: 12, borderWidth: 2, borderColor: "rgba(255,255,255,0.4)" }}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={s.heroIconBig}>
+              <Ionicons name={category.icon as any} size={38} color="white" />
+            </View>
+          )}
           <Text style={s.heroTitle}>{category.name}</Text>
           <Text style={s.heroTagline}>{category.tagline}</Text>
           <View style={s.heroBadgeRow}>

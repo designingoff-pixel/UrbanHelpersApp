@@ -1132,9 +1132,37 @@
           <label>Tagline / Description *</label>
           <input type="text" class="form-control" id="catModalTagline" placeholder="e.g. Spotless home, happy life" required>
         </div>
+        <!-- Category Photo Upload & Live Preview -->
         <div class="form-group">
-          <label>Thumbnail Image URL (or Unsplash photo)</label>
-          <input type="url" class="form-control" id="catModalImage" placeholder="https://images.unsplash.com/...">
+          <label style="display:flex; justify-content:space-between; align-items:center;">
+            <span>Category Photo *</span>
+            <span style="font-size:11px; color:#10b981; font-weight:700;"><i class="fa-solid fa-bolt"></i> Live sync to Customer App</span>
+          </label>
+          <div style="display:flex; gap:14px; align-items:center; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px; margin-top:4px;">
+            <div id="catModalPreviewWrap" style="width:76px; height:76px; border-radius:12px; border:2px dashed #cbd5e1; background:#ffffff; display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; position:relative;">
+              <img id="catModalPreviewImg" src="" style="width:100%; height:100%; object-fit:cover; display:none;" onerror="this.style.display='none'; document.getElementById('catModalPreviewPlaceholder').style.display='flex';">
+              <div id="catModalPreviewPlaceholder" style="display:flex; flex-direction:column; align-items:center; justify-content:center; color:#94a3b8; font-size:22px;">
+                <i class="fa-solid fa-image"></i>
+              </div>
+            </div>
+            <div style="flex:1;">
+              <input type="file" id="catModalFileInput" accept="image/*" style="display:none;" onchange="handleCategoryFileSelect(event)">
+              <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
+                <button type="button" class="btn-outline-action" onclick="document.getElementById('catModalFileInput').click()" style="padding:6px 14px; font-size:12px; font-weight:700; border-radius:8px; background:#ffffff; border:1px solid #cbd5e1; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                  <i class="fa-solid fa-cloud-arrow-up" style="color:#0f8a5f;"></i> Upload Photo
+                </button>
+                <button type="button" class="btn-outline-action" onclick="clearCategoryPhoto()" style="padding:6px 12px; font-size:12px; font-weight:600; border-radius:8px; background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; cursor:pointer;">
+                  Remove
+                </button>
+              </div>
+              <div style="font-size:11px; color:#64748b;">Upload from your computer or phone. Auto-compressed for 100% free hosting.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top:6px;">
+          <label style="font-size:11.5px; color:#64748b;">Or paste an Image URL (optional)</label>
+          <input type="url" class="form-control" id="catModalImage" placeholder="https://images.unsplash.com/... or upload photo above" oninput="updateCatPhotoPreviewFromUrl(this.value)">
         </div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
           <div class="form-group">
@@ -3172,10 +3200,10 @@
     }
 
     // ─────────────────────────────────────────────
-    // SERVICES (static catalog â€” not mock user data)
+    // SERVICES (static catalog with live Firestore override)
     // ─────────────────────────────────────────────
-    const SERVICE_CATEGORIES = [
-      { id:"ro", name:"RO Service", icon:"fa-water", tagline:"Pure water, every drop", startingPrice:"₹99", providers:"â€”", status:"Active", subServices:[
+    let SERVICE_CATEGORIES = [
+      { id:"ro", name:"RO Service", icon:"fa-water", tagline:"Pure water, every drop", startingPrice:"₹99", providers:"—", status:"Active", imageUrl:"https://images.unsplash.com/photo-1585670149967-b4f4da88cc9f?w=600&q=80", subServices:[
         {name:"Filter Change",price:"₹399",duration:"45 min",desc:"Replace all RO filters for cleaner, safer water.",popular:true},
         {name:"RO Cleaning",price:"₹299",duration:"60 min",desc:"Deep clean of membrane and housing to remove scale."},
         {name:"New RO System",price:"₹5,999",duration:"2 hrs",desc:"Supply and install a new branded RO purifier of your choice."},
@@ -3184,7 +3212,7 @@
         {name:"Leakage Repair",price:"₹249",duration:"45 min",desc:"Diagnose and fix pipe or fitting leaks in your RO unit."},
         {name:"TDS Checking",price:"₹99",duration:"20 min",desc:"On-site TDS meter reading with a written report."},
       ]},
-      { id:"pet", name:"Pet Care", icon:"fa-paw", tagline:"Love them the right way", startingPrice:"₹149", providers:"â€”", status:"Active", subServices:[
+      { id:"pet", name:"Pet Care", icon:"fa-paw", tagline:"Love them the right way", startingPrice:"₹149", providers:"—", status:"Active", imageUrl:"https://images.unsplash.com/photo-1548767797-d8c844163c4c?w=600&q=80", subServices:[
         {name:"Pet Bathing",price:"₹399",duration:"45 min",desc:"Gentle shampoo bath, blow-dry and ear cleaning for your pet."},
         {name:"Pet Grooming",price:"₹599",duration:"90 min",desc:"Full groom: cut, trim, nail clipping and de-shedding.",popular:true},
         {name:"Pet Walking",price:"₹149",duration:"30 min",desc:"Trained walker takes your dog for a safe, GPS-tracked walk."},
@@ -3193,7 +3221,7 @@
         {name:"Pet Hospital",price:"₹199",duration:"Varies",desc:"Connect with a verified vet for consultation at home or clinic."},
         {name:"Pet Emergency",price:"₹0 (call)",duration:"ASAP",desc:"24/7 emergency vet helpline and ambulance coordination."},
       ]},
-      { id:"pest", name:"Pest Control", icon:"fa-bug", tagline:"Your home, pest-free", startingPrice:"₹299", providers:"â€”", status:"Active", subServices:[
+      { id:"pest", name:"Pest Control", icon:"fa-bug", tagline:"Your home, pest-free", startingPrice:"₹299", providers:"—", status:"Active", imageUrl:"https://images.unsplash.com/photo-1628177142898-93e36e4e3a50?w=600&q=80", subServices:[
         {name:"Anti-Cockroach",price:"₹499",duration:"60 min",desc:"Gel bait treatment in kitchen, bathrooms and drains.",popular:true},
         {name:"Anti-Lizard",price:"₹399",duration:"45 min",desc:"Repellent spray on walls, corners and behind furniture."},
         {name:"Anti-Termite",price:"₹1,499",duration:"3 hrs",desc:"Soil and wood treatment with 1-year warranty."},
@@ -3201,7 +3229,7 @@
         {name:"Anti-Bed Bug",price:"₹999",duration:"2 hrs",desc:"Heat + chemical treatment for mattresses and furniture."},
         {name:"Snake Rescue",price:"₹299",duration:"30 min",desc:"Trained rescuers safely capture and relocate snakes."},
       ]},
-      { id:"hort", name:"Horticulture", icon:"fa-leaf", tagline:"Grow green, live better", startingPrice:"₹199", providers:"â€”", status:"Active", subServices:[
+      { id:"hort", name:"Horticulture", icon:"fa-leaf", tagline:"Grow green, live better", startingPrice:"₹199", providers:"—", status:"Active", imageUrl:"https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&q=80", subServices:[
         {name:"Terrace Garden Setup",price:"₹2,999",duration:"Half day",desc:"End-to-end terrace garden design and installation.",popular:true},
         {name:"Plantation",price:"₹999",duration:"2 hrs",desc:"Seasonal plants sourced and planted in your terrace pots."},
         {name:"Organic Manures",price:"₹499",duration:"1 hr",desc:"Supply and apply organic compost for healthy soil."},
@@ -3210,7 +3238,7 @@
         {name:"Plantation Shed Setup",price:"₹3,999",duration:"1 day",desc:"Install a shaded enclosure to protect your plants."},
         {name:"Vegetable Pot Setup",price:"₹799",duration:"2 hrs",desc:"Start growing your own vegetables in pots today."},
       ]},
-      { id:"delivery", name:"Delivery", icon:"fa-bicycle", tagline:"Everything at your doorstep", startingPrice:"₹19", providers:"â€”", status:"Active", subServices:[
+      { id:"delivery", name:"Delivery", icon:"fa-bicycle", tagline:"Everything at your doorstep", startingPrice:"₹19", providers:"—", status:"Active", imageUrl:"https://images.unsplash.com/photo-1617347454431-f49d7ff5c3b1?w=600&q=80", subServices:[
         {name:"Medicine Delivery",price:"₹29",duration:"2 hrs",desc:"Prescription and OTC medicines from nearby pharmacies.",popular:true},
         {name:"Vegetable Delivery",price:"₹19",duration:"3 hrs",desc:"Fresh farm vegetables delivered same day."},
         {name:"Food Delivery",price:"₹39",duration:"45 min",desc:"Hot meals from restaurants near you."},
@@ -3218,7 +3246,7 @@
         {name:"Equipment Delivery",price:"₹99",duration:"Same day",desc:"Medical or household equipment rental and delivery."},
         {name:"Diet Food Delivery",price:"₹149",duration:"Daily",desc:"Customised diet meal plans delivered fresh daily."},
       ]},
-      { id:"appliance", name:"Appliance Cleaning", icon:"fa-bolt", tagline:"Clean machines, clean home", startingPrice:"₹149", providers:"â€”", status:"Active", subServices:[
+      { id:"appliance", name:"Appliance Cleaning", icon:"fa-bolt", tagline:"Clean machines, clean home", startingPrice:"₹149", providers:"—", status:"Active", imageUrl:"https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&q=80", subServices:[
         {name:"Bed Cleaning",price:"₹699",duration:"90 min",desc:"Vacuuming, steam and disinfection of mattress and frame."},
         {name:"Sofa Cleaning",price:"₹799",duration:"2 hrs",desc:"Dry foam cleaning and stain removal for all sofa types.",popular:true},
         {name:"Curtain Cleaning",price:"₹499",duration:"1 hr",desc:"On-site steam clean or pick-up-and-drop service."},
@@ -3231,26 +3259,26 @@
         {name:"Gas Stove Cleaning",price:"₹299",duration:"45 min",desc:"Burner decarbonisation and full cooktop deep clean."},
         {name:"Chimney Cleaning",price:"₹699",duration:"90 min",desc:"Filter and duct clean to restore full suction power."},
       ]},
-      { id:"homecare", name:"Home Care", icon:"fa-house", tagline:"Caring hands at home", startingPrice:"₹399/day", providers:"â€”", status:"Active", subServices:[
+      { id:"homecare", name:"Home Care", icon:"fa-house", tagline:"Caring hands at home", startingPrice:"₹399/day", providers:"—", status:"Active", imageUrl:"https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?w=600&q=80", subServices:[
         {name:"Day Care",price:"₹599/day",duration:"8 hrs",desc:"Trained caregiver for children or elderly during day hours."},
         {name:"Maid Service",price:"₹399/day",duration:"4 hrs",desc:"Verified house help for cooking, cleaning and daily chores.",popular:true},
         {name:"Nurse Care",price:"₹1,199/day",duration:"12 hrs",desc:"Qualified nurse for post-operative or chronic care at home."},
         {name:"Elderly Care",price:"₹799/day",duration:"8 hrs",desc:"Compassionate full-day care for senior family members."},
       ]},
-      { id:"insurance", name:"Insurance", icon:"fa-shield-halved", tagline:"Protect what matters most", startingPrice:"Instant Quote", providers:"â€”", status:"Active", subServices:[
+      { id:"insurance", name:"Insurance", icon:"fa-shield-halved", tagline:"Protect what matters most", startingPrice:"Instant Quote", providers:"—", status:"Active", imageUrl:"https://images.unsplash.com/photo-1450133064473-71024230f91b?w=600&q=80", subServices:[
         {name:"Health Insurance",price:"Get quote",duration:"15 min",desc:"Compare and buy the best health cover for your family.",popular:true},
         {name:"Life Insurance",price:"Get quote",duration:"15 min",desc:"Secure your family's future with a term or endowment plan."},
         {name:"Vehicle Insurance",price:"Get quote",duration:"10 min",desc:"Renew or buy car and two-wheeler insurance instantly."},
         {name:"General Insurance",price:"Get quote",duration:"10 min",desc:"Home, travel and other general insurance plans."},
       ]},
-      { id:"emergency", name:"Emergency", icon:"fa-circle-exclamation", tagline:"Help in seconds, not minutes", startingPrice:"₹0 (Helpline)", providers:"â€”", status:"Active", subServices:[
+      { id:"emergency", name:"Emergency", icon:"fa-circle-exclamation", tagline:"Help in seconds, not minutes", startingPrice:"₹0 (Helpline)", providers:"—", status:"Active", imageUrl:"https://images.unsplash.com/photo-1587745416684-47953f16f02f?w=600&q=80", subServices:[
         {name:"Ambulance Service",price:"₹0 (call)",duration:"ASAP",desc:"24/7 ambulance dispatch with trained paramedics.",popular:true},
         {name:"Roadside Assistance",price:"₹499",duration:"30 min",desc:"Towing, flat tyre, battery jump and fuel delivery."},
         {name:"Women Helpline",price:"₹0 (call)",duration:"ASAP",desc:"Immediate safety response and counselling for women."},
         {name:"Child Protection",price:"₹0 (call)",duration:"ASAP",desc:"24/7 support for child safety and protection issues."},
         {name:"Precaution Service",price:"₹199",duration:"1 hr",desc:"Home safety audit and precautionary measures installation."},
       ]},
-      { id:"cleaning", name:"Home Cleaning", icon:"fa-wand-magic-sparkles", tagline:"Spotless and fresh living spaces", startingPrice:"₹499", providers:"â€”", status:"Active", subServices:[
+      { id:"cleaning", name:"Home Cleaning", icon:"fa-wand-magic-sparkles", tagline:"Spotless and fresh living spaces", startingPrice:"₹499", providers:"—", status:"Active", imageUrl:"https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&q=80", subServices:[
         {name:"Full Home Deep Cleaning",price:"₹1,499",duration:"4 hrs",desc:"Intense deep scrubbing of all rooms, kitchen, and washrooms.",popular:true},
         {name:"Kitchen Deep Clean",price:"₹599",duration:"2 hrs",desc:"Oil, grease, and exhaust grime removal for modular kitchens."},
         {name:"Bathroom Sanitization",price:"₹499",duration:"90 min",desc:"Tile descaling, toilet disinfection, and mirror polishing."},
@@ -3258,12 +3286,45 @@
       ]},
     ];
 
-    // Enrich SERVICE_CATEGORIES with real booking counts
+    // Enrich SERVICE_CATEGORIES with real booking counts & live Firestore uploads
     async function enrichServiceCategories() {
       await ensureBookings();
+      try {
+        const snap = await getDocs(collection(db, 'serviceCategories'));
+        if (!snap.empty) {
+          snap.docs.forEach(d => {
+            const data = d.data();
+            const id = data.id || d.id;
+            const existingIdx = SERVICE_CATEGORIES.findIndex(c => c.id === id);
+            if (existingIdx !== -1) {
+              SERVICE_CATEGORIES[existingIdx] = {
+                ...SERVICE_CATEGORIES[existingIdx],
+                ...data,
+                imageUrl: data.imageUrl || SERVICE_CATEGORIES[existingIdx].imageUrl,
+                subServices: (data.subServices && data.subServices.length > 0) ? data.subServices : SERVICE_CATEGORIES[existingIdx].subServices
+              };
+            } else {
+              SERVICE_CATEGORIES.push({
+                id,
+                name: data.name || 'Custom Category',
+                icon: data.icon || 'fa-sparkles',
+                tagline: data.tagline || '',
+                startingPrice: data.startingPrice || '₹299',
+                providers: '—',
+                status: 'Active',
+                imageUrl: data.imageUrl || '',
+                subServices: data.subServices || []
+              });
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to fetch serviceCategories:', err);
+      }
+
       SERVICE_CATEGORIES.forEach(cat => {
         const cnt = _allBookings.filter(b => b.serviceCategory?.toLowerCase().includes(cat.name.toLowerCase().split(' ')[0])).length;
-        cat.providers = cnt > 0 ? cnt + ' bookings' : 'â€”';
+        cat.providers = cnt > 0 ? cnt + ' bookings' : '—';
       });
     }
 
@@ -3973,6 +4034,88 @@
       }
     };
 
+    // ─────────────────────────────────────────────
+    // CATEGORY PHOTO UPLOAD & PREVIEW HELPERS (100% Free - Canvas Compressed)
+    // ─────────────────────────────────────────────
+    function compressCategoryPhoto(file, maxWidth = 800, quality = 0.82) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = reject;
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onerror = reject;
+          img.onload = () => {
+            let width = img.width;
+            let height = img.height;
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+            if (height > maxWidth) {
+              width = Math.round((width * maxWidth) / height);
+              height = maxWidth;
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            const dataUrl = canvas.toDataURL('image/jpeg', quality);
+            resolve(dataUrl);
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    window.handleCategoryFileSelect = async function(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      try {
+        const compressedBase64 = await compressCategoryPhoto(file, 800, 0.82);
+        document.getElementById('catModalImage').value = compressedBase64;
+        const previewImg = document.getElementById('catModalPreviewImg');
+        const placeholder = document.getElementById('catModalPreviewPlaceholder');
+        if (previewImg && placeholder) {
+          previewImg.src = compressedBase64;
+          previewImg.style.display = 'block';
+          placeholder.style.display = 'none';
+        }
+      } catch (err) {
+        alert('Could not process selected image: ' + err.message);
+      } finally {
+        event.target.value = '';
+      }
+    };
+
+    window.clearCategoryPhoto = function() {
+      const imgInput = document.getElementById('catModalImage');
+      if (imgInput) imgInput.value = '';
+      const previewImg = document.getElementById('catModalPreviewImg');
+      const placeholder = document.getElementById('catModalPreviewPlaceholder');
+      if (previewImg && placeholder) {
+        previewImg.src = '';
+        previewImg.style.display = 'none';
+        placeholder.style.display = 'flex';
+      }
+    };
+
+    window.updateCatPhotoPreviewFromUrl = function(url) {
+      const previewImg = document.getElementById('catModalPreviewImg');
+      const placeholder = document.getElementById('catModalPreviewPlaceholder');
+      if (!previewImg || !placeholder) return;
+      if (url && (url.startsWith('http') || url.startsWith('data:image'))) {
+        previewImg.src = url;
+        previewImg.style.display = 'block';
+        placeholder.style.display = 'none';
+      } else {
+        previewImg.src = '';
+        previewImg.style.display = 'none';
+        placeholder.style.display = 'flex';
+      }
+    };
+
     window.openAddCategoryModal = function() {
       document.getElementById('catModalId').value = '';
       document.getElementById('catModalTitle').innerHTML = '<i class="fa-solid fa-layer-group" style="color:#0f8a5f;"></i> Add Service Category';
@@ -3981,6 +4124,7 @@
       document.getElementById('catModalImage').value = '';
       document.getElementById('catModalAccent').value = '#10b981';
       document.getElementById('catModalOrder').value = (SERVICE_CATEGORIES.length + 1);
+      clearCategoryPhoto();
       document.getElementById('categoryModal').style.display = 'flex';
     };
 
@@ -3988,12 +4132,14 @@
       const cat = SERVICE_CATEGORIES.find(c => c.id === catId);
       if (!cat) return;
       document.getElementById('catModalId').value = cat.id;
-      document.getElementById('catModalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square" style="color:#0f8a5f;"></i> Edit Service Category';
+      document.getElementById('catModalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square" style="color:#0f8a5f;"></i> Edit Category: ' + (cat.name || '');
       document.getElementById('catModalName').value = cat.name || '';
       document.getElementById('catModalTagline').value = cat.tagline || '';
       document.getElementById('catModalImage').value = cat.imageUrl || '';
       document.getElementById('catModalAccent').value = cat.accent || '#10b981';
-      document.getElementById('catModalOrder').value = cat.order || 1;
+      document.getElementById('catModalOrder').value = cat.order || (SERVICE_CATEGORIES.indexOf(cat) + 1);
+
+      updateCatPhotoPreviewFromUrl(cat.imageUrl || '');
       document.getElementById('categoryModal').style.display = 'flex';
     };
 
@@ -4006,15 +4152,16 @@
       const catId = document.getElementById('catModalId').value.trim() || document.getElementById('catModalName').value.trim().toLowerCase().replace(/\s+/g, '_');
       const name = document.getElementById('catModalName').value.trim();
       const tagline = document.getElementById('catModalTagline').value.trim();
-      const imageUrl = document.getElementById('catModalImage').value.trim() || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&q=80';
+      const imageUrl = document.getElementById('catModalImage').value.trim() || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&q=80';
       const accent = document.getElementById('catModalAccent').value;
       const order = Number(document.getElementById('catModalOrder').value) || 1;
 
       try {
-        const existing = SERVICE_CATEGORIES.find(c => c.id === catId);
+        const existingIdx = SERVICE_CATEGORIES.findIndex(c => c.id === catId);
+        const existing = existingIdx !== -1 ? SERVICE_CATEGORIES[existingIdx] : null;
         const subServices = existing ? (existing.subServices || []) : [];
 
-        await setDoc(doc(db, 'serviceCategories', catId), {
+        const categoryData = {
           id: catId,
           name,
           tagline,
@@ -4024,12 +4171,22 @@
           icon: existing?.icon || 'sparkles',
           gradient: existing?.gradient || [accent, '#0097a7'],
           subServices
-        }, { merge: true });
+        };
+
+        // Save directly to Firestore for real-time sync with mobile app
+        await setDoc(doc(db, 'serviceCategories', catId), categoryData, { merge: true });
+
+        // Update in-memory copy immediately
+        if (existingIdx !== -1) {
+          SERVICE_CATEGORIES[existingIdx] = { ...SERVICE_CATEGORIES[existingIdx], ...categoryData };
+        } else {
+          SERVICE_CATEGORIES.push(categoryData);
+        }
 
         closeCategoryModal();
         await enrichServiceCategories();
         renderServices('categories');
-        alert(`Category "${name}" saved to Firestore! Mobile app will update in real time.`);
+        alert(`Category "${name}" with photo saved to Firestore! Changes are now live on the Customer App.`);
       } catch(err) {
         alert('Failed to save category: ' + err.message);
       }

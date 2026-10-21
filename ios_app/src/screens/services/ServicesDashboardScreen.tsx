@@ -31,6 +31,7 @@ import { useTheme } from "@/context/ThemeContext";
 import SamsungBottomNav from "@/components/SamsungBottomNav";
 import { SERVICE_LOCAL_IMAGES, getServiceLocalImage } from "@/assets/serviceImages";
 import { SERVICE_CATEGORIES } from "./servicesData";
+import { useServiceCategories } from "@/services/firestoreServices";
 import { subscribeToUserBookings, cancelBooking, Booking } from "@/services/bookingService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServicesDashboard">;
@@ -178,8 +179,23 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
 
 
 
+  const { categories: liveCategories } = useServiceCategories();
+
+  const getCategoryImg = (catId: string, fallbackImg: any) => {
+    const found = liveCategories.find((c) => c.id === catId);
+    if (found?.imageUrl) {
+      return { uri: found.imageUrl };
+    }
+    return fallbackImg;
+  };
+
+  const getCategoryName = (catId: string, fallbackName: string) => {
+    const found = liveCategories.find((c) => c.id === catId);
+    return found?.name || fallbackName;
+  };
+
   const getCategoryServiceCount = (catId: string) => {
-    const found = SERVICE_CATEGORIES.find((c) => c.id === catId);
+    const found = liveCategories.find((c) => c.id === catId) || SERVICE_CATEGORIES.find((c) => c.id === catId);
     return found ? `${found.subServices.length} services` : "Services";
   };
 
@@ -547,7 +563,7 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
               onPress={() => navigation.navigate("ServiceCategory", { categoryId: "cleaning" })}
             >
               <View style={s.exploreCatImageWrap}>
-                <Image source={SERVICE_LOCAL_IMAGES.cleaning} style={s.exploreCatImage} resizeMode="cover" />
+                <Image source={getCategoryImg("cleaning", SERVICE_LOCAL_IMAGES.cleaning)} style={s.exploreCatImage} resizeMode="cover" />
               </View>
               <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Home Cleaning</Text>
               <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("cleaning")}</Text>
@@ -559,7 +575,7 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
               onPress={() => navigation.navigate("ServiceCategory", { categoryId: "ro" })}
             >
               <View style={s.exploreCatImageWrap}>
-                <Image source={SERVICE_LOCAL_IMAGES.ro} style={s.exploreCatImage} resizeMode="cover" />
+                <Image source={getCategoryImg("ro", SERVICE_LOCAL_IMAGES.ro)} style={s.exploreCatImage} resizeMode="cover" />
               </View>
               <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>RO Service</Text>
               <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("ro")}</Text>
@@ -571,7 +587,7 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
               onPress={() => navigation.navigate("ServiceCategory", { categoryId: "pest" })}
             >
               <View style={s.exploreCatImageWrap}>
-                <Image source={SERVICE_LOCAL_IMAGES.pest} style={s.exploreCatImage} resizeMode="cover" />
+                <Image source={getCategoryImg("pest", SERVICE_LOCAL_IMAGES.pest)} style={s.exploreCatImage} resizeMode="cover" />
               </View>
               <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Pest Control</Text>
               <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("pest")}</Text>
@@ -583,7 +599,7 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
               onPress={() => navigation.navigate("ServiceCategory", { categoryId: "pet" })}
             >
               <View style={s.exploreCatImageWrap}>
-                <Image source={SERVICE_LOCAL_IMAGES.pet} style={s.exploreCatImage} resizeMode="cover" />
+                <Image source={getCategoryImg("pet", SERVICE_LOCAL_IMAGES.pet)} style={s.exploreCatImage} resizeMode="cover" />
               </View>
               <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Pet Care</Text>
               <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("pet")}</Text>

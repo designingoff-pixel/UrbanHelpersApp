@@ -157,7 +157,7 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
         {/* ── Hero Banner Card (Cleanly Framed & Centered) ────────────── */}
         <View style={styles.heroBannerCard}>
           <Image
-            source={require("../../../assets/category_banner_cleaning.png")}
+            source={category.imageUrl ? { uri: category.imageUrl } : require("../../../assets/category_banner_cleaning.png")}
             style={styles.heroBannerImg}
             resizeMode="cover"
           />
