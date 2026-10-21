@@ -1455,57 +1455,31 @@
       }, { once: false, passive: true });
     });
 
-    // 🔊 High-priority distinctive audible dual-chime alert
+    // 🔊 High-priority notification audio alert (Custom Notification Sound)
+    let _adminNotifAudio = null;
     function playRejectionAlertSound() {
       if (!_soundAlertsEnabled) return;
       initAudioContext();
 
       try {
-        if (_audioCtx) {
-          if (_audioCtx.state === 'suspended') {
-            _audioCtx.resume();
-          }
-          const now = _audioCtx.currentTime;
-
-          // Urgent melodic chime:
-          // Part 1: D5 (587.33Hz) -> A5 (880Hz) -> D6 (1174.66Hz)
-          // Part 2: D5 (587.33Hz) -> A5 (880Hz) -> E6 (1318.51Hz)
-          const notes = [
-            { f: 587.33, t: 0.00, d: 0.14 },
-            { f: 880.00, t: 0.15, d: 0.14 },
-            { f: 1174.66, t: 0.30, d: 0.28 },
-            { f: 587.33, t: 0.70, d: 0.14 },
-            { f: 880.00, t: 0.85, d: 0.14 },
-            { f: 1318.51, t: 1.00, d: 0.38 }
-          ];
-
-          notes.forEach(note => {
-            const osc = _audioCtx.createOscillator();
-            const gain = _audioCtx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(note.f, now + note.t);
-
-            gain.gain.setValueAtTime(0.0001, now + note.t);
-            gain.gain.exponentialRampToValueAtTime(0.38, now + note.t + 0.02);
-            gain.gain.exponentialRampToValueAtTime(0.0001, now + note.t + note.d);
-
-            osc.connect(gain);
-            gain.connect(_audioCtx.destination);
-            osc.start(now + note.t);
-            osc.stop(now + note.t + note.d);
+        if (!_adminNotifAudio) {
+          _adminNotifAudio = new Audio('notification_sound.mp3');
+          _adminNotifAudio.volume = 1.0;
+        } else {
+          _adminNotifAudio.currentTime = 0;
+        }
+        const p = _adminNotifAudio.play();
+        if (p && p.catch) {
+          p.catch(err => {
+            console.warn('[AudioAlert] Play failed, creating fresh audio element:', err);
+            const fresh = new Audio('notification_sound.mp3');
+            fresh.volume = 1.0;
+            fresh.play().catch(() => {});
           });
         }
       } catch (err) {
-        console.warn('[AudioAlert] Web Audio error:', err);
+        console.warn('[AudioAlert] Error playing notification_sound.mp3:', err);
       }
-
-      // Secondary audio element fallback
-      try {
-        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2874/2874-preview.mp3');
-        audio.volume = 0.9;
-        const p = audio.play();
-        if (p && p.catch) p.catch(() => {});
-      } catch (_) {}
     }
 
     window.toggleSoundAlerts = function() {

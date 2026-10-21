@@ -17,9 +17,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { store } from '../store/AppStore';
 import { triggerLoudNewOrderNotification } from '../services/notificationService';
 
-// ─── The exact melodic chime sound from the admin web dashboard ─────────────
-const ADMIN_CHIME_URI =
-  'https://assets.mixkit.co/active_storage/sfx/2874/2874-preview.mp3';
+// ─── Custom notification sound asset ─────────────────────────────────────────
+const NOTIFICATION_SOUND_ASSET = require('../../assets/sounds/notification_sound.mp3');
 
 const NOTIFIED_STORAGE_KEY = '@urban_helpers_notified_job_ids';
 const CANCELLED_STORAGE_KEY = '@urban_helpers_notified_cancelled_ids';
@@ -34,7 +33,7 @@ export function stopLoudOrderAlert() {
 }
 
 /**
- * Plays the platform melodic chime sound on demand for new order or cancellation
+ * Plays the platform notification sound on demand for new order or cancellation
  */
 export async function playOrderChimeSound(type: 'new_order' | 'cancelled' = 'new_order') {
   try {
@@ -49,8 +48,8 @@ export async function playOrderChimeSound(type: 'new_order' | 'cancelled' = 'new
     });
 
     const { sound } = await Audio.Sound.createAsync(
-      { uri: ADMIN_CHIME_URI },
-      { shouldPlay: true, volume: 0.9, isLooping: false }
+      NOTIFICATION_SOUND_ASSET,
+      { shouldPlay: true, volume: 1.0, isLooping: false }
     );
 
     lastPlayedSound = sound;
