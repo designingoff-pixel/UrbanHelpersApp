@@ -242,35 +242,11 @@ export default function ServiceScreen({ route, navigation }: any) {
     setUploadingPhoto(type);
     try {
       let finalPhotoUrl = '';
-      const photoTimestamp = Date.now();
-      const storagePath = `proofs/${job.bookingId || job.jobId}_${type}_${photoTimestamp}.jpg`;
-
-      // 1. Upload photo directly to Firebase Storage
-      if (storage) {
-        try {
-          const storageRef = ref(storage, storagePath);
-          if (asset.base64) {
-            await uploadString(storageRef, asset.base64, 'base64', { contentType: 'image/jpeg' });
-            finalPhotoUrl = await getDownloadURL(storageRef);
-          } else {
-            const response = await fetch(asset.uri);
-            const blob = await response.blob();
-            await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
-            finalPhotoUrl = await getDownloadURL(storageRef);
-          }
-          console.log(`[savePhotoData] ${type} photo successfully uploaded to Firebase Storage:`, finalPhotoUrl);
-        } catch (storageErr) {
-          console.warn('[savePhotoData] Storage upload failed:', storageErr);
-        }
-      }
-
-      // 2. Resilient fallback: If Firebase Storage is unprovisioned or offline, use compressed Data URI
-      if (!finalPhotoUrl) {
-        if (asset.base64) {
-          finalPhotoUrl = `data:image/jpeg;base64,${asset.base64}`;
-        } else if (asset.uri) {
-          finalPhotoUrl = asset.uri;
-        }
+      // Zero-cost direct storage: saves compressed photo into Firestore proof field
+      if (asset.base64) {
+        finalPhotoUrl = `data:image/jpeg;base64,${asset.base64}`;
+      } else if (asset.uri) {
+        finalPhotoUrl = asset.uri;
       }
 
       if (!finalPhotoUrl) {
@@ -280,11 +256,11 @@ export default function ServiceScreen({ route, navigation }: any) {
       if (type === 'before') {
         setBeforePhoto(finalPhotoUrl);
         store.updateJobPhotos(job.jobId, finalPhotoUrl, undefined);
-        await updateBookingPhotos(job.jobId, { beforePhoto: finalPhotoUrl, beforePhotoPath: storagePath });
+        await updateBookingPhotos(job.jobId, { beforePhoto: finalPhotoUrl });
       } else {
         setAfterPhoto(finalPhotoUrl);
         store.updateJobPhotos(job.jobId, undefined, finalPhotoUrl);
-        await updateBookingPhotos(job.jobId, { afterPhoto: finalPhotoUrl, afterPhotoPath: storagePath });
+        await updateBookingPhotos(job.jobId, { afterPhoto: finalPhotoUrl });
       }
 
       Alert.alert('✅ Photo Saved', `${type === 'before' ? 'Before' : 'After'} service proof attached successfully.`);
@@ -446,34 +422,9 @@ export default function ServiceScreen({ route, navigation }: any) {
       : `proofs/${jobId}_${type}_${Date.now()}.${ext}`;
     const storageRef = ref(storage, storagePath);
 
-    // If it's a Base64 Data URI from a legacy or offline state, migrate it to Firebase Storage immediately
-    if (rawVal.startsWith('data:')) {
-      try {
-        const base64Content = rawVal.split(',')[1] || rawVal;
-        await uploadString(storageRef, base64Content, 'base64', { contentType });
-        const downloadUrl = await getDownloadURL(storageRef);
-        console.log(`[ensureCloudUrl] Successfully migrated Base64 ${type} to Firebase Storage:`, downloadUrl);
-        return { url: downloadUrl, storagePath };
-      } catch (err) {
-        console.warn(`[ensureCloudUrl] Failed to migrate Base64 ${type} to Storage, using data URI fallback:`, err);
-        return { url: rawVal, storagePath: undefined };
-      }
-    }
-
-    // If it's a local file URI (file:///...), read and upload to Firebase Storage
-    if (rawVal.startsWith('file://')) {
-      try {
-        const base64Content = await FileSystem.readAsStringAsync(rawVal, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        await uploadString(storageRef, base64Content, 'base64', { contentType });
-        const downloadUrl = await getDownloadURL(storageRef);
-        console.log(`[ensureCloudUrl] Successfully uploaded local ${type} file to Firebase Storage:`, downloadUrl);
-        return { url: downloadUrl, storagePath };
-      } catch (err) {
-        console.warn(`[ensureCloudUrl] Failed to upload local ${type} file to Storage, using local URI fallback:`, err);
-        return { url: rawVal, storagePath: undefined };
-      }
+    // If it's a Data URI or local file, return immediately for instant zero-cost completion
+    if (rawVal.startsWith('data:') || rawVal.startsWith('file://')) {
+      return { url: rawVal, storagePath: undefined };
     }
 
     return { url: rawVal };
