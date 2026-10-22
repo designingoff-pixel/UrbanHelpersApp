@@ -83,17 +83,17 @@ const CANCELLABLE_STATUSES = new Set<BookingStatus>([
 function isCancellable(booking: Booking): boolean {
   if (
     !!booking.vendorId ||
-    booking.status === "assigned" ||
-    booking.status === "accepted" ||
-    booking.status === "vendor_accepted" ||
+    (booking.status as any) === "assigned" ||
+    (booking.status as any) === "accepted" ||
+    (booking.status as any) === "vendor_accepted" ||
     (booking as any).vendorAccepted === true ||
-    booking.status === "on_the_way" ||
-    (booking.status as string) === "en_route" ||
-    booking.status === "arrived" ||
-    booking.status === "in_progress" ||
-    booking.status === "service_ended" ||
-    booking.status === "completed" ||
-    booking.status === "cancelled" ||
+    (booking.status as any) === "on_the_way" ||
+    (booking.status as any) === "en_route" ||
+    (booking.status as any) === "arrived" ||
+    (booking.status as any) === "in_progress" ||
+    (booking.status as any) === "service_ended" ||
+    (booking.status as any) === "completed" ||
+    (booking.status as any) === "cancelled" ||
     (booking as any).startedAt ||
     (booking as any).otpVerified
   ) {

@@ -169,16 +169,16 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
   const isTrackingActive = isPreService;
   // Once vendor is assigned or accepted, customer cannot cancel
   const isVendorAccepted =
-    booking?.status === "assigned" ||
-    booking?.status === "accepted" ||
-    booking?.status === "vendor_accepted" ||
+    (booking?.status as any) === "assigned" ||
+    (booking?.status as any) === "accepted" ||
+    (booking?.status as any) === "vendor_accepted" ||
     (booking as any)?.vendorAccepted === true ||
-    booking?.status === "on_the_way" ||
-    booking?.status === "en_route" ||
-    booking?.status === "arrived" ||
-    booking?.status === "in_progress" ||
-    booking?.status === "service_ended" ||
-    booking?.status === "completed";
+    (booking?.status as any) === "on_the_way" ||
+    (booking?.status as any) === "en_route" ||
+    (booking?.status as any) === "arrived" ||
+    (booking?.status as any) === "in_progress" ||
+    (booking?.status as any) === "service_ended" ||
+    (booking?.status as any) === "completed";
   const isVendorArrived = booking?.status === "arrived" || booking?.status === "in_progress" || booking?.status === "service_ended" || booking?.status === "completed";
   const isServiceStarted = isServiceActive || booking?.status === "in_progress" || booking?.status === "service_ended" || !!(booking as any)?.startedAt || !!(booking as any)?.otpVerified;
   const isCancellationLocked = isVendorAccepted || isVendorArrived || isServiceStarted || isVendorAssigned || !!booking?.vendorId || booking?.status !== "requested";

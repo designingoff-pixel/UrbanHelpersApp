@@ -65,9 +65,10 @@ export interface OpenGymRoutine {
   category: string;
   description: string;
   targetMuscles: string;
-  icon: string;
+  icon?: string;
   color: string;
   exerciseIds: string[];
+  estimatedMinutes?: number;
 }
 
 export interface OpenGymBodyweightEntry {
