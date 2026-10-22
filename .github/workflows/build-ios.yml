@@ -1,12 +1,7 @@
 name: Build iOS IPA — Urban Helpers (AltStore, Free, No Apple Dev Account)
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'ios_app/**'
-      - '.github/workflows/build-ios.yml'
-  workflow_dispatch:   # ← Manual trigger button in GitHub Actions UI
+  workflow_dispatch:   # Manual trigger button in GitHub Actions UI
 
 jobs:
   build-ios:

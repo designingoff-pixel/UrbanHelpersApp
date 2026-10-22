@@ -84,11 +84,6 @@ export default function HomeScreen({ navigation }: any) {
       });
     };
 
-    // 🚨 Live broadcast subscription for all incoming unassigned customer bookings
-    unsubReq = subscribeToNewRequests((openBookings) => {
-      store.syncNewRequests(openBookings);
-    });
-
     // 📲 Register vendor push notifications to shout loud when outside app
     registerVendorPushNotifications().then(async (token) => {
       if (token && store.vendorId && db) {
@@ -116,7 +111,6 @@ export default function HomeScreen({ navigation }: any) {
       unsubStore();
       unsubV?.();
       unsubP?.();
-      unsubReq?.();
     };
   }, []);
 

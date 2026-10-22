@@ -2641,7 +2641,7 @@
       const cancels = Math.min(3, Math.max(0, rawCancels));
       const skips = Math.min(3, Math.max(0, rawSkips));
 
-      const isLockedOrBlocked = v.isBlocked === true || v.isLocked === true || v.status === 'locked' || rawCancels >= 3 || rawSkips >= 3;
+      const isLockedOrBlocked = v.isBlocked === true || v.isLocked === true || v.blocked === true || v.status === 'locked' || v.status === 'blocked' || v.status === 'suspended' || v.isSuspended === true || rawCancels >= 3 || rawSkips >= 3;
       if (!isLockedOrBlocked) {
         return { isBlocked: false, remainingDays: 0, reason: '', cancels, skips };
       }
@@ -2967,10 +2967,9 @@
       sel.innerHTML = '<option value="">Loading active vendors…</option>';
 
       try {
-        if (_allVendorsList.length === 0) {
-          const snap = await getDocs2('vendors', [limit(100)]);
-          _allVendorsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        }
+        // Always fetch fresh live vendor partners from Firestore to get updated block/cancellation status
+        const snap = await getDocs2('vendors', [limit(150)]);
+        _allVendorsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
         if (_allVendorsList.length === 0) {
           sel.innerHTML = '<option value="">No vendors registered yet. Please create a vendor first.</option>';
@@ -3014,11 +3013,19 @@
       const vendorId = document.getElementById('assignVendorSelect').value;
 
       if (!bookingId || !vendorId) {
-        alert('Please select a vendor.');
+        alert('Please select an active, unblocked vendor.');
         return;
       }
 
-      const vendor = _allVendorsList.find(v => (v.vendorId || v.id) === vendorId);
+      // Re-fetch live vendor document directly from Firestore to ensure real-time block validation
+      let vendor = _allVendorsList.find(v => (v.vendorId || v.id) === vendorId);
+      try {
+        const vSnap = await getDoc(doc(db, 'vendors', vendor?.id || vendorId));
+        if (vSnap.exists()) {
+          vendor = { id: vSnap.id, ...vSnap.data() };
+        }
+      } catch (_) {}
+
       if (!vendor) {
         alert('Selected vendor not found.');
         return;
@@ -3026,7 +3033,7 @@
 
       const bInfo = window.getVendorBlockInfo ? window.getVendorBlockInfo(vendor) : { isBlocked: false };
       if (bInfo.isBlocked) {
-        alert('⛔ Cannot Assign Order!\n\nVendor "' + (vendor.name || vendorId) + '" is currently BLOCKED (' + bInfo.reason + ').\nRemaining Block Duration: ' + bInfo.remainingDays + ' day(s).\n\nEven Admin cannot assign customer orders to this vendor until the 7-day period expires or the Admin unblocks them from the Vendors tab.');
+        alert('⛔ Cannot Assign Order!\n\nVendor "' + (vendor.name || vendorId) + '" is currently BLOCKED (' + bInfo.reason + ').\nRemaining Block Duration: ' + bInfo.remainingDays + ' day(s).\n\nAdmin cannot assign customer orders to this vendor until the block period expires or they are unblocked from the Vendors tab.');
         return;
       }
 
@@ -4851,11 +4858,12 @@
 
       // Voice proof resolution across all supported schema fields and storage references
       let rawAudio = b.audioUrl || b.audioPath || b.voiceRecording || b.voiceProof || b.audio || b.recordingUrl || b.voiceRecordingUrl || b.voiceUrl || (b.completionProof && b.completionProof.audioUrl) || null;
-      if (rawAudio && typeof rawAudio === 'string' && !rawAudio.startsWith('http') && !rawAudio.startsWith('data:') && !rawAudio.startsWith('file://')) {
+      const isSubcollectionAudio = (rawAudio && typeof rawAudio === 'string' && rawAudio.startsWith('subcollection:')) || (!rawAudio && b.hasAudioProof);
+      if (rawAudio && typeof rawAudio === 'string' && !rawAudio.startsWith('http') && !rawAudio.startsWith('data:') && !rawAudio.startsWith('file://') && !rawAudio.startsWith('subcollection:')) {
         rawAudio = 'https://firebasestorage.googleapis.com/v0/b/' + DEFAULT_FIREBASE_CONFIG.storageBucket + '/o/' + encodeURIComponent(rawAudio) + '?alt=media';
       }
       const isDeviceOnly = rawAudio && typeof rawAudio === 'string' && rawAudio.startsWith('file://');
-      const hasValidAudio = rawAudio && typeof rawAudio === 'string' && !isDeviceOnly;
+      const hasValidAudio = ((rawAudio && typeof rawAudio === 'string' && !isDeviceOnly && !rawAudio.startsWith('subcollection:')) || isSubcollectionAudio);
 
       // Format audio metadata (file size, timestamp, storage location)
       let audioMetaDetail = '';
@@ -4869,11 +4877,11 @@
 
       // Resolve before & after photo URLs across download URLs and storage paths
       let beforePhotoSrc = b.beforePhoto || b.beforePhotoPath || null;
-      if (beforePhotoSrc && typeof beforePhotoSrc === 'string' && !beforePhotoSrc.startsWith('http') && !beforePhotoSrc.startsWith('data:') && !beforePhotoSrc.startsWith('file://')) {
+      if (beforePhotoSrc && typeof beforePhotoSrc === 'string' && !beforePhotoSrc.startsWith('http') && !beforePhotoSrc.startsWith('data:') && !beforePhotoSrc.startsWith('file://') && !beforePhotoSrc.startsWith('subcollection:')) {
         beforePhotoSrc = 'https://firebasestorage.googleapis.com/v0/b/' + DEFAULT_FIREBASE_CONFIG.storageBucket + '/o/' + encodeURIComponent(beforePhotoSrc) + '?alt=media';
       }
       let afterPhotoSrc = b.afterPhoto || b.afterPhotoPath || null;
-      if (afterPhotoSrc && typeof afterPhotoSrc === 'string' && !afterPhotoSrc.startsWith('http') && !afterPhotoSrc.startsWith('data:') && !afterPhotoSrc.startsWith('file://')) {
+      if (afterPhotoSrc && typeof afterPhotoSrc === 'string' && !afterPhotoSrc.startsWith('http') && !afterPhotoSrc.startsWith('data:') && !afterPhotoSrc.startsWith('file://') && !afterPhotoSrc.startsWith('subcollection:')) {
         afterPhotoSrc = 'https://firebasestorage.googleapis.com/v0/b/' + DEFAULT_FIREBASE_CONFIG.storageBucket + '/o/' + encodeURIComponent(afterPhotoSrc) + '?alt=media';
       }
 
@@ -4926,12 +4934,12 @@
                     'Cloud Stored' +
                   '</span>' +
                 '</div>' +
-                '<audio controls preload="metadata" style="width:100%; height:38px; border-radius:6px; outline:none;" src="' + rawAudio + '" onerror="const el = document.getElementById(\'audioFallbackErr_' + b.id + '\'); if(el) el.style.display=\'block\';">' +
-                  '<source src="' + rawAudio + '" type="audio/mp4">' +
-                  '<source src="' + rawAudio + '" type="audio/x-m4a">' +
-                  '<source src="' + rawAudio + '" type="audio/aac">' +
-                  '<source src="' + rawAudio + '" type="audio/webm">' +
-                  '<source src="' + rawAudio + '" type="audio/ogg">' +
+                '<audio id="proofAudioPlayer_' + b.id + '" controls preload="metadata" style="width:100%; height:38px; border-radius:6px; outline:none;" src="' + (rawAudio.startsWith('subcollection:') ? '' : rawAudio) + '" onerror="const el = document.getElementById(\'audioFallbackErr_' + b.id + '\'); if(el) el.style.display=\'block\';">' +
+                  '<source src="' + (rawAudio.startsWith('subcollection:') ? '' : rawAudio) + '" type="audio/mp4">' +
+                  '<source src="' + (rawAudio.startsWith('subcollection:') ? '' : rawAudio) + '" type="audio/x-m4a">' +
+                  '<source src="' + (rawAudio.startsWith('subcollection:') ? '' : rawAudio) + '" type="audio/aac">' +
+                  '<source src="' + (rawAudio.startsWith('subcollection:') ? '' : rawAudio) + '" type="audio/webm">' +
+                  '<source src="' + (rawAudio.startsWith('subcollection:') ? '' : rawAudio) + '" type="audio/ogg">' +
                   'Your browser does not support audio playback.' +
                 '</audio>' +
                 '<div id="audioFallbackErr_' + b.id + '" style="display:none; background:#fef3c7; border:1px solid #fde68a; color:#92400e; padding:8px 10px; border-radius:6px; font-size:11.5px; margin-top:8px;">' +
@@ -4939,7 +4947,7 @@
                 '</div>' +
                 '<div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:11.5px;">' +
                   '<span style="color:#15803d; font-weight:600;"><i class="fa-solid fa-shield-halved"></i> High-Fidelity Audio Log</span>' +
-                  '<a href="' + rawAudio + '" target="_blank" rel="noopener noreferrer" download="UrbanHelpers_VoiceRecord_' + b.id + '.m4a" style="color:#0284c7; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">' +
+                  '<a id="proofAudioDownloadLink_' + b.id + '" href="' + (rawAudio.startsWith('subcollection:') ? '#' : rawAudio) + '" target="_blank" rel="noopener noreferrer" download="UrbanHelpers_VoiceRecord_' + b.id + '.m4a" style="color:#0284c7; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">' +
                     '<i class="fa-solid fa-download"></i> Download / Open Audio' +
                   '</a>' +
                 '</div>' +
@@ -4988,8 +4996,8 @@
                 '</div>',
                 (beforePhotoSrc ? (
                   '<div style="position:relative; border-radius:8px; overflow:hidden;">' +
-                    '<img src="' + beforePhotoSrc + '" alt="Before Service" style="width:100%; height:160px; object-fit:cover; display:block; cursor:pointer;" onclick="window.open(this.src, \'_blank\')">' +
-                    '<a href="' + beforePhotoSrc + '" target="_blank" style="position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,0.65); color:#fff; font-size:10.5px; padding:3px 8px; border-radius:6px; text-decoration:none; font-weight:700;">' +
+                    '<img id="proofBeforeImg_' + b.id + '" src="' + (beforePhotoSrc.startsWith('subcollection:') ? '' : beforePhotoSrc) + '" alt="Before Service" style="width:100%; height:160px; object-fit:cover; display:block; cursor:pointer;" onclick="window.open(this.src, \'_blank\')">' +
+                    '<a id="proofBeforeZoom_' + b.id + '" href="' + (beforePhotoSrc.startsWith('subcollection:') ? '#' : beforePhotoSrc) + '" target="_blank" style="position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,0.65); color:#fff; font-size:10.5px; padding:3px 8px; border-radius:6px; text-decoration:none; font-weight:700;">' +
                       '<i class="fa-solid fa-expand"></i> Zoom' +
                     '</a>' +
                   '</div>'
@@ -5009,8 +5017,8 @@
                 '</div>',
                 (afterPhotoSrc ? (
                   '<div style="position:relative; border-radius:8px; overflow:hidden;">' +
-                    '<img src="' + afterPhotoSrc + '" alt="After Service" style="width:100%; height:160px; object-fit:cover; display:block; cursor:pointer;" onclick="window.open(this.src, \'_blank\')">' +
-                    '<a href="' + afterPhotoSrc + '" target="_blank" style="position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,0.65); color:#fff; font-size:10.5px; padding:3px 8px; border-radius:6px; text-decoration:none; font-weight:700;">' +
+                    '<img id="proofAfterImg_' + b.id + '" src="' + (afterPhotoSrc.startsWith('subcollection:') ? '' : afterPhotoSrc) + '" alt="After Service" style="width:100%; height:160px; object-fit:cover; display:block; cursor:pointer;" onclick="window.open(this.src, \'_blank\')">' +
+                    '<a id="proofAfterZoom_' + b.id + '" href="' + (afterPhotoSrc.startsWith('subcollection:') ? '#' : afterPhotoSrc) + '" target="_blank" style="position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,0.65); color:#fff; font-size:10.5px; padding:3px 8px; border-radius:6px; text-decoration:none; font-weight:700;">' +
                       '<i class="fa-solid fa-expand"></i> Zoom' +
                     '</a>' +
                   '</div>'
@@ -5149,6 +5157,49 @@
       ].join('');
 
       modal.style.display = 'flex';
+
+      // ── Asynchronously resolve subcollection evidence if stored there ──
+      if (isSubcollectionAudio) {
+        getDoc(doc(db, 'bookings', b.id, 'evidence', 'audio')).then(s => {
+          if (s.exists()) {
+            const data = s.data();
+            const src = data.audioData || data.data || data.base64;
+            if (src) {
+              const aEl = document.getElementById('proofAudioPlayer_' + b.id);
+              if (aEl) {
+                aEl.src = src;
+                aEl.load();
+              }
+              const dLink = document.getElementById('proofAudioDownloadLink_' + b.id);
+              if (dLink) dLink.href = src;
+            }
+          }
+        }).catch(err => console.warn('[proofModal] Subcollection audio fetch warning:', err));
+      }
+
+      if ((beforePhotoSrc && beforePhotoSrc.startsWith('subcollection:')) || (afterPhotoSrc && afterPhotoSrc.startsWith('subcollection:'))) {
+        getDoc(doc(db, 'bookings', b.id, 'evidence', 'photos')).then(s => {
+          if (s.exists()) {
+            const data = s.data();
+            if (data.beforePhoto) {
+              const bImg = document.getElementById('proofBeforeImg_' + b.id);
+              if (bImg) {
+                bImg.src = data.beforePhoto;
+                const bLink = document.getElementById('proofBeforeZoom_' + b.id);
+                if (bLink) bLink.href = data.beforePhoto;
+              }
+            }
+            if (data.afterPhoto) {
+              const aImg = document.getElementById('proofAfterImg_' + b.id);
+              if (aImg) {
+                aImg.src = data.afterPhoto;
+                const aLink = document.getElementById('proofAfterZoom_' + b.id);
+                if (aLink) aLink.href = data.afterPhoto;
+              }
+            }
+          }
+        }).catch(err => console.warn('[proofModal] Subcollection photo fetch warning:', err));
+      }
     };
 
     window.closeBookingDetailsModal = function() {

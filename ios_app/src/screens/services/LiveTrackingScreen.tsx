@@ -183,8 +183,17 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
   }, [user, routeBookingId]);
 
   // Subscribe to Vendor's live location ONLY when vendor is assigned / accepted
-  const isVendorAccepted = !!booking?.vendorId && booking.status !== "requested";
-  // Service has started or technician arrived: customer cannot cancel, only Admin can cancel
+  const isVendorAssigned = !!booking?.vendorId && booking.status !== "requested";
+  // Once vendor has accepted the order, customer cannot cancel
+  const isVendorAccepted =
+    booking?.status === "accepted" ||
+    booking?.status === "vendor_accepted" ||
+    (booking as any)?.vendorAccepted === true ||
+    booking?.status === "on_the_way" ||
+    booking?.status === "arrived" ||
+    booking?.status === "in_progress" ||
+    booking?.status === "service_ended" ||
+    booking?.status === "completed";
   const isVendorArrived =
     booking?.status === "arrived" ||
     booking?.status === "in_progress" ||
@@ -195,7 +204,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
     booking?.status === "service_ended" ||
     !!(booking as any)?.startedAt ||
     !!(booking as any)?.otpVerified;
-  const isCancellationLocked = isVendorArrived || isServiceStarted;
+  const isCancellationLocked = isVendorAccepted || isVendorArrived || isServiceStarted;
 
   useEffect(() => {
     if (!booking?.vendorId) {

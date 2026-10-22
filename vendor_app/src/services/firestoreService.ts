@@ -157,75 +157,13 @@ export function subscribeToVendorProfile(
   }
 }
 
-// ── Direct unassigned broadcasts (all incoming customer bookings) ────────────
+// ── Direct unassigned broadcasts disabled (Orders are assigned exclusively by Admin) ──
 export function subscribeToNewRequests(
   onChange: (bookings: FirestoreBooking[]) => void
 ) {
-  if (!db) {
-    console.warn("[subscribeToNewRequests] Firestore db is not initialized");
-    onChange([]);
-    return () => {};
-  }
-
-  try {
-    const q = query(
-      collection(db, "bookings"),
-      where("status", "==", "requested")
-    );
-
-    return onSnapshot(
-      q,
-      (snapshot) => {
-        const now = Date.now();
-        const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-
-        const jobs = snapshot.docs
-          .map((d) => ({ id: d.id, ...d.data() } as FirestoreBooking))
-          .filter((b) => {
-            // Do not show if rejected by vendor or already handled
-            if (b.rejected === true || b.status === "cancelled" || b.status === "completed") {
-              return false;
-            }
-
-            // Check creation time
-            let createdTime = 0;
-            if (b.createdAt) {
-              if (b.createdAt.toMillis) createdTime = b.createdAt.toMillis();
-              else if (typeof b.createdAt === "string") createdTime = new Date(b.createdAt).getTime();
-              else if (typeof b.createdAt === "number") createdTime = b.createdAt;
-            }
-
-            // Check scheduled time
-            let scheduledTime = 0;
-            if (b.scheduledAt) {
-              const d = new Date(b.scheduledAt).getTime();
-              if (!isNaN(d)) scheduledTime = d;
-            }
-
-            // Do not show old bookings whose scheduled slot was in the past (> 12 hours ago)
-            if (scheduledTime > 0 && scheduledTime < (now - 12 * 60 * 60 * 1000)) {
-              return false;
-            }
-
-            // Do not show stale bookings created more than 24h ago without a future slot
-            if (createdTime > 0 && (now - createdTime) > ONE_DAY_MS && (!scheduledTime || scheduledTime < now)) {
-              return false;
-            }
-
-            return true;
-          });
-
-        onChange(jobs);
-      },
-      (err) => {
-        console.warn("[subscribeToNewRequests] Error:", err);
-      }
-    );
-  } catch (err) {
-    console.warn("[subscribeToNewRequests] Failed to establish listener:", err);
-    onChange([]);
-    return () => {};
-  }
+  // Orders must only reach vendors when assigned by Admin.
+  onChange([]);
+  return () => {};
 }
 
 // ── Vendor cancels an accepted job ────────────────────────────────────────────
@@ -546,22 +484,39 @@ export async function updateBookingPhotos(
   photos: { beforePhoto?: string | null; afterPhoto?: string | null; beforePhotoPath?: string; afterPhotoPath?: string }
 ): Promise<void> {
   const updateData: Record<string, any> = {};
+  const subcollectionData: Record<string, any> = {};
+
   if (photos.beforePhoto !== undefined) {
-    if (typeof photos.beforePhoto === 'string' && photos.beforePhoto.startsWith('data:') && photos.beforePhoto.length > 400000) {
-      console.warn('[updateBookingPhotos] Prevented oversized Base64 photo string from being written directly to Firestore document.');
+    if (typeof photos.beforePhoto === 'string' && photos.beforePhoto.startsWith('data:') && photos.beforePhoto.length > 50000) {
+      subcollectionData.beforePhoto = photos.beforePhoto;
+      updateData.beforePhoto = 'subcollection:evidence/photos';
+      updateData.hasPhotoProof = true;
     } else {
       updateData.beforePhoto = photos.beforePhoto;
     }
   }
+
   if (photos.afterPhoto !== undefined) {
-    if (typeof photos.afterPhoto === 'string' && photos.afterPhoto.startsWith('data:') && photos.afterPhoto.length > 400000) {
-      console.warn('[updateBookingPhotos] Prevented oversized Base64 photo string from being written directly to Firestore document.');
+    if (typeof photos.afterPhoto === 'string' && photos.afterPhoto.startsWith('data:') && photos.afterPhoto.length > 50000) {
+      subcollectionData.afterPhoto = photos.afterPhoto;
+      updateData.afterPhoto = 'subcollection:evidence/photos';
+      updateData.hasPhotoProof = true;
     } else {
       updateData.afterPhoto = photos.afterPhoto;
     }
   }
+
+  if (Object.keys(subcollectionData).length > 0) {
+    try {
+      await setDoc(doc(db, "bookings", bookingId, "evidence", "photos"), subcollectionData, { merge: true });
+    } catch (e) {
+      console.warn('[updateBookingPhotos] Subcollection write warning:', e);
+    }
+  }
+
   if (photos.beforePhotoPath) updateData.beforePhotoPath = photos.beforePhotoPath;
   if (photos.afterPhotoPath) updateData.afterPhotoPath = photos.afterPhotoPath;
+
   if (Object.keys(updateData).length > 0) {
     await updateDoc(doc(db, "bookings", bookingId), updateData);
   }
@@ -573,10 +528,22 @@ export async function updateBookingAudio(
   metadata?: { storagePath?: string; audioMetadata?: Record<string, any> }
 ): Promise<void> {
   const updatePayload: Record<string, any> = {};
-  if (typeof audioUrl === 'string' && audioUrl.startsWith('data:') && audioUrl.length > 400000) {
-    console.warn('[updateBookingAudio] Oversized Base64 audio string, saving metadata instead.');
+
+  if (typeof audioUrl === 'string' && audioUrl.startsWith('data:') && audioUrl.length > 50000) {
+    try {
+      await setDoc(doc(db, "bookings", bookingId, "evidence", "audio"), {
+        audioData: audioUrl,
+        recordedAt: new Date().toISOString(),
+        bookingId,
+      }, { merge: true });
+      updatePayload.audioUrl = 'subcollection:evidence/audio';
+      updatePayload.hasAudioProof = true;
+    } catch (e) {
+      console.warn('[updateBookingAudio] Subcollection audio write warning:', e);
+    }
   } else if (audioUrl !== undefined) {
     updatePayload.audioUrl = audioUrl;
+    if (audioUrl) updatePayload.hasAudioProof = true;
   }
 
   if (metadata?.storagePath) {

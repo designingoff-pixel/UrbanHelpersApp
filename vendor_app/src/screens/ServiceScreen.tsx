@@ -9,9 +9,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { store } from '../store/AppStore';
 import { Colors, Typography, Spacing, Radius } from '../theme';
 import { updateBookingStatus, updateBookingAudio, updateBookingPhotos, updateBookingChecklist } from '../services/firestoreService';
-import { db, storage } from '../services/firebase';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { db, storage, auth } from '../services/firebase';
+import { doc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage';
+import { signInAnonymously } from 'firebase/auth';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Audio } from 'expo-av';
@@ -243,11 +244,31 @@ export default function ServiceScreen({ route, navigation }: any) {
     setUploadingPhoto(type);
     try {
       let finalPhotoUrl = '';
-      // Zero-cost direct storage: saves compressed photo into Firestore proof field
-      if (asset.base64) {
-        finalPhotoUrl = `data:image/jpeg;base64,${asset.base64}`;
-      } else if (asset.uri) {
-        finalPhotoUrl = asset.uri;
+      const storagePath = `booking_proofs/${job.jobId}_${type}_${Date.now()}.jpg`;
+
+      // 1. Try Firebase Storage upload first
+      if (storage && asset.uri) {
+        try {
+          if (auth && !auth.currentUser) {
+            await signInAnonymously(auth).catch(() => {});
+          }
+          const photoRef = ref(storage, storagePath);
+          const response = await fetch(asset.uri);
+          const blob = await response.blob();
+          await uploadBytes(photoRef, blob, { contentType: 'image/jpeg' });
+          finalPhotoUrl = await getDownloadURL(photoRef);
+        } catch (uploadErr) {
+          console.warn('[savePhotoData] Storage upload fallback:', uploadErr);
+        }
+      }
+
+      // 2. If storage upload did not return URL, fallback to local/data URI
+      if (!finalPhotoUrl) {
+        if (asset.base64) {
+          finalPhotoUrl = `data:image/jpeg;base64,${asset.base64}`;
+        } else if (asset.uri) {
+          finalPhotoUrl = asset.uri;
+        }
       }
 
       if (!finalPhotoUrl) {
@@ -257,11 +278,11 @@ export default function ServiceScreen({ route, navigation }: any) {
       if (type === 'before') {
         setBeforePhoto(finalPhotoUrl);
         store.updateJobPhotos(job.jobId, finalPhotoUrl, undefined);
-        await updateBookingPhotos(job.jobId, { beforePhoto: finalPhotoUrl });
+        await updateBookingPhotos(job.jobId, { beforePhoto: finalPhotoUrl, beforePhotoPath: storagePath });
       } else {
         setAfterPhoto(finalPhotoUrl);
         store.updateJobPhotos(job.jobId, undefined, finalPhotoUrl);
-        await updateBookingPhotos(job.jobId, { afterPhoto: finalPhotoUrl });
+        await updateBookingPhotos(job.jobId, { afterPhoto: finalPhotoUrl, afterPhotoPath: storagePath });
       }
 
       Alert.alert('✅ Photo Saved', `${type === 'before' ? 'Before' : 'After'} service proof attached successfully.`);
@@ -545,25 +566,63 @@ export default function ServiceScreen({ route, navigation }: any) {
         audioMetadata.storagePath = audioStoragePath;
       }
 
+      let safeBefore = cleanBefore;
+      let safeAfter = cleanAfter;
+      let safeAudio = cleanAudio;
+
+      // Ensure that oversized Base64 data strings are saved into subcollections so Firestore's 1MB limit is never exceeded
+      if (cleanBefore.startsWith('data:') && cleanBefore.length > 50000) {
+        try {
+          await setDoc(doc(db, 'bookings', job.jobId, 'evidence', 'photos'), { beforePhoto: cleanBefore }, { merge: true });
+          safeBefore = 'subcollection:evidence/photos';
+        } catch (e) {
+          console.warn('Subcollection beforePhoto error:', e);
+        }
+      }
+
+      if (cleanAfter.startsWith('data:') && cleanAfter.length > 50000) {
+        try {
+          await setDoc(doc(db, 'bookings', job.jobId, 'evidence', 'photos'), { afterPhoto: cleanAfter }, { merge: true });
+          safeAfter = 'subcollection:evidence/photos';
+        } catch (e) {
+          console.warn('Subcollection afterPhoto error:', e);
+        }
+      }
+
+      if (cleanAudio.startsWith('data:') && cleanAudio.length > 50000) {
+        try {
+          await setDoc(doc(db, 'bookings', job.jobId, 'evidence', 'audio'), {
+            audioData: cleanAudio,
+            recordedAt: new Date().toISOString(),
+            bookingId: job.jobId,
+          }, { merge: true });
+          safeAudio = 'subcollection:evidence/audio';
+        } catch (e) {
+          console.warn('Subcollection audio error:', e);
+        }
+      }
+
       store.completeJob(job.jobId);
       job.audioUrl = cleanAudio;
       job.beforePhoto = cleanBefore;
       job.afterPhoto = cleanAfter;
 
-      // Persist evidence to Firestore with safe fields (never undefined)
+      // Persist evidence to Firestore with safe fields (never undefined, always lightweight)
       const updateData: Record<string, any> = {
         status: 'service_ended',
         serviceEndedAt: serverTimestamp(),
         paymentStatus: 'paid',
         checklistDone: job.checklistDone || [],
         checklist: checklistItems || [],
+        hasAudioProof: !!(cleanAudio || audioStoragePath),
+        hasPhotoProof: !!(cleanBefore || cleanAfter),
       };
 
-      if (cleanBefore) updateData.beforePhoto = cleanBefore;
-      if (cleanAfter) updateData.afterPhoto = cleanAfter;
+      if (safeBefore) updateData.beforePhoto = safeBefore;
+      if (safeAfter) updateData.afterPhoto = safeAfter;
       if (beforeUploaded?.storagePath) updateData.beforePhotoPath = beforeUploaded.storagePath;
       if (afterUploaded?.storagePath) updateData.afterPhotoPath = afterUploaded.storagePath;
-      if (cleanAudio) updateData.audioUrl = cleanAudio;
+      if (safeAudio) updateData.audioUrl = safeAudio;
       if (audioStoragePath) updateData.audioPath = audioStoragePath;
       if (cleanAudio || audioStoragePath) updateData.audioMetadata = audioMetadata;
 

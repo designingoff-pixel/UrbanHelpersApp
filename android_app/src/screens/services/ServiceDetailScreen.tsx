@@ -353,15 +353,8 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
   const isTomorrowSelected = isSameDay(selectedDateObj, tomorrowObj);
   const isAdvanceSelected = !isTodaySelected && !isTomorrowSelected;
 
-  let arrivalScheduleLabel = "Advance Arrival Date";
-  let quickScheduleSub = "Advance Arrival";
-  if (isTodaySelected) {
-    arrivalScheduleLabel = "Arrival Today";
-    quickScheduleSub = "Arrival Today";
-  } else if (isTomorrowSelected) {
-    arrivalScheduleLabel = "Arrival Tomorrow";
-    quickScheduleSub = "Arrival Tomorrow";
-  }
+  let arrivalScheduleLabel = "Scheduled Arrival";
+  let quickScheduleSub = "Select your preferred date & time";
 
   const isPrevMonthDisabled =
     calendarYear === today.getFullYear() && calendarMonth === today.getMonth();
@@ -1276,103 +1269,83 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
             )}
           </View>
 
-          {/* Card 2: Schedule Slot */}
+          {/* Card 2: Schedule Date & Custom Time */}
           <View style={[styles.scheduleCard, { backgroundColor: isDark ? themeColors.card : "#FAF5FF", borderColor: isDark ? themeColors.cardBorder : "#F3E8FF" }]}>
             <View style={styles.cardHeaderSmall}>
               <View style={[styles.purpleCalCircle, isDark && { backgroundColor: "rgba(124,58,237,0.18)" }]}>
                 <Ionicons name="calendar" size={16} color="#7C3AED" />
               </View>
               <View style={{ flex: 1, marginLeft: 8 }}>
-                <Text style={[styles.smallCardTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>Schedule Slot</Text>
+                <Text style={[styles.smallCardTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>Schedule Date & Time</Text>
                 <Text style={[styles.smallCardSub, { color: isDark ? themeColors.textSecondary : "#64748B" }]}>
-                  {quickScheduleSub}
+                  Select your arrival date & custom time
                 </Text>
               </View>
             </View>
 
-            {/* Quick 1-tap Day Chips: Today & Tomorrow */}
-            <View style={styles.quickDayChipsRow}>
-              <TouchableOpacity
-                style={[
-                  styles.quickDayChip,
-                  isTodaySelected
-                    ? { backgroundColor: "#7C3AED", borderColor: "#7C3AED" }
-                    : { backgroundColor: isDark ? themeColors.surface : "#FFFFFF", borderColor: themeColors.cardBorder },
-                ]}
-                onPress={handleSelectToday}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="flash" size={11} color={isTodaySelected ? "#FFFFFF" : "#F59E0B"} style={{ marginRight: 3 }} />
-                <Text style={[styles.quickDayChipText, { color: isTodaySelected ? "#FFFFFF" : defaultTextColor }]}>
-                  Today
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.quickDayChip,
-                  isTomorrowSelected
-                    ? { backgroundColor: "#7C3AED", borderColor: "#7C3AED" }
-                    : { backgroundColor: isDark ? themeColors.surface : "#FFFFFF", borderColor: themeColors.cardBorder },
-                ]}
-                onPress={handleSelectTomorrow}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="calendar-outline" size={11} color={isTomorrowSelected ? "#FFFFFF" : "#0284C7"} style={{ marginRight: 3 }} />
-                <Text style={[styles.quickDayChipText, { color: isTomorrowSelected ? "#FFFFFF" : defaultTextColor }]}>
-                  Tomorrow
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Date Pill (Opens interactive advance calendar) */}
+            {/* Date Selection Button (Opens full calendar) */}
             <TouchableOpacity
               style={[
                 styles.whiteInputPill,
                 {
-                  marginTop: 6,
+                  marginTop: 8,
+                  paddingVertical: 12,
+                  paddingHorizontal: 14,
                   backgroundColor: isDark ? themeColors.surface : "#FFFFFF",
-                  borderColor: isAdvanceSelected ? "#7C3AED" : themeColors.cardBorder,
+                  borderColor: themeColors.cardBorder,
                 },
               ]}
               onPress={() => setDateModalVisible(true)}
+              activeOpacity={0.8}
             >
               <Ionicons
                 name="calendar"
-                size={14}
-                color={isAdvanceSelected ? "#7C3AED" : defaultSubTextColor}
-                style={{ marginRight: 6 }}
+                size={18}
+                color="#7C3AED"
+                style={{ marginRight: 10 }}
               />
-              <Text
-                style={[
-                  styles.schedulePillText,
-                  { color: isDark ? themeColors.text : "#0F172A", fontSize: 11 },
-                  isAdvanceSelected && { fontWeight: "800", color: "#7C3AED" },
-                ]}
-                numberOfLines={1}
-              >
-                {bookingDate}
-              </Text>
-              <Ionicons name="chevron-forward" size={13} color={isDark ? themeColors.textMuted : "#94A3B8"} style={{ marginLeft: "auto" }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 10, color: isDark ? themeColors.textSecondary : "#64748B", fontWeight: "700", letterSpacing: 0.5 }}>DATE</Text>
+                <Text
+                  style={[
+                    styles.schedulePillText,
+                    { color: isDark ? themeColors.text : "#0F172A", fontSize: 13, fontWeight: "700", marginTop: 1 },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {bookingDate}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={15} color={isDark ? themeColors.textMuted : "#94A3B8"} style={{ marginLeft: "auto" }} />
             </TouchableOpacity>
 
-            {/* Time Pill (Opens comprehensive any-time slot picker) */}
+            {/* Time Selection Button (Customer picks their own custom time) */}
             <TouchableOpacity
               style={[
                 styles.whiteInputPill,
-                { marginTop: 6, backgroundColor: isDark ? themeColors.surface : "#FFFFFF", borderColor: themeColors.cardBorder },
+                {
+                  marginTop: 8,
+                  paddingVertical: 12,
+                  paddingHorizontal: 14,
+                  backgroundColor: isDark ? themeColors.surface : "#FFFFFF",
+                  borderColor: themeColors.cardBorder,
+                },
               ]}
               onPress={() => {
                 setCustomTimeInput(bookingTime.replace(/[AP]M/gi, "").trim());
                 setCustomAmPm(bookingTime.toUpperCase().includes("PM") ? "PM" : "AM");
                 setTimeModalVisible(true);
               }}
+              activeOpacity={0.8}
             >
-              <Ionicons name="time-outline" size={14} color={isDark ? themeColors.textSecondary : "#64748B"} style={{ marginRight: 6 }} />
-              <Text style={[styles.schedulePillText, { color: isDark ? themeColors.text : "#0F172A", fontSize: 11 }]} numberOfLines={1}>
-                {bookingTime}
-              </Text>
-              <Ionicons name="chevron-forward" size={13} color={isDark ? themeColors.textMuted : "#94A3B8"} style={{ marginLeft: "auto" }} />
+              <Ionicons name="time-outline" size={18} color="#7C3AED" style={{ marginRight: 10 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 10, color: isDark ? themeColors.textSecondary : "#64748B", fontWeight: "700", letterSpacing: 0.5 }}>TIME (SELECT YOUR OWN TIME)</Text>
+                <Text style={[styles.schedulePillText, { color: isDark ? themeColors.text : "#0F172A", fontSize: 13, fontWeight: "700", marginTop: 1 }]} numberOfLines={1}>
+                  {bookingTime}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={15} color={isDark ? themeColors.textMuted : "#94A3B8"} style={{ marginLeft: "auto" }} />
             </TouchableOpacity>
           </View>
         </View>
@@ -1606,7 +1579,7 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
                   Select Arrival Date
                 </Text>
                 <Text style={{ fontSize: 11.5, color: isDark ? themeColors.textSecondary : "#64748B", marginTop: 2 }}>
-                  Book for today, tomorrow, or any date in advance
+                  Pick your preferred service date from the calendar
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setDateModalVisible(false)} style={styles.modalCloseIconBtn}>
@@ -1615,50 +1588,6 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
             </View>
 
             <ScrollView style={{ maxHeight: Dimensions.get("window").height * 0.72 }} showsVerticalScrollIndicator={false}>
-              {/* Quick Choice Buttons: Today & Tomorrow (NO Saturday) */}
-              <View style={styles.modalQuickRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.modalQuickBtn,
-                    isTodaySelected
-                      ? { backgroundColor: themeColors.primary, borderColor: themeColors.primary }
-                      : { backgroundColor: isDark ? themeColors.surface : "#F8FAFC", borderColor: themeColors.cardBorder },
-                  ]}
-                  onPress={handleSelectToday}
-                  activeOpacity={0.8}
-                >
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <Ionicons name="flash" size={15} color={isTodaySelected ? "#FFFFFF" : "#F59E0B"} style={{ marginRight: 6 }} />
-                    <Text style={[styles.modalQuickBtnTitle, isTodaySelected ? { color: "#FFFFFF" } : { color: isDark ? themeColors.text : "#0F172A" }]}>
-                      Today
-                    </Text>
-                  </View>
-                  <Text style={[styles.modalQuickBtnSub, isTodaySelected ? { color: "rgba(255,255,255,0.85)" } : { color: isDark ? themeColors.textSecondary : "#64748B" }]}>
-                    {formatShortDate(today)}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.modalQuickBtn,
-                    isTomorrowSelected
-                      ? { backgroundColor: themeColors.primary, borderColor: themeColors.primary }
-                      : { backgroundColor: isDark ? themeColors.surface : "#F8FAFC", borderColor: themeColors.cardBorder },
-                  ]}
-                  onPress={handleSelectTomorrow}
-                  activeOpacity={0.8}
-                >
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <Ionicons name="calendar-outline" size={15} color={isTomorrowSelected ? "#FFFFFF" : "#0284C7"} style={{ marginRight: 6 }} />
-                    <Text style={[styles.modalQuickBtnTitle, isTomorrowSelected ? { color: "#FFFFFF" } : { color: isDark ? themeColors.text : "#0F172A" }]}>
-                      Tomorrow
-                    </Text>
-                  </View>
-                  <Text style={[styles.modalQuickBtnSub, isTomorrowSelected ? { color: "rgba(255,255,255,0.85)" } : { color: isDark ? themeColors.textSecondary : "#64748B" }]}>
-                    {formatShortDate(tomorrowObj)}
-                  </Text>
-                </TouchableOpacity>
-              </View>
 
               {/* Advance Booking Month Navigation Header */}
               <View style={styles.calendarNavHeader}>
@@ -1893,10 +1822,19 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
               <TouchableOpacity
                 style={[styles.setCustomTimeBtn, { backgroundColor: themeColors.primary }]}
                 onPress={() => {
-                  const cleaned = customTimeInput.trim();
+                  let cleaned = customTimeInput.trim().replace(/\./g, ":");
                   if (!cleaned) {
                     Alert.alert("Time", "Please enter a preferred time like 10:30.");
                     return;
+                  }
+                  // Auto-format shorthand like "9" -> "09:00", "9:3" -> "09:30", "930" -> "09:30"
+                  if (/^\d{1,2}$/.test(cleaned)) {
+                    cleaned = `${cleaned.padStart(2, "0")}:00`;
+                  } else if (/^\d{3,4}$/.test(cleaned)) {
+                    const pad = cleaned.padStart(4, "0");
+                    cleaned = `${pad.slice(0, 2)}:${pad.slice(2)}`;
+                  } else if (/^\d:\d{2}$/.test(cleaned)) {
+                    cleaned = `0${cleaned}`;
                   }
                   const formatted = `${cleaned} ${customAmPm}`;
                   setBookingTime(formatted);

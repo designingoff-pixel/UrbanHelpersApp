@@ -15,7 +15,8 @@ import { AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import { ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage';
-import { storage } from './firebase';
+import { signInAnonymously } from 'firebase/auth';
+import { storage, auth } from './firebase';
 import { updateBookingAudio } from './firestoreService';
 import { store } from '../store/AppStore';
 
@@ -306,12 +307,18 @@ class AudioRecordingService {
         storagePath = `audio_proofs/${jobId}_${recordedTimestamp}.m4a`;
         const audioRef = ref(storage, storagePath);
         try {
+          if (auth && !auth.currentUser) {
+            await signInAnonymously(auth).catch(() => {});
+          }
           await uploadString(audioRef, base64Str, 'base64', { contentType: 'audio/mp4' });
           finalAudioUrl = await getDownloadURL(audioRef);
           console.log('[AudioRecordingService] Firebase Storage upload successful:', finalAudioUrl);
         } catch (uploadStringErr) {
           console.warn('[AudioRecordingService] uploadString error, attempting uploadBytes fallback:', uploadStringErr);
           try {
+            if (auth && !auth.currentUser) {
+              await signInAnonymously(auth).catch(() => {});
+            }
             const response = await fetch(localUri);
             const blob = await response.blob();
             await uploadBytes(audioRef, blob, { contentType: 'audio/mp4' });

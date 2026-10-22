@@ -167,10 +167,19 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
   const isCompleted = booking?.status === "completed";
   const isPreService = isVendorAssigned && !isServiceActive && !isCompleted && booking?.status !== "cancelled";
   const isTrackingActive = isPreService;
-  // Service has started or vendor has arrived: customer cannot cancel, only Admin can cancel
+  // Once vendor has accepted the order, customer cannot cancel
+  const isVendorAccepted =
+    booking?.status === "accepted" ||
+    booking?.status === "vendor_accepted" ||
+    (booking as any)?.vendorAccepted === true ||
+    booking?.status === "on_the_way" ||
+    booking?.status === "arrived" ||
+    booking?.status === "in_progress" ||
+    booking?.status === "service_ended" ||
+    booking?.status === "completed";
   const isVendorArrived = booking?.status === "arrived" || booking?.status === "in_progress" || booking?.status === "service_ended" || booking?.status === "completed";
   const isServiceStarted = isServiceActive || booking?.status === "in_progress" || booking?.status === "service_ended" || !!(booking as any)?.startedAt || !!(booking as any)?.otpVerified;
-  const isCancellationLocked = isVendorArrived || isServiceStarted;
+  const isCancellationLocked = isVendorAccepted || isVendorArrived || isServiceStarted;
 
   // Subscribe to Vendor's profile photo and live GPS coords whenever assigned
   useEffect(() => {
@@ -793,16 +802,22 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
               )}
             </View>
 
-            {/* When vendor has arrived or service has started, customer cannot cancel directly; only Admin can cancel */}
+            {/* When vendor has accepted, arrived, or service has started, customer cannot cancel directly */}
             {isCancellationLocked && (booking?.status as string) !== "cancelled" && (
               <Pressable
                 style={s.inProgressLockBadge}
                 onPress={() => {
                   Alert.alert(
-                    isServiceStarted ? "Service In Progress" : "Technician Arrived",
+                    isServiceStarted
+                      ? "Service In Progress"
+                      : isVendorArrived
+                      ? "Technician Arrived"
+                      : "Order Accepted",
                     isServiceStarted
                       ? "The professional has already started performing this service. Customer cancellation is locked once service commences.\n\nOnly Urban Helpers Admin can cancel an in-progress service allotment. Please contact Support/Admin if you need assistance."
-                      : "The technician has arrived at your location. Customer cancellation is locked once the professional arrives.\n\nPlease contact Urban Helpers Admin/Support if you need assistance.",
+                      : isVendorArrived
+                      ? "The technician has arrived at your location. Customer cancellation is locked once the professional arrives.\n\nPlease contact Urban Helpers Admin/Support if you need assistance."
+                      : "A verified service professional has already accepted your booking. Customer cancellation is locked once the partner accepts.\n\nPlease contact Urban Helpers Admin/Support if you need assistance.",
                     [
                       {
                         text: "Contact Support",
@@ -817,7 +832,9 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
                 <Text style={s.inProgressLockText}>
                   {isServiceStarted
                     ? "Service in progress • Cancellation restricted to Admin only"
-                    : "Technician arrived • Cancellation restricted"}
+                    : isVendorArrived
+                    ? "Technician arrived • Cancellation restricted"
+                    : "Partner accepted • Cancellation locked"}
                 </Text>
                 <Ionicons name="information-circle-outline" size={13} color="#f59e0b" />
               </Pressable>
