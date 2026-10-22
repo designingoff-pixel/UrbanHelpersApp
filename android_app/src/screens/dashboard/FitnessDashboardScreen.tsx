@@ -130,111 +130,15 @@ export default function FitnessDashboardScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={s.scrollContent}
       >
-        {/* ── 1. Fitness Index Card with 3D Radar Chart ───────────── */}
-        <View style={s.fitnessIndexCard}>
-          <View style={s.fitnessIndexTextCol}>
-            <Text style={s.fitnessIndexTitle}>Fitness index</Text>
-            <Text style={s.fitnessIndexDesc}>
-              Get weekly workout targets and stream real-time training videos.
-            </Text>
-            <Pressable style={s.recordWorkoutBtn} onPress={() => setModalVisible(true)}>
-              <Ionicons name="add-circle" size={16} color="#4ade80" />
-              <Text style={s.recordWorkoutBtnText}>Record workout</Text>
-            </Pressable>
-          </View>
-
-          {/* Spiderweb / Radar Pentagon Graphic */}
-          <View style={s.radarWrap}>
-            <Svg width={110} height={110} viewBox="0 0 110 110">
-              <Polygon
-                points="55,10 97,41 81,89 29,89 13,41"
-                fill="none"
-                stroke="rgba(255,255,255,0.15)"
-                strokeWidth="1.2"
-              />
-              <Polygon
-                points="55,24 84,45 73,78 37,78 26,45"
-                fill="none"
-                stroke="rgba(255,255,255,0.12)"
-                strokeWidth="1"
-              />
-              <Polygon
-                points="55,38 72,50 65,70 45,70 38,50"
-                fill="none"
-                stroke="rgba(255,255,255,0.1)"
-                strokeWidth="1"
-              />
-              <Line x1="55" y1="55" x2="55" y2="10" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
-              <Line x1="55" y1="55" x2="97" y2="41" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
-              <Line x1="55" y1="55" x2="81" y2="89" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
-              <Line x1="55" y1="55" x2="29" y2="89" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
-              <Line x1="55" y1="55" x2="13" y2="41" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
-              <Polygon
-                points="55,16 90,44 76,82 34,75 22,46"
-                fill="rgba(74, 222, 128, 0.38)"
-                stroke="#4ade80"
-                strokeWidth="2"
-              />
-              <Circle cx="55" cy="16" r="3" fill="#86efac" />
-              <Circle cx="90" cy="44" r="3" fill="#86efac" />
-              <Circle cx="76" cy="82" r="3" fill="#86efac" />
-              <Circle cx="34" cy="75" r="3" fill="#86efac" />
-              <Circle cx="22" cy="46" r="3" fill="#86efac" />
-            </Svg>
-          </View>
-        </View>
-
-        {/* ── Today's Logged Workouts (Real User Data) ──────────────── */}
-        {loggedActivities.length > 0 && (
-          <View style={s.loggedSection}>
-            <View style={s.sectionHeader}>
-              <Text style={s.sectionTitle}>Today's Logged Workouts</Text>
-              <Text style={s.statsSummary}>
-                {totals.totalMins} min · {totals.totalCalories} kcal
-              </Text>
-            </View>
-            <View style={s.loggedList}>
-              {loggedActivities.map((act) => (
-                <View key={act.id} style={s.loggedCard}>
-                  <View style={s.loggedLeft}>
-                    <View style={s.loggedIconWrap}>
-                      <Ionicons
-                        name={
-                          act.type === "running"
-                            ? "fitness"
-                            : act.type === "cycling"
-                            ? "bicycle"
-                            : act.type === "gym"
-                            ? "barbell"
-                            : act.type === "yoga"
-                            ? "body"
-                            : act.type === "pilates"
-                            ? "sparkles"
-                            : "walk"
-                        }
-                        size={20}
-                        color="#4ade80"
-                      />
-                    </View>
-                    <View>
-                      <Text style={s.loggedTitle}>{act.title}</Text>
-                      <Text style={s.loggedMeta}>
-                        {act.durationMins} mins · {act.caloriesBurned} kcal
-                        {act.distanceKm ? ` · ${act.distanceKm} km` : ""}
-                      </Text>
-                    </View>
-                  </View>
-                  <Pressable onPress={() => handleDeleteActivity(act.id)} style={s.deleteBtn}>
-                    <Ionicons name="trash-outline" size={18} color="rgba(255,255,255,0.4)" />
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* ── OpenGym Integrated Suite (Replaces YouTube Video Showcase) ── */}
-        <OpenGymView onWorkoutCompleted={loadLoggedActivities} navigation={navigation} />
+        {/* ── OpenGym 5-Tab Fitness Suite (Home, Plan, Start, Stats, Exercise) ── */}
+        <OpenGymView
+          onWorkoutCompleted={loadLoggedActivities}
+          navigation={navigation}
+          todayActivities={loggedActivities}
+          dailyTotals={totals}
+          onDeleteActivity={handleDeleteActivity}
+          onOpenRecordModal={() => setModalVisible(true)}
+        />
 
         <View style={{ height: 130 }} />
       </ScrollView>
