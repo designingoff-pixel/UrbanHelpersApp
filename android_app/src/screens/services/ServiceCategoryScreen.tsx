@@ -40,21 +40,20 @@ export default function ServiceCategoryScreen({ navigation, route }: Props) {
   const firestoreCategory = categories.find((c) => c.id === categoryId);
 
   const category = useMemo(() => {
-    if (!staticCategory && !firestoreCategory) return undefined;
-    if (!firestoreCategory) return staticCategory;
-    if (!staticCategory) return firestoreCategory;
+    if (!firestoreCategory && !staticCategory) return undefined;
+    if (firestoreCategory) {
+      // Strictly use what is configured in Firestore / Admin Web (never inject extra static sub-services)
+      const validSubServices = (firestoreCategory.subServices && firestoreCategory.subServices.length > 0)
+        ? firestoreCategory.subServices
+        : (staticCategory?.subServices ?? []);
 
-    const existingIds = new Set((firestoreCategory.subServices ?? []).map((s) => s.id));
-    const mergedSubServices = [
-      ...(firestoreCategory.subServices ?? []),
-      ...staticCategory.subServices.filter((s) => !existingIds.has(s.id)),
-    ];
-
-    return {
-      ...staticCategory,
-      ...firestoreCategory,
-      subServices: mergedSubServices,
-    };
+      return {
+        ...(staticCategory || {}),
+        ...firestoreCategory,
+        subServices: validSubServices,
+      };
+    }
+    return staticCategory;
   }, [staticCategory, firestoreCategory]);
 
   const [activeFilter, setActiveFilter] = useState("all");

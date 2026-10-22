@@ -1381,6 +1381,7 @@
       getFirestore,
       collection,
       getDocs,
+      getDoc,
       addDoc,
       setDoc,
       updateDoc,
@@ -1711,7 +1712,7 @@
         // Update sound alert UI button state
         updateSoundAlertUi();
 
-        // Real-time live listener for bookings
+        // Real-time live listener for bookings (Auto-updates without page refresh)
         try {
           onSnapshot(collection(db, 'bookings'), (snap) => {
             _allBookings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -1722,20 +1723,65 @@
               return bT - aT;
             });
             updateBookingsKpisAndBadges();
-            if (_currentSection === 'services' && _currentServicesSubKey === 'bookings') {
-              renderBookingsBoardView();
+
+            // Real-time dispatch & status pipeline updates (performing, on the way, assigned, completed, etc.)
+            if (_currentSection === 'services') {
+              if (typeof renderBookingsBoardView === 'function') {
+                renderBookingsBoardView();
+              }
+              if (typeof renderBookingsTableOnly === 'function') {
+                renderBookingsTableOnly();
+              }
+            } else if (_currentSection === 'overview' && typeof loadOverviewMetrics === 'function') {
+              loadOverviewMetrics().catch(() => {});
+            } else if (_currentSection === 'vendors' && typeof renderVendors === 'function') {
+              // Daily rejections count affects vendor status
+              renderVendors().catch(() => {});
             }
 
-            // Real-time update of open booking details modal if vendor uploads proof or finalizes
+            // Real-time update of open booking details modal if technician updates status or proof
             if (window._currentBdmBookingId && document.getElementById('bookingDetailsModal')?.style.display === 'flex') {
               window.openBookingDetailsModal(window._currentBdmBookingId);
+            }
+
+            // Real-time update of open assign modal if currently visible
+            const assignModal = document.getElementById('assignModal');
+            const assignBookingId = document.getElementById('assignBookingId')?.value;
+            if (assignModal && assignModal.style.display === 'flex' && assignBookingId && typeof window.populateAssignModalDropdown === 'function') {
+              window.populateAssignModalDropdown(assignBookingId);
             }
 
             // 🚨 Process Vendor Rejection Alerts & Trigger Notification Sound
             processVendorRejectionsSnapshot(snap);
           }, (err) => console.warn('Bookings realtime sync error:', err));
         } catch(e) {
-          console.warn('Realtime listener error:', e);
+          console.warn('Realtime bookings listener error:', e);
+        }
+
+        // Real-time live listener for vendors (Auto-detects blocked/active vendors without page refresh)
+        try {
+          onSnapshot(collection(db, 'vendors'), (snap) => {
+            _allVendorsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+            // 1. If Vendors page is open, refresh table immediately
+            if (_currentSection === 'vendors' && typeof renderVendors === 'function') {
+              renderVendors().catch(() => {});
+            }
+
+            // 2. If Assign Vendor modal is open, immediately update dropdown so blocked vendors are disabled live
+            const assignModal = document.getElementById('assignModal');
+            const assignBookingId = document.getElementById('assignBookingId')?.value;
+            if (assignModal && assignModal.style.display === 'flex' && assignBookingId && typeof window.populateAssignModalDropdown === 'function') {
+              window.populateAssignModalDropdown(assignBookingId);
+            }
+
+            // 3. If Services Dispatch board is active, re-render to reflect vendor availability
+            if (_currentSection === 'services' && typeof renderBookingsBoardView === 'function') {
+              renderBookingsBoardView();
+            }
+          }, (err) => console.warn('Vendors realtime sync error:', err));
+        } catch(e) {
+          console.warn('Realtime vendors listener error:', e);
         }
 
         // Update UI with project info
@@ -2981,6 +3027,41 @@
       }
     };
 
+    window.populateAssignModalDropdown = function(bookingId) {
+      const b = _allBookings.find(x => x.id === bookingId);
+      const sel = document.getElementById('assignVendorSelect');
+      if (!sel || !b) return;
+
+      if (!_allVendorsList || _allVendorsList.length === 0) {
+        sel.innerHTML = '<option value="">No vendors registered yet. Please create a vendor first.</option>';
+        return;
+      }
+
+      const bookingCat = (b.serviceCategory || '').toLowerCase();
+      const sorted = [..._allVendorsList].sort((a, bVendor) => {
+        const aMatch = (a.serviceCategory || '').toLowerCase().includes(bookingCat);
+        const bMatch = (bVendor.serviceCategory || '').toLowerCase().includes(bookingCat);
+        if (aMatch && !bMatch) return -1;
+        if (!aMatch && bMatch) return 1;
+        return 0;
+      });
+
+      const currentSelected = sel.value;
+      sel.innerHTML = '<option value="">-- Choose Vendor Partner --</option>' + sorted.map(v => {
+        const vId = v.vendorId || v.id;
+        const matchTag = (v.serviceCategory || '').toLowerCase().includes(bookingCat) ? ' ★ MATCHING SERVICE' : '';
+        const bInfo = window.getVendorBlockInfo ? window.getVendorBlockInfo(v) : { isBlocked: false };
+        if (bInfo.isBlocked) {
+          return `<option value="${vId}" disabled style="color:#dc2626;background:#fee2e2;font-weight:700;">⛔ [BLOCKED: ${bInfo.reason} • ${bInfo.remainingDays}d left] ${v.name} (${vId})</option>`;
+        }
+        return `<option value="${vId}">${v.name} (${vId}) — ${v.serviceCategory || 'All-rounder'}${matchTag}</option>`;
+      }).join('');
+
+      if (currentSelected && sel.querySelector(`option[value="${currentSelected}"]:not([disabled])`)) {
+        sel.value = currentSelected;
+      }
+    };
+
     window.openAssignModal = async function(bookingId) {
       const b = _allBookings.find(x => x.id === bookingId);
       if (!b) {
@@ -2994,56 +3075,15 @@
         <span style="font-size:12px;color:#0f8a5f;font-weight:700;margin-left:8px;">${b.priceLabel || fmtInr(b.price || 0)}</span>
       `;
       document.getElementById('assignBookingCustomerInfo').innerHTML = `
-        <strong>Customer:</strong> ${b.customerName || 'Customer'} ${b.customerPhone ? '(' + b.customerPhone + ')' : ''} • <strong>Address:</strong> ${b.address || 'â€”'}
+        <strong>Customer:</strong> ${b.customerName || 'Customer'} ${b.customerPhone ? '(' + b.customerPhone + ')' : ''} • <strong>Address:</strong> ${b.address || '—'}
       `;
       document.getElementById('assignBookingScheduled').innerHTML = `
         <strong>Scheduled:</strong> ${b.scheduledAt || 'Immediate'} • <strong>Current Status:</strong> <span class="status-badge badge-yellow">${b.status || 'requested'}</span>
       `;
 
-      // Load active vendors
-      const sel = document.getElementById('assignVendorSelect');
-      sel.innerHTML = '<option value="">Loading active vendors…</option>';
-
-      try {
-        // Always fetch fresh live vendor partners from Firestore to get updated block/cancellation status
-        const snap = await getDocs2('vendors', [limit(150)]);
-        _allVendorsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-        if (_allVendorsList.length === 0) {
-          sel.innerHTML = '<option value="">No vendors registered yet. Please create a vendor first.</option>';
-          return;
-        }
-
-        // Always fetch fresh live bookings from Firestore (never use stale cache) so 3 skips/rejections are immediately detected
-        try {
-          const bSnap = await getDocs2('bookings', [orderBy('createdAt', 'desc'), limit(150)]);
-          _allBookings = bSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        } catch (_) {}
-
-        // Sort so vendors matching this service category are on top
-        const bookingCat = (b.serviceCategory || '').toLowerCase();
-        const sorted = [..._allVendorsList].sort((a, bVendor) => {
-          const aMatch = (a.serviceCategory || '').toLowerCase().includes(bookingCat);
-          const bMatch = (bVendor.serviceCategory || '').toLowerCase().includes(bookingCat);
-          if (aMatch && !bMatch) return -1;
-          if (!aMatch && bMatch) return 1;
-          return 0;
-        });
-
-        sel.innerHTML = '<option value="">-- Choose Vendor Partner --</option>' + sorted.map(v => {
-          const vId = v.vendorId || v.id;
-          const matchTag = (v.serviceCategory || '').toLowerCase().includes(bookingCat) ? ' ★ MATCHING SERVICE' : '';
-          const bInfo = window.getVendorBlockInfo ? window.getVendorBlockInfo(v) : { isBlocked: false };
-          if (bInfo.isBlocked) {
-            return `<option value="${vId}" disabled style="color:#dc2626;background:#fee2e2;font-weight:700;">⛔ [BLOCKED: ${bInfo.reason} • ${bInfo.remainingDays}d left] ${v.name} (${vId})</option>`;
-          }
-          return `<option value="${vId}">${v.name} (${vId}) — ${v.serviceCategory || 'All-rounder'}${matchTag}</option>`;
-        }).join('');
-
-        document.getElementById('assignModal').style.display = 'flex';
-      } catch (err) {
-        alert('Error loading vendors list: ' + err.message);
-      }
+      // Populate dropdown live
+      window.populateAssignModalDropdown(bookingId);
+      document.getElementById('assignModal').style.display = 'flex';
     };
 
     window.closeAssignModal = function() {
@@ -4914,12 +4954,15 @@
 
       // Voice proof resolution across all supported schema fields and storage references
       let rawAudio = b.audioUrl || b.audioPath || b.voiceRecording || b.voiceProof || b.audio || b.recordingUrl || b.voiceRecordingUrl || b.voiceUrl || (b.completionProof && b.completionProof.audioUrl) || null;
-      const isSubcollectionAudio = (rawAudio && typeof rawAudio === 'string' && rawAudio.startsWith('subcollection:')) || (!rawAudio && b.hasAudioProof);
-      if (rawAudio && typeof rawAudio === 'string' && !rawAudio.startsWith('http') && !rawAudio.startsWith('data:') && !rawAudio.startsWith('file://') && !rawAudio.startsWith('subcollection:')) {
+      if (typeof rawAudio === 'string' && rawAudio.startsWith('storage:')) {
+        const sPath = rawAudio.replace(/^storage:/, '');
+        rawAudio = 'https://firebasestorage.googleapis.com/v0/b/' + DEFAULT_FIREBASE_CONFIG.storageBucket + '/o/' + encodeURIComponent(sPath) + '?alt=media';
+      } else if (rawAudio && typeof rawAudio === 'string' && !rawAudio.startsWith('http') && !rawAudio.startsWith('data:') && !rawAudio.startsWith('file://') && !rawAudio.startsWith('subcollection:')) {
         rawAudio = 'https://firebasestorage.googleapis.com/v0/b/' + DEFAULT_FIREBASE_CONFIG.storageBucket + '/o/' + encodeURIComponent(rawAudio) + '?alt=media';
       }
+      const isSubcollectionAudio = (rawAudio && typeof rawAudio === 'string' && rawAudio.startsWith('subcollection:')) || (!rawAudio && b.hasAudioProof);
       const isDeviceOnly = rawAudio && typeof rawAudio === 'string' && rawAudio.startsWith('file://');
-      const hasValidAudio = ((rawAudio && typeof rawAudio === 'string' && !isDeviceOnly && !rawAudio.startsWith('subcollection:')) || isSubcollectionAudio);
+      const hasValidAudio = Boolean((rawAudio && !isDeviceOnly && !rawAudio.startsWith('subcollection:')) || isSubcollectionAudio);
 
       // Format audio metadata (file size, timestamp, storage location)
       let audioMetaDetail = '';
@@ -4933,13 +4976,22 @@
 
       // Resolve before & after photo URLs across download URLs and storage paths
       let beforePhotoSrc = b.beforePhoto || b.beforePhotoPath || null;
-      if (beforePhotoSrc && typeof beforePhotoSrc === 'string' && !beforePhotoSrc.startsWith('http') && !beforePhotoSrc.startsWith('data:') && !beforePhotoSrc.startsWith('file://') && !beforePhotoSrc.startsWith('subcollection:')) {
+      if (typeof beforePhotoSrc === 'string' && beforePhotoSrc.startsWith('storage:')) {
+        const sPath = beforePhotoSrc.replace(/^storage:/, '');
+        beforePhotoSrc = 'https://firebasestorage.googleapis.com/v0/b/' + DEFAULT_FIREBASE_CONFIG.storageBucket + '/o/' + encodeURIComponent(sPath) + '?alt=media';
+      } else if (beforePhotoSrc && typeof beforePhotoSrc === 'string' && !beforePhotoSrc.startsWith('http') && !beforePhotoSrc.startsWith('data:') && !beforePhotoSrc.startsWith('file://') && !beforePhotoSrc.startsWith('subcollection:') && beforePhotoSrc !== 'photo_proof_captured') {
         beforePhotoSrc = 'https://firebasestorage.googleapis.com/v0/b/' + DEFAULT_FIREBASE_CONFIG.storageBucket + '/o/' + encodeURIComponent(beforePhotoSrc) + '?alt=media';
       }
+      const isSubcollectionBefore = (beforePhotoSrc && typeof beforePhotoSrc === 'string' && (beforePhotoSrc.startsWith('subcollection:') || beforePhotoSrc === 'photo_proof_captured')) || (!beforePhotoSrc && b.hasPhotoProof);
+
       let afterPhotoSrc = b.afterPhoto || b.afterPhotoPath || null;
-      if (afterPhotoSrc && typeof afterPhotoSrc === 'string' && !afterPhotoSrc.startsWith('http') && !afterPhotoSrc.startsWith('data:') && !afterPhotoSrc.startsWith('file://') && !afterPhotoSrc.startsWith('subcollection:')) {
+      if (typeof afterPhotoSrc === 'string' && afterPhotoSrc.startsWith('storage:')) {
+        const sPath = afterPhotoSrc.replace(/^storage:/, '');
+        afterPhotoSrc = 'https://firebasestorage.googleapis.com/v0/b/' + DEFAULT_FIREBASE_CONFIG.storageBucket + '/o/' + encodeURIComponent(sPath) + '?alt=media';
+      } else if (afterPhotoSrc && typeof afterPhotoSrc === 'string' && !afterPhotoSrc.startsWith('http') && !afterPhotoSrc.startsWith('data:') && !afterPhotoSrc.startsWith('file://') && !afterPhotoSrc.startsWith('subcollection:') && afterPhotoSrc !== 'photo_proof_captured') {
         afterPhotoSrc = 'https://firebasestorage.googleapis.com/v0/b/' + DEFAULT_FIREBASE_CONFIG.storageBucket + '/o/' + encodeURIComponent(afterPhotoSrc) + '?alt=media';
       }
+      const isSubcollectionAfter = (afterPhotoSrc && typeof afterPhotoSrc === 'string' && (afterPhotoSrc.startsWith('subcollection:') || afterPhotoSrc === 'photo_proof_captured')) || (!afterPhotoSrc && b.hasPhotoProof);
 
       body.innerHTML = [
         '<div style="display:flex; flex-direction:column; gap:16px;">',
@@ -4990,12 +5042,19 @@
                     'Cloud Stored' +
                   '</span>' +
                 '</div>' +
-                '<audio id="proofAudioPlayer_' + b.id + '" controls preload="metadata" style="width:100%; height:38px; border-radius:6px; outline:none;" src="' + (rawAudio.startsWith('subcollection:') ? '' : rawAudio) + '" onerror="const el = document.getElementById(\'audioFallbackErr_' + b.id + '\'); if(el) el.style.display=\'block\';">' +
-                  '<source src="' + (rawAudio.startsWith('subcollection:') ? '' : rawAudio) + '" type="audio/mp4">' +
-                  '<source src="' + (rawAudio.startsWith('subcollection:') ? '' : rawAudio) + '" type="audio/x-m4a">' +
-                  '<source src="' + (rawAudio.startsWith('subcollection:') ? '' : rawAudio) + '" type="audio/aac">' +
-                  '<source src="' + (rawAudio.startsWith('subcollection:') ? '' : rawAudio) + '" type="audio/webm">' +
-                  '<source src="' + (rawAudio.startsWith('subcollection:') ? '' : rawAudio) + '" type="audio/ogg">' +
+                (isSubcollectionAudio ? (
+                  '<div id="proofAudioLoading_' + b.id + '" style="padding:10px; background:#ffffff; border:1px solid #dcfce7; border-radius:8px; display:flex; align-items:center; gap:8px; font-size:12px; color:#15803d; margin-bottom:8px;">' +
+                    '<div class="spinner" style="width:14px; height:14px; border-width:2px; margin:0;"></div>' +
+                    '<span>Retrieving verified cloud audio log…</span>' +
+                  '</div>'
+                ) : '') +
+                '<audio id="proofAudioPlayer_' + b.id + '" controls preload="metadata" style="width:100%; height:38px; border-radius:6px; outline:none;' + (isSubcollectionAudio ? ' display:none;' : '') + '" ' + (isSubcollectionAudio ? '' : ('src="' + rawAudio + '"')) + ' onerror="const el = document.getElementById(\'audioFallbackErr_' + b.id + '\'); if(el) el.style.display=\'block\';">' +
+                  (!isSubcollectionAudio ? (
+                    '<source src="' + rawAudio + '" type="audio/mp4">' +
+                    '<source src="' + rawAudio + '" type="audio/x-m4a">' +
+                    '<source src="' + rawAudio + '" type="audio/aac">' +
+                    '<source src="' + rawAudio + '" type="audio/webm">'
+                  ) : '') +
                   'Your browser does not support audio playback.' +
                 '</audio>' +
                 '<div id="audioFallbackErr_' + b.id + '" style="display:none; background:#fef3c7; border:1px solid #fde68a; color:#92400e; padding:8px 10px; border-radius:6px; font-size:11.5px; margin-top:8px;">' +
@@ -5003,7 +5062,7 @@
                 '</div>' +
                 '<div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:11.5px;">' +
                   '<span style="color:#15803d; font-weight:600;"><i class="fa-solid fa-shield-halved"></i> High-Fidelity Audio Log</span>' +
-                  '<a id="proofAudioDownloadLink_' + b.id + '" href="' + (rawAudio.startsWith('subcollection:') ? '#' : rawAudio) + '" target="_blank" rel="noopener noreferrer" download="UrbanHelpers_VoiceRecord_' + b.id + '.m4a" style="color:#0284c7; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">' +
+                  '<a id="proofAudioDownloadLink_' + b.id + '" href="' + (isSubcollectionAudio ? '#' : rawAudio) + '" target="_blank" rel="noopener noreferrer" download="UrbanHelpers_VoiceRecord_' + b.id + '.m4a" style="color:#0284c7; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">' +
                     '<i class="fa-solid fa-download"></i> Download / Open Audio' +
                   '</a>' +
                 '</div>' +
@@ -5039,7 +5098,7 @@
                 '</div>',
               '</div>',
               '<span style="font-size:11px; font-weight:700; color:#64748b;">' +
-                ((beforePhotoSrc ? 1 : 0) + (afterPhotoSrc ? 1 : 0)) + ' / 2 Uploaded' +
+                (((beforePhotoSrc || isSubcollectionBefore) ? 1 : 0) + ((afterPhotoSrc || isSubcollectionAfter) ? 1 : 0)) + ' / 2 Uploaded' +
               '</span>',
             '</div>',
 
@@ -5048,14 +5107,28 @@
               '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:10px; text-align:center;">',
                 '<div style="font-size:11px; font-weight:800; color:#1e40af; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">',
                   '<span><i class="fa-solid fa-camera"></i> 1. BEFORE SERVICE</span>',
-                  (beforePhotoSrc ? '<span style="color:#10b981;">✓ Verified</span>' : '<span style="color:#94a3b8;">Pending</span>'),
+                  ((beforePhotoSrc || isSubcollectionBefore) ? '<span style="color:#10b981;">✓ Verified</span>' : '<span style="color:#94a3b8;">Pending</span>'),
                 '</div>',
-                (beforePhotoSrc ? (
-                  '<div style="position:relative; border-radius:8px; overflow:hidden;">' +
-                    '<img id="proofBeforeImg_' + b.id + '" src="' + (beforePhotoSrc.startsWith('subcollection:') ? '' : beforePhotoSrc) + '" alt="Before Service" style="width:100%; height:160px; object-fit:cover; display:block; cursor:pointer;" onclick="window.open(this.src, \'_blank\')">' +
-                    '<a id="proofBeforeZoom_' + b.id + '" href="' + (beforePhotoSrc.startsWith('subcollection:') ? '#' : beforePhotoSrc) + '" target="_blank" style="position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,0.65); color:#fff; font-size:10.5px; padding:3px 8px; border-radius:6px; text-decoration:none; font-weight:700;">' +
-                      '<i class="fa-solid fa-expand"></i> Zoom' +
-                    '</a>' +
+                ((beforePhotoSrc || isSubcollectionBefore) ? (
+                  '<div style="position:relative; border-radius:8px; overflow:hidden; background:#f1f5f9; min-height:160px; display:flex; align-items:center; justify-content:center;">' +
+                    (isSubcollectionBefore ? (
+                      '<div id="proofBeforeLoading_' + b.id + '" style="display:flex; align-items:center; gap:8px; font-size:12px; color:#64748b; padding:20px;">' +
+                        '<div class="spinner" style="width:14px; height:14px; border-width:2px; margin:0;"></div>' +
+                        '<span>Loading Before Photo…</span>' +
+                      '</div>'
+                    ) : '') +
+                    (beforePhotoSrc && beforePhotoSrc.startsWith('file://') ? (
+                      '<div style="height:140px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px; text-align:center; color:#b45309; background:#fffbeb; width:100%;">' +
+                        '<i class="fa-solid fa-mobile-screen" style="font-size:24px; color:#d97706; margin-bottom:4px;"></i>' +
+                        '<span style="font-size:11.5px; font-weight:700;">Stored on Technician Phone</span>' +
+                        '<span style="font-size:10px; color:#78350f; margin-top:2px;">Captured before cloud upload</span>' +
+                      '</div>'
+                    ) : (
+                      '<img id="proofBeforeImg_' + b.id + '" src="' + (isSubcollectionBefore ? '' : beforePhotoSrc) + '" alt="Before Service" style="width:100%; height:160px; object-fit:cover;' + (isSubcollectionBefore ? ' display:none;' : ' display:block;') + ' cursor:pointer;" onclick="window.open(this.src, \'_blank\')" onerror="this.style.display=\'none\';">' +
+                      '<a id="proofBeforeZoom_' + b.id + '" href="' + (isSubcollectionBefore ? '#' : beforePhotoSrc) + '" target="_blank" style="position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,0.65); color:#fff; font-size:10.5px; padding:3px 8px; border-radius:6px; text-decoration:none; font-weight:700;' + (isSubcollectionBefore ? ' display:none;' : '') + '">' +
+                        '<i class="fa-solid fa-expand"></i> Zoom' +
+                      '</a>'
+                    )) +
                   '</div>'
                 ) : (
                   '<div style="height:140px; display:flex; flex-direction:column; align-items:center; justify-content:center; border:1px dashed #cbd5e1; border-radius:8px; color:#94a3b8; gap:4px;">' +
@@ -5069,14 +5142,28 @@
               '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:10px; text-align:center;">',
                 '<div style="font-size:11px; font-weight:800; color:#15803d; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">',
                   '<span><i class="fa-solid fa-camera-rotate"></i> 2. AFTER SERVICE</span>',
-                  (afterPhotoSrc ? '<span style="color:#10b981;">✓ Verified</span>' : '<span style="color:#94a3b8;">Pending</span>'),
+                  ((afterPhotoSrc || isSubcollectionAfter) ? '<span style="color:#10b981;">✓ Verified</span>' : '<span style="color:#94a3b8;">Pending</span>'),
                 '</div>',
-                (afterPhotoSrc ? (
-                  '<div style="position:relative; border-radius:8px; overflow:hidden;">' +
-                    '<img id="proofAfterImg_' + b.id + '" src="' + (afterPhotoSrc.startsWith('subcollection:') ? '' : afterPhotoSrc) + '" alt="After Service" style="width:100%; height:160px; object-fit:cover; display:block; cursor:pointer;" onclick="window.open(this.src, \'_blank\')">' +
-                    '<a id="proofAfterZoom_' + b.id + '" href="' + (afterPhotoSrc.startsWith('subcollection:') ? '#' : afterPhotoSrc) + '" target="_blank" style="position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,0.65); color:#fff; font-size:10.5px; padding:3px 8px; border-radius:6px; text-decoration:none; font-weight:700;">' +
-                      '<i class="fa-solid fa-expand"></i> Zoom' +
-                    '</a>' +
+                ((afterPhotoSrc || isSubcollectionAfter) ? (
+                  '<div style="position:relative; border-radius:8px; overflow:hidden; background:#f1f5f9; min-height:160px; display:flex; align-items:center; justify-content:center;">' +
+                    (isSubcollectionAfter ? (
+                      '<div id="proofAfterLoading_' + b.id + '" style="display:flex; align-items:center; gap:8px; font-size:12px; color:#64748b; padding:20px;">' +
+                        '<div class="spinner" style="width:14px; height:14px; border-width:2px; margin:0;"></div>' +
+                        '<span>Loading After Photo…</span>' +
+                      '</div>'
+                    ) : '') +
+                    (afterPhotoSrc && afterPhotoSrc.startsWith('file://') ? (
+                      '<div style="height:140px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px; text-align:center; color:#b45309; background:#fffbeb; width:100%;">' +
+                        '<i class="fa-solid fa-mobile-screen" style="font-size:24px; color:#d97706; margin-bottom:4px;"></i>' +
+                        '<span style="font-size:11.5px; font-weight:700;">Stored on Technician Phone</span>' +
+                        '<span style="font-size:10px; color:#78350f; margin-top:2px;">Captured before cloud upload</span>' +
+                      '</div>'
+                    ) : (
+                      '<img id="proofAfterImg_' + b.id + '" src="' + (isSubcollectionAfter ? '' : afterPhotoSrc) + '" alt="After Service" style="width:100%; height:160px; object-fit:cover;' + (isSubcollectionAfter ? ' display:none;' : ' display:block;') + ' cursor:pointer;" onclick="window.open(this.src, \'_blank\')" onerror="this.style.display=\'none\';">' +
+                      '<a id="proofAfterZoom_' + b.id + '" href="' + (isSubcollectionAfter ? '#' : afterPhotoSrc) + '" target="_blank" style="position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,0.65); color:#fff; font-size:10.5px; padding:3px 8px; border-radius:6px; text-decoration:none; font-weight:700;' + (isSubcollectionAfter ? ' display:none;' : '') + '">' +
+                        '<i class="fa-solid fa-expand"></i> Zoom' +
+                      '</a>'
+                    )) +
                   '</div>'
                 ) : (
                   '<div style="height:140px; display:flex; flex-direction:column; align-items:center; justify-content:center; border:1px dashed #cbd5e1; border-radius:8px; color:#94a3b8; gap:4px;">' +
@@ -5215,43 +5302,70 @@
       modal.style.display = 'flex';
 
       // ── Asynchronously resolve subcollection evidence if stored there ──
-      if (isSubcollectionAudio) {
+      if (isSubcollectionAudio || (rawAudio && typeof rawAudio === 'string' && rawAudio.startsWith('subcollection:'))) {
         getDoc(doc(db, 'bookings', b.id, 'evidence', 'audio')).then(s => {
+          const lEl = document.getElementById('proofAudioLoading_' + b.id);
+          const aEl = document.getElementById('proofAudioPlayer_' + b.id);
+          const dLink = document.getElementById('proofAudioDownloadLink_' + b.id);
           if (s.exists()) {
             const data = s.data();
-            const src = data.audioData || data.data || data.base64;
+            const src = data.audioData || data.data || data.base64 || data.audioUrl || data.url;
             if (src) {
-              const aEl = document.getElementById('proofAudioPlayer_' + b.id);
+              if (lEl) lEl.style.display = 'none';
               if (aEl) {
                 aEl.src = src;
+                aEl.style.display = 'block';
                 aEl.load();
               }
-              const dLink = document.getElementById('proofAudioDownloadLink_' + b.id);
               if (dLink) dLink.href = src;
+              return;
             }
           }
-        }).catch(err => console.warn('[proofModal] Subcollection audio fetch warning:', err));
+          if (lEl) lEl.innerHTML = '<span style="color:#64748b;"><i class="fa-solid fa-circle-info"></i> Audio proof recorded on mobile device.</span>';
+        }).catch(err => {
+          console.warn('[proofModal] Subcollection audio fetch warning:', err);
+          const lEl = document.getElementById('proofAudioLoading_' + b.id);
+          if (lEl) lEl.innerHTML = '<span style="color:#b45309;"><i class="fa-solid fa-triangle-exclamation"></i> Audio record archived on phone.</span>';
+        });
       }
 
-      if ((beforePhotoSrc && beforePhotoSrc.startsWith('subcollection:')) || (afterPhotoSrc && afterPhotoSrc.startsWith('subcollection:'))) {
+      if (isSubcollectionBefore || isSubcollectionAfter || (beforePhotoSrc && beforePhotoSrc.startsWith('subcollection:')) || (afterPhotoSrc && afterPhotoSrc.startsWith('subcollection:'))) {
         getDoc(doc(db, 'bookings', b.id, 'evidence', 'photos')).then(s => {
           if (s.exists()) {
             const data = s.data();
             if (data.beforePhoto) {
               const bImg = document.getElementById('proofBeforeImg_' + b.id);
+              const bLoading = document.getElementById('proofBeforeLoading_' + b.id);
+              const bZoom = document.getElementById('proofBeforeZoom_' + b.id);
+              if (bLoading) bLoading.style.display = 'none';
               if (bImg) {
                 bImg.src = data.beforePhoto;
-                const bLink = document.getElementById('proofBeforeZoom_' + b.id);
-                if (bLink) bLink.href = data.beforePhoto;
+                bImg.style.display = 'block';
               }
+              if (bZoom) {
+                bZoom.href = data.beforePhoto;
+                bZoom.style.display = 'inline-block';
+              }
+            } else {
+              const bLoading = document.getElementById('proofBeforeLoading_' + b.id);
+              if (bLoading) bLoading.innerHTML = '<span style="color:#64748b;">Photo saved on device</span>';
             }
             if (data.afterPhoto) {
               const aImg = document.getElementById('proofAfterImg_' + b.id);
+              const aLoading = document.getElementById('proofAfterLoading_' + b.id);
+              const aZoom = document.getElementById('proofAfterZoom_' + b.id);
+              if (aLoading) aLoading.style.display = 'none';
               if (aImg) {
                 aImg.src = data.afterPhoto;
-                const aLink = document.getElementById('proofAfterZoom_' + b.id);
-                if (aLink) aLink.href = data.afterPhoto;
+                aImg.style.display = 'block';
               }
+              if (aZoom) {
+                aZoom.href = data.afterPhoto;
+                aZoom.style.display = 'inline-block';
+              }
+            } else {
+              const aLoading = document.getElementById('proofAfterLoading_' + b.id);
+              if (aLoading) aLoading.innerHTML = '<span style="color:#64748b;">Photo saved on device</span>';
             }
           }
         }).catch(err => console.warn('[proofModal] Subcollection photo fetch warning:', err));

@@ -620,53 +620,28 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
           </View>
 
           <View style={s.exploreCatGrid}>
-            {/* 1. Home Cleaning */}
-            <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "cleaning" })}
-            >
-              <View style={s.exploreCatImageWrap}>
-                <Image source={getCategoryImg("cleaning", SERVICE_LOCAL_IMAGES.cleaning)} style={s.exploreCatImage} resizeMode="cover" />
-              </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Home Cleaning</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("cleaning")}</Text>
-            </Pressable>
-
-            {/* 2. RO Service */}
-            <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "ro" })}
-            >
-              <View style={s.exploreCatImageWrap}>
-                <Image source={getCategoryImg("ro", SERVICE_LOCAL_IMAGES.ro)} style={s.exploreCatImage} resizeMode="cover" />
-              </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>RO Service</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("ro")}</Text>
-            </Pressable>
-
-            {/* 3. Pest Control */}
-            <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "pest" })}
-            >
-              <View style={s.exploreCatImageWrap}>
-                <Image source={getCategoryImg("pest", SERVICE_LOCAL_IMAGES.pest)} style={s.exploreCatImage} resizeMode="cover" />
-              </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Pest Control</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("pest")}</Text>
-            </Pressable>
-
-            {/* 4. Pet Care */}
-            <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "pet" })}
-            >
-              <View style={s.exploreCatImageWrap}>
-                <Image source={getCategoryImg("pet", SERVICE_LOCAL_IMAGES.pet)} style={s.exploreCatImage} resizeMode="cover" />
-              </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Pet Care</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("pet")}</Text>
-            </Pressable>
+            {liveCategories.slice(0, 4).map((cat) => {
+              const catImg = getCategoryImg(cat.id, SERVICE_LOCAL_IMAGES[cat.id] || SERVICE_LOCAL_IMAGES.cleaning);
+              return (
+                <Pressable
+                  key={cat.id}
+                  style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
+                  onPress={() => {
+                    if (cat.id === "emergency") {
+                      navigation.navigate("EmergencyAssistance");
+                    } else {
+                      navigation.navigate("ServiceCategory", { categoryId: cat.id });
+                    }
+                  }}
+                >
+                  <View style={s.exploreCatImageWrap}>
+                    <Image source={catImg} style={s.exploreCatImage} resizeMode="cover" />
+                  </View>
+                  <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>{cat.name}</Text>
+                  <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount(cat.id)}</Text>
+                </Pressable>
+              );
+            })}
           </View>
 
           {/* View All Categories Button opening Explore page */}
@@ -839,165 +814,32 @@ export default function ServicesDashboardScreen({ navigation }: Props) {
           </View>
 
           <View style={s.exploreCatGrid}>
-            {/* 1. Home Cleaning */}
-            <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "cleaning" })}
-            >
-              <View style={s.exploreCatImageWrap}>
-                <Image
-                  source={getCategoryImg("cleaning", SERVICE_LOCAL_IMAGES.cleaning)}
-                  style={s.exploreCatImage}
-                  resizeMode="cover"
-                />
-              </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Home Cleaning</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("cleaning")}</Text>
-            </Pressable>
-
-            {/* 2. RO Service */}
-            <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "ro" })}
-            >
-              <View style={s.exploreCatImageWrap}>
-                <Image
-                  source={getCategoryImg("ro", SERVICE_LOCAL_IMAGES.ro)}
-                  style={s.exploreCatImage}
-                  resizeMode="cover"
-                />
-              </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>RO Service</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("ro")}</Text>
-            </Pressable>
-
-            {/* 3. Pest Control */}
-            <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "pest" })}
-            >
-              <View style={s.exploreCatImageWrap}>
-                <Image
-                  source={getCategoryImg("pest", SERVICE_LOCAL_IMAGES.pest)}
-                  style={s.exploreCatImage}
-                  resizeMode="cover"
-                />
-              </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Pest Control</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("pest")}</Text>
-            </Pressable>
-
-            {/* 4. Pet Care */}
-            <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "pet" })}
-            >
-              <View style={s.exploreCatImageWrap}>
-                <Image
-                  source={getCategoryImg("pet", SERVICE_LOCAL_IMAGES.pet)}
-                  style={s.exploreCatImage}
-                  resizeMode="cover"
-                />
-              </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Pet Care</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("pet")}</Text>
-            </Pressable>
-
-            {/* 5. Horticulture */}
-            <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "hort" })}
-            >
-              <View style={s.exploreCatImageWrap}>
-                <Image
-                  source={getCategoryImg("hort", SERVICE_LOCAL_IMAGES.horticulture)}
-                  style={s.exploreCatImage}
-                  resizeMode="cover"
-                />
-              </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Horticulture</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("hort")}</Text>
-            </Pressable>
-
-            {/* 6. Appliance Cleaning */}
-            <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "appliance" })}
-            >
-              <View style={s.exploreCatImageWrap}>
-                <Image
-                  source={getCategoryImg("appliance", SERVICE_LOCAL_IMAGES.appliances)}
-                  style={s.exploreCatImage}
-                  resizeMode="cover"
-                />
-              </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Appliances</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("appliance")}</Text>
-            </Pressable>
-
-            {/* 7. Home Care */}
-            <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "homecare" })}
-            >
-              <View style={s.exploreCatImageWrap}>
-                <Image
-                  source={getCategoryImg("homecare", SERVICE_LOCAL_IMAGES.homecare)}
-                  style={s.exploreCatImage}
-                  resizeMode="cover"
-                />
-              </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Home Care</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("homecare")}</Text>
-            </Pressable>
-
-            {/* 8. Emergency Assistance */}
-            <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("EmergencyAssistance")}
-            >
-              <View style={s.exploreCatImageWrap}>
-                <Image
-                  source={getCategoryImg("emergency", SERVICE_LOCAL_IMAGES.emergency)}
-                  style={s.exploreCatImage}
-                  resizeMode="cover"
-                />
-              </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Emergency</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("emergency")}</Text>
-            </Pressable>
-
-            {/* 9. Insurance Services */}
-            <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "insurance" })}
-            >
-              <View style={s.exploreCatImageWrap}>
-                <Image
-                  source={getCategoryImg("insurance", SERVICE_LOCAL_IMAGES.insurance)}
-                  style={s.exploreCatImage}
-                  resizeMode="cover"
-                />
-              </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Insurance</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("insurance")}</Text>
-            </Pressable>
-
-            {/* 10. Other Services */}
-            <Pressable
-              style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
-              onPress={() => navigation.navigate("ServiceCategory", { categoryId: "other" })}
-            >
-              <View style={s.exploreCatImageWrap}>
-                <Image
-                  source={getCategoryImg("other", SERVICE_LOCAL_IMAGES.other)}
-                  style={s.exploreCatImage}
-                  resizeMode="cover"
-                />
-              </View>
-              <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>Other Services</Text>
-              <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount("other")}</Text>
-            </Pressable>
+            {liveCategories.map((cat) => {
+              const catImg = getCategoryImg(cat.id, SERVICE_LOCAL_IMAGES[cat.id] || SERVICE_LOCAL_IMAGES.cleaning);
+              return (
+                <Pressable
+                  key={cat.id}
+                  style={[s.exploreCatCard, { backgroundColor: isDark ? "#161f2e" : "#ffffff", borderColor: colors.cardBorder }]}
+                  onPress={() => {
+                    if (cat.id === "emergency") {
+                      navigation.navigate("EmergencyAssistance");
+                    } else {
+                      navigation.navigate("ServiceCategory", { categoryId: cat.id });
+                    }
+                  }}
+                >
+                  <View style={s.exploreCatImageWrap}>
+                    <Image
+                      source={catImg}
+                      style={s.exploreCatImage}
+                      resizeMode="cover"
+                    />
+                  </View>
+                  <Text style={[s.exploreCatTitle, { color: colors.text }]} numberOfLines={1}>{cat.name}</Text>
+                  <Text style={[s.exploreCatSub, { color: colors.textMuted }]}>{getCategoryServiceCount(cat.id)}</Text>
+                </Pressable>
+              );
+            })}
           </View>
 
           {/* ── 4. Bottom Blue Exclusive Offers Promo Card ───────────── */}

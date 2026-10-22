@@ -262,12 +262,21 @@ export default function ServiceScreen({ route, navigation }: any) {
         }
       }
 
-      // 2. If storage upload did not return URL, fallback to local/data URI
+      // 2. If storage upload did not return URL, fallback to Data URI (never raw local file://)
       if (!finalPhotoUrl) {
         if (asset.base64) {
           finalPhotoUrl = `data:image/jpeg;base64,${asset.base64}`;
         } else if (asset.uri) {
-          finalPhotoUrl = asset.uri;
+          try {
+            const b64 = await FileSystem.readAsStringAsync(asset.uri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            if (b64) {
+              finalPhotoUrl = `data:image/jpeg;base64,${b64}`;
+            }
+          } catch (_) {
+            finalPhotoUrl = asset.uri;
+          }
         }
       }
 
@@ -457,7 +466,7 @@ export default function ServiceScreen({ route, navigation }: any) {
       return { url: rawVal };
     }
 
-    // Zero-cost direct storage: Convert local audio files to Data URIs for remote web playback
+    // Zero-cost direct storage: Convert local audio & photo files to Data URIs for remote web playback/viewing
     if (rawVal.startsWith('data:') || rawVal.startsWith('file://')) {
       if (type === 'audio' && rawVal.startsWith('file://')) {
         try {
@@ -469,6 +478,21 @@ export default function ServiceScreen({ route, navigation }: any) {
           }
         } catch (e) {
           console.warn('[ensureCloudUrl] audio read error:', e);
+        }
+      }
+      if ((type === 'before' || type === 'after') && rawVal.startsWith('file://')) {
+        try {
+          const base64Str = await FileSystem.readAsStringAsync(rawVal, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          if (base64Str) {
+            return {
+              url: `data:image/jpeg;base64,${base64Str}`,
+              storagePath: `booking_proofs/${jobId}_${type}.jpg`,
+            };
+          }
+        } catch (e) {
+          console.warn('[ensureCloudUrl] photo read error:', e);
         }
       }
       return { url: rawVal, storagePath: undefined };
