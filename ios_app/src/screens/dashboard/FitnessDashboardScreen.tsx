@@ -27,12 +27,7 @@ import {
   getDailyActivityTotals,
   deleteActivity,
 } from "@/services/healthLogService";
-import {
-  FitnessVideo,
-  FitnessCategory,
-  subscribeToFitnessVideos,
-  openYouTubeVideo,
-} from "@/services/fitnessVideoService";
+import OpenGymView from "@/components/fitness/OpenGymView";
 
 type Props = NativeStackScreenProps<RootStackParamList, "FitnessDashboard">;
 const { width: SW } = Dimensions.get("window");
@@ -47,29 +42,11 @@ const ACTIVITY_TYPES: { type: ActivityType; label: string; icon: keyof typeof Io
   { type: "swimming", label: "Swim", icon: "water" },
 ];
 
-const FILTER_CATEGORIES: FitnessCategory[] = [
-  "All",
-  "Workout",
-  "Yoga",
-  "Cardio",
-  "Strength",
-  "Pilates",
-  "Stretching",
-  "Meditation",
-  "Running",
-  "Nutrition",
-];
-
 export default function FitnessDashboardScreen({ navigation }: Props) {
   const scrollRef = useRef<ScrollView>(null);
   const [loggedActivities, setLoggedActivities] = useState<ActivityItem[]>([]);
   const [totals, setTotals] = useState({ totalMins: 0, totalCalories: 0, totalDistanceKm: 0, count: 0 });
   const [modalVisible, setModalVisible] = useState(false);
-
-  // Real-time Fitness Videos from Firestore
-  const [videos, setVideos] = useState<FitnessVideo[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<FitnessCategory>("All");
-  const [loadingVideos, setLoadingVideos] = useState(true);
 
   // Form states for record workout
   const [selectedType, setSelectedType] = useState<ActivityType>("running");
@@ -87,29 +64,7 @@ export default function FitnessDashboardScreen({ navigation }: Props) {
 
   useEffect(() => {
     loadLoggedActivities();
-
-    // Subscribe to live Firestore fitness videos
-    setLoadingVideos(true);
-    const unsubscribe = subscribeToFitnessVideos((items) => {
-      setVideos(items);
-      setLoadingVideos(false);
-    });
-
-    return () => unsubscribe();
   }, []);
-
-  // Filtered videos based on active category
-  const filteredVideos = useMemo(() => {
-    if (selectedCategory === "All") return videos;
-    return videos.filter(
-      (v) => v.category.toLowerCase() === selectedCategory.toLowerCase()
-    );
-  }, [videos, selectedCategory]);
-
-  // Featured video for top showcase banner
-  const featuredVideo = useMemo(() => {
-    return videos.find((v) => v.isFeatured) || videos[0] || null;
-  }, [videos]);
 
   const handleSaveActivity = async () => {
     const mins = parseInt(durationMins, 10) || 0;
@@ -278,171 +233,8 @@ export default function FitnessDashboardScreen({ navigation }: Props) {
           </View>
         )}
 
-        {/* ── Real-Time Fitness Videos Showcase ─────────────────────── */}
-        <View style={s.videosContainer}>
-          {/* Section Header */}
-          <View style={s.sectionHeader}>
-            <View style={s.sectionTitleRow}>
-              <Text style={s.sectionTitle}>Fitness Classes & Workouts</Text>
-              <View style={s.liveRedDot} />
-            </View>
-            <Text style={s.videoCountBadge}>
-              {videos.length} {videos.length === 1 ? "Video" : "Videos"}
-            </Text>
-          </View>
-
-          {/* Category Filter Horizontal Scroll */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.catPillsRow}
-          >
-            {FILTER_CATEGORIES.map((cat) => {
-              const isSelected = selectedCategory === cat;
-              return (
-                <Pressable
-                  key={cat}
-                  onPress={() => setSelectedCategory(cat)}
-                  style={[s.catPill, isSelected && s.catPillActive]}
-                >
-                  <Text style={[s.catPillText, isSelected && s.catPillTextActive]}>
-                    {cat}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-
-          {/* Featured Video Showcase Banner */}
-          {featuredVideo && selectedCategory === "All" && (
-            <Pressable
-              style={s.featuredCard}
-              onPress={() => openYouTubeVideo(featuredVideo)}
-              android_ripple={{ color: "rgba(255,255,255,0.2)" }}
-            >
-              <View style={s.featuredThumbWrap}>
-                <Image
-                  source={{ uri: featuredVideo.thumbnailUrl }}
-                  style={s.featuredThumbImage}
-                  resizeMode="cover"
-                />
-                <LinearGradient
-                  colors={["transparent", "rgba(0,0,0,0.4)", "rgba(0,0,0,0.92)"]}
-                  style={s.featuredGradient}
-                />
-
-                {/* Top Badges */}
-                <View style={s.featuredTopBadges}>
-                  <View style={s.featuredCatBadge}>
-                    <Text style={s.featuredCatBadgeText}>{featuredVideo.category}</Text>
-                  </View>
-                  {featuredVideo.isFeatured && (
-                    <View style={s.featuredStarBadge}>
-                      <Ionicons name="star" size={10} color="#ffffff" />
-                      <Text style={s.featuredStarBadgeText}>FEATURED</Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* Big Center Red YouTube Play Button */}
-                <View style={s.playBtnCenter}>
-                  <View style={s.ytPlayCircle}>
-                    <Ionicons name="play" size={24} color="#ffffff" style={{ marginLeft: 3 }} />
-                  </View>
-                </View>
-
-                {/* Bottom Video Meta Overlay */}
-                <View style={s.featuredBottomMeta}>
-                  <Text style={s.featuredTitle} numberOfLines={2}>
-                    {featuredVideo.title}
-                  </Text>
-                  <View style={s.featuredSubRow}>
-                    <Text style={s.featuredInstructor}>
-                      <Ionicons name="person-outline" size={12} color="rgba(255,255,255,0.7)" />{" "}
-                      {featuredVideo.instructor} · {featuredVideo.duration}
-                    </Text>
-                    <View style={s.difficultyPill}>
-                      <Text style={s.difficultyText}>{featuredVideo.difficulty}</Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            </Pressable>
-          )}
-
-          {/* Video List Loading / Empty / Content */}
-          {loadingVideos ? (
-            <View style={s.loadingWrap}>
-              <ActivityIndicator size="small" color="#4ade80" />
-              <Text style={s.loadingText}>Syncing fitness videos…</Text>
-            </View>
-          ) : filteredVideos.length === 0 ? (
-            <View style={s.emptyStateCard}>
-              <View style={s.emptyIconWrap}>
-                <Ionicons name="videocam-outline" size={32} color="#4ade80" />
-              </View>
-              <Text style={s.emptyTitle}>No Videos in this Category</Text>
-              <Text style={s.emptySubtitle}>
-                Add YouTube workout links in the Admin Web Control Center to stream classes in real-time.
-              </Text>
-            </View>
-          ) : (
-            <View style={s.videosGrid}>
-              {filteredVideos.map((video) => (
-                <Pressable
-                  key={video.id}
-                  style={s.videoCard}
-                  onPress={() => openYouTubeVideo(video)}
-                  android_ripple={{ color: "rgba(255,255,255,0.15)" }}
-                >
-                  {/* Thumbnail */}
-                  <View style={s.videoThumb}>
-                    <Image
-                      source={{ uri: video.thumbnailUrl }}
-                      style={s.videoThumbImage}
-                      resizeMode="cover"
-                    />
-                    <LinearGradient
-                      colors={["transparent", "rgba(0,0,0,0.8)"]}
-                      style={s.videoThumbGradient}
-                    />
-
-                    {/* Category Pill */}
-                    <View style={s.videoCatPill}>
-                      <Text style={s.videoCatPillText}>{video.category}</Text>
-                    </View>
-
-                    {/* Duration Badge */}
-                    <View style={s.videoDurationBadge}>
-                      <Ionicons name="time-outline" size={10} color="#ffffff" />
-                      <Text style={s.videoDurationText}>{video.duration}</Text>
-                    </View>
-
-                    {/* YouTube Logo Badge */}
-                    <View style={s.ytBadge}>
-                      <Ionicons name="logo-youtube" size={20} color="#ff0000" />
-                    </View>
-                  </View>
-
-                  {/* Details */}
-                  <View style={s.videoDetails}>
-                    <Text style={s.videoTitle} numberOfLines={2}>
-                      {video.title}
-                    </Text>
-                    <View style={s.videoMetaRow}>
-                      <Text style={s.videoMetaText} numberOfLines={1}>
-                        {video.instructor}
-                      </Text>
-                      <View style={s.difficultyPillSmall}>
-                        <Text style={s.difficultyTextSmall}>{video.difficulty}</Text>
-                      </View>
-                    </View>
-                  </View>
-                </Pressable>
-              ))}
-            </View>
-          )}
-        </View>
+        {/* ── OpenGym Integrated Suite (Replaces YouTube Video Showcase) ── */}
+        <OpenGymView onWorkoutCompleted={loadLoggedActivities} navigation={navigation} />
 
         <View style={{ height: 130 }} />
       </ScrollView>
