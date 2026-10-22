@@ -124,29 +124,13 @@ export default function AppNavigator() {
               session.name || 'Vendor Captain',
               session.mobile || ''
             );
-            // Register vendor push notifications to shout loud when outside app
-            registerVendorPushNotifications().then(async (token) => {
-              if (token && session.vendorId && db) {
-                try {
-                  await setDoc(doc(db, 'vendors', session.vendorId), {
-                    pushToken: token,
-                    isOnline: true,
-                  }, { merge: true });
-                } catch (_) {}
-              }
-            }).catch(() => {});
-
-            if (active) {
-              setInitialRoute('MainTabs');
-              setCheckingAuth(false);
-            }
-
-            // In background: sync with Firestore if online (non-blocking)
+            // In background: sync with Firestore immediately so blocked state is strictly maintained
             if (db) {
               try {
                 const snap = await getDoc(doc(db, 'vendors', session.vendorId));
                 if (snap.exists() && active) {
                   const data = snap.data();
+                  store.syncVendorProfile(data);
                   store.setFirebaseUser(
                     session.vendorId,
                     data.name || session.name,
@@ -156,6 +140,24 @@ export default function AppNavigator() {
               } catch (fsErr) {
                 console.warn('[AppNavigator] Background sync warn:', fsErr);
               }
+            }
+
+            // Register vendor push notifications to shout loud when outside app
+            registerVendorPushNotifications().then(async (token) => {
+              if (token && session.vendorId && db) {
+                try {
+                  const updatePayload: any = { pushToken: token };
+                  if (!store.isVendorBlocked()) {
+                    updatePayload.isOnline = true;
+                  }
+                  await setDoc(doc(db, 'vendors', session.vendorId), updatePayload, { merge: true });
+                } catch (_) {}
+              }
+            }).catch(() => {});
+
+            if (active) {
+              setInitialRoute('MainTabs');
+              setCheckingAuth(false);
             }
             return;
           }

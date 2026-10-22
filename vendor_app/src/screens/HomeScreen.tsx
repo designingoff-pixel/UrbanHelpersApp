@@ -88,10 +88,11 @@ export default function HomeScreen({ navigation }: any) {
     registerVendorPushNotifications().then(async (token) => {
       if (token && store.vendorId && db) {
         try {
-          await updateDoc(doc(db, 'vendors', store.vendorId), {
-            pushToken: token,
-            isOnline: true,
-          });
+          const updatePayload: any = { pushToken: token };
+          if (!store.isVendorBlocked()) {
+            updatePayload.isOnline = true;
+          }
+          await updateDoc(doc(db, 'vendors', store.vendorId), updatePayload);
         } catch (_) {}
       }
     }).catch(() => {});

@@ -1,7 +1,7 @@
 // Simple reactive store — no Redux needed for this scale
 import { MOCK_NOTIFICATIONS, MOCK_VENDOR } from '../data/mockData';
 import { Job, JobStatus, Vendor, Notification } from '../data/types';
-import { FirestoreBooking } from '../services/firestoreService';
+import { FirestoreBooking, rejectAssignmentDueToBlock } from '../services/firestoreService';
 
 type Listener = () => void;
 
@@ -69,30 +69,41 @@ class AppStore {
       }
     }
 
-    const is7DaysExpired = blockedAtMs > 0 && (now - blockedAtMs) >= this.CANCEL_WINDOW_MS;
+    let blockExpiresAtMs = 0;
+    if (data.blockExpiresAt) {
+      if (typeof data.blockExpiresAt.toMillis === 'function') blockExpiresAtMs = data.blockExpiresAt.toMillis();
+      else if (typeof data.blockExpiresAt === 'number') blockExpiresAtMs = data.blockExpiresAt;
+      else if (data.blockExpiresAt.seconds) blockExpiresAtMs = data.blockExpiresAt.seconds * 1000;
+      else if (typeof data.blockExpiresAt === 'string') {
+        const p = new Date(data.blockExpiresAt).getTime();
+        if (!isNaN(p)) blockExpiresAtMs = p;
+      }
+    } else if (blockedAtMs > 0) {
+      blockExpiresAtMs = blockedAtMs + this.CANCEL_WINDOW_MS;
+    }
 
-    if (is7DaysExpired) {
-      // 7 days have passed since block! Automatically reset & unblock
-      this.cancelCount = 0;
-      this.vendor.cancelCount = 0;
-      this.vendor.skippedCount = 0;
+    const cCount = Math.min(this.CANCEL_LIMIT, typeof data.cancelCount === 'number' ? data.cancelCount : 0);
+    const sCount = Math.min(3, typeof data.skippedCount === 'number' ? data.skippedCount : 0);
+    this.cancelCount = cCount;
+    this.vendor.cancelCount = cCount;
+    this.vendor.skippedCount = sCount;
+    this.vendor.blockedAt = blockedAtMs || undefined;
+    this.vendor.blockExpiresAt = blockExpiresAtMs || undefined;
+
+    const is7DaysExpired = blockExpiresAtMs > 0 && now >= blockExpiresAtMs;
+    const isExplicitlyActive = data.status === 'active' && !data.isBlocked && !data.isLocked && cCount < this.CANCEL_LIMIT && sCount < 3;
+
+    if (isExplicitlyActive || (is7DaysExpired && cCount < this.CANCEL_LIMIT && sCount < 3)) {
       this.vendor.isLocked = false;
       this.vendor.isBlocked = false;
       this.vendor.status = 'active';
       this.vendor.lockReason = undefined;
-      this.vendor.blockedAt = undefined;
     } else {
-      const cCount = Math.min(this.CANCEL_LIMIT, typeof data.cancelCount === 'number' ? data.cancelCount : 0);
-      const sCount = Math.min(3, typeof data.skippedCount === 'number' ? data.skippedCount : 0);
-      this.cancelCount = cCount;
-      this.vendor.cancelCount = cCount;
-      this.vendor.skippedCount = sCount;
-      this.vendor.blockedAt = blockedAtMs || undefined;
-
       const isBlockState =
         data.isBlocked === true ||
         data.isLocked === true ||
         data.status === 'locked' ||
+        data.status === 'blocked' ||
         cCount >= this.CANCEL_LIMIT ||
         sCount >= 3;
 
@@ -102,12 +113,7 @@ class AppStore {
         this.vendor.isOnline = false;
         this.vendor.status = 'locked';
         this.vendor.lockReason =
-          data.lockReason || 'Profile is temporarily blocked. Contact Admin to unblock or wait 7 days to reset.';
-      } else {
-        this.vendor.isLocked = false;
-        this.vendor.isBlocked = false;
-        this.vendor.status = 'active';
-        this.vendor.lockReason = undefined;
+          data.lockReason || `Profile temporarily blocked: ${this.CANCEL_LIMIT} job cancellations recorded in 7 days. Contact Admin to unlock.`;
       }
     }
 
@@ -117,8 +123,28 @@ class AppStore {
     this.notify();
   }
 
+  // ── Authoritative Block Check Helper ────────────────────────────────────
+  isVendorBlocked(): boolean {
+    return (
+      this.vendor.isLocked === true ||
+      this.vendor.isBlocked === true ||
+      this.vendor.status === 'locked' ||
+      (this.vendor.status as any) === 'blocked' ||
+      this.cancelCount >= this.CANCEL_LIMIT ||
+      (this.vendor.cancelCount || 0) >= this.CANCEL_LIMIT
+    );
+  }
+
   // ── Sync New Requests ────────────────────────────────────────────────────
   syncNewRequests(firestoreJobs: FirestoreBooking[]) {
+    const isVendorBlocked = this.isVendorBlocked();
+
+    if (isVendorBlocked) {
+      this.jobs = this.jobs.filter(j => j.status !== 'NEW_REQUEST');
+      this.notify();
+      return;
+    }
+
     const otherJobs = this.jobs.filter(j => j.status !== 'NEW_REQUEST');
     const now = Date.now();
     const fresh = firestoreJobs.filter(b => {
@@ -138,19 +164,40 @@ class AppStore {
 
   // ── Sync Assigned & Completed Jobs ───────────────────────────────────────
   syncAssignedJobs(firestoreJobs: FirestoreBooking[]) {
+    const isVendorBlocked =
+      this.vendor.isLocked ||
+      this.vendor.isBlocked ||
+      this.vendor.status === 'locked' ||
+      this.cancelCount >= this.CANCEL_LIMIT ||
+      (this.vendor.cancelCount || 0) >= this.CANCEL_LIMIT;
+
+    if (isVendorBlocked) {
+      // Vendor is blocked: safely reject any incoming new assignments or requests back to Admin
+      firestoreJobs.forEach((fb) => {
+        if (fb.status === 'assigned' || fb.status === 'requested') {
+          if (this.vendorId) {
+            rejectAssignmentDueToBlock(fb.id, this.vendorId).catch(() => {});
+          }
+        }
+      });
+      // Do not allow new requests or assignments to show in store
+      firestoreJobs = firestoreJobs.filter(fb => fb.status !== 'assigned' && fb.status !== 'requested');
+    }
+
     const mapped = this._mapFirestore(firestoreJobs);
     const mappedIds = new Set(mapped.map(m => m.jobId));
     // Filter out duplicates so accepted jobs leave the requests list cleanly
-    const newReqs = this.jobs.filter(j => j.status === 'NEW_REQUEST' && !mappedIds.has(j.jobId));
+    const newReqs = isVendorBlocked
+      ? []
+      : this.jobs.filter(j => j.status === 'NEW_REQUEST' && !mappedIds.has(j.jobId));
     this.jobs = [...mapped, ...newReqs];
 
     // Compute rolling 7-day cancellation count from Firestore jobs
-    // ONLY count if explicitly cancelled by the vendor
     const now = Date.now();
     const sevenDaysAgo = now - this.CANCEL_WINDOW_MS;
     const recentVendorCancels = firestoreJobs.filter(b => {
       if (b.status !== 'cancelled') return false;
-      if (b.cancelledBy !== 'vendor') return false;
+      if (b.cancelledBy !== 'vendor' && b.cancelledVendorId !== this.vendorId) return false;
       let cTime = now;
       if (b.cancelledAt) {
         cTime = b.cancelledAt.toMillis ? b.cancelledAt.toMillis() : new Date(b.cancelledAt).getTime();
@@ -158,18 +205,21 @@ class AppStore {
       return cTime >= sevenDaysAgo;
     });
 
-    this.cancelCount = recentVendorCancels.length;
+    // Authoritative cancelCount never drops because of client query filtering
+    this.cancelCount = Math.min(
+      this.CANCEL_LIMIT,
+      Math.max(this.cancelCount, this.vendor.cancelCount || 0, recentVendorCancels.length)
+    );
     this.vendor.cancelCount = this.cancelCount;
 
-    if (this.cancelCount >= this.CANCEL_LIMIT) {
+    if (this.cancelCount >= this.CANCEL_LIMIT || isVendorBlocked) {
       this.vendor.isLocked = true;
+      this.vendor.isBlocked = true;
       this.vendor.isOnline = false;
       this.vendor.status = 'locked';
-      this.vendor.lockReason = `Profile temporarily blocked: ${this.CANCEL_LIMIT} job cancellations recorded in 7 days. Contact Admin to unlock.`;
-    } else if (this.vendor.status === 'locked' && this.vendor.lockReason?.includes('cancellation')) {
-      this.vendor.isLocked = false;
-      this.vendor.status = 'active';
-      this.vendor.lockReason = undefined;
+      this.vendor.lockReason =
+        this.vendor.lockReason ||
+        `Profile temporarily blocked: ${this.CANCEL_LIMIT} job cancellations recorded in 7 days. Contact Admin to unlock.`;
     }
 
     this.notify();
@@ -322,21 +372,7 @@ class AppStore {
   // ── Record a vendor cancellation — auto-blocks at 3 in 7 days ────────────
   recordCancellation(): { blocked: boolean; cancelCount: number } {
     const now = Date.now();
-    // Reset window if 7 days have passed since it started
-    if (now - this.cancelWeekStart > this.CANCEL_WINDOW_MS) {
-      this.cancelCount = 0;
-      this.cancelWeekStart = now;
-      // If block was due to cancels (not skips), unblock
-      if (!this.vendor.isLocked || this.vendor.lockReason?.includes('cancell')) {
-        this.vendor.isLocked = false;
-        this.vendor.isBlocked = false;
-        this.vendor.status = 'active';
-        this.vendor.lockReason = undefined;
-        this.vendor.blockedAt = undefined;
-      }
-    }
-
-    // Cap at CANCEL_LIMIT (3) — Never exceed 3 (e.g. 4, 5, 6...)
+    // Cap at CANCEL_LIMIT (3) — Never exceed 3
     this.cancelCount = Math.min(this.CANCEL_LIMIT, this.cancelCount + 1);
     this.vendor.cancelCount = this.cancelCount;
 
@@ -395,6 +431,17 @@ class AppStore {
   }
 
   getJobsForTab(tab: string): Job[] {
+    const isVendorBlocked =
+      this.vendor.isLocked ||
+      this.vendor.isBlocked ||
+      this.vendor.status === 'locked' ||
+      this.cancelCount >= this.CANCEL_LIMIT ||
+      (this.vendor.cancelCount || 0) >= this.CANCEL_LIMIT;
+
+    if (tab === 'requests' && isVendorBlocked) {
+      return [];
+    }
+
     const map: Record<string, JobStatus[]> = {
       requests: ['NEW_REQUEST', 'ADMIN_ASSIGNED'],
       upcoming: ['ACCEPTED', 'UPCOMING'],

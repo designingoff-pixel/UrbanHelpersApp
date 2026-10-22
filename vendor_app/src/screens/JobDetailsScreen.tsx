@@ -146,6 +146,20 @@ export default function JobDetailsScreen({ route, navigation }: any) {
   // ── Accept Action ────────────────────────────────────────────────────────
   const handleAccept = async () => {
     stopLoudOrderAlert();
+    if (
+      store.vendor.isLocked ||
+      store.vendor.isBlocked ||
+      store.vendor.status === 'locked' ||
+      store.cancelCount >= store.CANCEL_LIMIT ||
+      (store.vendor.cancelCount || 0) >= store.CANCEL_LIMIT
+    ) {
+      Alert.alert(
+        '🔒 Account Blocked',
+        `Your partner profile is temporarily blocked due to ${store.CANCEL_LIMIT} cancellations. You cannot accept new service assignments until unblocked by Admin.`
+      );
+      return;
+    }
+
     setSubmitting(true);
     try {
       store.updateJobStatus(job.jobId, 'ACCEPTED', { acceptedAt: Date.now() });
@@ -166,20 +180,22 @@ export default function JobDetailsScreen({ route, navigation }: any) {
     }
   };
 
-  // ── Reject / Skip Action with 3-Skip Auto-Lock Warning ────────────────────
+  // ── Reject / Skip Action with 3-Cancellation Auto-Block Warning ────────────
   const handleReject = () => {
-    const currentSkips = store.vendor.skippedCount || 0;
-    const warningMsg = currentSkips >= 2
-      ? `⚠️ WARNING: You have already skipped ${currentSkips} requests. Skipping this 3rd request will AUTOMATICALLY LOCK your partner profile.`
-      : `Are you sure you want to decline this booking? (Current skips: ${currentSkips}/3)`;
+    const current = Math.min(store.CANCEL_LIMIT, Math.max(store.cancelCount, store.vendor.cancelCount || 0));
+    const remaining = Math.max(0, store.CANCEL_LIMIT - current - 1);
+    const warningMsg =
+      current >= store.CANCEL_LIMIT - 1
+        ? `⚠️ FINAL WARNING: This is your ${store.CANCEL_LIMIT}rd cancellation. Your account will be TEMPORARILY BLOCKED immediately for 7 days after this.`
+        : `Are you sure you want to decline this booking?\n\nCancellation ${current + 1}/${store.CANCEL_LIMIT} — ${remaining} more before 7-day account block.`;
 
     Alert.alert(
-      'Skip Service Request',
+      'Decline Service Assignment',
       warningMsg,
       [
-        { text: 'Keep Request', style: 'cancel' },
+        { text: 'Keep Assignment', style: 'cancel' },
         {
-          text: 'Decline & Skip',
+          text: 'Decline & Cancel',
           style: 'destructive',
           onPress: async () => {
             setSubmitting(true);
@@ -187,16 +203,27 @@ export default function JobDetailsScreen({ route, navigation }: any) {
               playOrderChimeSound('cancelled');
               resetOrderNotification(job.jobId);
               store.updateJobStatus(job.jobId, 'REJECTED');
-              const cancelRes = store.recordCancellation();
-              const res = await rejectJob(job.jobId, store.vendorId || undefined, store.vendor?.name || undefined);
-              if (res.locked || cancelRes.blocked) {
-                Alert.alert('🔒 Account Locked', 'Your profile has been locked due to 3 skipped/cancelled service requests. Please contact Admin to unlock.');
+              const cancelRes = await cancelBooking(job.jobId, store.vendorId || undefined, store.vendor?.name || undefined);
+              if (cancelRes.blocked) {
+                store.vendor.isLocked = true;
+                store.vendor.isBlocked = true;
+                store.vendor.status = 'locked';
+                store.cancelCount = store.CANCEL_LIMIT;
+                store.vendor.cancelCount = store.CANCEL_LIMIT;
+                store.notify();
+                Alert.alert(
+                  '🔒 Account Blocked for 7 Days',
+                  `You have cancelled ${store.CANCEL_LIMIT} jobs in 7 days. Your profile is blocked immediately. You cannot go online or receive orders for 7 days unless unblocked by Admin.`
+                );
               } else {
+                store.cancelCount = cancelRes.cancelCount;
+                store.vendor.cancelCount = cancelRes.cancelCount;
+                store.notify();
                 Alert.alert('Job Declined', `Request removed. (${cancelRes.cancelCount}/${store.CANCEL_LIMIT} cancellations recorded)`);
               }
               navigation.goBack();
             } catch (err: any) {
-              Alert.alert('Error', err.message);
+              Alert.alert('Error', err.message || 'Could not decline booking');
             } finally {
               setSubmitting(false);
             }
@@ -208,11 +235,11 @@ export default function JobDetailsScreen({ route, navigation }: any) {
 
   // ── Cancel an Accepted Job (counts toward 3-cancel block) ───────────────
   const handleCancelJob = () => {
-    const current = Math.min(store.CANCEL_LIMIT, store.cancelCount);
+    const current = Math.min(store.CANCEL_LIMIT, Math.max(store.cancelCount, store.vendor.cancelCount || 0));
     const remaining = Math.max(0, store.CANCEL_LIMIT - current - 1);
     const warningMsg =
       current >= store.CANCEL_LIMIT - 1
-        ? `⚠️ FINAL WARNING: This is your ${store.CANCEL_LIMIT}rd cancellation. Your account will be TEMPORARILY BLOCKED for 7 days after this.`
+        ? `⚠️ FINAL WARNING: This is your ${store.CANCEL_LIMIT}rd cancellation. Your account will be TEMPORARILY BLOCKED immediately for 7 days after this.`
         : `Are you sure you want to cancel this booking?\n\nCancellation ${current + 1}/${store.CANCEL_LIMIT} — ${remaining} more before 7-day account block.`;
 
     Alert.alert('Cancel Job', warningMsg, [
@@ -225,21 +252,29 @@ export default function JobDetailsScreen({ route, navigation }: any) {
           try {
             store.updateJobStatus(job.jobId, 'CANCELLED');
             const cancelRes = await cancelBooking(job.jobId, store.vendorId || undefined, store.vendor?.name || undefined);
-            const result = store.recordCancellation();
-            if (cancelRes.blocked || result.blocked) {
+            if (cancelRes.blocked) {
+              store.vendor.isLocked = true;
+              store.vendor.isBlocked = true;
+              store.vendor.status = 'locked';
+              store.cancelCount = store.CANCEL_LIMIT;
+              store.vendor.cancelCount = store.CANCEL_LIMIT;
+              store.notify();
               Alert.alert(
                 '🔒 Account Blocked for 7 Days',
-                `You have cancelled ${store.CANCEL_LIMIT} jobs in 7 days. Your profile is blocked. You cannot go online or receive orders for 7 days unless unblocked by Admin.`
+                `You have cancelled ${store.CANCEL_LIMIT} jobs in 7 days. Your profile is blocked immediately. You cannot go online or receive orders for 7 days unless unblocked by Admin.`
               );
             } else {
+              store.cancelCount = cancelRes.cancelCount;
+              store.vendor.cancelCount = cancelRes.cancelCount;
+              store.notify();
               Alert.alert(
                 'Job Cancelled',
-                `Cancellation recorded (${result.cancelCount}/${store.CANCEL_LIMIT}). Avoid further cancellations to prevent 7-day account block.`
+                `Cancellation recorded (${cancelRes.cancelCount}/${store.CANCEL_LIMIT}). Avoid further cancellations to prevent 7-day account block.`
               );
             }
             navigation.goBack();
           } catch (err: any) {
-            Alert.alert('Error', err.message);
+            Alert.alert('Error', err.message || 'Failed to cancel booking');
           } finally {
             setSubmitting(false);
           }
@@ -718,11 +753,20 @@ export default function JobDetailsScreen({ route, navigation }: any) {
           </View>
         )}
 
-        {/* 2. Accepted / Upcoming / Navigating: Start Navigation */}
+        {/* 2. Accepted / Upcoming / Navigating: Start Navigation & Cancel */}
         {(job.status === 'ACCEPTED' || job.status === 'UPCOMING' || job.status === 'NAVIGATING') && (
           <View style={s.btnRow}>
             <TouchableOpacity
-              style={[s.actionBtn, s.startNavBtn, { flex: 1 }]}
+              style={[s.actionBtn, s.rejectBtn, { flex: 0.8 }]}
+              onPress={handleCancelJob}
+              disabled={submitting}
+              activeOpacity={0.8}
+            >
+              <Text style={s.rejectBtnText}>Cancel Job</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[s.actionBtn, s.startNavBtn, { flex: 1.2 }]}
               onPress={handleStartNavigation}
               activeOpacity={0.85}
             >

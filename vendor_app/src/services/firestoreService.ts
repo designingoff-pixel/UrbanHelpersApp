@@ -10,6 +10,7 @@ import {
   where,
   setDoc,
   increment,
+  runTransaction,
 } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -61,6 +62,7 @@ export interface FirestoreBooking {
   createdAt?:      any;
   cancelledAt?:    any;
   cancelledBy?:    string;
+  cancelledVendorId?: string;
   rejected?:       boolean;
   rejectedBy?:     string | null;
   rejectedByName?: string;
@@ -167,86 +169,170 @@ export function subscribeToNewRequests(
   return () => {};
 }
 
-// ── Vendor cancels an accepted job ────────────────────────────────────────────
+// ── Reject/Release assignment back to unassigned if vendor is blocked ────────
+export async function rejectAssignmentDueToBlock(
+  bookingId: string,
+  vendorId: string
+): Promise<void> {
+  if (!db || !bookingId) return;
+  try {
+    await updateDoc(doc(db, "bookings", bookingId), {
+      status: "requested",
+      vendorId: null,
+      vendorName: "Pending Admin Assignment",
+      vendorImage: null,
+      rejected: true,
+      rejectedBy: vendorId,
+      rejectedAt: serverTimestamp(),
+      lastRejectionNoticeId: Date.now().toString(),
+    });
+  } catch (err) {
+    console.warn("[rejectAssignmentDueToBlock] Failed to release booking:", err);
+  }
+}
+
+// ── Vendor cancels an accepted/assigned job ──────────────────────────────────
 export async function cancelBooking(
   bookingId: string,
   vendorId?: string,
   vendorName?: string
 ): Promise<{ blocked: boolean; cancelCount: number }> {
-  await updateDoc(doc(db, "bookings", bookingId), {
-    status:                "cancelled",
-    cancelledAt:           serverTimestamp(),
-    cancelledBy:           "vendor",
-    vendorId:              vendorId ?? null,
-    vendorName:            vendorName ?? "Vendor",
-    rejected:              true,
-    rejectedAt:            serverTimestamp(),
-    lastRejectionNoticeId: Date.now().toString(),
-  });
+  if (!db) throw new Error("Firestore is not initialized");
+  if (!bookingId) throw new Error("Booking ID is required for cancellation");
 
-  let blocked = false;
-  let finalCount = 1;
+  let vRef: any = null;
+  let resolvedVendorId = (vendorId || "").trim();
 
-  if (vendorId) {
-    try {
-      let vRef = doc(db, "vendors", vendorId);
-      let vSnap = await getDoc(vRef);
-      if (!vSnap.exists()) {
-        const q = query(collection(db, "vendors"), where("vendorId", "==", vendorId));
-        const qSnap = await getDocs(q);
-        if (!qSnap.empty) {
-          vRef = qSnap.docs[0].ref;
-          vSnap = qSnap.docs[0];
-        }
+  // 1. Resolve vendor doc reference
+  if (resolvedVendorId) {
+    vRef = doc(db, "vendors", resolvedVendorId);
+    const snap = await getDoc(vRef);
+    if (!snap.exists()) {
+      const q = query(collection(db, "vendors"), where("vendorId", "==", resolvedVendorId));
+      const qSnap = await getDocs(q);
+      if (!qSnap.empty) {
+        vRef = qSnap.docs[0].ref;
+        resolvedVendorId = qSnap.docs[0].data().vendorId || resolvedVendorId;
       }
-      if (vSnap.exists()) {
-        const vData = vSnap.data();
-        const now = Date.now();
-        const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-
-        let currentCancels = typeof vData.cancelCount === "number" ? vData.cancelCount : 0;
-        let blockedAtMs = 0;
-        if (vData.blockedAt) {
-          if (typeof vData.blockedAt.toMillis === "function") blockedAtMs = vData.blockedAt.toMillis();
-          else if (typeof vData.blockedAt === "number") blockedAtMs = vData.blockedAt;
-          else if (vData.blockedAt.seconds) blockedAtMs = vData.blockedAt.seconds * 1000;
-          else if (typeof vData.blockedAt === "string") {
-            const p = new Date(vData.blockedAt).getTime();
-            if (!isNaN(p)) blockedAtMs = p;
-          }
-        }
-
-        // If previous block has completed 7 days, reset counter
-        if (blockedAtMs > 0 && (now - blockedAtMs) >= SEVEN_DAYS_MS) {
-          currentCancels = 0;
-        }
-
-        // Cap at 3 (NEVER go to 4, 5, 6...)
-        finalCount = Math.min(3, currentCancels + 1);
-
-        const vUpdate: Record<string, any> = {
-          cancelCount: finalCount,
-          lastCancelledAt: serverTimestamp(),
-        };
-
-        if (finalCount >= 3) {
-          vUpdate.status = "locked";
-          vUpdate.isLocked = true;
-          vUpdate.isBlocked = true;
-          vUpdate.blockedAt = serverTimestamp();
-          vUpdate.blockExpiresAt = now + SEVEN_DAYS_MS;
-          vUpdate.lockReason = "Account temporarily blocked: 3 job cancellations recorded in 7 days. Contact Admin to unblock or wait 7 days to reset.";
-          blocked = true;
-        }
-
-        await updateDoc(vRef, vUpdate);
-      }
-    } catch (e) {
-      console.warn("[cancelBooking] Could not update vendor cancelCount:", e);
     }
   }
 
-  return { blocked, cancelCount: finalCount };
+  const bRef = doc(db, "bookings", bookingId);
+  if (!vRef) {
+    const bSnap = await getDoc(bRef);
+    if (bSnap.exists()) {
+      const bData = bSnap.data();
+      const bVendorId = bData.vendorId || bData.assignedVendorId || bData.cancelledVendorId;
+      if (bVendorId) {
+        resolvedVendorId = bVendorId;
+        vRef = doc(db, "vendors", bVendorId);
+        const snap = await getDoc(vRef);
+        if (!snap.exists()) {
+          const q = query(collection(db, "vendors"), where("vendorId", "==", bVendorId));
+          const qSnap = await getDocs(q);
+          if (!qSnap.empty) {
+            vRef = qSnap.docs[0].ref;
+          }
+        }
+      }
+    }
+  }
+
+  const now = Date.now();
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const cutoffTime = now - SEVEN_DAYS_MS;
+
+  let isBlocked = false;
+  let finalCancelCount = 0;
+
+  // Run atomic transaction to guarantee exact consistency and concurrency safety
+  await runTransaction(db, async (transaction) => {
+    const bDoc = await transaction.get(bRef);
+    if (!bDoc.exists()) {
+      throw new Error(`Booking ${bookingId} not found in database.`);
+    }
+    const bData = bDoc.data();
+
+    // Prevent duplicate cancellation requests from counting the same cancellation more than once
+    const alreadyCancelledByThisVendor =
+      bData.status === "cancelled" &&
+      bData.cancelledBy === "vendor" &&
+      (bData.vendorId === resolvedVendorId || bData.cancelledVendorId === resolvedVendorId);
+
+    if (vRef) {
+      const vDoc = await transaction.get(vRef);
+      if (vDoc.exists()) {
+        const vData = vDoc.data() as any;
+        let cancellationsList: Array<{ bookingId: string; timestamp: number }> = [];
+
+        if (Array.isArray(vData.cancellations)) {
+          cancellationsList = vData.cancellations
+            .map((c: any) => ({
+              bookingId: c.bookingId || "",
+              timestamp: typeof c.timestamp === "number"
+                ? c.timestamp
+                : (c.cancelledAt?.toMillis ? c.cancelledAt.toMillis() : new Date(c.cancelledAt || 0).getTime()),
+            }))
+            .filter((c: any) => c.timestamp >= cutoffTime);
+        } else if (typeof vData.cancelCount === "number" && vData.cancelCount > 0) {
+          // Backward compatibility: synthesize existing cancelCount
+          const baseTime = vData.lastCancelledAt?.toMillis ? vData.lastCancelledAt.toMillis() : now;
+          if (baseTime >= cutoffTime) {
+            for (let i = 0; i < vData.cancelCount; i++) {
+              cancellationsList.push({ bookingId: `legacy_${i}`, timestamp: baseTime - i * 1000 });
+            }
+          }
+        }
+
+        // Only add if this cancellation was not already counted for this specific booking
+        const existsInList = cancellationsList.some((c) => c.bookingId === bookingId);
+        if (!alreadyCancelledByThisVendor && !existsInList) {
+          cancellationsList.push({ bookingId, timestamp: now });
+        }
+
+        // Exact rolling 7-day count, capped at 3
+        finalCancelCount = Math.min(3, cancellationsList.length);
+        isBlocked = finalCancelCount >= 3 || vData.isBlocked === true || vData.status === "locked";
+
+        const vendorUpdates: Record<string, any> = {
+          cancelCount: finalCancelCount,
+          cancellations: cancellationsList,
+          lastCancelledAt: serverTimestamp(),
+          lastCancelledBookingId: bookingId,
+        };
+
+        if (finalCancelCount >= 3) {
+          isBlocked = true;
+          vendorUpdates.status = "locked";
+          vendorUpdates.isLocked = true;
+          vendorUpdates.isBlocked = true;
+          vendorUpdates.blockedAt = serverTimestamp();
+          vendorUpdates.blockExpiresAt = now + SEVEN_DAYS_MS;
+          vendorUpdates.lockReason =
+            "Account temporarily blocked: 3 job cancellations recorded in 7 days. Contact Admin to unblock or wait 7 days to reset.";
+          vendorUpdates.isOnline = false;
+        }
+
+        transaction.update(vRef, vendorUpdates);
+      }
+    }
+
+    // Atomically mark the booking cancelled
+    transaction.update(bRef, {
+      status: "cancelled",
+      cancelledAt: serverTimestamp(),
+      cancelledBy: "vendor",
+      cancelledVendorId: resolvedVendorId || null,
+      vendorId: resolvedVendorId || bData.vendorId || null,
+      vendorName: vendorName || bData.vendorName || "Vendor",
+      rejected: true,
+      rejectedAt: serverTimestamp(),
+      lastRejectionNoticeId: now.toString(),
+      cancellationReason: "Cancelled by partner technician",
+    });
+  });
+
+  return { blocked: isBlocked, cancelCount: finalCancelCount };
 }
 
 // ── Vendor updates checklist items ──────────────────────────────────────────
@@ -356,16 +442,28 @@ export async function acceptJob(
     ).catch((err) => console.warn("[acceptJob] Failed to push confirmed notif to customer:", err));
   }
 
-  // Reset consecutive skip count upon successfully accepting an order
+  // Reset consecutive skip count upon successfully accepting an order (never unblock if blocked for cancellations)
   if (vendorId) {
     try {
-      const vRef = doc(db, "vendors", vendorId);
-      await updateDoc(vRef, {
-        skippedCount: 0,
-        status: "active",
-        isLocked: false,
-        isBlocked: false,
-      });
+      let vRef = doc(db, "vendors", vendorId);
+      let vSnap = await getDoc(vRef);
+      if (!vSnap.exists()) {
+        const q = query(collection(db, "vendors"), where("vendorId", "==", vendorId));
+        const qSnap = await getDocs(q);
+        if (!qSnap.empty) {
+          vRef = qSnap.docs[0].ref;
+          vSnap = qSnap.docs[0];
+        }
+      }
+      if (vSnap.exists()) {
+        const vData = vSnap.data();
+        const hasCancelBlock = (vData.cancelCount || 0) >= 3 || vData.isBlocked === true || vData.status === "locked";
+        if (!hasCancelBlock) {
+          await updateDoc(vRef, {
+            skippedCount: 0,
+          });
+        }
+      }
     } catch (e) {
       console.warn("[acceptJob] Could not reset vendor skip count:", e);
     }
