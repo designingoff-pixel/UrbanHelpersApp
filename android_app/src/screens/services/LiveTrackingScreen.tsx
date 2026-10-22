@@ -167,19 +167,21 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
   const isCompleted = booking?.status === "completed";
   const isPreService = isVendorAssigned && !isServiceActive && !isCompleted && booking?.status !== "cancelled";
   const isTrackingActive = isPreService;
-  // Once vendor has accepted the order, customer cannot cancel
+  // Once vendor is assigned or accepted, customer cannot cancel
   const isVendorAccepted =
+    booking?.status === "assigned" ||
     booking?.status === "accepted" ||
     booking?.status === "vendor_accepted" ||
     (booking as any)?.vendorAccepted === true ||
     booking?.status === "on_the_way" ||
+    booking?.status === "en_route" ||
     booking?.status === "arrived" ||
     booking?.status === "in_progress" ||
     booking?.status === "service_ended" ||
     booking?.status === "completed";
   const isVendorArrived = booking?.status === "arrived" || booking?.status === "in_progress" || booking?.status === "service_ended" || booking?.status === "completed";
   const isServiceStarted = isServiceActive || booking?.status === "in_progress" || booking?.status === "service_ended" || !!(booking as any)?.startedAt || !!(booking as any)?.otpVerified;
-  const isCancellationLocked = isVendorAccepted || isVendorArrived || isServiceStarted;
+  const isCancellationLocked = isVendorAccepted || isVendorArrived || isServiceStarted || isVendorAssigned || !!booking?.vendorId || booking?.status !== "requested";
 
   // Subscribe to Vendor's profile photo and live GPS coords whenever assigned
   useEffect(() => {

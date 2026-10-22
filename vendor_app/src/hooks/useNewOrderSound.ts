@@ -82,6 +82,16 @@ export async function playOrderChimeSound(type: 'new_order' | 'cancelled' = 'new
   }
 }
 
+export function resetOrderNotification(jobId: string) {
+  try {
+    for (const k of Array.from(globalNotifiedIds)) {
+      if (k.startsWith(jobId)) {
+        globalNotifiedIds.delete(k);
+      }
+    }
+  } catch (_) {}
+}
+
 export function useNewOrderSound() {
   const initialSyncDoneRef = useRef(false);
 
@@ -102,27 +112,30 @@ export function useNewOrderSound() {
         const allJobs = store.jobs || [];
         const currentRequests = store.getJobsForTab('requests') || [];
 
-        // ON FIRST RUN: Seed ALL existing jobs into globalNotifiedIds so opening the app NEVER plays sound!
+        // ON FIRST RUN: Seed already known jobs into globalNotifiedIds
         if (!initialSyncDoneRef.current) {
-          allJobs.forEach((j) => globalNotifiedIds.add(j.jobId));
-          currentRequests.forEach((j) => globalNotifiedIds.add(j.jobId));
+          allJobs.forEach((j) => {
+            const k = `${j.jobId}_${(j as any).assignmentNoticeId || (j as any).assignedAt || '1'}`;
+            globalNotifiedIds.add(k);
+          });
+          currentRequests.forEach((j) => {
+            const k = `${j.jobId}_${(j as any).assignmentNoticeId || (j as any).assignedAt || '1'}`;
+            globalNotifiedIds.add(k);
+          });
           initialSyncDoneRef.current = true;
           persistNotifiedIds();
           return;
         }
 
-        // Live check: only trigger sound for genuinely NEW requests arriving while app is active
+        // Live check: trigger loud chime whenever a request arrives or is re-assigned
         let playedAny = false;
         for (const job of currentRequests) {
-          if (!globalNotifiedIds.has(job.jobId)) {
-            globalNotifiedIds.add(job.jobId);
+          const noticeKey = `${job.jobId}_${(job as any).assignmentNoticeId || (job as any).assignedAt || (job as any).assignmentTimestamp || 'assigned'}`;
+          if (!globalNotifiedIds.has(noticeKey)) {
+            globalNotifiedIds.add(noticeKey);
             persistNotifiedIds();
 
-            // Guard against stale jobs: if assigned > 3 minutes ago, it's not a real-time event
-            const jobTime = job.createdAt || 0;
-            const isFresh = (Date.now() - jobTime) < 180000 || jobTime > appLaunchTimestamp;
-
-            if (!playedAny && isFresh) {
+            if (!playedAny) {
               playedAny = true;
               playOrderChimeSound('new_order');
               triggerLoudNewOrderNotification(

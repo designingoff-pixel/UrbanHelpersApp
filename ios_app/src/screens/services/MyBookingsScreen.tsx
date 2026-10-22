@@ -73,18 +73,20 @@ const STATUS_LABELS: Record<BookingStatus, string> = {
   cancelled: "Cancelled",
 };
 
-/** Statuses for which the customer is allowed to request cancellation (strictly before vendor accepts). */
+/** Statuses for which the customer is allowed to request cancellation (strictly before vendor is assigned/accepts). */
 const CANCELLABLE_STATUSES = new Set<BookingStatus>([
   "requested",
-  "assigned",
 ]);
 
 function isCancellable(booking: Booking): boolean {
   if (
+    !!booking.vendorId ||
+    booking.status === "assigned" ||
     booking.status === "accepted" ||
     booking.status === "vendor_accepted" ||
     (booking as any).vendorAccepted === true ||
     booking.status === "on_the_way" ||
+    (booking.status as string) === "en_route" ||
     booking.status === "arrived" ||
     booking.status === "in_progress" ||
     booking.status === "service_ended" ||

@@ -204,7 +204,13 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
     booking?.status === "service_ended" ||
     !!(booking as any)?.startedAt ||
     !!(booking as any)?.otpVerified;
-  const isCancellationLocked = isVendorAccepted || isVendorArrived || isServiceStarted;
+  const isCancellationLocked =
+    isVendorAccepted ||
+    isVendorArrived ||
+    isServiceStarted ||
+    isVendorAssigned ||
+    !!booking?.vendorId ||
+    booking?.status !== "requested";
 
   useEffect(() => {
     if (!booking?.vendorId) {

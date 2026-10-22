@@ -24,7 +24,7 @@ import OTPInput from '../components/OTPInput';
 import SOSModal from '../components/SOSModal';
 import DiagnosticModal from '../components/DiagnosticModal';
 import NearbySuppliersModal from '../components/NearbySuppliersModal';
-import { stopLoudOrderAlert, playOrderChimeSound } from '../hooks/useNewOrderSound';
+import { stopLoudOrderAlert, playOrderChimeSound, resetOrderNotification } from '../hooks/useNewOrderSound';
 
 const { width } = Dimensions.get('window');
 
@@ -185,6 +185,7 @@ export default function JobDetailsScreen({ route, navigation }: any) {
             setSubmitting(true);
             try {
               playOrderChimeSound('cancelled');
+              resetOrderNotification(job.jobId);
               store.updateJobStatus(job.jobId, 'REJECTED');
               const cancelRes = store.recordCancellation();
               const res = await rejectJob(job.jobId, store.vendorId || undefined, store.vendor?.name || undefined);
@@ -717,60 +718,23 @@ export default function JobDetailsScreen({ route, navigation }: any) {
           </View>
         )}
 
-        {/* 2. Accepted / Upcoming: Start Navigation or Mark Arrived */}
-        {(job.status === 'ACCEPTED' || job.status === 'UPCOMING') && (
+        {/* 2. Accepted / Upcoming / Navigating: Start Navigation */}
+        {(job.status === 'ACCEPTED' || job.status === 'UPCOMING' || job.status === 'NAVIGATING') && (
           <View style={s.btnRow}>
             <TouchableOpacity
-              style={[s.actionBtn, s.startNavBtn]}
+              style={[s.actionBtn, s.startNavBtn, { flex: 1 }]}
               onPress={handleStartNavigation}
               activeOpacity={0.85}
             >
               <Ionicons name="navigate-circle" size={18} color="#FFFFFF" />
               <Text style={s.actionBtnText}>Start Navigation</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[s.actionBtn, s.arrivedBtn]}
-              onPress={handleArrived}
-              disabled={submitting}
-              activeOpacity={0.85}
-            >
-              {submitting ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="location" size={18} color="#FFFFFF" />
-                  <Text style={s.actionBtnText}>I Arrived</Text>
-                </>
-              )}
-            </TouchableOpacity>
           </View>
         )}
 
-        {/* 3. Navigating: On the way, single tap Mark Arrived */}
-        {job.status === 'NAVIGATING' && (
-          <View style={s.btnRow}>
-            <TouchableOpacity
-              style={[s.actionBtn, s.arrivedBtn, { flex: 1 }]}
-              onPress={handleArrived}
-              disabled={submitting}
-              activeOpacity={0.85}
-            >
-              {submitting ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-                  <Text style={[s.actionBtnText, { fontSize: 16 }]}>I Have Arrived at Location</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* 4. Arrived: Enter & Verify OTP */}
-        {job.status === 'ARRIVED' && (
-          <View style={s.btnRow}>
+        {/* 3. Direct Customer OTP Verification */}
+        {['ACCEPTED', 'UPCOMING', 'NAVIGATING', 'ARRIVED'].includes(job.status) && (
+          <View style={[s.btnRow, { marginTop: 6 }]}>
             <TouchableOpacity
               style={[s.actionBtn, s.otpBtn, { flex: 1 }]}
               onPress={handleVerifyOTP}

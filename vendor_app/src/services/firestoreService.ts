@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   onSnapshot,
   query,
   serverTimestamp,
@@ -188,8 +189,16 @@ export async function cancelBooking(
 
   if (vendorId) {
     try {
-      const vRef = doc(db, "vendors", vendorId);
-      const vSnap = await getDoc(vRef);
+      let vRef = doc(db, "vendors", vendorId);
+      let vSnap = await getDoc(vRef);
+      if (!vSnap.exists()) {
+        const q = query(collection(db, "vendors"), where("vendorId", "==", vendorId));
+        const qSnap = await getDocs(q);
+        if (!qSnap.empty) {
+          vRef = qSnap.docs[0].ref;
+          vSnap = qSnap.docs[0];
+        }
+      }
       if (vSnap.exists()) {
         const vData = vSnap.data();
         const now = Date.now();
@@ -386,14 +395,22 @@ export async function rejectJob(
 
   if (vendorId) {
     try {
-      const vRef = doc(db, "vendors", vendorId);
-      const vSnap = await getDoc(vRef);
+      let vRef = doc(db, "vendors", vendorId);
+      let vSnap = await getDoc(vRef);
+      if (!vSnap.exists()) {
+        const q = query(collection(db, "vendors"), where("vendorId", "==", vendorId));
+        const qSnap = await getDocs(q);
+        if (!qSnap.empty) {
+          vRef = qSnap.docs[0].ref;
+          vSnap = qSnap.docs[0];
+        }
+      }
       if (vSnap.exists()) {
         const vData = vSnap.data();
         const now = Date.now();
         const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
-        let currentSkips = typeof vData.skippedCount === "number" ? vData.skippedCount : 0;
+        let currentSkips = typeof vData.skippedCount === "number" ? vData.skippedCount : (typeof vData.rejectedCount === "number" ? vData.rejectedCount : 0);
         let blockedAtMs = 0;
         if (vData.blockedAt) {
           if (typeof vData.blockedAt.toMillis === "function") blockedAtMs = vData.blockedAt.toMillis();
@@ -409,11 +426,14 @@ export async function rejectJob(
           currentSkips = 0;
         }
 
-        // Cap at 3
+        // Increment rejection count
         newCount = Math.min(3, currentSkips + 1);
         const updateData: Record<string, any> = {
           skippedCount: newCount,
+          rejectedCount: newCount,
           lastSkippedAt: serverTimestamp(),
+          lastRejectedAt: serverTimestamp(),
+          lastRejectedBookingId: bookingId,
         };
 
         if (newCount >= 3) {
@@ -422,7 +442,7 @@ export async function rejectJob(
           updateData.isBlocked = true;
           updateData.blockedAt = serverTimestamp();
           updateData.blockExpiresAt = now + SEVEN_DAYS_MS;
-          updateData.lockReason = "Profile locked automatically due to 3 consecutive skipped service requests. Contact Admin to unblock or wait 7 days to reset.";
+          updateData.lockReason = "Account blocked automatically: 3 service requests rejected/skipped today. Contact Admin to unblock.";
           locked = true;
         }
 
@@ -529,17 +549,28 @@ export async function updateBookingAudio(
 ): Promise<void> {
   const updatePayload: Record<string, any> = {};
 
-  if (typeof audioUrl === 'string' && audioUrl.startsWith('data:') && audioUrl.length > 50000) {
-    try {
-      await setDoc(doc(db, "bookings", bookingId, "evidence", "audio"), {
-        audioData: audioUrl,
-        recordedAt: new Date().toISOString(),
-        bookingId,
-      }, { merge: true });
-      updatePayload.audioUrl = 'subcollection:evidence/audio';
+  if (typeof audioUrl === 'string' && audioUrl.startsWith('data:')) {
+    if (audioUrl.length > 700000) {
+      // Audio payload too large for Firestore 1MB limit; use reference
+      updatePayload.audioUrl = metadata?.storagePath ? `storage:${metadata.storagePath}` : 'subcollection:evidence/audio';
       updatePayload.hasAudioProof = true;
-    } catch (e) {
-      console.warn('[updateBookingAudio] Subcollection audio write warning:', e);
+    } else if (audioUrl.length > 50000) {
+      try {
+        await setDoc(doc(db, "bookings", bookingId, "evidence", "audio"), {
+          audioData: audioUrl,
+          recordedAt: new Date().toISOString(),
+          bookingId,
+        }, { merge: true });
+        updatePayload.audioUrl = 'subcollection:evidence/audio';
+        updatePayload.hasAudioProof = true;
+      } catch (e) {
+        console.warn('[updateBookingAudio] Subcollection audio write warning:', e);
+        updatePayload.audioUrl = metadata?.storagePath ? `storage:${metadata.storagePath}` : 'subcollection:evidence/audio';
+        updatePayload.hasAudioProof = true;
+      }
+    } else {
+      updatePayload.audioUrl = audioUrl;
+      updatePayload.hasAudioProof = true;
     }
   } else if (audioUrl !== undefined) {
     updatePayload.audioUrl = audioUrl;
@@ -553,7 +584,11 @@ export async function updateBookingAudio(
     updatePayload.audioMetadata = metadata.audioMetadata;
   }
   if (Object.keys(updatePayload).length > 0) {
-    await updateDoc(doc(db, "bookings", bookingId), updatePayload);
+    try {
+      await updateDoc(doc(db, "bookings", bookingId), updatePayload);
+    } catch (err) {
+      console.warn('[updateBookingAudio] updateDoc warning:', err);
+    }
   }
 }
 

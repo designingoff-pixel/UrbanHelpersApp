@@ -2637,11 +2637,45 @@
       if (!v) return { isBlocked: false, remainingDays: 0, reason: '', cancels: 0, skips: 0 };
       const rawCancels = Number(v.cancelCount || 0);
       const rawSkips = Number(v.skippedCount || 0);
-      // Cap at 3 for display (never show 4/3, 5/3)
-      const cancels = Math.min(3, Math.max(0, rawCancels));
-      const skips = Math.min(3, Math.max(0, rawSkips));
+      const rawRejections = Number(v.rejectedCount || 0);
 
-      const isLockedOrBlocked = v.isBlocked === true || v.isLocked === true || v.blocked === true || v.status === 'locked' || v.status === 'blocked' || v.status === 'suspended' || v.isSuspended === true || rawCancels >= 3 || rawSkips >= 3;
+      // Check daily rejections from bookings for today
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayStartMs = todayStart.getTime();
+
+      const vId = (v.vendorId || v.id || '').trim();
+      const vDocId = (v.id || '').trim();
+
+      let todayRejections = 0;
+      if (Array.isArray(_allBookings)) {
+        todayRejections = _allBookings.filter(b => {
+          const isThisVendor = (
+            (b.rejectedBy && (b.rejectedBy === vId || b.rejectedBy === vDocId)) ||
+            (b.lastRejectedBy && (b.lastRejectedBy === vId || b.lastRejectedBy === vDocId)) ||
+            (b.vendorId && (b.vendorId === vId || b.vendorId === vDocId)) ||
+            (b.assignedVendorId && (b.assignedVendorId === vId || b.assignedVendorId === vDocId))
+          );
+          if (!isThisVendor) return false;
+          const isRej = b.rejected === true || b.status === 'rejected' || b.cancelledBy === 'vendor' || (b.status === 'requested' && b.rejectedAt);
+          if (!isRej) return false;
+          let rTime = 0;
+          const t = b.rejectedAt || b.cancelledAt || b.updatedAt;
+          if (t) {
+            if (typeof t.toMillis === 'function') rTime = t.toMillis();
+            else if (t.seconds) rTime = t.seconds * 1000;
+            else if (typeof t === 'number') rTime = t;
+            else rTime = new Date(t).getTime() || 0;
+          }
+          return rTime >= todayStartMs;
+        }).length;
+      }
+
+      const totalSkipsOrRejections = Math.max(rawSkips, rawRejections, todayRejections);
+      const cancels = Math.min(3, Math.max(0, rawCancels));
+      const skips = Math.min(3, Math.max(0, totalSkipsOrRejections));
+
+      const isLockedOrBlocked = v.isBlocked === true || v.isLocked === true || v.blocked === true || v.status === 'locked' || v.status === 'blocked' || v.status === 'suspended' || v.isSuspended === true || rawCancels >= 3 || totalSkipsOrRejections >= 3;
       if (!isLockedOrBlocked) {
         return { isBlocked: false, remainingDays: 0, reason: '', cancels, skips };
       }
@@ -2676,23 +2710,27 @@
         }
       } else if (bTime > 0) {
         expiresAt = bTime + SEVEN_DAYS_MS;
+      } else if (totalSkipsOrRejections >= 3) {
+        expiresAt = todayStartMs + (24 * 60 * 60 * 1000);
       }
 
       const now = Date.now();
-      // If 7 days have already passed from block time, vendor is auto-unblocked
-      if (expiresAt > 0 && now >= expiresAt) {
+      // If block period has passed and no active daily rejections, unblock
+      if (expiresAt > 0 && now >= expiresAt && totalSkipsOrRejections < 3) {
         return { isBlocked: false, isExpired: true, remainingDays: 0, reason: '', cancels, skips };
       }
 
-      let remainingDays = 7;
+      let remainingDays = 1;
       if (expiresAt > 0) {
         remainingDays = Math.max(1, Math.ceil((expiresAt - now) / (24 * 60 * 60 * 1000)));
       }
 
       let reason = 'Blocked';
-      if (rawCancels >= 3) {
+      if (todayRejections >= 3) {
+        reason = '3/3 Daily Rejections';
+      } else if (rawCancels >= 3) {
         reason = '3/3 Cancellations';
-      } else if (rawSkips >= 3) {
+      } else if (totalSkipsOrRejections >= 3) {
         reason = '3/3 Skipped Jobs';
       } else if (v.lockReason) {
         reason = v.lockReason;
@@ -2976,6 +3014,11 @@
           return;
         }
 
+        // Ensure bookings are loaded to accurately calculate today's vendor rejections
+        if (typeof ensureBookings === 'function') {
+          await ensureBookings().catch(() => {});
+        }
+
         // Sort so vendors matching this service category are on top
         const bookingCat = (b.serviceCategory || '').toLowerCase();
         const sorted = [..._allVendorsList].sort((a, bVendor) => {
@@ -3041,7 +3084,7 @@
       btn.disabled = true;
       btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></div> Assigning…';
 
-      try {
+        const assignmentTimestamp = Date.now();
         await updateDoc(doc(db, 'bookings', bookingId), {
           vendorId: vendor.vendorId || vendor.id,
           vendorName: vendor.name,
@@ -3049,9 +3092,12 @@
           vendorImage: vendor.avatar || vendor.photo || vendor.photoURL || vendor.image || vendor.vendorImage || null,
           status: 'assigned',
           assignedAt: serverTimestamp(),
+          assignmentNoticeId: assignmentTimestamp.toString(),
+          assignmentTimestamp: assignmentTimestamp,
           // Clear rejection flag
           rejected: false,
           rejectedAt: null,
+          cancelledBy: null,
           // Clear any previous execution proofs from past attempts so reassignment starts fresh
           beforePhoto: null,
           afterPhoto: null,
@@ -3072,6 +3118,8 @@
           b.status = 'assigned';
           b.rejected = false;
           b.rejectedAt = null;
+          b.cancelledBy = null;
+          b.assignmentNoticeId = assignmentTimestamp.toString();
           b.beforePhoto = null;
           b.afterPhoto = null;
           b.audioUrl = null;
@@ -3102,7 +3150,8 @@
                 sound: 'default',
                 channelId: 'urgent-orders',
                 priority: 'high',
-                data: { screen: 'HomeScreen', bookingId: bookingId, type: 'new_order' },
+                _displayInForeground: true,
+                data: { screen: 'HomeScreen', bookingId: bookingId, noticeId: assignmentTimestamp.toString(), type: 'new_order' },
               }),
             }).catch(e => console.warn('Expo push send error:', e));
           }

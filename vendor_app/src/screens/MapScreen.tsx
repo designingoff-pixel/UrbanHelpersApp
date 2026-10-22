@@ -354,18 +354,15 @@ export default function MapScreen({ route, navigation }: any) {
           </TouchableOpacity>
         </View>
 
-        {/* Arrived */}
-        {!arrived ? (
-          <TouchableOpacity onPress={handleArrived} style={st.arrivedBtn} activeOpacity={0.85}>
-            <Ionicons name="flag" size={20} color="#4ade80" />
-            <Text style={st.arrivedText}>I've Arrived at Customer</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={[st.arrivedBtn, { borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.15)' }]}>
-            <Ionicons name="checkmark-circle" size={20} color="#4ade80" />
-            <Text style={st.arrivedText}>Arrived — Verifying OTP…</Text>
-          </View>
-        )}
+        {/* Back to Job Details for OTP */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('JobDetails', { jobId })}
+          style={[st.arrivedBtn, { borderColor: '#10B981', backgroundColor: 'rgba(16,185,129,0.15)' }]}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="keypad" size={20} color="#10B981" />
+          <Text style={[st.arrivedText, { color: '#10B981' }]}>Back to Job Details & OTP</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
