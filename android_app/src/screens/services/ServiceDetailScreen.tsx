@@ -14,6 +14,7 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Svg, { Line, Circle } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -348,6 +349,23 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
   const [calendarMonth, setCalendarMonth] = useState<number>(() => new Date().getMonth());
   const [bookingDate, setBookingDate] = useState<string>(() => formatReadableDate(new Date()));
   const [bookingTime, setBookingTime] = useState<string>("10:00 AM");
+
+  // Analog Round Clock Picker states
+  const [clockMode, setClockMode] = useState<"hours" | "minutes">("hours");
+  const [clockHour, setClockHour] = useState<number>(10);
+  const [clockMinute, setClockMinute] = useState<number>(0);
+  const [clockAmPm, setClockAmPm] = useState<"AM" | "PM">("AM");
+
+  const openTimePicker = () => {
+    const match = bookingTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+    if (match) {
+      setClockHour(parseInt(match[1], 10) || 10);
+      setClockMinute(parseInt(match[2], 10) || 0);
+      setClockAmPm((match[3]?.toUpperCase() === "PM") ? "PM" : "AM");
+    }
+    setClockMode("hours");
+    setTimeModalVisible(true);
+  };
 
   const isTodaySelected = isSameDay(selectedDateObj, today);
   const isTomorrowSelected = isSameDay(selectedDateObj, tomorrowObj);
@@ -1269,84 +1287,91 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
             )}
           </View>
 
-          {/* Card 2: Schedule Date & Custom Time */}
+          {/* Card 2: Preferred Arrival Schedule */}
           <View style={[styles.scheduleCard, { backgroundColor: isDark ? themeColors.card : "#FAF5FF", borderColor: isDark ? themeColors.cardBorder : "#F3E8FF" }]}>
             <View style={styles.cardHeaderSmall}>
               <View style={[styles.purpleCalCircle, isDark && { backgroundColor: "rgba(124,58,237,0.18)" }]}>
                 <Ionicons name="calendar" size={16} color="#7C3AED" />
               </View>
               <View style={{ flex: 1, marginLeft: 8 }}>
-                <Text style={[styles.smallCardTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>Schedule Date & Time</Text>
+                <Text style={[styles.smallCardTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>Preferred Arrival Schedule</Text>
                 <Text style={[styles.smallCardSub, { color: isDark ? themeColors.textSecondary : "#64748B" }]}>
-                  Select your arrival date & custom time
+                  Your preferred doorstep visit schedule
                 </Text>
+              </View>
+              <View style={{ backgroundColor: "rgba(16,185,129,0.12)", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 }}>
+                <Text style={{ color: "#10B981", fontSize: 11, fontWeight: "700" }}>Selected</Text>
               </View>
             </View>
 
-            {/* Date Selection Button (Opens full calendar) */}
-            <TouchableOpacity
-              style={[
-                styles.whiteInputPill,
-                {
-                  marginTop: 8,
-                  paddingVertical: 12,
-                  paddingHorizontal: 14,
-                  backgroundColor: isDark ? themeColors.surface : "#FFFFFF",
-                  borderColor: themeColors.cardBorder,
-                },
-              ]}
-              onPress={() => setDateModalVisible(true)}
-              activeOpacity={0.8}
-            >
-              <Ionicons
-                name="calendar"
-                size={18}
-                color="#7C3AED"
-                style={{ marginRight: 10 }}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 10, color: isDark ? themeColors.textSecondary : "#64748B", fontWeight: "700", letterSpacing: 0.5 }}>DATE</Text>
-                <Text
-                  style={[
-                    styles.schedulePillText,
-                    { color: isDark ? themeColors.text : "#0F172A", fontSize: 13, fontWeight: "700", marginTop: 1 },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {bookingDate}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={15} color={isDark ? themeColors.textMuted : "#94A3B8"} style={{ marginLeft: "auto" }} />
-            </TouchableOpacity>
-
-            {/* Time Selection Button (Customer picks their own custom time) */}
-            <TouchableOpacity
-              style={[
-                styles.whiteInputPill,
-                {
-                  marginTop: 8,
-                  paddingVertical: 12,
-                  paddingHorizontal: 14,
-                  backgroundColor: isDark ? themeColors.surface : "#FFFFFF",
-                  borderColor: themeColors.cardBorder,
-                },
-              ]}
-              onPress={() => {
-                setCustomTimeInput(bookingTime.replace(/[AP]M/gi, "").trim());
-                setCustomAmPm(bookingTime.toUpperCase().includes("PM") ? "PM" : "AM");
-                setTimeModalVisible(true);
+            {/* Prominent Preferred Date & Time Display Banner */}
+            <View
+              style={{
+                backgroundColor: isDark ? themeColors.surface : "#FFFFFF",
+                borderRadius: 14,
+                padding: 14,
+                marginTop: 10,
+                borderWidth: 1,
+                borderColor: themeColors.cardBorder,
               }}
-              activeOpacity={0.8}
             >
-              <Ionicons name="time-outline" size={18} color="#7C3AED" style={{ marginRight: 10 }} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 10, color: isDark ? themeColors.textSecondary : "#64748B", fontWeight: "700", letterSpacing: 0.5 }}>TIME (SELECT YOUR OWN TIME)</Text>
-                <Text style={[styles.schedulePillText, { color: isDark ? themeColors.text : "#0F172A", fontSize: 13, fontWeight: "700", marginTop: 1 }]} numberOfLines={1}>
-                  {bookingTime}
-                </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(124,58,237,0.12)", justifyContent: "center", alignItems: "center" }}>
+                  <Ionicons name="time" size={20} color="#7C3AED" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: isDark ? themeColors.textSecondary : "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                    Prefer Date & Time
+                  </Text>
+                  <Text style={{ fontSize: 15, fontWeight: "800", color: isDark ? themeColors.text : "#0F172A", marginTop: 2 }}>
+                    {bookingDate} • {bookingTime}
+                  </Text>
+                </View>
               </View>
-              <Ionicons name="chevron-forward" size={15} color={isDark ? themeColors.textMuted : "#94A3B8"} style={{ marginLeft: "auto" }} />
-            </TouchableOpacity>
+
+              {/* Action Buttons to Change Date or Time */}
+              <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    backgroundColor: isDark ? themeColors.cardAlt : "#F1F5F9",
+                    paddingVertical: 10,
+                    borderRadius: 10,
+                    borderWidth: 1,
+                    borderColor: themeColors.cardBorder,
+                  }}
+                  onPress={() => setDateModalVisible(true)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="calendar-outline" size={15} color="#7C3AED" />
+                  <Text style={{ fontSize: 12.5, fontWeight: "700", color: isDark ? themeColors.text : "#0F172A" }}>Change Date</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    backgroundColor: isDark ? themeColors.cardAlt : "#F1F5F9",
+                    paddingVertical: 10,
+                    borderRadius: 10,
+                    borderWidth: 1,
+                    borderColor: themeColors.cardBorder,
+                  }}
+                  onPress={openTimePicker}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="time-outline" size={15} color="#0284C7" />
+                  <Text style={{ fontSize: 12.5, fontWeight: "700", color: isDark ? themeColors.text : "#0F172A" }}>Change Time</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -1677,87 +1702,13 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
                 })}
               </View>
 
-              {/* Preferred Arrival Time Section */}
-              <View style={{ marginTop: 14 }}>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <Text style={[styles.modalSectionLabel, { color: isDark ? themeColors.textSecondary : "#64748B", marginBottom: 0 }]}>
-                    Preferred Arrival Time
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setDateModalVisible(false);
-                      setCustomTimeInput(bookingTime.replace(/[AP]M/gi, "").trim());
-                      setCustomAmPm(bookingTime.toUpperCase().includes("PM") ? "PM" : "AM");
-                      setTimeModalVisible(true);
-                    }}
-                  >
-                    <Text style={{ fontSize: 12, fontWeight: "800", color: themeColors.primary }}>More Times & Custom ›</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 2 }}>
-                  {POPULAR_TIME_SLOTS.map((slot) => {
-                    const isSelected = bookingTime === slot;
-                    return (
-                      <TouchableOpacity
-                        key={slot}
-                        style={[
-                          styles.quickTimeSlotPill,
-                          isSelected
-                            ? { backgroundColor: themeColors.primary, borderColor: themeColors.primary }
-                            : { backgroundColor: isDark ? themeColors.surface : "#F1F5F9", borderColor: themeColors.cardBorder },
-                        ]}
-                        onPress={() => setBookingTime(slot)}
-                      >
-                        <Ionicons
-                          name="time-outline"
-                          size={13}
-                          color={isSelected ? "#FFFFFF" : defaultSubTextColor}
-                          style={{ marginRight: 4 }}
-                        />
-                        <Text
-                          style={[
-                            styles.quickTimeSlotPillText,
-                            { color: isSelected ? "#FFFFFF" : defaultTextColor },
-                            isSelected && { fontWeight: "800" },
-                          ]}
-                        >
-                          {slot}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-
-              {/* Schedule Summary Banner */}
-              <View
-                style={[
-                  styles.scheduleSummaryBanner,
-                  {
-                    backgroundColor: isDark ? "rgba(15,118,110,0.15)" : "#F0FDFA",
-                    borderColor: isDark ? "rgba(15,118,110,0.3)" : "#CCFBF1",
-                  },
-                ]}
-              >
-                <Ionicons name="calendar-outline" size={20} color={themeColors.primary} style={{ marginRight: 10 }} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.scheduleSummaryTitle, { color: isDark ? themeColors.textSecondary : "#0F766E" }]}>
-                    {arrivalScheduleLabel}
-                  </Text>
-                  <Text style={[styles.scheduleSummaryVal, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                    {bookingDate} • {bookingTime}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Confirm Schedule Button */}
+              {/* Confirm Selected Date Button */}
               <TouchableOpacity
-                style={[styles.confirmScheduleBtn, { backgroundColor: themeColors.primary }]}
+                style={[styles.confirmScheduleBtn, { backgroundColor: themeColors.primary, marginTop: 18 }]}
                 onPress={() => setDateModalVisible(false)}
                 activeOpacity={0.88}
               >
-                <Text style={styles.confirmScheduleBtnText}>Confirm Date & Time</Text>
+                <Text style={styles.confirmScheduleBtnText}>Confirm Date</Text>
                 <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
               </TouchableOpacity>
             </ScrollView>
@@ -1765,7 +1716,7 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
         </View>
       </Modal>
 
-      {/* ── 9. Flexible Any-Time Slot Selector Modal ──────────────────── */}
+      {/* ── 9. Round Analog Clock Time Picker Modal ────────────────── */}
       <Modal visible={timeModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlayDark}>
           <View style={[styles.timeModalSheet, { backgroundColor: isDark ? themeColors.card : "#FFFFFF", borderColor: themeColors.cardBorder }]}>
@@ -1778,112 +1729,192 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
               </TouchableOpacity>
             </View>
 
-            <Text style={[styles.modalSectionLabel, { color: isDark ? themeColors.textSecondary : "#64748B" }]}>
-              Enter Any Custom Time (e.g. 07:15, 11:45, 04:20)
-            </Text>
+            {/* Digital Display & AM/PM Selector */}
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginVertical: 10 }}>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: clockMode === "hours" ? themeColors.primary : (isDark ? themeColors.surface : "#F1F5F9"),
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderRadius: 14,
+                  borderWidth: 1.5,
+                  borderColor: clockMode === "hours" ? themeColors.primary : themeColors.cardBorder,
+                }}
+                onPress={() => setClockMode("hours")}
+              >
+                <Text style={{ fontSize: 26, fontWeight: "900", color: clockMode === "hours" ? "#FFFFFF" : (isDark ? themeColors.text : "#0F172A") }}>
+                  {String(clockHour).padStart(2, "0")}
+                </Text>
+              </TouchableOpacity>
 
-            <View style={styles.customTimeRow}>
-              <TextInput
-                value={customTimeInput}
-                onChangeText={setCustomTimeInput}
-                placeholder="10:00"
-                placeholderTextColor={isDark ? themeColors.textMuted : "#94A3B8"}
-                style={[
-                  styles.customTimeTextInput,
-                  {
-                    backgroundColor: isDark ? themeColors.surface : "#F1F5F9",
-                    color: isDark ? themeColors.text : "#0F172A",
-                    borderColor: themeColors.cardBorder,
-                  },
-                ]}
-              />
-
-              <View style={styles.amPmToggleRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.amPmBtn,
-                    customAmPm === "AM" && { backgroundColor: themeColors.primary },
-                  ]}
-                  onPress={() => setCustomAmPm("AM")}
-                >
-                  <Text style={[styles.amPmBtnText, customAmPm === "AM" && { color: "#FFFFFF" }]}>AM</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.amPmBtn,
-                    customAmPm === "PM" && { backgroundColor: themeColors.primary },
-                  ]}
-                  onPress={() => setCustomAmPm("PM")}
-                >
-                  <Text style={[styles.amPmBtnText, customAmPm === "PM" && { color: "#FFFFFF" }]}>PM</Text>
-                </TouchableOpacity>
-              </View>
+              <Text style={{ fontSize: 26, fontWeight: "900", color: isDark ? themeColors.text : "#0F172A" }}>:</Text>
 
               <TouchableOpacity
-                style={[styles.setCustomTimeBtn, { backgroundColor: themeColors.primary }]}
-                onPress={() => {
-                  let cleaned = customTimeInput.trim().replace(/\./g, ":");
-                  if (!cleaned) {
-                    Alert.alert("Time", "Please enter a preferred time like 10:30.");
-                    return;
-                  }
-                  // Auto-format shorthand like "9" -> "09:00", "9:3" -> "09:30", "930" -> "09:30"
-                  if (/^\d{1,2}$/.test(cleaned)) {
-                    cleaned = `${cleaned.padStart(2, "0")}:00`;
-                  } else if (/^\d{3,4}$/.test(cleaned)) {
-                    const pad = cleaned.padStart(4, "0");
-                    cleaned = `${pad.slice(0, 2)}:${pad.slice(2)}`;
-                  } else if (/^\d:\d{2}$/.test(cleaned)) {
-                    cleaned = `0${cleaned}`;
-                  }
-                  const formatted = `${cleaned} ${customAmPm}`;
-                  setBookingTime(formatted);
-                  setTimeModalVisible(false);
+                style={{
+                  backgroundColor: clockMode === "minutes" ? themeColors.primary : (isDark ? themeColors.surface : "#F1F5F9"),
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderRadius: 14,
+                  borderWidth: 1.5,
+                  borderColor: clockMode === "minutes" ? themeColors.primary : themeColors.cardBorder,
                 }}
+                onPress={() => setClockMode("minutes")}
               >
-                <Text style={styles.setCustomTimeBtnText}>Set Time</Text>
+                <Text style={{ fontSize: 26, fontWeight: "900", color: clockMode === "minutes" ? "#FFFFFF" : (isDark ? themeColors.text : "#0F172A") }}>
+                  {String(clockMinute).padStart(2, "0")}
+                </Text>
               </TouchableOpacity>
+
+              {/* AM / PM Toggle */}
+              <View style={{ flexDirection: "row", backgroundColor: isDark ? themeColors.surface : "#F1F5F9", borderRadius: 12, padding: 3, borderWidth: 1, borderColor: themeColors.cardBorder, marginLeft: 10 }}>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: clockAmPm === "AM" ? themeColors.primary : "transparent",
+                    paddingHorizontal: 10,
+                    paddingVertical: 7,
+                    borderRadius: 9,
+                  }}
+                  onPress={() => setClockAmPm("AM")}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: "800", color: clockAmPm === "AM" ? "#FFFFFF" : (isDark ? themeColors.textSecondary : "#64748B") }}>AM</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: clockAmPm === "PM" ? themeColors.primary : "transparent",
+                    paddingHorizontal: 10,
+                    paddingVertical: 7,
+                    borderRadius: 9,
+                  }}
+                  onPress={() => setClockAmPm("PM")}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: "800", color: clockAmPm === "PM" ? "#FFFFFF" : (isDark ? themeColors.textSecondary : "#64748B") }}>PM</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
-            <Text style={[styles.modalSectionLabel, { color: isDark ? themeColors.textSecondary : "#64748B", marginTop: 14 }]}>
-              Or Choose Any Slot from 6:00 AM to 10:00 PM:
+            <Text style={{ fontSize: 12, color: isDark ? themeColors.textSecondary : "#64748B", textAlign: "center", marginBottom: 6 }}>
+              {clockMode === "hours" ? "Tap or drag on dial to select Hour" : "Tap or drag on dial to select Minutes"}
             </Text>
 
-            <ScrollView style={{ maxHeight: 220 }} showsVerticalScrollIndicator={false}>
-              <View style={styles.timeChipsGrid}>
-                {ALL_TIME_SLOTS.map((t, idx) => {
-                  const isSelected = bookingTime === t;
-                  return (
-                    <TouchableOpacity
-                      key={t}
-                      style={[
-                        styles.timeChip,
-                        {
-                          backgroundColor: isSelected ? timeChipSelectedBg : timeChipUnselectedBg,
-                          borderColor: isSelected ? themeColors.primary : themeColors.cardBorder,
-                        },
-                      ]}
-                      onPress={() => {
-                        setBookingTime(t);
-                        setTimeModalVisible(false);
+            {/* Interactive Round Analog Clock Face */}
+            <View
+              style={{
+                width: 240,
+                height: 240,
+                borderRadius: 120,
+                backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "#F8FAFC",
+                alignSelf: "center",
+                marginVertical: 10,
+                borderWidth: 2,
+                borderColor: isDark ? themeColors.cardBorder : "#E2E8F0",
+                position: "relative",
+              }}
+              onStartShouldSetResponder={() => true}
+              onMoveShouldSetResponder={() => true}
+              onResponderGrant={(evt) => {
+                const { locationX, locationY } = evt.nativeEvent;
+                const dx = locationX - 120;
+                const dy = locationY - 120;
+                let deg = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+                if (deg < 0) deg += 360;
+                if (clockMode === "hours") {
+                  let h = Math.round(deg / 30) % 12;
+                  if (h === 0) h = 12;
+                  setClockHour(h);
+                } else {
+                  let m = (Math.round(deg / 30) * 5) % 60;
+                  setClockMinute(m);
+                }
+              }}
+              onResponderMove={(evt) => {
+                const { locationX, locationY } = evt.nativeEvent;
+                const dx = locationX - 120;
+                const dy = locationY - 120;
+                let deg = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+                if (deg < 0) deg += 360;
+                if (clockMode === "hours") {
+                  let h = Math.round(deg / 30) % 12;
+                  if (h === 0) h = 12;
+                  setClockHour(h);
+                } else {
+                  let m = (Math.round(deg / 30) * 5) % 60;
+                  setClockMinute(m);
+                }
+              }}
+            >
+              {/* Clock Hand Line & Center Pin */}
+              <Svg width="240" height="240" style={StyleSheet.absoluteFillObject} pointerEvents="none">
+                <Line
+                  x1="120"
+                  y1="120"
+                  x2={120 + 82 * Math.cos(clockMode === "hours" ? (clockHour * 30 - 90) * (Math.PI / 180) : (clockMinute * 6 - 90) * (Math.PI / 180))}
+                  y2={120 + 82 * Math.sin(clockMode === "hours" ? (clockHour * 30 - 90) * (Math.PI / 180) : (clockMinute * 6 - 90) * (Math.PI / 180))}
+                  stroke={themeColors.primary}
+                  strokeWidth="3"
+                />
+                <Circle cx="120" cy="120" r="5" fill={themeColors.primary} />
+              </Svg>
+
+              {/* Dial Numbers */}
+              {(clockMode === "hours"
+                ? [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+                : [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
+              ).map((val) => {
+                const isSel = clockMode === "hours" ? clockHour === val : (clockMinute === val || (val === 0 && clockMinute === 60));
+                const angle = clockMode === "hours" ? (val * 30 - 90) * (Math.PI / 180) : (val * 6 - 90) * (Math.PI / 180);
+                const left = 120 + 82 * Math.cos(angle) - 17;
+                const top = 120 + 82 * Math.sin(angle) - 17;
+                return (
+                  <TouchableOpacity
+                    key={val}
+                    style={{
+                      position: "absolute",
+                      left,
+                      top,
+                      width: 34,
+                      height: 34,
+                      borderRadius: 17,
+                      backgroundColor: isSel ? themeColors.primary : "transparent",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      zIndex: isSel ? 10 : 2,
+                    }}
+                    onPress={() => {
+                      if (clockMode === "hours") {
+                        setClockHour(val);
+                        setClockMode("minutes");
+                      } else {
+                        setClockMinute(val);
+                      }
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: isSel ? "900" : "600",
+                        color: isSel ? "#FFFFFF" : (isDark ? themeColors.text : "#0F172A"),
                       }}
                     >
-                      <Text
-                        style={[
-                          styles.timeChipText,
-                          {
-                            color: isSelected ? themeColors.primary : defaultTextColor,
-                            fontWeight: isSelected ? "800" : "600",
-                          },
-                        ]}
-                      >
-                        {t}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </ScrollView>
+                      {clockMode === "hours" ? val : String(val).padStart(2, "0")}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Confirm Time Button */}
+            <TouchableOpacity
+              style={[styles.confirmScheduleBtn, { backgroundColor: themeColors.primary, marginTop: 14 }]}
+              onPress={() => {
+                const formatted = `${String(clockHour).padStart(2, "0")}:${String(clockMinute).padStart(2, "0")} ${clockAmPm}`;
+                setBookingTime(formatted);
+                setTimeModalVisible(false);
+              }}
+              activeOpacity={0.88}
+            >
+              <Text style={styles.confirmScheduleBtnText}>Confirm Time</Text>
+              <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

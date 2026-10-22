@@ -732,26 +732,7 @@ export default function JobDetailsScreen({ route, navigation }: any) {
           </View>
         )}
 
-        {/* 3. Direct Customer OTP Verification */}
-        {['ACCEPTED', 'UPCOMING', 'NAVIGATING', 'ARRIVED'].includes(job.status) && (
-          <View style={[s.btnRow, { marginTop: 6 }]}>
-            <TouchableOpacity
-              style={[s.actionBtn, s.otpBtn, { flex: 1 }]}
-              onPress={handleVerifyOTP}
-              disabled={otpLoading}
-              activeOpacity={0.85}
-            >
-              {otpLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="keypad" size={18} color="#FFFFFF" />
-                  <Text style={[s.actionBtnText, { fontSize: 15 }]}>Verify Customer OTP</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
+
 
         {/* 5. Customer Verified: Start Service */}
         {job.status === 'CUSTOMER_VERIFIED' && (

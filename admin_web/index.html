@@ -3014,10 +3014,11 @@
           return;
         }
 
-        // Ensure bookings are loaded to accurately calculate today's vendor rejections
-        if (typeof ensureBookings === 'function') {
-          await ensureBookings().catch(() => {});
-        }
+        // Always fetch fresh live bookings from Firestore (never use stale cache) so 3 skips/rejections are immediately detected
+        try {
+          const bSnap = await getDocs2('bookings', [orderBy('createdAt', 'desc'), limit(150)]);
+          _allBookings = bSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (_) {}
 
         // Sort so vendors matching this service category are on top
         const bookingCat = (b.serviceCategory || '').toLowerCase();
@@ -3067,6 +3068,12 @@
         if (vSnap.exists()) {
           vendor = { id: vSnap.id, ...vSnap.data() };
         }
+      } catch (_) {}
+
+      // Re-fetch fresh live bookings before confirming assignment to ensure immediate rejection check
+      try {
+        const bSnap = await getDocs2('bookings', [orderBy('createdAt', 'desc'), limit(150)]);
+        _allBookings = bSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       } catch (_) {}
 
       if (!vendor) {

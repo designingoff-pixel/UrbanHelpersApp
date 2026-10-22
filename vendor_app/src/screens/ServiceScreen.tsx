@@ -664,6 +664,7 @@ export default function ServiceScreen({ route, navigation }: any) {
   const isChecklistDone = totalCount === 0 || doneCount >= totalCount;
 
   const isAllProofsReady = hasBefore && hasAfter && isChecklistDone;
+  const proofsCompletedCount = (hasBefore ? 1 : 0) + (hasAfter ? 1 : 0) + 1 + (isChecklistDone ? 1 : 0);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
