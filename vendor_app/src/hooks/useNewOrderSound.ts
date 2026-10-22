@@ -1,13 +1,12 @@
 /**
- * useNewOrderSound — plays the exact melodic notification chime from the admin page
- * when a new booking is assigned to the vendor or when an order is cancelled.
- *
+ * useNewOrderSound — plays the notification chime ONCE when a new booking arrives in real-time.
+ * 
  * Features:
- * - Direct on-demand sound creation (no stale audio instances)
- * - Identical chime as used on the Urban Helpers admin web dashboard
- * - Plays sound when a new job arrives
- * - Plays sound when an order is cancelled
- * - Persists notified IDs so duplicate alerts are suppressed
+ * - Module-level singleton cache of notified IDs so it survives screen transitions & unmounts.
+ * - Persistent storage in AsyncStorage.
+ * - On app launch / open, seeds all existing jobs as already seen/notified (NEVER plays on open).
+ * - Only plays sound ONCE when a new assignment/broadcast arrives live while app is active.
+ * - When app is closed/off, Admin Web sends Expo Push Notification to vendor's pushToken.
  */
 
 import { useEffect, useRef } from 'react';
@@ -17,13 +16,35 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { store } from '../store/AppStore';
 import { triggerLoudNewOrderNotification } from '../services/notificationService';
 
-// ─── Custom notification sound asset ─────────────────────────────────────────
 const NOTIFICATION_SOUND_ASSET = require('../../assets/sounds/notification_sound.mp3');
 
-const NOTIFIED_STORAGE_KEY = '@urban_helpers_notified_job_ids';
-const CANCELLED_STORAGE_KEY = '@urban_helpers_notified_cancelled_ids';
+const NOTIFIED_STORAGE_KEY = '@urban_helpers_notified_job_ids_v2';
+const CANCELLED_STORAGE_KEY = '@urban_helpers_notified_cancelled_ids_v2';
 
+// Module-level persistent cache across all hook invocations
+const globalNotifiedIds = new Set<string>();
+const globalCancelledIds = new Set<string>();
+const appLaunchTimestamp = Date.now();
 let lastPlayedSound: Audio.Sound | null = null;
+
+// Pre-load stored IDs into memory
+AsyncStorage.getItem(NOTIFIED_STORAGE_KEY).then((raw) => {
+  if (raw) {
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) arr.forEach((id: string) => globalNotifiedIds.add(id));
+    } catch (_) {}
+  }
+}).catch(() => {});
+
+AsyncStorage.getItem(CANCELLED_STORAGE_KEY).then((raw) => {
+  if (raw) {
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) arr.forEach((id: string) => globalCancelledIds.add(id));
+    } catch (_) {}
+  }
+}).catch(() => {});
 
 export function stopLoudOrderAlert() {
   Vibration.cancel();
@@ -32,12 +53,8 @@ export function stopLoudOrderAlert() {
   }
 }
 
-/**
- * Plays the platform notification sound on demand for new order or cancellation
- */
 export async function playOrderChimeSound(type: 'new_order' | 'cancelled' = 'new_order') {
   try {
-    // Distinct haptic vibration pattern
     Vibration.vibrate(type === 'cancelled' ? [0, 300, 150, 300] : [0, 200, 100, 200]);
 
     await Audio.setAudioModeAsync({
@@ -66,72 +83,46 @@ export async function playOrderChimeSound(type: 'new_order' | 'cancelled' = 'new
 }
 
 export function useNewOrderSound() {
-  const notifiedIdsRef = useRef<Set<string>>(new Set());
-  const notifiedCancelledIdsRef = useRef<Set<string>>(new Set());
-  const isInitializedRef = useRef<boolean>(false);
+  const initialSyncDoneRef = useRef(false);
 
   useEffect(() => {
     let active = true;
 
-    // Load persisted notified IDs from AsyncStorage
-    Promise.all([
-      AsyncStorage.getItem(NOTIFIED_STORAGE_KEY),
-      AsyncStorage.getItem(CANCELLED_STORAGE_KEY),
-    ])
-      .then(([storedNew, storedCancelled]) => {
-        if (!active) return;
-        if (storedNew) {
-          try {
-            const arr = JSON.parse(storedNew);
-            if (Array.isArray(arr)) arr.forEach((id: string) => notifiedIdsRef.current.add(id));
-          } catch (_) {}
-        }
-        if (storedCancelled) {
-          try {
-            const arr = JSON.parse(storedCancelled);
-            if (Array.isArray(arr)) arr.forEach((id: string) => notifiedCancelledIdsRef.current.add(id));
-          } catch (_) {}
-        }
-
-        // Seed initial known jobs so app startup doesn't blare sounds
-        const initialJobs = store.getJobsForTab('requests');
-        initialJobs.forEach((j) => notifiedIdsRef.current.add(j.jobId));
-        isInitializedRef.current = true;
-      })
-      .catch(() => {
-        if (!active) return;
-        const initialJobs = store.getJobsForTab('requests');
-        initialJobs.forEach((j) => notifiedIdsRef.current.add(j.jobId));
-        isInitializedRef.current = true;
-      });
-
     const persistNotifiedIds = async () => {
       try {
-        const arr = Array.from(notifiedIdsRef.current).slice(-200);
+        const arr = Array.from(globalNotifiedIds).slice(-200);
         await AsyncStorage.setItem(NOTIFIED_STORAGE_KEY, JSON.stringify(arr));
-        const arrC = Array.from(notifiedCancelledIdsRef.current).slice(-200);
+        const arrC = Array.from(globalCancelledIds).slice(-200);
         await AsyncStorage.setItem(CANCELLED_STORAGE_KEY, JSON.stringify(arrC));
       } catch (_) {}
     };
 
     const unsubscribe = store.subscribe(() => {
       try {
-        if (!isInitializedRef.current) {
-          const currentRequests = store.getJobsForTab('requests') || [];
-          currentRequests.forEach((j) => notifiedIdsRef.current.add(j.jobId));
+        const allJobs = store.jobs || [];
+        const currentRequests = store.getJobsForTab('requests') || [];
+
+        // ON FIRST RUN: Seed ALL existing jobs into globalNotifiedIds so opening the app NEVER plays sound!
+        if (!initialSyncDoneRef.current) {
+          allJobs.forEach((j) => globalNotifiedIds.add(j.jobId));
+          currentRequests.forEach((j) => globalNotifiedIds.add(j.jobId));
+          initialSyncDoneRef.current = true;
+          persistNotifiedIds();
           return;
         }
 
-        // 1. Check for incoming new order requests
-        const currentRequests = store.getJobsForTab('requests') || [];
+        // Live check: only trigger sound for genuinely NEW requests arriving while app is active
         let playedAny = false;
-
         for (const job of currentRequests) {
-          if (!notifiedIdsRef.current.has(job.jobId)) {
-            notifiedIdsRef.current.add(job.jobId);
+          if (!globalNotifiedIds.has(job.jobId)) {
+            globalNotifiedIds.add(job.jobId);
             persistNotifiedIds();
 
-            if (!playedAny) {
+            // Guard against stale jobs: if assigned > 3 minutes ago, it's not a real-time event
+            const jobTime = job.createdAt || 0;
+            const isFresh = (Date.now() - jobTime) < 180000 || jobTime > appLaunchTimestamp;
+
+            if (!playedAny && isFresh) {
               playedAny = true;
               playOrderChimeSound('new_order');
               triggerLoudNewOrderNotification(
@@ -144,17 +135,16 @@ export function useNewOrderSound() {
           }
         }
 
-        // 2. Check for newly cancelled jobs
-        const allJobs = store.jobs || [];
+        // Newly cancelled jobs
         for (const job of allJobs) {
-          if (job.status === 'CANCELLED' && !notifiedCancelledIdsRef.current.has(job.jobId)) {
-            notifiedCancelledIdsRef.current.add(job.jobId);
+          if (job.status === 'CANCELLED' && !globalCancelledIds.has(job.jobId)) {
+            globalCancelledIds.add(job.jobId);
             persistNotifiedIds();
             playOrderChimeSound('cancelled');
           }
         }
-      } catch (listenerErr) {
-        console.warn('[useNewOrderSound] Listener error safely caught:', listenerErr);
+      } catch (err) {
+        console.warn('[useNewOrderSound] listener error:', err);
       }
     });
 

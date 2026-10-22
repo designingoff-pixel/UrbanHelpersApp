@@ -62,13 +62,6 @@ export default function CompleteScreen({ route, navigation }: any) {
             </View>
           )}
 
-          <View style={[styles.row, styles.bordered]}>
-            <Text style={styles.rowLabel}>Payment Status</Text>
-            <View style={styles.paidBadge}>
-              <View style={styles.paidDot} />
-              <Text style={styles.paidText}>🟢 PAID</Text>
-            </View>
-          </View>
 
           <View style={[styles.row, styles.bordered]}>
             <Text style={styles.rowLabel}>Your Net Earnings (80%)</Text>

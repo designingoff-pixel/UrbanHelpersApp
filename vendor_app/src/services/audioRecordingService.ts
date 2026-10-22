@@ -206,20 +206,20 @@ class AudioRecordingService {
       let recordingObj: Audio.Recording | null = null;
       try {
         const { recording } = await Audio.Recording.createAsync(
-          Audio.RecordingOptionsPresets.HIGH_QUALITY
+          OPTIMIZED_AUDIO_OPTIONS
         );
         recordingObj = recording;
-      } catch (presetErr) {
-        console.warn('[AudioRecordingService] HIGH_QUALITY failed, falling back to LOW_QUALITY:', presetErr);
+      } catch (optErr) {
+        console.warn('[AudioRecordingService] OPTIMIZED_AUDIO_OPTIONS failed, falling back to LOW_QUALITY:', optErr);
         try {
           const { recording } = await Audio.Recording.createAsync(
             Audio.RecordingOptionsPresets.LOW_QUALITY
           );
           recordingObj = recording;
         } catch (lowErr) {
-          console.warn('[AudioRecordingService] LOW_QUALITY failed, trying custom options:', lowErr);
+          console.warn('[AudioRecordingService] LOW_QUALITY failed, falling back to HIGH_QUALITY:', lowErr);
           const { recording } = await Audio.Recording.createAsync(
-            OPTIMIZED_AUDIO_OPTIONS
+            Audio.RecordingOptionsPresets.HIGH_QUALITY
           );
           recordingObj = recording;
         }
@@ -348,10 +348,10 @@ class AudioRecordingService {
         return finalAudioUrl;
       }
 
-      // Resilient fallback: If Firebase Storage upload was unavailable, provide portable data URI or local URI
+      // Resilient fallback: Provide portable Base64 Data URI so Admin Web can stream immediately
       if (localUri) {
         let resolvedUri = localUri;
-        if (base64Str && base64Str.length < 350000) {
+        if (base64Str && base64Str.length < 900000) {
           resolvedUri = `data:audio/mp4;base64,${base64Str}`;
         }
         console.log('[AudioRecordingService] Audio proof saved (local/data URI):', resolvedUri.slice(0, 40));
@@ -367,7 +367,7 @@ class AudioRecordingService {
           contentType: 'audio/mp4',
           sizeBytes: fileInfo.size || (base64Str ? Math.round(base64Str.length * 0.75) : 0),
           recordedAt: new Date(recordedTimestamp).toISOString(),
-          uploadStatus: 'completed',
+          uploadStatus: resolvedUri.startsWith('data:') ? 'completed' : 'pending_upload',
           bookingId: jobId,
           evidenceType: 'voice_proof',
         };
@@ -385,6 +385,40 @@ class AudioRecordingService {
     } catch (err) {
       console.warn('[AudioRecordingService] stopAndSaveRecording error:', err);
       return null;
+    }
+  }
+
+  /**
+   * Upload an existing local recording URI to cloud / base64 Data URI manually if automatic upload failed
+   */
+  async uploadLocalAudioFile(jobId: string, localUri: string): Promise<string | null> {
+    try {
+      if (!localUri) return null;
+      let targetUri = localUri;
+      if (targetUri.startsWith('file://')) {
+        // Read file as Base64
+        const base64Str = await FileSystem.readAsStringAsync(targetUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        if (base64Str && base64Str.length < 900000) {
+          const dataUri = `data:audio/mp4;base64,${base64Str}`;
+          await updateBookingAudio(jobId, dataUri, {
+            storagePath: `audio_proofs/${jobId}_manual.m4a`,
+            audioMetadata: {
+              uploadStatus: 'completed',
+              uploadedAt: new Date().toISOString(),
+              evidenceType: 'voice_proof',
+            },
+          });
+          const job = store.getJob(jobId);
+          if (job) job.audioUrl = dataUri;
+          return dataUri;
+        }
+      }
+      return targetUri;
+    } catch (e) {
+      console.warn('[AudioRecordingService] uploadLocalAudioFile error:', e);
+      throw e;
     }
   }
 

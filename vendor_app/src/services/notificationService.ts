@@ -17,8 +17,8 @@ export async function registerVendorPushNotifications(): Promise<string | null> 
     try {
       await Notifications.setNotificationChannelAsync("urgent-orders", {
         name: "🔔 New Booking Assignments",
-        importance: Notifications.AndroidImportance.HIGH,
-        vibrationPattern: [0, 200, 100, 200],
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 150, 250],
         lightColor: "#00BCD4",
         sound: "default",
         enableVibrate: true,

@@ -1608,10 +1608,14 @@
       if (!container) return;
 
       // Filter all bookings that are currently rejected and still unassigned / waiting for allotment
+      // Strictly exclude any booking that is cancelled, completed, in_progress, en_route, arrived, or already assigned!
       const pendingRejected = _allBookings.filter(b => {
-        const isRej = b.rejected === true || (b.status === 'requested' && b.rejectedAt) || (b.status === 'cancelled' && b.cancelledBy === 'vendor');
+        if (!b || b.status === 'cancelled' || b.status === 'completed' || b.status === 'assigned' || b.status === 'in_progress' || b.status === 'en_route' || b.status === 'arrived') {
+          return false;
+        }
+        const isRej = b.rejected === true || (b.status === 'requested' && b.rejectedAt) || (b.status === 'requested' && b.cancelledBy === 'vendor');
         const needsAllotment = b.status === 'requested' || !b.vendorId || b.vendorName === 'Pending' || b.vendorName === 'Pending Admin Assignment' || b.vendorName === 'Vendor pending';
-        const notDismissed = !_dismissedRejections.has(b.id);
+        const notDismissed = !_dismissedRejections.has(b.id) && !b.alertDismissed;
         return isRej && needsAllotment && notDismissed;
       });
 
@@ -1667,9 +1671,23 @@
       }).join('');
     }
 
-    window.dismissRejectionAlert = function(bookingId) {
+    window.dismissRejectionAlert = async function(bookingId) {
       _dismissedRejections.add(bookingId);
+      const b = _allBookings.find(x => x.id === bookingId);
+      if (b) {
+        b.rejected = false;
+        b.alertDismissed = true;
+      }
       updateRejectionAlertBanner();
+      try {
+        await updateDoc(doc(db, 'bookings', bookingId), {
+          rejected: false,
+          alertDismissed: true,
+          updatedAt: serverTimestamp()
+        });
+      } catch (e) {
+        console.warn('Dismiss rejection error in firestore:', e);
+      }
     };
 
     window.toggleRejectionAlertsView = function() {
@@ -2615,6 +2633,81 @@
       }
     };
 
+    window.getVendorBlockInfo = function(v) {
+      if (!v) return { isBlocked: false, remainingDays: 0, reason: '', cancels: 0, skips: 0 };
+      const rawCancels = Number(v.cancelCount || 0);
+      const rawSkips = Number(v.skippedCount || 0);
+      // Cap at 3 for display (never show 4/3, 5/3)
+      const cancels = Math.min(3, Math.max(0, rawCancels));
+      const skips = Math.min(3, Math.max(0, rawSkips));
+
+      const isLockedOrBlocked = v.isBlocked === true || v.isLocked === true || v.status === 'locked' || rawCancels >= 3 || rawSkips >= 3;
+      if (!isLockedOrBlocked) {
+        return { isBlocked: false, remainingDays: 0, reason: '', cancels, skips };
+      }
+
+      // Parse blockedAt timestamp
+      let bTime = 0;
+      const bField = v.blockedAt || v.lockedAt;
+      if (bField) {
+        if (typeof bField.toMillis === 'function') {
+          bTime = bField.toMillis();
+        } else if (bField.seconds) {
+          bTime = bField.seconds * 1000;
+        } else if (typeof bField === 'number') {
+          bTime = bField;
+        } else {
+          bTime = new Date(bField).getTime() || 0;
+        }
+      }
+
+      const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+      let expiresAt = 0;
+      if (v.blockExpiresAt) {
+        const expField = v.blockExpiresAt;
+        if (typeof expField.toMillis === 'function') {
+          expiresAt = expField.toMillis();
+        } else if (expField.seconds) {
+          expiresAt = expField.seconds * 1000;
+        } else if (typeof expField === 'number') {
+          expiresAt = expField;
+        } else {
+          expiresAt = new Date(expField).getTime() || 0;
+        }
+      } else if (bTime > 0) {
+        expiresAt = bTime + SEVEN_DAYS_MS;
+      }
+
+      const now = Date.now();
+      // If 7 days have already passed from block time, vendor is auto-unblocked
+      if (expiresAt > 0 && now >= expiresAt) {
+        return { isBlocked: false, isExpired: true, remainingDays: 0, reason: '', cancels, skips };
+      }
+
+      let remainingDays = 7;
+      if (expiresAt > 0) {
+        remainingDays = Math.max(1, Math.ceil((expiresAt - now) / (24 * 60 * 60 * 1000)));
+      }
+
+      let reason = 'Blocked';
+      if (rawCancels >= 3) {
+        reason = '3/3 Cancellations';
+      } else if (rawSkips >= 3) {
+        reason = '3/3 Skipped Jobs';
+      } else if (v.lockReason) {
+        reason = v.lockReason;
+      }
+
+      return {
+        isBlocked: true,
+        remainingDays,
+        reason,
+        cancels,
+        skips,
+        blockExpiresAt: expiresAt
+      };
+    };
+
     window.renderVendors = async function() {
       const tb = document.getElementById('vendorsTableBody');
       if (!tb) return;
@@ -2635,17 +2728,17 @@
           const cat = v.category || v.serviceCategory || '—';
           const rating = v.rating ? (typeof v.rating === 'number' ? v.rating.toFixed(1) : v.rating) + ' ★' : '5.0 ★';
           const jobs = v.jobsCompleted || v.completedJobs || 0;
-          const skips = v.skippedCount || 0;
-          const isLocked = v.isLocked || v.status === 'locked' || skips >= 3;
+          const bInfo = getVendorBlockInfo(v);
+          const safeName = (name || '').replace(/'/g, "\\'");
 
           let statusBadge = '<span class="status-badge badge-green">Active</span>';
-          if (isLocked) {
-            statusBadge = '<span class="status-badge badge-red" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;"><i class="fa-solid fa-lock"></i> LOCKED (' + (skips >= 3 ? '3 Skips' : 'Complaint') + ')</span>';
+          if (bInfo.isBlocked) {
+            statusBadge = '<span class="status-badge badge-red" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;font-weight:800;"><i class="fa-solid fa-ban"></i> BLOCKED (' + bInfo.remainingDays + 'd left)</span>';
           }
 
-          let skipBadge = '<span style="font-size:12px;color:#64748b;font-weight:600;">' + skips + ' / 3</span>';
-          if (skips >= 2) {
-            skipBadge = '<span style="font-size:12px;color:#dc2626;font-weight:800;"><i class="fa-solid fa-triangle-exclamation"></i> ' + skips + ' / 3</span>';
+          let counterBadge = '<span style="font-size:12px;color:#64748b;font-weight:600;">Cancels: ' + bInfo.cancels + '/3 • Skips: ' + bInfo.skips + '/3</span>';
+          if (bInfo.isBlocked) {
+            counterBadge = '<span style="font-size:12px;color:#dc2626;font-weight:800;"><i class="fa-solid fa-triangle-exclamation"></i> ' + bInfo.reason + ' (7-Day Block)</span>';
           }
 
           return '<tr>' +
@@ -2662,13 +2755,13 @@
             '<td><span class="status-badge badge-blue">' + cat + '</span></td>' +
             '<td><strong style="color:#f59e0b;">' + rating + '</strong></td>' +
             '<td><strong>' + jobs + '</strong></td>' +
-            '<td>' + statusBadge + '<div style="margin-top:2px;">' + skipBadge + '</div></td>' +
+            '<td>' + statusBadge + '<div style="margin-top:2px;">' + counterBadge + '</div></td>' +
             '<td>' +
               '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
                 '<button class="btn-sm-action" style="background:#eff6ff;color:#0284c7;border:1px solid #bfdbfe;" onclick="openKycModal(\'' + (v.id || vId) + '\')" title="View KYC Documents"><i class="fa-solid fa-id-card"></i> KYC</button>' +
-                (isLocked ? '<button class="btn-sm-action" style="background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;font-weight:700;" onclick="unlockVendor(\'' + (v.id || vId) + '\', \'' + name + '\')" title="Unlock Partner & Reset Skips"><i class="fa-solid fa-unlock"></i> Unlock</button>' : '') +
+                (bInfo.isBlocked ? '<button class="btn-sm-action" style="background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;font-weight:800;" onclick="unblockVendor(\'' + (v.id || vId) + '\', \'' + safeName + '\')" title="Unblock Partner & Reset Cancellation Counter"><i class="fa-solid fa-unlock"></i> Unblock</button>' : '') +
                 '<button class="btn-sm-action" onclick="copyText(\'ID: ' + vId + ' | Mobile: ' + v.mobile + '\')" title="Copy Login Info"><i class="fa-solid fa-key"></i> Info</button>' +
-                '<button class="btn-sm-action" style="color:#e11d48;" onclick="deleteVendor(\'' + (v.id || vId) + '\', \'' + name + '\')" title="Delete"><i class="fa-solid fa-trash"></i></button>' +
+                '<button class="btn-sm-action" style="color:#e11d48;" onclick="deleteVendor(\'' + (v.id || vId) + '\', \'' + safeName + '\')" title="Delete"><i class="fa-solid fa-trash"></i></button>' +
               '</div>' +
             '</td>' +
           '</tr>';
@@ -2678,21 +2771,25 @@
       }
     };
 
-    window.unlockVendor = async function(docId, vendorName) {
-      if (!confirm('Unlock vendor partner "' + vendorName + '" and reset skipped requests and cancellations to 0?')) return;
+    window.unblockVendor = window.unlockVendor = async function(docId, vendorName) {
+      if (!confirm('Unblock vendor partner "' + vendorName + '"?\n\nThis will reset their cancellation count (0/3) and skip count (0/3), clear the 7-day blocking period, and allow them to receive new orders immediately.')) return;
       try {
         await updateDoc(doc(db, 'vendors', docId), {
           status: 'active',
           isLocked: false,
+          isBlocked: false,
           skippedCount: 0,
           cancelCount: 0,
+          blockedAt: null,
+          blockExpiresAt: null,
+          lockedAt: null,
           lockReason: null,
           unlockedAt: serverTimestamp()
         });
         alert('Vendor ' + vendorName + ' is now UNLOCKED & active to receive bookings.');
         await renderVendors();
       } catch (err) {
-        alert('Failed to unlock vendor: ' + err.message);
+        alert('Failed to unblock vendor: ' + err.message);
       }
     };
 
@@ -2892,8 +2989,12 @@
 
         sel.innerHTML = '<option value="">-- Choose Vendor Partner --</option>' + sorted.map(v => {
           const vId = v.vendorId || v.id;
-          const matchTag = (v.serviceCategory || '').toLowerCase().includes(bookingCat) ? ' â­ MATCHING SERVICE' : '';
-          return `<option value="${vId}">${v.name} (${vId}) â€” ${v.serviceCategory || 'All-rounder'} ${matchTag}</option>`;
+          const matchTag = (v.serviceCategory || '').toLowerCase().includes(bookingCat) ? ' ★ MATCHING SERVICE' : '';
+          const bInfo = window.getVendorBlockInfo ? window.getVendorBlockInfo(v) : { isBlocked: false };
+          if (bInfo.isBlocked) {
+            return `<option value="${vId}" disabled style="color:#dc2626;background:#fee2e2;font-weight:700;">⛔ [BLOCKED: ${bInfo.reason} • ${bInfo.remainingDays}d left] ${v.name} (${vId})</option>`;
+          }
+          return `<option value="${vId}">${v.name} (${vId}) — ${v.serviceCategory || 'All-rounder'}${matchTag}</option>`;
         }).join('');
 
         document.getElementById('assignModal').style.display = 'flex';
@@ -2920,6 +3021,12 @@
       const vendor = _allVendorsList.find(v => (v.vendorId || v.id) === vendorId);
       if (!vendor) {
         alert('Selected vendor not found.');
+        return;
+      }
+
+      const bInfo = window.getVendorBlockInfo ? window.getVendorBlockInfo(vendor) : { isBlocked: false };
+      if (bInfo.isBlocked) {
+        alert('⛔ Cannot Assign Order!\n\nVendor "' + (vendor.name || vendorId) + '" is currently BLOCKED (' + bInfo.reason + ').\nRemaining Block Duration: ' + bInfo.remainingDays + ' day(s).\n\nEven Admin cannot assign customer orders to this vendor until the 7-day period expires or the Admin unblocks them from the Vendors tab.');
         return;
       }
 
@@ -2965,9 +3072,40 @@
           b.otpVerified = false;
         }
 
+        // 📲 Send instant Push Notification to vendor so sound alerts even if vendor app is OFF/closed
+        try {
+          let pToken = vendor.pushToken;
+          if (!pToken) {
+            const vSnap = await getDoc(doc(db, 'vendors', vendor.id || vendor.vendorId));
+            if (vSnap.exists()) {
+              pToken = vSnap.data().pushToken;
+            }
+          }
+          if (pToken) {
+            fetch('https://exp.host/--/api/v2/push/send', {
+              method: 'POST',
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                to: pToken,
+                title: '⚡ New Order Assigned: ' + (b?.serviceCategory || 'Service Request'),
+                body: 'You have been assigned booking #' + bookingId.slice(-8).toUpperCase() + '. Open app to review & accept.',
+                sound: 'default',
+                channelId: 'urgent-orders',
+                priority: 'high',
+                data: { screen: 'HomeScreen', bookingId: bookingId, type: 'new_order' },
+              }),
+            }).catch(e => console.warn('Expo push send error:', e));
+          }
+        } catch (pushErr) {
+          console.warn('Push notification delivery error:', pushErr);
+        }
+
         updateRejectionAlertBanner();
         closeAssignModal();
-        alert(`âœ… Booking #${bookingId.slice(-8).toUpperCase()} Assigned to ${vendor.name} (${vendor.vendorId || vendor.id})!\n\nThe vendor can now view and accept this order on their Vendor App.`);
+        alert(`Booking #${bookingId.slice(-8).toUpperCase()} Assigned to ${vendor.name} (${vendor.vendorId || vendor.id})!\n\nThe vendor can now view and accept this order on their Vendor App.`);
         renderServices('bookings');
       } catch (err) {
         console.error('Assignment error:', err);
@@ -3026,7 +3164,7 @@
                   </td>
             <td><span class="status-badge badge-blue">${b.serviceCategory || 'â€”'}</span><div style="font-size:11px;font-weight:700;margin-top:3px;">${b.subServiceName || ''}</div></td>
             <td><strong>${b.customerName || 'â€”'}</strong><div style="font-size:11px;color:#64748b;">${b.address || ''}</div></td>
-            <td>${b.vendorName || 'Pending assignment'}</td>
+            <td>${b.status === 'cancelled' ? '<span style="color:#dc2626;font-weight:700;">Cancelled</span>' : (b.vendorName || 'Pending assignment')}</td>
             <td style="font-size:12px;color:#64748b;">${dateStr}</td>
             <td><span class="status-badge ${statusMap[b.status] || 'badge-yellow'}">${b.status || 'â€”'}</span></td>
           </tr>`;
@@ -3385,13 +3523,14 @@
       const f = _currentBookingsFilter;
 
       const filtered = _allBookings.filter(b => {
-        const isUnassigned = !b.vendorId || b.status === 'requested' || b.vendorName === 'Pending' || b.vendorName === 'Pending Admin Assignment' || b.vendorName === 'Vendor pending';
-        const isRejected = (b.rejected === true || (b.status === 'requested' && b.rejectedAt) || b.cancelledBy === 'vendor');
+        const isDoneOrCancelled = b.status === 'completed' || b.status === 'cancelled';
+        const isUnassigned = !isDoneOrCancelled && (!b.vendorId || b.status === 'requested' || b.vendorName === 'Pending' || b.vendorName === 'Pending Admin Assignment' || b.vendorName === 'Vendor pending');
+        const isRejected = !isDoneOrCancelled && (b.rejected === true || (b.status === 'requested' && b.rejectedAt) || (b.status === 'requested' && b.cancelledBy === 'vendor'));
         const matchesFilter =
           f === 'all' ? true :
-          f === 'active' ? (!['completed', 'cancelled'].includes(b.status)) :
+          f === 'active' ? (!isDoneOrCancelled) :
           f === 'unassigned' ? isUnassigned :
-          f === 'rejected' ? (isRejected && isUnassigned) :
+          f === 'rejected' ? isRejected :
           b.status === f;
 
         const matchesQuery = !q ||
@@ -3446,16 +3585,28 @@
             </thead>
             <tbody>
               ${filtered.slice(0, 80).map(b => {
-                const isUnassigned = !b.vendorId || b.status === 'requested' || b.vendorName === 'Pending' || b.vendorName === 'Pending Admin Assignment' || b.vendorName === 'Vendor pending';
-                const isRejectedBooking = (b.rejected === true || (b.status === 'requested' && b.rejectedAt) || b.cancelledBy === 'vendor') && isUnassigned;
+                const isCancelled = b.status === 'cancelled';
+                const isDoneOrCancelled = b.status === 'completed' || isCancelled;
+                const isUnassigned = !isDoneOrCancelled && (!b.vendorId || b.status === 'requested' || b.vendorName === 'Pending' || b.vendorName === 'Pending Admin Assignment' || b.vendorName === 'Vendor pending');
+                const isRejectedBooking = !isDoneOrCancelled && (b.rejected === true || (b.status === 'requested' && b.rejectedAt) || (b.status === 'requested' && b.cancelledBy === 'vendor'));
 
-                const techHtml = isRejectedBooking
-                  ? `<span class="status-badge badge-red badge-pulse" style="font-size:10px; font-weight:800;"><i class="fa-solid fa-triangle-exclamation"></i> Rejected by Vendor</span><div style="font-size:10.5px;color:#c2410c;font-weight:700;margin-top:2px;">Needs Reassignment</div>`
-                  : (isUnassigned
-                    ? '<span class="status-badge badge-yellow" style="font-size:10px;"><i class="fa-solid fa-clock"></i> Pending Assignment</span>'
-                    : `<strong>${b.vendorName}</strong>${b.vendorId ? `<div style="font-size:11px;color:#0f8a5f;font-weight:700;">ID: ${b.vendorId}</div>` : ''}`);
+                let cancelledByWhom = 'Customer';
+                if (b.cancelledBy === 'admin') cancelledByWhom = 'Admin';
+                else if (b.cancelledBy === 'vendor') cancelledByWhom = 'Vendor';
+                else if (b.cancelledBy === 'customer') cancelledByWhom = 'Customer';
+                else if (b.cancellationReason && b.cancellationReason.toLowerCase().includes('admin')) cancelledByWhom = 'Admin';
+                else if (b.cancellationReason && b.cancellationReason.toLowerCase().includes('vendor')) cancelledByWhom = 'Vendor';
 
-                const isDoneOrCancelled = b.status === 'completed' || b.status === 'cancelled';
+                const techHtml = isCancelled
+                  ? `<span class="status-badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+                      <i class="fa-solid fa-user-xmark"></i> Cancelled by ${cancelledByWhom}
+                    </span>${b.cancellationReason ? `<div style="font-size:10px; color:#ef4444; margin-top:2px; max-width:170px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${b.cancellationReason}">"${b.cancellationReason}"</div>` : ''}`
+                  : (isRejectedBooking
+                    ? `<span class="status-badge badge-red badge-pulse" style="font-size:10px; font-weight:800;"><i class="fa-solid fa-triangle-exclamation"></i> Rejected by Vendor</span><div style="font-size:10.5px;color:#c2410c;font-weight:700;margin-top:2px;">Needs Reassignment</div>`
+                    : (isUnassigned
+                      ? '<span class="status-badge badge-yellow" style="font-size:10px;"><i class="fa-solid fa-clock"></i> Pending Assignment</span>'
+                      : `<strong>${b.vendorName}</strong>${b.vendorId ? `<div style="font-size:11px;color:#0f8a5f;font-weight:700;">ID: ${b.vendorId}</div>` : ''}`));
+
                 const actionBtn = isDoneOrCancelled
                   ? ''
                   : (isRejectedBooking
@@ -3468,7 +3619,7 @@
                   ? (b.scheduledAt.includes('T') ? new Date(b.scheduledAt).toLocaleString('en-IN', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : b.scheduledAt)
                   : 'Immediate';
 
-                const rowBg = isRejectedBooking ? 'style="background:#fff7ed;"' : '';
+                const rowBg = isRejectedBooking ? 'style="background:#fff7ed;"' : (isCancelled ? 'style="background:#fef2f2; opacity:0.92;"' : '');
 
                 return `
                 <tr ${rowBg}>
@@ -3540,8 +3691,8 @@
       if (!container) return;
 
       const totalBookings = _allBookings.length;
-      const unassignedCount = _allBookings.filter(b => b.status === 'requested' || !b.vendorId || b.vendorName === 'Pending' || b.vendorName === 'Pending Admin Assignment' || b.vendorName === 'Vendor pending').length;
-      const rejectedCount = _allBookings.filter(b => (b.rejected === true || (b.status === 'requested' && b.rejectedAt) || b.cancelledBy === 'vendor') && (b.status === 'requested' || !b.vendorId || b.vendorName === 'Pending' || b.vendorName === 'Pending Admin Assignment' || b.vendorName === 'Vendor pending')).length;
+      const unassignedCount = _allBookings.filter(b => b.status !== 'cancelled' && b.status !== 'completed' && (b.status === 'requested' || !b.vendorId || b.vendorName === 'Pending' || b.vendorName === 'Pending Admin Assignment' || b.vendorName === 'Vendor pending')).length;
+      const rejectedCount = _allBookings.filter(b => b.status !== 'cancelled' && b.status !== 'completed' && (b.rejected === true || (b.status === 'requested' && b.rejectedAt) || (b.status === 'requested' && b.cancelledBy === 'vendor')) && (b.status === 'requested' || !b.vendorId || b.vendorName === 'Pending' || b.vendorName === 'Pending Admin Assignment' || b.vendorName === 'Vendor pending')).length;
       const autoAcceptedCount = _allBookings.filter(b => b.status === 'accepted').length;
       const adminAssignedCount = _allBookings.filter(b => b.status === 'assigned').length;
       const activeNowCount = _allBookings.filter(b => ['en_route', 'arrived', 'in_progress'].includes(b.status)).length;
@@ -4522,6 +4673,10 @@
           status: newStatus,
           updatedAt: serverTimestamp()
         };
+        // Clear any lingering rejection flags when updating status
+        payload.rejected = false;
+        payload.rejectedAt = null;
+
         if (newStatus === 'cancelled') {
           payload.cancelledBy = 'admin';
           payload.cancelledAt = serverTimestamp();
@@ -4531,11 +4686,14 @@
         closeStatusModal();
         if (b) {
           b.status = newStatus;
+          b.rejected = false;
+          b.rejectedAt = null;
           if (newStatus === 'cancelled') {
             b.cancelledBy = 'admin';
             b.cancellationReason = cancelReason;
           }
         }
+        updateRejectionAlertBanner();
         if (_currentServicesSubKey === 'bookings') {
           renderBookingsBoardView();
         } else {
@@ -4569,12 +4727,17 @@
           cancelledBy: 'admin',
           cancelledAt: serverTimestamp(),
           cancellationReason: cancelReason,
+          rejected: false,
+          rejectedAt: null,
           updatedAt: serverTimestamp()
         };
         await updateDoc(doc(db, 'bookings', bookingId), payload);
         b.status = 'cancelled';
         b.cancelledBy = 'admin';
         b.cancellationReason = cancelReason;
+        b.rejected = false;
+        b.rejectedAt = null;
+        updateRejectionAlertBanner();
 
         if (document.getElementById('bookingDetailsModal')?.style.display === 'flex') {
           window.openBookingDetailsModal(bookingId);
@@ -4727,7 +4890,7 @@
             '</div>',
             '<div>',
               '<div style="font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; text-transform:uppercase;">ASSIGNED TECHNICIAN</div>',
-              '<div style="font-size:14px; font-weight:800; color:#0f172a; margin-top:3px;">' + (b.vendorName || '<span style="color:#f59e0b; font-style:italic;">Pending Assignment</span>') + '</div>',
+              '<div style="font-size:14px; font-weight:800; color:#0f172a; margin-top:3px;">' + (b.status === 'cancelled' ? ('<span style="color:#dc2626; font-weight:700;"><i class="fa-solid fa-ban"></i> Cancelled by ' + (b.cancelledBy === 'admin' ? 'Admin' : (b.cancelledBy === 'vendor' ? 'Vendor' : 'Customer')) + '</span>') : (b.vendorName || '<span style="color:#f59e0b; font-style:italic;">Pending Assignment</span>')) + '</div>',
               '<div style="font-size:12px; color:#475569; margin-top:2px;">ID: <strong style="color:#0f8a5f;">' + (b.vendorId || '—') + '</strong> ' + (b.vendorPhone ? '• ' + b.vendorPhone : '') + '</div>',
               '<div style="font-size:12px; color:#475569; margin-top:4px;">OTP: <code style="background:#e2e8f0; padding:2px 6px; border-radius:4px; font-weight:800; color:#0f8a5f;">' + (b.otp || '—') + '</code> • Price: <strong>' + (b.priceLabel || ('₹' + (b.price || 0))) + '</strong></div>',
             '</div>',
@@ -5003,6 +5166,10 @@
     };
 
     window.showSubSection = function(sec, subKey, el) {
+      if (window._currentRole === 'staff' && sec === 'revenue') {
+        alert('⛔ Access Restricted\n\nRevenue and payout details are strictly confidential and restricted to the Super Admin (Owner).');
+        return;
+      }
       if (el) {
         const parentUl = el.closest('.submenu-list') || el.closest('.category-pills-row');
         if (parentUl) {
@@ -5043,6 +5210,10 @@
     };
 
     window.showSection = function(sec, el) {
+      if (window._currentRole === 'staff' && ['revenue', 'analytics', 'settings', 'ai'].includes(sec)) {
+        alert('⛔ Access Restricted\n\nThis section contains confidential owner/financial data and is restricted to the Super Admin (Owner).\n\nCompany Employees do not have permission to view Revenue, Analytics, or Settings.');
+        return;
+      }
       _currentSection = sec;
       document.querySelectorAll('.nav-menu .nav-item').forEach(n => n.classList.remove('active'));
       if (el) el.classList.add('active');
@@ -5090,6 +5261,220 @@
     // DATE / INIT
     // ─────────────────────────────────────────────
     document.getElementById('currentDateText').textContent = new Date().toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // RBAC & AUTHENTICATION MANAGEMENT
+    // ═════════════════════════════════════════════════════════════════════════
+    const AUTH_STORAGE_KEY = '@urban_helpers_admin_auth_v1';
+    const CREDS_STORAGE_KEY = '@urban_helpers_portal_creds_v1';
+
+    function getPortalCredentials() {
+      try {
+        const raw = localStorage.getItem(CREDS_STORAGE_KEY);
+        if (raw) return JSON.parse(raw);
+      } catch (e) {}
+      return {
+        ownerEmail: 'admin@urbanhelpers.in',
+        ownerPass: 'admin123',
+        staffEmail: 'staff@urbanhelpers.in',
+        staffPass: 'staff123'
+      };
+    }
+
+    function savePortalCredentials(creds) {
+      try {
+        localStorage.setItem(CREDS_STORAGE_KEY, JSON.stringify(creds));
+      } catch (e) {}
+    }
+
+    window.switchLoginRole = function(role) {
+      const isOwner = role === 'owner';
+      document.getElementById('loginSelectedRole').value = role;
+
+      const btnOwner = document.getElementById('roleBtnOwner');
+      const btnStaff = document.getElementById('roleBtnStaff');
+      const info = document.getElementById('roleInfoBanner');
+      const uInput = document.getElementById('loginUsername');
+      const pInput = document.getElementById('loginPassword');
+      const creds = getPortalCredentials();
+
+      if (isOwner) {
+        btnOwner.style.background = '#ffffff';
+        btnOwner.style.color = '#0f172a';
+        btnOwner.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
+        btnStaff.style.background = 'transparent';
+        btnStaff.style.color = '#64748b';
+        btnStaff.style.boxShadow = 'none';
+        info.style.background = '#eff6ff';
+        info.style.borderColor = '#bfdbfe';
+        info.style.color = '#1e40af';
+        info.innerHTML = '<i class="fa-solid fa-crown" style="color:#f59e0b;"></i> <strong>Super Admin (Owner)</strong>: Full access to all features, gross revenue, vendor payouts, platform analytics, system settings, and employee permissions.';
+        uInput.value = creds.ownerEmail;
+        pInput.value = creds.ownerPass;
+      } else {
+        btnStaff.style.background = '#ffffff';
+        btnStaff.style.color = '#0f172a';
+        btnStaff.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
+        btnOwner.style.background = 'transparent';
+        btnOwner.style.color = '#64748b';
+        btnOwner.style.boxShadow = 'none';
+        info.style.background = '#f0fdf4';
+        info.style.borderColor = '#bbf7d0';
+        info.style.color = '#166534';
+        info.innerHTML = '<i class="fa-solid fa-user-tie" style="color:#10b981;"></i> <strong>Company Employee (Staff)</strong>: Access to Bookings, Assigning Vendors, Unblocking Vendors, Live Services, and Resolution Support. <span style="color:#dc2626; font-weight:700;">Revenue, Payouts, &amp; Settings are confidential and hidden.</span>';
+        uInput.value = creds.staffEmail;
+        pInput.value = creds.staffPass;
+      }
+      document.getElementById('loginErrorMsg').style.display = 'none';
+    };
+
+    window.quickFillLogin = function(role) {
+      window.switchLoginRole(role);
+    };
+
+    window.handlePortalLogin = function(e) {
+      e.preventDefault();
+      const role = document.getElementById('loginSelectedRole').value;
+      const u = (document.getElementById('loginUsername').value || '').trim();
+      const p = (document.getElementById('loginPassword').value || '').trim();
+      const creds = getPortalCredentials();
+      const errBox = document.getElementById('loginErrorMsg');
+
+      let isValid = false;
+      let userName = 'Staff Member';
+
+      if (role === 'owner') {
+        if ((u.toLowerCase() === creds.ownerEmail.toLowerCase() || u.toLowerCase() === 'admin') && p === creds.ownerPass) {
+          isValid = true;
+          userName = 'Admin (Owner)';
+        }
+      } else {
+        if ((u.toLowerCase() === creds.staffEmail.toLowerCase() || u.toLowerCase() === 'staff' || u.toLowerCase() === 'operations') && p === creds.staffPass) {
+          isValid = true;
+          userName = 'Company Staff (Operations)';
+        }
+      }
+
+      if (!isValid) {
+        errBox.textContent = 'Invalid credentials for ' + (role === 'owner' ? 'Owner / Super Admin' : 'Company Employee') + '. Please check username and password.';
+        errBox.style.display = 'block';
+        return;
+      }
+
+      errBox.style.display = 'none';
+      const session = {
+        role: role,
+        name: userName,
+        email: u,
+        signedInAt: new Date().toISOString()
+      };
+      try {
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+      } catch (err) {}
+
+      window._currentRole = role;
+      window._currentUserName = userName;
+      document.getElementById('adminAuthOverlay').style.display = 'none';
+      applyUserRolePermissions(role, userName);
+    };
+
+    window.adminLogout = function() {
+      if (confirm('Are you sure you want to sign out or switch accounts?')) {
+        try {
+          localStorage.removeItem(AUTH_STORAGE_KEY);
+        } catch (e) {}
+        window._currentRole = null;
+        document.getElementById('adminAuthOverlay').style.display = 'flex';
+      }
+    };
+
+    window.applyUserRolePermissions = function(role, userName) {
+      window._currentRole = role || 'owner';
+      const isOwner = window._currentRole === 'owner';
+
+      // 1. Update User Card in sidebar
+      const nameEl = document.getElementById('adminNameDisplay');
+      const badgeEl = document.getElementById('roleBadgeDisplay');
+      if (nameEl) nameEl.textContent = userName || (isOwner ? 'Admin • Super Admin' : 'Company Staff');
+      if (badgeEl) {
+        if (isOwner) {
+          badgeEl.textContent = 'SUPER ADMIN';
+          badgeEl.style.background = '#10b981';
+        } else {
+          badgeEl.textContent = 'STAFF (OPERATIONS)';
+          badgeEl.style.background = '#6366f1';
+        }
+      }
+
+      // 2. Hide/Show Restricted Sections in Sidebar
+      const revGroup = document.getElementById('navGroupRevenue');
+      const anItem = document.getElementById('navItemAnalytics');
+      const setItem = document.getElementById('navItemSettings');
+      const aiItem = document.getElementById('navItemAi');
+      const revMetricCard = document.getElementById('metricRevenueCard');
+
+      if (revGroup) revGroup.style.display = isOwner ? 'block' : 'none';
+      if (anItem) anItem.style.display = isOwner ? 'block' : 'none';
+      if (setItem) setItem.style.display = isOwner ? 'block' : 'none';
+      if (aiItem) aiItem.style.display = isOwner ? 'block' : 'none';
+      if (revMetricCard) revMetricCard.style.display = isOwner ? 'block' : 'none';
+
+      // 3. If employee is currently on a restricted section, redirect to Bookings
+      if (!isOwner) {
+        if (['revenue', 'analytics', 'settings', 'ai'].includes(_currentSection)) {
+          showSection('services', document.querySelector('.nav-item[onclick*="services"]'));
+          showServicesSub('bookings', document.querySelector('.submenu-item[onclick*="bookings"]'));
+        }
+      }
+    };
+
+    window.updateStaffCredentialsPrompt = function() {
+      const creds = getPortalCredentials();
+      const newPass = prompt('Enter new Staff Password for employee login:', creds.staffPass);
+      if (newPass && newPass.trim()) {
+        creds.staffPass = newPass.trim();
+        savePortalCredentials(creds);
+        alert('✅ Staff Password updated to: ' + creds.staffPass + '\nEmployees can now log in with this new password.');
+        const el = document.getElementById('settingsStaffPass');
+        if (el) el.textContent = '••••••••';
+      }
+    };
+
+    window.updateOwnerCredentialsPrompt = function() {
+      const creds = getPortalCredentials();
+      const current = prompt('Enter current Super Admin / Owner Password to confirm change:');
+      if (current !== creds.ownerPass) {
+        alert('❌ Incorrect current password. Only the Owner can change this.');
+        return;
+      }
+      const newPass = prompt('Enter new Super Admin Password:');
+      if (newPass && newPass.trim()) {
+        creds.ownerPass = newPass.trim();
+        savePortalCredentials(creds);
+        alert('✅ Super Admin Password updated successfully!');
+      }
+    };
+
+    // Auto-check session on startup
+    (function checkInitialAuth() {
+      try {
+        const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+        if (raw) {
+          const session = JSON.parse(raw);
+          if (session && session.role) {
+            window._currentRole = session.role;
+            window._currentUserName = session.name;
+            const overlay = document.getElementById('adminAuthOverlay');
+            if (overlay) overlay.style.display = 'none';
+            applyUserRolePermissions(session.role, session.name);
+            return;
+          }
+        }
+      } catch (e) {}
+      // If no valid session, ensure overlay is visible
+      const overlay = document.getElementById('adminAuthOverlay');
+      if (overlay) overlay.style.display = 'flex';
+    })();
 
     // Auto-connect directly on load
     initDashboard();

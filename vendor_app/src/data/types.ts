@@ -67,6 +67,9 @@ export interface Vendor {
   avatar: string;
   isVerified: boolean;
   isLocked?: boolean;
+  isBlocked?: boolean;
+  blockedAt?: number;
+  blockExpiresAt?: number;
   status?: 'active' | 'locked' | 'suspended';
   lockReason?: string;
   skippedCount?: number;

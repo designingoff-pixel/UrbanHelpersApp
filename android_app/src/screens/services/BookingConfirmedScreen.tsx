@@ -278,7 +278,7 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
           </Text>
           <Text style={[s.subtitle, textSecondary]}>
             {isCancelled
-              ? (booking?.cancellationReason || "This booking was cancelled by administrator. Any payment made will be refunded.")
+              ? (booking?.cancellationReason || "This booking was cancelled by administrator.")
               : isVendorAssigned
               ? "Your service partner has accepted and will arrive on time."
               : "Your booking has been placed. Waiting for partner confirmation."}

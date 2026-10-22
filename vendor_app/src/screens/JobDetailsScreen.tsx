@@ -207,12 +207,12 @@ export default function JobDetailsScreen({ route, navigation }: any) {
 
   // ── Cancel an Accepted Job (counts toward 3-cancel block) ───────────────
   const handleCancelJob = () => {
-    const current = store.cancelCount;
-    const remaining = store.CANCEL_LIMIT - current - 1;
+    const current = Math.min(store.CANCEL_LIMIT, store.cancelCount);
+    const remaining = Math.max(0, store.CANCEL_LIMIT - current - 1);
     const warningMsg =
       current >= store.CANCEL_LIMIT - 1
-        ? `⚠️ FINAL WARNING: This is your ${store.CANCEL_LIMIT}rd cancellation. Your account will be TEMPORARILY BLOCKED from going online after this.`
-        : `Are you sure you want to cancel this booking?\n\nCancellation ${current + 1}/${store.CANCEL_LIMIT} — ${remaining} more before account block.`;
+        ? `⚠️ FINAL WARNING: This is your ${store.CANCEL_LIMIT}rd cancellation. Your account will be TEMPORARILY BLOCKED for 7 days after this.`
+        : `Are you sure you want to cancel this booking?\n\nCancellation ${current + 1}/${store.CANCEL_LIMIT} — ${remaining} more before 7-day account block.`;
 
     Alert.alert('Cancel Job', warningMsg, [
       { text: 'Keep Job', style: 'cancel' },
@@ -223,17 +223,17 @@ export default function JobDetailsScreen({ route, navigation }: any) {
           setSubmitting(true);
           try {
             store.updateJobStatus(job.jobId, 'CANCELLED');
-            await cancelBooking(job.jobId, store.vendorId || undefined, store.vendor?.name || undefined);
+            const cancelRes = await cancelBooking(job.jobId, store.vendorId || undefined, store.vendor?.name || undefined);
             const result = store.recordCancellation();
-            if (result.blocked) {
+            if (cancelRes.blocked || result.blocked) {
               Alert.alert(
-                '🔒 Account Temporarily Blocked',
-                `You have cancelled ${store.CANCEL_LIMIT} jobs in 7 days. You cannot go online until the block is lifted by Admin or the 7-day window resets.`
+                '🔒 Account Blocked for 7 Days',
+                `You have cancelled ${store.CANCEL_LIMIT} jobs in 7 days. Your profile is blocked. You cannot go online or receive orders for 7 days unless unblocked by Admin.`
               );
             } else {
               Alert.alert(
                 'Job Cancelled',
-                `Cancellation recorded (${result.cancelCount}/${store.CANCEL_LIMIT}). Avoid further cancellations to prevent account block.`
+                `Cancellation recorded (${result.cancelCount}/${store.CANCEL_LIMIT}). Avoid further cancellations to prevent 7-day account block.`
               );
             }
             navigation.goBack();

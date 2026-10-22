@@ -184,12 +184,18 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
 
   // Subscribe to Vendor's live location ONLY when vendor is assigned / accepted
   const isVendorAccepted = !!booking?.vendorId && booking.status !== "requested";
-  // Service has started: customer cannot cancel, only Admin can cancel
+  // Service has started or technician arrived: customer cannot cancel, only Admin can cancel
+  const isVendorArrived =
+    booking?.status === "arrived" ||
+    booking?.status === "in_progress" ||
+    booking?.status === "service_ended" ||
+    booking?.status === "completed";
   const isServiceStarted =
     booking?.status === "in_progress" ||
     booking?.status === "service_ended" ||
     !!(booking as any)?.startedAt ||
     !!(booking as any)?.otpVerified;
+  const isCancellationLocked = isVendorArrived || isServiceStarted;
 
   useEffect(() => {
     if (!booking?.vendorId) {
@@ -631,8 +637,8 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
                 <Text style={s.ctaBtnText}>Contact Professional</Text>
               </Pressable>
 
-              {/* Only show Cancel button if vendor has NOT started service yet */}
-              {booking && !isServiceStarted && (booking.status as string) !== "cancelled" && (
+              {/* Only show Cancel button if vendor has NOT arrived and NOT started service yet */}
+              {booking && !isCancellationLocked && (booking.status as string) !== "cancelled" && (
                 <Pressable
                   style={s.cancelBtn}
                   onPress={() => {
@@ -664,14 +670,16 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
               )}
             </View>
 
-            {/* When service has started, customer cannot cancel directly; only Admin can cancel */}
-            {isServiceStarted && (booking?.status as string) !== "cancelled" && (
+            {/* When vendor has arrived or service has started, customer cannot cancel directly; only Admin can cancel */}
+            {isCancellationLocked && (booking?.status as string) !== "cancelled" && (
               <Pressable
                 style={s.inProgressLockBadge}
                 onPress={() => {
                   Alert.alert(
-                    "Service In Progress",
-                    "The professional has already started performing this service. Customer cancellation is locked once service commences.\n\nOnly Urban Helpers Admin can cancel an in-progress service allotment. Please contact Support/Admin if you need assistance.",
+                    isServiceStarted ? "Service In Progress" : "Technician Arrived",
+                    isServiceStarted
+                      ? "The professional has already started performing this service. Customer cancellation is locked once service commences.\n\nOnly Urban Helpers Admin can cancel an in-progress service allotment. Please contact Support/Admin if you need assistance."
+                      : "The technician has arrived at your location. Customer cancellation is locked once the professional arrives.\n\nPlease contact Urban Helpers Admin/Support if you need assistance.",
                     [
                       {
                         text: "Contact Support",
@@ -684,7 +692,9 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
               >
                 <Ionicons name="lock-closed" size={12} color="#f59e0b" />
                 <Text style={s.inProgressLockText}>
-                  Service in progress • Cancellation restricted to Admin only
+                  {isServiceStarted
+                    ? "Service in progress • Cancellation restricted to Admin only"
+                    : "Technician arrived • Cancellation restricted"}
                 </Text>
                 <Ionicons name="information-circle-outline" size={13} color="#f59e0b" />
               </Pressable>

@@ -128,6 +128,7 @@ export default function ServiceScreen({ route, navigation }: any) {
   const [audioUri, setAudioUri] = useState<string | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [savingAudio, setSavingAudio] = useState(false);
+  const [isUploadingAudioManual, setIsUploadingAudioManual] = useState(false);
 
   useEffect(() => {
     return store.subscribe(() => forceUpdate((n) => n + 1));
@@ -393,6 +394,25 @@ export default function ServiceScreen({ route, navigation }: any) {
     );
   };
 
+  // ── Manual Upload Handler for Audio Proof (Only available if automatic upload failed) ─
+  const handleManualAudioUpload = async () => {
+    if (!audioUri) return;
+    setIsUploadingAudioManual(true);
+    try {
+      const uploaded = await audioRecordingService.uploadLocalAudioFile(job.jobId, audioUri);
+      if (uploaded) {
+        setAudioUri(uploaded);
+        job.audioUrl = uploaded;
+        Alert.alert('✅ Audio Proof Uploaded', 'Voice recording proof has been uploaded and synced to the cloud successfully.');
+      }
+    } catch (e: any) {
+      console.warn('Manual audio upload failed:', e);
+      Alert.alert('Upload Failed', 'Could not upload audio recording right now. Please check your internet connection and try again.');
+    } finally {
+      setIsUploadingAudioManual(false);
+    }
+  };
+
   // ── Dynamic Checklist Handler with Firestore Sync ──────────────────────────
   const handleToggleCheckItem = async (item: string) => {
     store.toggleChecklist(job.jobId, item);
@@ -416,8 +436,20 @@ export default function ServiceScreen({ route, navigation }: any) {
       return { url: rawVal };
     }
 
-    // Zero-cost direct storage: Data URIs or local file URIs are returned directly
+    // Zero-cost direct storage: Convert local audio files to Data URIs for remote web playback
     if (rawVal.startsWith('data:') || rawVal.startsWith('file://')) {
+      if (type === 'audio' && rawVal.startsWith('file://')) {
+        try {
+          const base64Str = await FileSystem.readAsStringAsync(rawVal, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          if (base64Str && base64Str.length < 900000) {
+            return { url: `data:audio/mp4;base64,${base64Str}`, storagePath: `audio_proofs/${jobId}.m4a` };
+          }
+        } catch (e) {
+          console.warn('[ensureCloudUrl] audio read error:', e);
+        }
+      }
       return { url: rawVal, storagePath: undefined };
     }
 
@@ -731,36 +763,63 @@ export default function ServiceScreen({ route, navigation }: any) {
                 </Text>
               </View>
             ) : isAudioRecording ? (
-              <View style={{ gap: 10 }}>
-                <View style={styles.recordingActiveWrap}>
-                  <View style={styles.recordingPulseDot} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 13, fontWeight: '800', color: '#0F172A' }}>
-                      Voice Recording in Progress
-                    </Text>
-                    <Text style={{ fontSize: 11, color: '#059669', fontWeight: '600', marginTop: 2 }}>
-                      Duration: {formatTime(recordingDurationSecs)} • Tap Stop when done
-                    </Text>
-                  </View>
-                </View>
-                <TouchableOpacity
-                  style={[styles.playAudioBtn, { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5' }]}
-                  onPress={() => handleStopAudioRecording()}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="stop-circle" size={16} color="#DC2626" />
-                  <Text style={[styles.playAudioText, { color: '#DC2626' }]}>Stop &amp; Save Voice Proof</Text>
-                </TouchableOpacity>
-              </View>
-            ) : audioUri ? (
-              <View style={styles.audioSavedWrap}>
-                <View style={styles.audioSavedInfo}>
-                  <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-                  <Text style={styles.audioSavedText}>
-                    Audio proof recorded &amp; securely attached to booking
+              <View style={styles.recordingActiveWrap}>
+                <View style={styles.recordingPulseDot} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#0F172A' }}>
+                    🎙️ Automatic Voice Recording Active
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#059669', fontWeight: '600', marginTop: 2 }}>
+                    Recording in background ({formatTime(recordingDurationSecs)}) • Automatically stops &amp; saves when service is completed
                   </Text>
                 </View>
-                <View style={styles.audioActionsRow}>
+              </View>
+            ) : audioUri ? (
+              audioUri.startsWith('file://') ? (
+                // Automatic cloud upload failed or offline -> Vendor sees Upload button alone
+                <View style={[styles.audioSavedWrap, { borderColor: '#FCD34D', backgroundColor: '#FEFCE8', flexDirection: 'column', alignItems: 'stretch', gap: 10 }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons name="warning" size={20} color="#D97706" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.audioSavedText, { color: '#92400E', fontWeight: '700' }]}>
+                        Audio Saved on Device (Upload Pending)
+                      </Text>
+                      <Text style={{ fontSize: 11, color: '#B45309', marginTop: 2 }}>
+                        Cloud upload was interrupted. Please tap below to upload the saved recording.
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.playAudioBtn, { backgroundColor: '#10B981', borderColor: '#059669', justifyContent: 'center', paddingVertical: 10 }]}
+                    onPress={handleManualAudioUpload}
+                    disabled={isUploadingAudioManual}
+                  >
+                    {isUploadingAudioManual ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Ionicons name="cloud-upload" size={16} color="#FFFFFF" />
+                        <Text style={[styles.playAudioText, { color: '#FFFFFF', fontWeight: '800' }]}>
+                          Upload Voice Recording to Cloud
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                // Successfully synced to cloud
+                <View style={styles.audioSavedWrap}>
+                  <View style={styles.audioSavedInfo}>
+                    <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.audioSavedText}>
+                        Voice recording proof synced to cloud
+                      </Text>
+                      <Text style={{ fontSize: 11, color: '#64748B', marginTop: 1 }}>
+                        Verified audio attached to booking
+                      </Text>
+                    </View>
+                  </View>
                   <TouchableOpacity
                     style={styles.playAudioBtn}
                     onPress={handleTogglePlayback}
@@ -774,33 +833,16 @@ export default function ServiceScreen({ route, navigation }: any) {
                       {isPlayingAudio ? 'Pause' : 'Play Proof'}
                     </Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.rerecordBtn}
-                    onPress={handleRerecord}
-                  >
-                    <Ionicons name="refresh" size={14} color="#475569" />
-                    <Text style={styles.rerecordText}>Re-record</Text>
-                  </TouchableOpacity>
                 </View>
-              </View>
+              )
             ) : (
               <View style={styles.audioSavedWrap}>
                 <View style={styles.audioSavedInfo}>
-                  <Ionicons name="mic-circle" size={20} color="#F59E0B" />
-                  <Text style={[styles.audioSavedText, { color: '#B45309' }]}>
-                    Voice recording ready • Tap below to start recording
+                  <Ionicons name="mic-circle" size={20} color="#10B981" />
+                  <Text style={[styles.audioSavedText, { color: '#065F46' }]}>
+                    Automatic voice recording active in background
                   </Text>
                 </View>
-                <TouchableOpacity
-                  style={[styles.playAudioBtn, { backgroundColor: '#DCFCE7', borderColor: '#86EFAC', marginTop: 4 }]}
-                  onPress={handleStartAudioRecording}
-                  activeOpacity={0.85}
-                >
-                  <Ionicons name="mic" size={16} color="#065F46" />
-                  <Text style={[styles.playAudioText, { color: '#065F46', fontWeight: '800' }]}>
-                    Start Voice Recording
-                  </Text>
-                </TouchableOpacity>
               </View>
             )}
           </View>

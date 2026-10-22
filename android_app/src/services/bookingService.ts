@@ -193,12 +193,19 @@ export async function cancelBooking(
     );
   }
 
-  // 🚨 STRICT CHECK: If vendor has started the service, customer cannot cancel. Only Admin can cancel.
+  // 🚨 STRICT CHECK: If technician has arrived or service has started, customer cannot cancel. Only Admin can cancel.
+  const isVendorArrived = data.status === "arrived";
   const isServiceStarted =
     data.status === "in_progress" ||
     data.status === "service_ended" ||
     !!(data as any).startedAt ||
     !!(data as any).otpVerified;
+
+  if (isVendorArrived) {
+    throw new Error(
+      "The technician has already arrived at your location. Customer cancellation is locked once the professional arrives. Please contact Urban Helpers Admin/Support if you need assistance."
+    );
+  }
 
   if (isServiceStarted) {
     throw new Error(

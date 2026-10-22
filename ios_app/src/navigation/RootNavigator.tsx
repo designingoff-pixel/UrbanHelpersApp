@@ -222,7 +222,7 @@ function GlobalBookingListener() {
           if (prevStatus && prevStatus !== "cancelled" && newStatus === "cancelled") {
             Alert.alert(
               "Booking Cancelled",
-              data.cancellationReason || "This booking was cancelled. Any payment made will be refunded."
+              data.cancellationReason || "This booking was cancelled."
             );
           }
         }

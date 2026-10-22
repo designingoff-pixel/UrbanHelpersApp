@@ -56,25 +56,61 @@ class AppStore {
     if (data.services) this.vendor.services = data.services;
     if (data.serviceArea) this.vendor.serviceArea = data.serviceArea;
     if (data.serviceRadius) this.vendor.serviceRadius = data.serviceRadius;
-    if (typeof data.skippedCount === 'number') this.vendor.skippedCount = data.skippedCount;
-    if (typeof data.cancelCount === 'number') {
-      this.cancelCount = data.cancelCount;
-      this.vendor.cancelCount = data.cancelCount;
-    }
-    if (data.status === 'locked' || data.isLocked === true) {
-      this.vendor.isLocked = true;
-      this.vendor.status = 'locked';
-      this.vendor.lockReason = data.lockReason || 'Profile is locked due to skipped services or complaint review.';
-    } else {
-      this.vendor.isLocked = false;
-      this.vendor.status = 'active';
-      this.vendor.lockReason = undefined;
-      // If vendor is active in Firestore, reset local cancellation block if any
-      if (this.cancelCount >= this.CANCEL_LIMIT) {
-        this.cancelCount = 0;
-        this.vendor.cancelCount = 0;
+
+    const now = Date.now();
+    let blockedAtMs = 0;
+    if (data.blockedAt) {
+      if (typeof data.blockedAt.toMillis === 'function') blockedAtMs = data.blockedAt.toMillis();
+      else if (typeof data.blockedAt === 'number') blockedAtMs = data.blockedAt;
+      else if (data.blockedAt.seconds) blockedAtMs = data.blockedAt.seconds * 1000;
+      else if (typeof data.blockedAt === 'string') {
+        const p = new Date(data.blockedAt).getTime();
+        if (!isNaN(p)) blockedAtMs = p;
       }
     }
+
+    const is7DaysExpired = blockedAtMs > 0 && (now - blockedAtMs) >= this.CANCEL_WINDOW_MS;
+
+    if (is7DaysExpired) {
+      // 7 days have passed since block! Automatically reset & unblock
+      this.cancelCount = 0;
+      this.vendor.cancelCount = 0;
+      this.vendor.skippedCount = 0;
+      this.vendor.isLocked = false;
+      this.vendor.isBlocked = false;
+      this.vendor.status = 'active';
+      this.vendor.lockReason = undefined;
+      this.vendor.blockedAt = undefined;
+    } else {
+      const cCount = Math.min(this.CANCEL_LIMIT, typeof data.cancelCount === 'number' ? data.cancelCount : 0);
+      const sCount = Math.min(3, typeof data.skippedCount === 'number' ? data.skippedCount : 0);
+      this.cancelCount = cCount;
+      this.vendor.cancelCount = cCount;
+      this.vendor.skippedCount = sCount;
+      this.vendor.blockedAt = blockedAtMs || undefined;
+
+      const isBlockState =
+        data.isBlocked === true ||
+        data.isLocked === true ||
+        data.status === 'locked' ||
+        cCount >= this.CANCEL_LIMIT ||
+        sCount >= 3;
+
+      if (isBlockState) {
+        this.vendor.isLocked = true;
+        this.vendor.isBlocked = true;
+        this.vendor.isOnline = false;
+        this.vendor.status = 'locked';
+        this.vendor.lockReason =
+          data.lockReason || 'Profile is temporarily blocked. Contact Admin to unblock or wait 7 days to reset.';
+      } else {
+        this.vendor.isLocked = false;
+        this.vendor.isBlocked = false;
+        this.vendor.status = 'active';
+        this.vendor.lockReason = undefined;
+      }
+    }
+
     if (data.documents) {
       this.vendor.documents = data.documents;
     }
@@ -278,7 +314,7 @@ class AppStore {
 
   toggleOnline(isOnline: boolean) {
     // Blocked vendors cannot go online
-    if (isOnline && (this.vendor.isLocked || this.cancelCount >= this.CANCEL_LIMIT)) return;
+    if (isOnline && (this.vendor.isLocked || this.vendor.isBlocked || this.cancelCount >= this.CANCEL_LIMIT)) return;
     this.vendor.isOnline = isOnline;
     this.notify();
   }
@@ -293,19 +329,26 @@ class AppStore {
       // If block was due to cancels (not skips), unblock
       if (!this.vendor.isLocked || this.vendor.lockReason?.includes('cancell')) {
         this.vendor.isLocked = false;
+        this.vendor.isBlocked = false;
         this.vendor.status = 'active';
         this.vendor.lockReason = undefined;
+        this.vendor.blockedAt = undefined;
       }
     }
 
-    this.cancelCount += 1;
+    // Cap at CANCEL_LIMIT (3) — Never exceed 3 (e.g. 4, 5, 6...)
+    this.cancelCount = Math.min(this.CANCEL_LIMIT, this.cancelCount + 1);
+    this.vendor.cancelCount = this.cancelCount;
 
     if (this.cancelCount >= this.CANCEL_LIMIT) {
       this.vendor.isLocked = true;
+      this.vendor.isBlocked = true;
       this.vendor.isOnline = false;
       this.vendor.status = 'locked';
+      this.vendor.blockedAt = this.vendor.blockedAt || now;
+      this.vendor.blockExpiresAt = (this.vendor.blockedAt || now) + this.CANCEL_WINDOW_MS;
       this.vendor.lockReason =
-        `Profile temporarily blocked: ${this.CANCEL_LIMIT} job cancellations recorded in 7 days. Contact Admin to unlock or wait for the 7-day window to reset.`;
+        `Profile temporarily blocked: ${this.CANCEL_LIMIT} job cancellations recorded in 7 days. Contact Admin to unblock or wait for the 7-day window to reset.`;
     }
 
     this.notify();

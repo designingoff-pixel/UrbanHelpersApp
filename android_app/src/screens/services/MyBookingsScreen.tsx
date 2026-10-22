@@ -657,11 +657,6 @@ export default function MyBookingsScreen({ navigation }: Props) {
                   <Text style={s.totalAmount}>{selectedInvoiceBooking?.priceLabel || "₹573"}</Text>
                 </View>
               </View>
-
-              <View style={s.paymentSuccessRow}>
-                <Ionicons name="checkmark-circle" size={18} color="#10b981" />
-                <Text style={s.paymentSuccessText}>Verified & Paid Online via UPI/Card</Text>
-              </View>
             </ScrollView>
 
             <Pressable

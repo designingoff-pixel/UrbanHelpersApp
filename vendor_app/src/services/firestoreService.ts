@@ -233,7 +233,7 @@ export async function cancelBooking(
   bookingId: string,
   vendorId?: string,
   vendorName?: string
-): Promise<void> {
+): Promise<{ blocked: boolean; cancelCount: number }> {
   await updateDoc(doc(db, "bookings", bookingId), {
     status:                "cancelled",
     cancelledAt:           serverTimestamp(),
@@ -245,16 +245,61 @@ export async function cancelBooking(
     lastRejectionNoticeId: Date.now().toString(),
   });
 
+  let blocked = false;
+  let finalCount = 1;
+
   if (vendorId) {
     try {
-      await updateDoc(doc(db, "vendors", vendorId), {
-        cancelCount: increment(1),
-        lastCancelledAt: serverTimestamp(),
-      });
+      const vRef = doc(db, "vendors", vendorId);
+      const vSnap = await getDoc(vRef);
+      if (vSnap.exists()) {
+        const vData = vSnap.data();
+        const now = Date.now();
+        const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+        let currentCancels = typeof vData.cancelCount === "number" ? vData.cancelCount : 0;
+        let blockedAtMs = 0;
+        if (vData.blockedAt) {
+          if (typeof vData.blockedAt.toMillis === "function") blockedAtMs = vData.blockedAt.toMillis();
+          else if (typeof vData.blockedAt === "number") blockedAtMs = vData.blockedAt;
+          else if (vData.blockedAt.seconds) blockedAtMs = vData.blockedAt.seconds * 1000;
+          else if (typeof vData.blockedAt === "string") {
+            const p = new Date(vData.blockedAt).getTime();
+            if (!isNaN(p)) blockedAtMs = p;
+          }
+        }
+
+        // If previous block has completed 7 days, reset counter
+        if (blockedAtMs > 0 && (now - blockedAtMs) >= SEVEN_DAYS_MS) {
+          currentCancels = 0;
+        }
+
+        // Cap at 3 (NEVER go to 4, 5, 6...)
+        finalCount = Math.min(3, currentCancels + 1);
+
+        const vUpdate: Record<string, any> = {
+          cancelCount: finalCount,
+          lastCancelledAt: serverTimestamp(),
+        };
+
+        if (finalCount >= 3) {
+          vUpdate.status = "locked";
+          vUpdate.isLocked = true;
+          vUpdate.isBlocked = true;
+          vUpdate.blockedAt = serverTimestamp();
+          vUpdate.blockExpiresAt = now + SEVEN_DAYS_MS;
+          vUpdate.lockReason = "Account temporarily blocked: 3 job cancellations recorded in 7 days. Contact Admin to unblock or wait 7 days to reset.";
+          blocked = true;
+        }
+
+        await updateDoc(vRef, vUpdate);
+      }
     } catch (e) {
-      console.warn("[cancelBooking] Could not increment vendor cancelCount:", e);
+      console.warn("[cancelBooking] Could not update vendor cancelCount:", e);
     }
   }
+
+  return { blocked, cancelCount: finalCount };
 }
 
 // ── Vendor updates checklist items ──────────────────────────────────────────
@@ -279,6 +324,41 @@ export async function acceptJob(
   vendorPhone: string,
   vendorImage?: string
 ): Promise<void> {
+  // First check if vendor is currently blocked
+  if (vendorId) {
+    const vRef = doc(db, "vendors", vendorId);
+    const vSnap = await getDoc(vRef);
+    if (vSnap.exists()) {
+      const vData = vSnap.data();
+      const now = Date.now();
+      const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+      let blockedAtMs = 0;
+      if (vData.blockedAt) {
+        if (typeof vData.blockedAt.toMillis === "function") blockedAtMs = vData.blockedAt.toMillis();
+        else if (typeof vData.blockedAt === "number") blockedAtMs = vData.blockedAt;
+        else if (vData.blockedAt.seconds) blockedAtMs = vData.blockedAt.seconds * 1000;
+        else if (typeof vData.blockedAt === "string") {
+          const p = new Date(vData.blockedAt).getTime();
+          if (!isNaN(p)) blockedAtMs = p;
+        }
+      }
+
+      const is7DaysPassed = blockedAtMs > 0 && (now - blockedAtMs) >= SEVEN_DAYS_MS;
+      const isBlocked = !is7DaysPassed && (
+        vData.isBlocked === true ||
+        vData.isLocked === true ||
+        vData.status === "locked" ||
+        vData.status === "blocked" ||
+        (vData.cancelCount || 0) >= 3 ||
+        (vData.skippedCount || 0) >= 3
+      );
+
+      if (isBlocked) {
+        throw new Error("Your account is currently blocked. Contact Admin to unblock or wait for the 7-day period to expire.");
+      }
+    }
+  }
+
   const { runTransaction } = await import("firebase/firestore");
 
   let customerBookingData: FirestoreBooking | null = null;
@@ -337,6 +417,7 @@ export async function acceptJob(
         skippedCount: 0,
         status: "active",
         isLocked: false,
+        isBlocked: false,
       });
     } catch (e) {
       console.warn("[acceptJob] Could not reset vendor skip count:", e);
@@ -371,7 +452,27 @@ export async function rejectJob(
       const vSnap = await getDoc(vRef);
       if (vSnap.exists()) {
         const vData = vSnap.data();
-        newCount = (vData.skippedCount || 0) + 1;
+        const now = Date.now();
+        const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+        let currentSkips = typeof vData.skippedCount === "number" ? vData.skippedCount : 0;
+        let blockedAtMs = 0;
+        if (vData.blockedAt) {
+          if (typeof vData.blockedAt.toMillis === "function") blockedAtMs = vData.blockedAt.toMillis();
+          else if (typeof vData.blockedAt === "number") blockedAtMs = vData.blockedAt;
+          else if (vData.blockedAt.seconds) blockedAtMs = vData.blockedAt.seconds * 1000;
+          else if (typeof vData.blockedAt === "string") {
+            const p = new Date(vData.blockedAt).getTime();
+            if (!isNaN(p)) blockedAtMs = p;
+          }
+        }
+
+        if (blockedAtMs > 0 && (now - blockedAtMs) >= SEVEN_DAYS_MS) {
+          currentSkips = 0;
+        }
+
+        // Cap at 3
+        newCount = Math.min(3, currentSkips + 1);
         const updateData: Record<string, any> = {
           skippedCount: newCount,
           lastSkippedAt: serverTimestamp(),
@@ -380,7 +481,10 @@ export async function rejectJob(
         if (newCount >= 3) {
           updateData.status = "locked";
           updateData.isLocked = true;
-          updateData.lockReason = "Profile locked automatically due to 3 consecutive skipped service requests.";
+          updateData.isBlocked = true;
+          updateData.blockedAt = serverTimestamp();
+          updateData.blockExpiresAt = now + SEVEN_DAYS_MS;
+          updateData.lockReason = "Profile locked automatically due to 3 consecutive skipped service requests. Contact Admin to unblock or wait 7 days to reset.";
           locked = true;
         }
 

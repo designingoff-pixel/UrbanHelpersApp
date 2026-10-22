@@ -135,16 +135,27 @@ export default function HomeScreen({ navigation }: any) {
   const realTotalEarnings = realCompletedJobs.reduce((sum, j) => sum + (j.vendorEarnings || 0), 0);
   const displayEarnings = realTotalEarnings.toLocaleString('en-IN');
 
-  // Cancellation counter state (combines rolling cancellations & skips)
-  const cancelCount = isLocked
-    ? Math.max(store.cancelCount, store.vendor.cancelCount || 0, store.vendor.skippedCount || 0)
-    : Math.max(store.cancelCount, store.vendor.skippedCount || 0);
+  // Cancellation counter state (capped at 3/3, never 4/3, 5/3...)
   const cancelLimit = store.CANCEL_LIMIT;
-  const cancelBlocked = isLocked || cancelCount >= cancelLimit;
-  const cancelWarning = cancelCount > 0 && !cancelBlocked;
+  const rawCancel = Math.max(
+    store.cancelCount,
+    store.vendor.cancelCount || 0,
+    store.vendor.skippedCount || 0
+  );
+  const cancelCount = Math.min(cancelLimit, rawCancel);
+  const cancelBlocked = isLocked || rawCancel >= cancelLimit || !!vendor.isBlocked;
   const cancelColor = cancelBlocked ? '#DC2626' : cancelCount >= 2 ? '#D97706' : '#10B981';
   const cancelBgColor = cancelBlocked ? '#FEF2F2' : cancelCount >= 2 ? '#FFFBEB' : '#F0FDF4';
   const cancelBorderColor = cancelBlocked ? '#FECACA' : cancelCount >= 2 ? '#FDE68A' : '#BBF7D0';
+
+  // Calculate remaining days for 7-day block
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  let remainingDays = 7;
+  if (vendor.blockedAt) {
+    const elapsed = Date.now() - vendor.blockedAt;
+    const remainingMs = Math.max(0, SEVEN_DAYS_MS - elapsed);
+    remainingDays = Math.max(1, Math.ceil(remainingMs / (24 * 60 * 60 * 1000)));
+  }
 
   return (
     <View style={s.root}>
@@ -273,15 +284,15 @@ export default function HomeScreen({ navigation }: any) {
 
         <Text style={[s.cancelCardSub, { color: cancelColor }]}>
           {cancelBlocked
-            ? 'You have been temporarily blocked. Contact Admin or wait 7 days to reset.'
+            ? `You have been temporarily blocked (${remainingDays} days remaining). Contact Admin to unblock immediately or wait 7 days to reset.`
             : cancelCount === 0
             ? '3 cancellations in 7 days will temporarily block your account'
             : `${cancelLimit - cancelCount} more cancellation${cancelLimit - cancelCount > 1 ? 's' : ''} will block your account for 7 days`}
         </Text>
       </View>
 
-      {/* Auto-Lock Alert Banner if Locked */}
-      {isLocked && (
+      {/* Auto-Lock Alert Banner if Locked for reasons other than cancellations */}
+      {isLocked && !cancelBlocked && (
         <View style={s.lockedBanner}>
           <Ionicons name="lock-closed" size={20} color="#DC2626" />
           <View style={{ flex: 1 }}>
