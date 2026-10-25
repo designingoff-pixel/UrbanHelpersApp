@@ -264,6 +264,26 @@ const findPhoneAndAddressInFirestore = async (
   return { phone, address };
 };
 
+function getCurrentFormattedTime(offsetMinutes = 0): { timeStr: string; hour: number; minute: number; ampm: "AM" | "PM" } {
+  const now = new Date(Date.now() + offsetMinutes * 60 * 1000);
+  let hours = now.getHours();
+  let minutes = now.getMinutes();
+  if (offsetMinutes === 0) {
+    const rem = minutes % 15;
+    if (rem !== 0) {
+      minutes = minutes + (15 - rem);
+      if (minutes >= 60) {
+        minutes = 0;
+        hours = (hours + 1) % 24;
+      }
+    }
+  }
+  const ampm: "AM" | "PM" = hours >= 12 ? "PM" : "AM";
+  const displayHour = hours % 12 || 12;
+  const timeStr = `${String(displayHour).padStart(2, "0")}:${String(minutes).padStart(2, "0")} ${ampm}`;
+  return { timeStr, hour: displayHour, minute: minutes, ampm };
+}
+
 export default function ServiceDetailScreen({ navigation, route }: Readonly<Props>) {
   const { categoryId, subServiceId } = route.params;
   const { user } = useAuth();
@@ -344,24 +364,37 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
   const tomorrowObj = new Date();
   tomorrowObj.setDate(tomorrowObj.getDate() + 1);
 
+  const initialFormattedTime = getCurrentFormattedTime();
   const [selectedDateObj, setSelectedDateObj] = useState<Date>(() => new Date());
   const [calendarYear, setCalendarYear] = useState<number>(() => new Date().getFullYear());
   const [calendarMonth, setCalendarMonth] = useState<number>(() => new Date().getMonth());
   const [bookingDate, setBookingDate] = useState<string>(() => formatReadableDate(new Date()));
-  const [bookingTime, setBookingTime] = useState<string>("10:00 AM");
+  const [bookingTime, setBookingTime] = useState<string>(() => initialFormattedTime.timeStr);
 
   // Analog Round Clock Picker states
   const [clockMode, setClockMode] = useState<"hours" | "minutes">("hours");
-  const [clockHour, setClockHour] = useState<number>(10);
-  const [clockMinute, setClockMinute] = useState<number>(0);
-  const [clockAmPm, setClockAmPm] = useState<"AM" | "PM">("AM");
+  const [clockHour, setClockHour] = useState<number>(() => initialFormattedTime.hour);
+  const [clockMinute, setClockMinute] = useState<number>(() => initialFormattedTime.minute);
+  const [clockAmPm, setClockAmPm] = useState<"AM" | "PM">(() => initialFormattedTime.ampm);
+
+  const applyPresetTime = (offsetMins: number) => {
+    const t = getCurrentFormattedTime(offsetMins);
+    setClockHour(t.hour);
+    setClockMinute(t.minute);
+    setClockAmPm(t.ampm);
+  };
 
   const openTimePicker = () => {
     const match = bookingTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
     if (match) {
-      setClockHour(parseInt(match[1], 10) || 10);
+      setClockHour(parseInt(match[1], 10) || 12);
       setClockMinute(parseInt(match[2], 10) || 0);
       setClockAmPm((match[3]?.toUpperCase() === "PM") ? "PM" : "AM");
+    } else {
+      const cur = getCurrentFormattedTime();
+      setClockHour(cur.hour);
+      setClockMinute(cur.minute);
+      setClockAmPm(cur.ampm);
     }
     setClockMode("hours");
     setTimeModalVisible(true);
@@ -944,6 +977,24 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
       const custName = activeUser?.displayName || (activeUser?.email ? activeUser.email.split("@")[0] : "Customer");
       const scheduledDateTimeStr = `${bookingDate} at ${bookingTime}`;
 
+      let custPhoto: string | null = activeUser?.photoURL || null;
+      try {
+        const rawProfile = await AsyncStorage.getItem("@urban_health_user_profile_v2");
+        if (rawProfile) {
+          const parsed = JSON.parse(rawProfile);
+          if (parsed.avatarUri) custPhoto = parsed.avatarUri;
+        }
+        if (!custPhoto && uid && !uid.startsWith("guest_")) {
+          const uDoc = await getDoc(doc(db, "users", uid));
+          if (uDoc.exists()) {
+            const uData = uDoc.data();
+            custPhoto = uData.avatarUri || uData.photoURL || uData.photo || null;
+          }
+        }
+      } catch (err) {
+        console.warn("Could not retrieve customer avatar:", err);
+      }
+
       const bookingPayload = {
         id: bookingId,
         bookingId,
@@ -951,6 +1002,8 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
         customerName: custName,
         customerPhone: phoneNorm.e164,
         customerEmail: activeUser?.email || "",
+        customerPhoto: custPhoto,
+        customerAvatar: custPhoto,
         address: serviceAddress.trim(),
         customerLat: addressCoords.latitude,
         customerLng: addressCoords.longitude,
@@ -1729,8 +1782,64 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
               </TouchableOpacity>
             </View>
 
+            {/* Quick Presets Row */}
+            <View style={{ flexDirection: "row", justifyContent: "center", gap: 8, marginVertical: 8, flexWrap: "wrap" }}>
+              <TouchableOpacity
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 20,
+                  backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#F1F5F9",
+                  borderWidth: 1,
+                  borderColor: themeColors.cardBorder,
+                }}
+                onPress={() => applyPresetTime(0)}
+              >
+                <Text style={{ fontSize: 12, fontWeight: "700", color: themeColors.primary }}>⏰ Now</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 20,
+                  backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#F1F5F9",
+                  borderWidth: 1,
+                  borderColor: themeColors.cardBorder,
+                }}
+                onPress={() => applyPresetTime(30)}
+              >
+                <Text style={{ fontSize: 12, fontWeight: "700", color: isDark ? themeColors.text : "#334155" }}>+30 Min</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 20,
+                  backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#F1F5F9",
+                  borderWidth: 1,
+                  borderColor: themeColors.cardBorder,
+                }}
+                onPress={() => applyPresetTime(60)}
+              >
+                <Text style={{ fontSize: 12, fontWeight: "700", color: isDark ? themeColors.text : "#334155" }}>+1 Hour</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 20,
+                  backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#F1F5F9",
+                  borderWidth: 1,
+                  borderColor: themeColors.cardBorder,
+                }}
+                onPress={() => applyPresetTime(120)}
+              >
+                <Text style={{ fontSize: 12, fontWeight: "700", color: isDark ? themeColors.text : "#334155" }}>+2 Hours</Text>
+              </TouchableOpacity>
+            </View>
+
             {/* Digital Display & AM/PM Selector */}
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginVertical: 10 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginVertical: 6 }}>
               <TouchableOpacity
                 style={{
                   backgroundColor: clockMode === "hours" ? themeColors.primary : (isDark ? themeColors.surface : "#F1F5F9"),
@@ -1793,10 +1902,10 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
             </View>
 
             <Text style={{ fontSize: 12, color: isDark ? themeColors.textSecondary : "#64748B", textAlign: "center", marginBottom: 6 }}>
-              {clockMode === "hours" ? "Tap or drag on dial to select Hour" : "Tap or drag on dial to select Minutes"}
+              {clockMode === "hours" ? "Tap an hour to select (1 - 12)" : "Tap minutes on dial or use shortcuts below"}
             </Text>
 
-            {/* Interactive Round Analog Clock Face */}
+            {/* Interactive Round Analog Clock Face - Direct Touch Responsive */}
             <View
               style={{
                 width: 240,
@@ -1804,42 +1913,10 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
                 borderRadius: 120,
                 backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "#F8FAFC",
                 alignSelf: "center",
-                marginVertical: 10,
+                marginVertical: 6,
                 borderWidth: 2,
                 borderColor: isDark ? themeColors.cardBorder : "#E2E8F0",
                 position: "relative",
-              }}
-              onStartShouldSetResponder={() => true}
-              onMoveShouldSetResponder={() => true}
-              onResponderGrant={(evt) => {
-                const { locationX, locationY } = evt.nativeEvent;
-                const dx = locationX - 120;
-                const dy = locationY - 120;
-                let deg = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
-                if (deg < 0) deg += 360;
-                if (clockMode === "hours") {
-                  let h = Math.round(deg / 30) % 12;
-                  if (h === 0) h = 12;
-                  setClockHour(h);
-                } else {
-                  let m = (Math.round(deg / 30) * 5) % 60;
-                  setClockMinute(m);
-                }
-              }}
-              onResponderMove={(evt) => {
-                const { locationX, locationY } = evt.nativeEvent;
-                const dx = locationX - 120;
-                const dy = locationY - 120;
-                let deg = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
-                if (deg < 0) deg += 360;
-                if (clockMode === "hours") {
-                  let h = Math.round(deg / 30) % 12;
-                  if (h === 0) h = 12;
-                  setClockHour(h);
-                } else {
-                  let m = (Math.round(deg / 30) * 5) % 60;
-                  setClockMinute(m);
-                }
               }}
             >
               {/* Clock Hand Line & Center Pin */}
@@ -1850,31 +1927,35 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
                   x2={120 + 82 * Math.cos(clockMode === "hours" ? (clockHour * 30 - 90) * (Math.PI / 180) : (clockMinute * 6 - 90) * (Math.PI / 180))}
                   y2={120 + 82 * Math.sin(clockMode === "hours" ? (clockHour * 30 - 90) * (Math.PI / 180) : (clockMinute * 6 - 90) * (Math.PI / 180))}
                   stroke={themeColors.primary}
-                  strokeWidth="3"
+                  strokeWidth="3.5"
                 />
-                <Circle cx="120" cy="120" r="5" fill={themeColors.primary} />
+                <Circle cx="120" cy="120" r="6" fill={themeColors.primary} />
               </Svg>
 
-              {/* Dial Numbers */}
+              {/* Dial Numbers with Large Hit Slop */}
               {(clockMode === "hours"
                 ? [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
                 : [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
               ).map((val) => {
                 const isSel = clockMode === "hours" ? clockHour === val : (clockMinute === val || (val === 0 && clockMinute === 60));
                 const angle = clockMode === "hours" ? (val * 30 - 90) * (Math.PI / 180) : (val * 6 - 90) * (Math.PI / 180);
-                const left = 120 + 82 * Math.cos(angle) - 17;
-                const top = 120 + 82 * Math.sin(angle) - 17;
+                const left = 120 + 82 * Math.cos(angle) - 19;
+                const top = 120 + 82 * Math.sin(angle) - 19;
                 return (
                   <TouchableOpacity
                     key={val}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     style={{
                       position: "absolute",
                       left,
                       top,
-                      width: 34,
-                      height: 34,
-                      borderRadius: 17,
-                      backgroundColor: isSel ? themeColors.primary : "transparent",
+                      width: 38,
+                      height: 38,
+                      borderRadius: 19,
+                      backgroundColor: isSel ? themeColors.primary : (isDark ? "rgba(255,255,255,0.06)" : "#FFFFFF"),
+                      borderWidth: isSel ? 0 : 1,
+                      borderColor: isDark ? themeColors.cardBorder : "#E2E8F0",
                       justifyContent: "center",
                       alignItems: "center",
                       zIndex: isSel ? 10 : 2,
@@ -1891,11 +1972,46 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
                     <Text
                       style={{
                         fontSize: 13,
-                        fontWeight: isSel ? "900" : "600",
+                        fontWeight: isSel ? "900" : "700",
                         color: isSel ? "#FFFFFF" : (isDark ? themeColors.text : "#0F172A"),
                       }}
                     >
                       {clockMode === "hours" ? val : String(val).padStart(2, "0")}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Quick Minute Shortcut Pills */}
+            <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 10, marginTop: 8 }}>
+              <Text style={{ fontSize: 11, fontWeight: "700", color: isDark ? themeColors.textSecondary : "#64748B" }}>
+                Quick Min:
+              </Text>
+              {[0, 15, 30, 45].map((mVal) => {
+                const isSelected = clockMinute === mVal;
+                return (
+                  <TouchableOpacity
+                    key={mVal}
+                    activeOpacity={0.7}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 5,
+                      borderRadius: 10,
+                      backgroundColor: isSelected ? themeColors.primary : (isDark ? themeColors.surface : "#F1F5F9"),
+                      borderWidth: 1,
+                      borderColor: isSelected ? themeColors.primary : themeColors.cardBorder,
+                    }}
+                    onPress={() => setClockMinute(mVal)}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: isSelected ? "800" : "600",
+                        color: isSelected ? "#FFFFFF" : (isDark ? themeColors.text : "#334155"),
+                      }}
+                    >
+                      :{String(mVal).padStart(2, "0")}
                     </Text>
                   </TouchableOpacity>
                 );

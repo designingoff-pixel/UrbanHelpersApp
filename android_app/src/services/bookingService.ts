@@ -57,6 +57,8 @@ export interface CreateBookingInput {
   customerId:      string;
   customerName:    string;
   customerPhone:   string; // ← added customer phone
+  customerPhoto?:  string | null;
+  customerAvatar?: string | null;
   serviceCategory: string;
   subServiceName:  string;
   address:         string;

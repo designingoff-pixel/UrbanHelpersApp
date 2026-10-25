@@ -15,6 +15,8 @@ export interface Job {
   customerId: string;
   customerName: string;
   customerPhone: string;
+  customerPhoto?: string | null;
+  customerAvatar?: string | null;
   serviceType: string;
   serviceName: string;
   assignmentType: AssignmentType;

@@ -32,6 +32,8 @@ export interface FirestoreBooking {
   customerId:      string;
   customerName:    string;
   customerPhone?:  string;
+  customerPhoto?:  string;
+  customerAvatar?: string;
   vendorId?:       string;
   vendorName?:     string;
   vendorPhone?:    string;
@@ -605,7 +607,7 @@ export async function updateBookingPhotos(
   const subcollectionData: Record<string, any> = {};
 
   if (photos.beforePhoto !== undefined) {
-    if (typeof photos.beforePhoto === 'string' && photos.beforePhoto.startsWith('data:') && photos.beforePhoto.length > 50000) {
+    if (typeof photos.beforePhoto === 'string' && photos.beforePhoto.startsWith('data:') && photos.beforePhoto.length > 500000) {
       subcollectionData.beforePhoto = photos.beforePhoto;
       updateData.beforePhoto = 'subcollection:evidence/photos';
       updateData.hasPhotoProof = true;
@@ -615,7 +617,7 @@ export async function updateBookingPhotos(
   }
 
   if (photos.afterPhoto !== undefined) {
-    if (typeof photos.afterPhoto === 'string' && photos.afterPhoto.startsWith('data:') && photos.afterPhoto.length > 50000) {
+    if (typeof photos.afterPhoto === 'string' && photos.afterPhoto.startsWith('data:') && photos.afterPhoto.length > 500000) {
       subcollectionData.afterPhoto = photos.afterPhoto;
       updateData.afterPhoto = 'subcollection:evidence/photos';
       updateData.hasPhotoProof = true;

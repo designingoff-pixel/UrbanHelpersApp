@@ -19,6 +19,8 @@ import {
   verifyOTP,
   updateVendorLocation,
 } from '../services/firestoreService';
+import { db } from '../services/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import * as Location from 'expo-location';
 import OTPInput from '../components/OTPInput';
 import SOSModal from '../components/SOSModal';
@@ -42,11 +44,34 @@ export default function JobDetailsScreen({ route, navigation }: any) {
   const [otpLoading, setOtpLoading] = useState(false);
   const [vendorCoords, setVendorCoords] = useState<{ lat: number; lng: number } | null>(null);
   const job = store.getJob(jobId);
+  const [customerPhoto, setCustomerPhoto] = useState<string | null>(job?.customerPhoto || null);
 
   useEffect(() => {
     stopLoudOrderAlert();
     return store.subscribe(() => forceUpdate((n) => n + 1));
   }, []);
+
+  useEffect(() => {
+    if (job?.customerPhoto) {
+      setCustomerPhoto(job.customerPhoto);
+      return;
+    }
+    if (!job?.customerId) return;
+    let isMounted = true;
+    (async () => {
+      try {
+        const uSnap = await getDoc(doc(db, 'users', job.customerId));
+        if (isMounted && uSnap.exists()) {
+          const uData = uSnap.data();
+          const photo = uData.avatarUri || uData.photoURL || uData.photo || uData.image || null;
+          if (photo) setCustomerPhoto(photo);
+        }
+      } catch (err) {
+        console.warn('[JobDetailsScreen] Could not fetch customer photo:', err);
+      }
+    })();
+    return () => { isMounted = false; };
+  }, [job?.customerId, job?.customerPhoto]);
 
   // Continuous GPS broadcast to customer app while en route
   useEffect(() => {
@@ -464,11 +489,15 @@ export default function JobDetailsScreen({ route, navigation }: any) {
         <View style={s.card}>
           <Text style={s.cardHeading}>CUSTOMER INFORMATION</Text>
           <View style={s.customerRow}>
-            <View style={s.customerAvatar}>
-              <Text style={s.customerInitial}>
-                {(job.customerName || 'C')[0].toUpperCase()}
-              </Text>
-            </View>
+            {customerPhoto ? (
+              <Image source={{ uri: customerPhoto }} style={s.customerAvatarImg} resizeMode="cover" />
+            ) : (
+              <View style={s.customerAvatar}>
+                <Text style={s.customerInitial}>
+                  {(job.customerName || 'C')[0].toUpperCase()}
+                </Text>
+              </View>
+            )}
             <View style={{ flex: 1 }}>
               <Text style={s.customerName}>{job.customerName}</Text>
               <Text style={s.customerPhone}>
@@ -970,6 +999,12 @@ const s = StyleSheet.create({
     backgroundColor: '#0D3325',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  customerAvatarImg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#0D3325',
   },
   customerInitial: {
     fontSize: 18,

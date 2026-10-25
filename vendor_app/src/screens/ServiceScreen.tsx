@@ -139,8 +139,12 @@ export default function ServiceScreen({ route, navigation }: any) {
 
   // Load existing photos and audio from job
   useEffect(() => {
-    if (job?.beforePhoto) setBeforePhoto(job.beforePhoto);
-    if (job?.afterPhoto) setAfterPhoto(job.afterPhoto);
+    if (job?.beforePhoto && !job.beforePhoto.startsWith('subcollection:')) {
+      setBeforePhoto((prev) => prev || job.beforePhoto);
+    }
+    if (job?.afterPhoto && !job.afterPhoto.startsWith('subcollection:')) {
+      setAfterPhoto((prev) => prev || job.afterPhoto);
+    }
     if (job?.audioUrl) setAudioUri(job.audioUrl);
   }, [job?.beforePhoto, job?.afterPhoto, job?.audioUrl]);
 
@@ -246,37 +250,38 @@ export default function ServiceScreen({ route, navigation }: any) {
       let finalPhotoUrl = '';
       const storagePath = `booking_proofs/${job.jobId}_${type}_${Date.now()}.jpg`;
 
-      // 1. Try Firebase Storage upload first
-      if (storage && asset.uri) {
+      // 1. Prepare Base64 representation
+      let b64Str = asset.base64;
+      if (!b64Str && asset.uri) {
+        try {
+          b64Str = await FileSystem.readAsStringAsync(asset.uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+        } catch (e) {
+          console.warn('[savePhotoData] Base64 read error:', e);
+        }
+      }
+
+      // 2. Upload to Firebase Storage using uploadString (exact method used for audio)
+      if (storage && b64Str) {
         try {
           if (auth && !auth.currentUser) {
             await signInAnonymously(auth).catch(() => {});
           }
           const photoRef = ref(storage, storagePath);
-          const response = await fetch(asset.uri);
-          const blob = await response.blob();
-          await uploadBytes(photoRef, blob, { contentType: 'image/jpeg' });
+          await uploadString(photoRef, b64Str, 'base64', { contentType: 'image/jpeg' });
           finalPhotoUrl = await getDownloadURL(photoRef);
         } catch (uploadErr) {
-          console.warn('[savePhotoData] Storage upload fallback:', uploadErr);
+          console.warn('[savePhotoData] Storage uploadString error:', uploadErr);
         }
       }
 
-      // 2. If storage upload did not return URL, fallback to Data URI (never raw local file://)
+      // 3. Fallback: if storage upload is unavailable, use base64 data URI or asset URI
       if (!finalPhotoUrl) {
-        if (asset.base64) {
-          finalPhotoUrl = `data:image/jpeg;base64,${asset.base64}`;
+        if (b64Str) {
+          finalPhotoUrl = `data:image/jpeg;base64,${b64Str}`;
         } else if (asset.uri) {
-          try {
-            const b64 = await FileSystem.readAsStringAsync(asset.uri, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-            if (b64) {
-              finalPhotoUrl = `data:image/jpeg;base64,${b64}`;
-            }
-          } catch (_) {
-            finalPhotoUrl = asset.uri;
-          }
+          finalPhotoUrl = asset.uri;
         }
       }
 
@@ -284,13 +289,16 @@ export default function ServiceScreen({ route, navigation }: any) {
         throw new Error('Photo could not be captured. Please try taking the photo again.');
       }
 
+      // Local display first - ensure instant feedback
+      const localDisplayUri = asset.uri || finalPhotoUrl;
+
       if (type === 'before') {
-        setBeforePhoto(finalPhotoUrl);
-        store.updateJobPhotos(job.jobId, finalPhotoUrl, undefined);
+        setBeforePhoto(localDisplayUri);
+        store.updateJobPhotos(job.jobId, localDisplayUri, undefined);
         await updateBookingPhotos(job.jobId, { beforePhoto: finalPhotoUrl, beforePhotoPath: storagePath });
       } else {
-        setAfterPhoto(finalPhotoUrl);
-        store.updateJobPhotos(job.jobId, undefined, finalPhotoUrl);
+        setAfterPhoto(localDisplayUri);
+        store.updateJobPhotos(job.jobId, undefined, localDisplayUri);
         await updateBookingPhotos(job.jobId, { afterPhoto: finalPhotoUrl, afterPhotoPath: storagePath });
       }
 
@@ -716,7 +724,6 @@ export default function ServiceScreen({ route, navigation }: any) {
                 <Ionicons name="construct" size={12} color="#34D399" />
                 <Text style={styles.categoryPillText}>{job.serviceType}</Text>
               </View>
-              <Text style={styles.timerDisplay}>{formatTime(store.recordingSeconds)}</Text>
             </View>
 
             <Text style={styles.serviceNameMain}>{job.serviceName}</Text>
@@ -771,7 +778,7 @@ export default function ServiceScreen({ route, navigation }: any) {
               <Text style={styles.photoBoxLabel}>1. Before Service</Text>
               {beforePhoto ? (
                 <View style={styles.photoPreviewWrap}>
-                  <Image source={{ uri: beforePhoto }} style={styles.photoImg} />
+                  <Image source={{ uri: beforePhoto }} style={styles.photoImg} resizeMode="cover" />
                   <TouchableOpacity
                     style={styles.replaceBtn}
                     onPress={() => handlePickPhoto('before')}
@@ -803,7 +810,7 @@ export default function ServiceScreen({ route, navigation }: any) {
               <Text style={styles.photoBoxLabel}>2. After Service</Text>
               {afterPhoto ? (
                 <View style={styles.photoPreviewWrap}>
-                  <Image source={{ uri: afterPhoto }} style={styles.photoImg} />
+                  <Image source={{ uri: afterPhoto }} style={styles.photoImg} resizeMode="cover" />
                   <TouchableOpacity
                     style={styles.replaceBtn}
                     onPress={() => handlePickPhoto('after')}
@@ -1290,7 +1297,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     position: 'relative',
-    backgroundColor: '#0F172A',
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   photoImg: {
     width: '100%',

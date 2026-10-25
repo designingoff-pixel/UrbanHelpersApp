@@ -1,14 +1,37 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { store } from '../store/AppStore';
 import { Colors, Typography, Spacing, Radius, Shadows } from '../theme';
+import { db } from '../services/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function CompleteScreen({ route, navigation }: any) {
   const { jobId } = route.params;
   const job = store.getJob(jobId);
   if (!job) return null;
+
+  const [beforePhoto, setBeforePhoto] = useState<string | null>(
+    job.beforePhoto && !job.beforePhoto.startsWith('subcollection:') ? job.beforePhoto : null
+  );
+  const [afterPhoto, setAfterPhoto] = useState<string | null>(
+    job.afterPhoto && !job.afterPhoto.startsWith('subcollection:') ? job.afterPhoto : null
+  );
+
+  useEffect(() => {
+    if ((!beforePhoto || !afterPhoto) && (job.beforePhoto?.startsWith('subcollection:') || job.afterPhoto?.startsWith('subcollection:'))) {
+      getDoc(doc(db, 'bookings', job.jobId, 'evidence', 'photos'))
+        .then((snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            if (data.beforePhoto && !beforePhoto) setBeforePhoto(data.beforePhoto);
+            if (data.afterPhoto && !afterPhoto) setAfterPhoto(data.afterPhoto);
+          }
+        })
+        .catch((err) => console.warn('[CompleteScreen] Photo load error:', err));
+    }
+  }, [job.jobId, job.beforePhoto, job.afterPhoto]);
 
   const secs = store.recordingSeconds;
   const h = Math.floor(secs / 3600);
@@ -42,22 +65,22 @@ export default function CompleteScreen({ route, navigation }: any) {
           ))}
 
           {/* Work Verification Photos Preview */}
-          {(job.beforePhoto || job.afterPhoto) && (
+          {(beforePhoto || afterPhoto) && (
             <View style={[styles.photoSection, styles.bordered]}>
               <Text style={styles.rowLabel}>Work Verification Photos</Text>
               <View style={styles.photoRow}>
-                {job.beforePhoto && (
+                {beforePhoto ? (
                   <View style={styles.photoThumbWrap}>
-                    <Image source={{ uri: job.beforePhoto }} style={styles.photoThumb} />
+                    <Image source={{ uri: beforePhoto }} style={styles.photoThumb} resizeMode="cover" />
                     <Text style={styles.photoTag}>Before</Text>
                   </View>
-                )}
-                {job.afterPhoto && (
+                ) : null}
+                {afterPhoto ? (
                   <View style={styles.photoThumbWrap}>
-                    <Image source={{ uri: job.afterPhoto }} style={styles.photoThumb} />
+                    <Image source={{ uri: afterPhoto }} style={styles.photoThumb} resizeMode="cover" />
                     <Text style={styles.photoTag}>After</Text>
                   </View>
-                )}
+                ) : null}
               </View>
             </View>
           )}
@@ -106,7 +129,16 @@ const styles = StyleSheet.create({
   bordered: { paddingTop: 12, borderTopWidth: 1, borderTopColor: Colors.outlineVariant + '30' },
   photoSection: { gap: 8 },
   photoRow: { flexDirection: 'row', gap: 12, marginTop: 4 },
-  photoThumbWrap: { width: 80, height: 80, borderRadius: 10, overflow: 'hidden', position: 'relative' },
+  photoThumbWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 10,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
   photoThumb: { width: '100%', height: '100%' },
   photoTag: {
     position: 'absolute', bottom: 3, left: 3,
