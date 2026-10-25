@@ -7,6 +7,7 @@ import { Auth, getAuth, initializeAuth } from "firebase/auth";
 // @ts-expect-error - see above
 import { getReactNativePersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const firebaseConfig = {
@@ -31,6 +32,7 @@ try {
 
 export { auth };
 export const db = getFirestore(app);
+export const storage = getStorage(app);
 
 export const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 export const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;

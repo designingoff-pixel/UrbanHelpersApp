@@ -14,11 +14,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, getDoc } from "firebase/firestore";
+import { ref, getDownloadURL } from "firebase/storage";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system";
-import { db } from "@/services/firebase";
+import { db, storage } from "@/services/firebase";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 
@@ -28,6 +29,8 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
   const bookingId = (route.params as any)?.bookingId ?? "";
 
   const [booking, setBooking] = useState<any>(null);
+  const [beforePhoto, setBeforePhoto] = useState<string | null>(null);
+  const [afterPhoto, setAfterPhoto] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
 
@@ -53,9 +56,45 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
 
     const unsub = onSnapshot(
       doc(db, "bookings", bookingId),
-      (snap) => {
+      async (snap) => {
         if (snap.exists()) {
-          setBooking({ id: snap.id, ...snap.data() });
+          const data = { id: snap.id, ...snap.data() } as any;
+          setBooking(data);
+
+          let bPhoto = (data.beforePhoto && !data.beforePhoto.startsWith("subcollection:")) ? data.beforePhoto : null;
+          let aPhoto = (data.afterPhoto && !data.afterPhoto.startsWith("subcollection:")) ? data.afterPhoto : null;
+
+          // 1. If stored in subcollection 'evidence/photos', fetch the actual Base64 / URL
+          if (
+            (!bPhoto || !aPhoto) &&
+            (data.beforePhoto?.startsWith("subcollection:") || data.afterPhoto?.startsWith("subcollection:"))
+          ) {
+            try {
+              const evSnap = await getDoc(doc(db, "bookings", bookingId, "evidence", "photos"));
+              if (evSnap.exists()) {
+                const evData = evSnap.data();
+                if (evData.beforePhoto && !bPhoto) bPhoto = evData.beforePhoto;
+                if (evData.afterPhoto && !aPhoto) aPhoto = evData.afterPhoto;
+              }
+            } catch (err) {
+              console.warn("[ServiceCompleted] Error fetching evidence photos:", err);
+            }
+          }
+
+          // 2. If storage path is available, resolve public download URL
+          if (!bPhoto && data.beforePhotoPath && storage) {
+            try {
+              bPhoto = await getDownloadURL(ref(storage, data.beforePhotoPath));
+            } catch {}
+          }
+          if (!aPhoto && data.afterPhotoPath && storage) {
+            try {
+              aPhoto = await getDownloadURL(ref(storage, data.afterPhotoPath));
+            } catch {}
+          }
+
+          if (bPhoto) setBeforePhoto(bPhoto);
+          if (aPhoto) setAfterPhoto(aPhoto);
         }
         setLoading(false);
       },
@@ -323,19 +362,19 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
     </div>
   </div>
 
-  ${(booking?.beforePhoto || booking?.afterPhoto) ? `
+  ${(beforePhoto || afterPhoto) ? `
   <div style="margin-top: 28px; border-top: 1px solid #e2e8f0; padding-top: 18px;">
     <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #64748b; margin-bottom: 12px;">Verified Service Proof Photos</div>
     <div style="display: flex; gap: 16px;">
-      ${booking?.beforePhoto ? `
+      ${beforePhoto ? `
       <div style="flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; text-align: center;">
         <div style="font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 6px;">BEFORE SERVICE</div>
-        <img src="${booking.beforePhoto}" style="width: 100%; max-height: 160px; object-fit: cover; border-radius: 6px;" />
+        <img src="${beforePhoto}" style="width: 100%; max-height: 160px; object-fit: cover; border-radius: 6px;" />
       </div>` : ''}
-      ${booking?.afterPhoto ? `
+      ${afterPhoto ? `
       <div style="flex: 1; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px; text-align: center;">
         <div style="font-size: 11px; font-weight: 700; color: #15803d; margin-bottom: 6px;">AFTER SERVICE</div>
-        <img src="${booking.afterPhoto}" style="width: 100%; max-height: 160px; object-fit: cover; border-radius: 6px;" />
+        <img src="${afterPhoto}" style="width: 100%; max-height: 160px; object-fit: cover; border-radius: 6px;" />
       </div>` : ''}
     </div>
   </div>` : ''}
@@ -477,7 +516,7 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
         </Animated.View>
 
         {/* Work Verification Photos (Before & After Proof) */}
-        {(booking?.beforePhoto || booking?.afterPhoto) && (
+        {(beforePhoto || afterPhoto) && (
           <Animated.View entering={FadeInDown.delay(60).duration(380)} style={s.photoCard}>
             <View style={s.photoCardHeader}>
               <Ionicons name="camera" size={16} color="#00bcd4" />
@@ -486,16 +525,16 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
             <Text style={s.photoCardSub}>Verified photos captured by your technician before and after service</Text>
 
             <View style={s.photoGrid}>
-              {booking.beforePhoto && (
+              {beforePhoto && (
                 <View style={s.photoCol}>
                   <Text style={s.photoTag}>Before Service</Text>
-                  <Image source={{ uri: booking.beforePhoto }} style={s.proofImg} />
+                  <Image source={{ uri: beforePhoto }} style={s.proofImg} resizeMode="cover" />
                 </View>
               )}
-              {booking.afterPhoto && (
+              {afterPhoto && (
                 <View style={s.photoCol}>
                   <Text style={s.photoTag}>After Service</Text>
-                  <Image source={{ uri: booking.afterPhoto }} style={s.proofImg} />
+                  <Image source={{ uri: afterPhoto }} style={s.proofImg} resizeMode="cover" />
                 </View>
               )}
             </View>
@@ -778,11 +817,12 @@ const s = StyleSheet.create({
   },
   proofImg: {
     width: "100%",
-    height: 120,
+    height: 130,
     borderRadius: 12,
-    backgroundColor: "#081826",
+    backgroundColor: "#16283c",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(255,255,255,0.12)",
+    overflow: "hidden",
   },
 
   // Invoice Card
