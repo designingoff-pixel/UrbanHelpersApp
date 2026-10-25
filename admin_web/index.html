@@ -2693,6 +2693,16 @@
       const vId = (v.vendorId || v.id || '').trim();
       const vDocId = (v.id || '').trim();
 
+      // Parse unlockedAt timestamp
+      let uTime = 0;
+      const uField = v.unlockedAt;
+      if (uField) {
+        if (typeof uField.toMillis === 'function') uTime = uField.toMillis();
+        else if (uField.seconds) uTime = uField.seconds * 1000;
+        else if (typeof uField === 'number') uTime = uField;
+        else uTime = new Date(uField).getTime() || 0;
+      }
+
       // 1. Check cancellations from vendor's cancellations array within 7-day rolling window
       let vendorDocCancels = 0;
       if (Array.isArray(v.cancellations)) {
@@ -2703,7 +2713,7 @@
             else if (c.timestamp.seconds) ct = c.timestamp.seconds * 1000;
             else ct = new Date(c.timestamp).getTime() || 0;
           }
-          return ct >= sevenDaysAgo;
+          return ct >= sevenDaysAgo && ct > uTime;
         }).length;
       }
 
@@ -2724,16 +2734,14 @@
             else if (typeof t === 'number') cTime = t;
             else cTime = new Date(t).getTime() || 0;
           }
-          return cTime >= sevenDaysAgo;
+          return cTime >= sevenDaysAgo && cTime > uTime;
         }).length;
       }
 
-      const totalCancels = Math.max(rawCancels, vendorDocCancels, bookingVendorCancels);
-
-      // Check daily rejections from bookings for today
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
       const todayStartMs = todayStart.getTime();
+      const cutoffTime = Math.max(todayStartMs, uTime);
 
       let todayRejections = 0;
       if (Array.isArray(_allBookings)) {
@@ -2755,15 +2763,31 @@
             else if (typeof t === 'number') rTime = t;
             else rTime = new Date(t).getTime() || 0;
           }
-          return rTime >= todayStartMs;
+          return rTime >= cutoffTime;
         }).length;
       }
 
-      const totalSkipsOrRejections = Math.max(rawSkips, rawRejections, todayRejections);
-      const cancels = Math.min(3, Math.max(0, totalCancels));
+      // If vendor was explicitly unlocked/activated, previous skips/rejections should not re-block
+      const isExplicitlyActive = (v.status === 'active' || !v.status) && v.isBlocked === false && v.isLocked === false && v.blocked !== true;
+      const effectiveSkips = isExplicitlyActive ? 0 : rawSkips;
+      const effectiveCancels = isExplicitlyActive ? 0 : Math.max(rawCancels, vendorDocCancels, bookingVendorCancels);
+      const effectiveRejections = isExplicitlyActive ? 0 : rawRejections;
+
+      const totalSkipsOrRejections = Math.max(effectiveSkips, effectiveRejections, todayRejections);
+      const cancels = Math.min(3, Math.max(0, effectiveCancels));
       const skips = Math.min(3, Math.max(0, totalSkipsOrRejections));
 
-      const isLockedOrBlocked = v.isBlocked === true || v.isLocked === true || v.blocked === true || v.status === 'locked' || v.status === 'blocked' || v.status === 'suspended' || v.isSuspended === true || totalCancels >= 3 || totalSkipsOrRejections >= 3;
+      const isLockedOrBlocked = !isExplicitlyActive && (
+        v.isBlocked === true ||
+        v.isLocked === true ||
+        v.blocked === true ||
+        v.status === 'locked' ||
+        v.status === 'blocked' ||
+        v.status === 'suspended' ||
+        v.isSuspended === true ||
+        effectiveCancels >= 3 ||
+        totalSkipsOrRejections >= 3
+      );
       if (!isLockedOrBlocked) {
         return { isBlocked: false, remainingDays: 0, reason: '', cancels, skips };
       }
@@ -2904,8 +2928,13 @@
           status: 'active',
           isLocked: false,
           isBlocked: false,
+          blocked: false,
+          isSuspended: false,
           skippedCount: 0,
+          rejectedCount: 0,
+          rejections: 0,
           cancelCount: 0,
+          cancels: 0,
           cancellations: [],
           blockedAt: null,
           blockExpiresAt: null,
@@ -2931,18 +2960,9 @@
 
         // Update local vendor record in memory immediately
         if (Array.isArray(_allVendorsList)) {
-          const vObj = _allVendorsList.find(x => x.id === docId || x.vendorId === docId);
-          if (vObj) {
-            vObj.status = 'active';
-            vObj.isLocked = false;
-            vObj.isBlocked = false;
-            vObj.skippedCount = 0;
-            vObj.cancelCount = 0;
-            vObj.cancellations = [];
-            vObj.blockedAt = null;
-            vObj.blockExpiresAt = null;
-            vObj.lockedAt = null;
-            vObj.lockReason = null;
+          const target = _allVendorsList.find(x => x.id === docId || x.vendorId === docId);
+          if (target) {
+            Object.assign(target, resetPayload, { unlockedAt: Date.now() });
           }
         }
 

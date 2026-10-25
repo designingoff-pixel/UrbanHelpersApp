@@ -2364,25 +2364,25 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
 
-  // 4. Two Column Cards
+  // 4. Contact & Schedule Cards
   twoColsRow: {
-    flexDirection: "row",
-    gap: 10,
+    flexDirection: "column",
+    gap: 12,
     marginBottom: 12,
   },
   contactCard: {
-    flex: 1,
+    width: "100%",
     backgroundColor: "#F0F9FF",
     borderRadius: 20,
-    padding: 12,
+    padding: 14,
     borderWidth: 1,
     borderColor: "#E0F2FE",
   },
   scheduleCard: {
-    flex: 1,
+    width: "100%",
     backgroundColor: "#FAF5FF",
     borderRadius: 20,
-    padding: 12,
+    padding: 14,
     borderWidth: 1,
     borderColor: "#F3E8FF",
   },
@@ -2408,12 +2408,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   smallCardTitle: {
-    fontSize: 12.5,
+    fontSize: 14,
     fontWeight: "800",
     color: "#0F172A",
   },
   smallCardSub: {
-    fontSize: 10,
+    fontSize: 11.5,
     color: "#64748B",
   },
   whiteInputPill: {

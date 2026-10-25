@@ -564,26 +564,28 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
               <View style={s.refCodeRow}>
                 <View style={s.refCodeBox}>
                   <Text style={s.refCodeLabel}>YOUR REFERRAL CODE</Text>
-                  <Text style={s.refCodeText}>{refCode}</Text>
+                  <Text style={s.refCodeText} numberOfLines={1}>{refCode}</Text>
                 </View>
-                <Pressable
-                  onPress={handleCopyReferral}
-                  style={[s.refCopyBtn, copiedRef && s.refCopyBtnActive]}
-                >
-                  <Ionicons
-                    name={copiedRef ? "checkmark-done" : "copy-outline"}
-                    size={16}
-                    color="#FFFFFF"
-                  />
-                  <Text style={s.refCopyBtnText}>{copiedRef ? "Copied!" : "Copy"}</Text>
-                </Pressable>
-                <Pressable
-                  onPress={handleShareReferral}
-                  style={s.refShareBtn}
-                >
-                  <Ionicons name="share-social" size={16} color="#FFFFFF" />
-                  <Text style={s.refShareBtnText}>Share</Text>
-                </Pressable>
+                <View style={s.refBtnsRow}>
+                  <Pressable
+                    onPress={handleCopyReferral}
+                    style={[s.refCopyBtn, copiedRef && s.refCopyBtnActive]}
+                  >
+                    <Ionicons
+                      name={copiedRef ? "checkmark-done" : "copy-outline"}
+                      size={15}
+                      color="#FFFFFF"
+                    />
+                    <Text style={s.refCopyBtnText}>{copiedRef ? "Copied!" : "Copy"}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={handleShareReferral}
+                    style={s.refShareBtn}
+                  >
+                    <Ionicons name="share-social" size={15} color="#FFFFFF" />
+                    <Text style={s.refShareBtnText}>Share</Text>
+                  </Pressable>
+                </View>
               </View>
 
               {/* Cross-Sell Popular Companion Services */}
@@ -621,7 +623,7 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
                         <Ionicons name={item.icon as any} size={18} color="#059669" />
                       </View>
                       <View style={{ flex: 1, marginLeft: 10 }}>
-                        <Text style={[s.crossSellItemName, textPrimary]} numberOfLines={1}>{item.name}</Text>
+                        <Text style={[s.crossSellItemName, textPrimary]} numberOfLines={2}>{item.name}</Text>
                         <Text style={[s.crossSellItemDesc, textSecondary]} numberOfLines={1}>
                           {item.desc}
                         </Text>
@@ -1150,6 +1152,8 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: 8,
     marginBottom: 12,
   },
   applianceBadge: {
@@ -1201,6 +1205,7 @@ const s = StyleSheet.create({
   },
   appliancePillsRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
     marginTop: 12,
     paddingTop: 10,
@@ -1208,13 +1213,13 @@ const s = StyleSheet.create({
     borderTopColor: "rgba(0,0,0,0.06)",
   },
   applianceIntervalPill: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 4,
     backgroundColor: "rgba(0,0,0,0.04)",
     paddingVertical: 6,
+    paddingHorizontal: 10,
     borderRadius: 8,
   },
   applianceIntervalText: {
@@ -1262,19 +1267,15 @@ const s = StyleSheet.create({
     lineHeight: 16,
   },
   refCodeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
     backgroundColor: "#FFFFFF",
     borderRadius: 14,
-    padding: 8,
-    paddingLeft: 12,
+    padding: 12,
     borderWidth: 1.5,
     borderColor: "#A7F3D0",
     marginBottom: 16,
   },
   refCodeBox: {
-    flex: 1,
+    marginBottom: 10,
   },
   refCodeLabel: {
     fontSize: 9.5,
@@ -1283,17 +1284,23 @@ const s = StyleSheet.create({
     letterSpacing: 0.8,
   },
   refCodeText: {
-    fontSize: 15,
+    fontSize: 16.5,
     fontWeight: "900",
     color: "#0F172A",
-    letterSpacing: 1.2,
+    letterSpacing: 1.4,
+    marginTop: 2,
+  },
+  refBtnsRow: {
+    flexDirection: "row",
+    gap: 8,
   },
   refCopyBtn: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    justifyContent: "center",
+    gap: 5,
     backgroundColor: "#0D9488",
-    paddingHorizontal: 12,
     paddingVertical: 9,
     borderRadius: 10,
   },
@@ -1306,11 +1313,12 @@ const s = StyleSheet.create({
     fontWeight: "800",
   },
   refShareBtn: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    justifyContent: "center",
+    gap: 5,
     backgroundColor: "#0F766E",
-    paddingHorizontal: 12,
     paddingVertical: 9,
     borderRadius: 10,
   },
