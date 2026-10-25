@@ -5450,47 +5450,53 @@
         });
       }
 
-      if (isSubcollectionBefore || isSubcollectionAfter || (beforePhotoSrc && beforePhotoSrc.startsWith('subcollection:')) || (afterPhotoSrc && afterPhotoSrc.startsWith('subcollection:'))) {
-        getDoc(doc(db, 'bookings', b.id, 'evidence', 'photos')).then(s => {
-          if (s.exists()) {
-            const data = s.data();
-            if (data.beforePhoto) {
-              const bImg = document.getElementById('proofBeforeImg_' + b.id);
-              const bLoading = document.getElementById('proofBeforeLoading_' + b.id);
-              const bZoom = document.getElementById('proofBeforeZoom_' + b.id);
-              if (bLoading) bLoading.style.display = 'none';
-              if (bImg) {
-                bImg.src = data.beforePhoto;
-                bImg.style.display = 'block';
-              }
-              if (bZoom) {
-                bZoom.href = data.beforePhoto;
-                bZoom.style.display = 'inline-block';
-              }
-            } else {
-              const bLoading = document.getElementById('proofBeforeLoading_' + b.id);
-              if (bLoading) bLoading.innerHTML = '<span style="color:#64748b;">Photo saved on device</span>';
-            }
-            if (data.afterPhoto) {
-              const aImg = document.getElementById('proofAfterImg_' + b.id);
-              const aLoading = document.getElementById('proofAfterLoading_' + b.id);
-              const aZoom = document.getElementById('proofAfterZoom_' + b.id);
-              if (aLoading) aLoading.style.display = 'none';
-              if (aImg) {
-                aImg.src = data.afterPhoto;
-                aImg.style.display = 'block';
-              }
-              if (aZoom) {
-                aZoom.href = data.afterPhoto;
-                aZoom.style.display = 'inline-block';
-              }
-            } else {
-              const aLoading = document.getElementById('proofAfterLoading_' + b.id);
-              if (aLoading) aLoading.innerHTML = '<span style="color:#64748b;">Photo saved on device</span>';
-            }
+      const renderProofImage = (prefix, url) => {
+        if (!url) return false;
+        const img = document.getElementById(prefix + 'Img_' + b.id);
+        const loading = document.getElementById(prefix + 'Loading_' + b.id);
+        const zoom = document.getElementById(prefix + 'Zoom_' + b.id);
+        if (loading) loading.style.display = 'none';
+        if (img) {
+          img.src = url;
+          img.style.display = 'block';
+        }
+        if (zoom) {
+          zoom.href = url;
+          zoom.style.display = 'inline-block';
+        }
+        return true;
+      };
+
+      // Check subcollection evidence documents
+      getDoc(doc(db, 'bookings', b.id, 'evidence', 'afterPhoto')).then(s => {
+        if (s.exists() && s.data().afterPhoto) {
+          renderProofImage('proofAfter', s.data().afterPhoto);
+        }
+      }).catch(() => {});
+
+      getDoc(doc(db, 'bookings', b.id, 'evidence', 'beforePhoto')).then(s => {
+        if (s.exists() && s.data().beforePhoto) {
+          renderProofImage('proofBefore', s.data().beforePhoto);
+        }
+      }).catch(() => {});
+
+      getDoc(doc(db, 'bookings', b.id, 'evidence', 'photos')).then(s => {
+        if (s.exists()) {
+          const data = s.data();
+          if (data.beforePhoto) {
+            renderProofImage('proofBefore', data.beforePhoto);
+          } else if (!beforePhotoSrc || beforePhotoSrc.startsWith('subcollection:')) {
+            const bLoading = document.getElementById('proofBeforeLoading_' + b.id);
+            if (bLoading && bLoading.style.display !== 'none') bLoading.innerHTML = '<span style="color:#64748b;">Photo saved on device</span>';
           }
-        }).catch(err => console.warn('[proofModal] Subcollection photo fetch warning:', err));
-      }
+          if (data.afterPhoto) {
+            renderProofImage('proofAfter', data.afterPhoto);
+          } else if (!afterPhotoSrc || afterPhotoSrc.startsWith('subcollection:')) {
+            const aLoading = document.getElementById('proofAfterLoading_' + b.id);
+            if (aLoading && aLoading.style.display !== 'none') aLoading.innerHTML = '<span style="color:#64748b;">Photo saved on device</span>';
+          }
+        }
+      }).catch(err => console.warn('[proofModal] Subcollection photo fetch warning:', err));
     };
 
     window.closeBookingDetailsModal = function() {

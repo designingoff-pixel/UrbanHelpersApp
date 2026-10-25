@@ -20,7 +20,21 @@ export default function CompleteScreen({ route, navigation }: any) {
   );
 
   useEffect(() => {
-    if ((!beforePhoto || !afterPhoto) && (job.beforePhoto?.startsWith('subcollection:') || job.afterPhoto?.startsWith('subcollection:'))) {
+    if (!beforePhoto) {
+      getDoc(doc(db, 'bookings', job.jobId, 'evidence', 'beforePhoto'))
+        .then((s) => {
+          if (s.exists() && s.data().beforePhoto) setBeforePhoto(s.data().beforePhoto);
+        })
+        .catch(() => {});
+    }
+    if (!afterPhoto) {
+      getDoc(doc(db, 'bookings', job.jobId, 'evidence', 'afterPhoto'))
+        .then((s) => {
+          if (s.exists() && s.data().afterPhoto) setAfterPhoto(s.data().afterPhoto);
+        })
+        .catch(() => {});
+    }
+    if (!beforePhoto || !afterPhoto) {
       getDoc(doc(db, 'bookings', job.jobId, 'evidence', 'photos'))
         .then((snap) => {
           if (snap.exists()) {

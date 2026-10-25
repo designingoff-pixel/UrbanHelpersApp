@@ -604,33 +604,46 @@ export async function updateBookingPhotos(
   photos: { beforePhoto?: string | null; afterPhoto?: string | null; beforePhotoPath?: string; afterPhotoPath?: string }
 ): Promise<void> {
   const updateData: Record<string, any> = {};
-  const subcollectionData: Record<string, any> = {};
 
   if (photos.beforePhoto !== undefined) {
-    if (typeof photos.beforePhoto === 'string' && photos.beforePhoto.startsWith('data:') && photos.beforePhoto.length > 500000) {
-      subcollectionData.beforePhoto = photos.beforePhoto;
-      updateData.beforePhoto = 'subcollection:evidence/photos';
+    if (typeof photos.beforePhoto === 'string' && photos.beforePhoto.startsWith('data:')) {
+      try {
+        await setDoc(doc(db, "bookings", bookingId, "evidence", "beforePhoto"), {
+          beforePhoto: photos.beforePhoto,
+          updatedAt: new Date().toISOString(),
+        });
+        await setDoc(doc(db, "bookings", bookingId, "evidence", "photos"), {
+          beforePhoto: photos.beforePhoto,
+        }, { merge: true }).catch(() => {});
+      } catch (e) {
+        console.warn('[updateBookingPhotos] beforePhoto subcollection error:', e);
+      }
+      updateData.beforePhoto = 'subcollection:evidence/beforePhoto';
       updateData.hasPhotoProof = true;
     } else {
       updateData.beforePhoto = photos.beforePhoto;
+      if (photos.beforePhoto) updateData.hasPhotoProof = true;
     }
   }
 
   if (photos.afterPhoto !== undefined) {
-    if (typeof photos.afterPhoto === 'string' && photos.afterPhoto.startsWith('data:') && photos.afterPhoto.length > 500000) {
-      subcollectionData.afterPhoto = photos.afterPhoto;
-      updateData.afterPhoto = 'subcollection:evidence/photos';
+    if (typeof photos.afterPhoto === 'string' && photos.afterPhoto.startsWith('data:')) {
+      try {
+        await setDoc(doc(db, "bookings", bookingId, "evidence", "afterPhoto"), {
+          afterPhoto: photos.afterPhoto,
+          updatedAt: new Date().toISOString(),
+        });
+        await setDoc(doc(db, "bookings", bookingId, "evidence", "photos"), {
+          afterPhoto: photos.afterPhoto,
+        }, { merge: true }).catch(() => {});
+      } catch (e) {
+        console.warn('[updateBookingPhotos] afterPhoto subcollection error:', e);
+      }
+      updateData.afterPhoto = 'subcollection:evidence/afterPhoto';
       updateData.hasPhotoProof = true;
     } else {
       updateData.afterPhoto = photos.afterPhoto;
-    }
-  }
-
-  if (Object.keys(subcollectionData).length > 0) {
-    try {
-      await setDoc(doc(db, "bookings", bookingId, "evidence", "photos"), subcollectionData, { merge: true });
-    } catch (e) {
-      console.warn('[updateBookingPhotos] Subcollection write warning:', e);
+      if (photos.afterPhoto) updateData.hasPhotoProof = true;
     }
   }
 

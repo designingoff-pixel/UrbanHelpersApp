@@ -289,16 +289,17 @@ export default function ServiceScreen({ route, navigation }: any) {
         throw new Error('Photo could not be captured. Please try taking the photo again.');
       }
 
-      // Local display first - ensure instant feedback
+      // Keep reliable photo URI in state and store
       const localDisplayUri = asset.uri || finalPhotoUrl;
+      const effectivePhoto = finalPhotoUrl || (b64Str ? `data:image/jpeg;base64,${b64Str}` : localDisplayUri);
 
       if (type === 'before') {
-        setBeforePhoto(localDisplayUri);
-        store.updateJobPhotos(job.jobId, localDisplayUri, undefined);
+        setBeforePhoto(effectivePhoto);
+        store.updateJobPhotos(job.jobId, effectivePhoto, undefined);
         await updateBookingPhotos(job.jobId, { beforePhoto: finalPhotoUrl, beforePhotoPath: storagePath });
       } else {
-        setAfterPhoto(localDisplayUri);
-        store.updateJobPhotos(job.jobId, undefined, localDisplayUri);
+        setAfterPhoto(effectivePhoto);
+        store.updateJobPhotos(job.jobId, undefined, effectivePhoto);
         await updateBookingPhotos(job.jobId, { afterPhoto: finalPhotoUrl, afterPhotoPath: storagePath });
       }
 
@@ -474,7 +475,7 @@ export default function ServiceScreen({ route, navigation }: any) {
       return { url: rawVal };
     }
 
-    // Zero-cost direct storage: Convert local audio & photo files to Data URIs for remote web playback/viewing
+    // Process local audio & photo files
     if (rawVal.startsWith('data:') || rawVal.startsWith('file://')) {
       if (type === 'audio' && rawVal.startsWith('file://')) {
         try {
@@ -488,19 +489,44 @@ export default function ServiceScreen({ route, navigation }: any) {
           console.warn('[ensureCloudUrl] audio read error:', e);
         }
       }
-      if ((type === 'before' || type === 'after') && rawVal.startsWith('file://')) {
-        try {
-          const base64Str = await FileSystem.readAsStringAsync(rawVal, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          if (base64Str) {
-            return {
-              url: `data:image/jpeg;base64,${base64Str}`,
-              storagePath: `booking_proofs/${jobId}_${type}.jpg`,
-            };
+      if (type === 'before' || type === 'after') {
+        let base64Payload = '';
+        if (rawVal.startsWith('data:')) {
+          base64Payload = rawVal.replace(/^data:image\/[a-zA-Z0-9.+_-]+;base64,/, '');
+        } else if (rawVal.startsWith('file://')) {
+          try {
+            base64Payload = await FileSystem.readAsStringAsync(rawVal, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+          } catch (e) {
+            console.warn('[ensureCloudUrl] photo read error:', e);
           }
-        } catch (e) {
-          console.warn('[ensureCloudUrl] photo read error:', e);
+        }
+
+        const storagePath = `booking_proofs/${jobId}_${type}_${Date.now()}.jpg`;
+
+        // Direct upload to Firebase Storage if available
+        if (storage && base64Payload) {
+          try {
+            if (auth && !auth.currentUser) {
+              await signInAnonymously(auth).catch(() => {});
+            }
+            const photoRef = ref(storage, storagePath);
+            await uploadString(photoRef, base64Payload, 'base64', { contentType: 'image/jpeg' });
+            const cloudUrl = await getDownloadURL(photoRef);
+            if (cloudUrl) {
+              return { url: cloudUrl, storagePath };
+            }
+          } catch (storageErr) {
+            console.warn('[ensureCloudUrl] Storage upload error:', storageErr);
+          }
+        }
+
+        if (base64Payload) {
+          return {
+            url: `data:image/jpeg;base64,${base64Payload}`,
+            storagePath,
+          };
         }
       }
       return { url: rawVal, storagePath: undefined };
@@ -591,33 +617,35 @@ export default function ServiceScreen({ route, navigation }: any) {
       let safeAfter = cleanAfter;
       let safeAudio = cleanAudio;
 
-      // Ensure that oversized Base64 data strings never exceed Firestore's 1MB limit (which causes HTTP 400)
+      // Subcollection writes for base64 data to individual docs to guarantee 1MB limit is never exceeded
       if (cleanBefore.startsWith('data:')) {
-        if (cleanBefore.length > 700000) {
-          safeBefore = beforeUploaded?.storagePath ? `storage:${beforeUploaded.storagePath}` : 'photo_proof_captured';
-        } else if (cleanBefore.length > 50000) {
-          try {
-            await setDoc(doc(db, 'bookings', job.jobId, 'evidence', 'photos'), { beforePhoto: cleanBefore }, { merge: true });
-            safeBefore = 'subcollection:evidence/photos';
-          } catch (e) {
-            console.warn('Subcollection beforePhoto error:', e);
-            safeBefore = 'photo_proof_captured';
-          }
+        try {
+          await setDoc(doc(db, 'bookings', job.jobId, 'evidence', 'beforePhoto'), {
+            beforePhoto: cleanBefore,
+            updatedAt: new Date().toISOString(),
+          });
+          safeBefore = 'subcollection:evidence/beforePhoto';
+        } catch (e) {
+          console.warn('Subcollection beforePhoto error:', e);
         }
+        try {
+          await setDoc(doc(db, 'bookings', job.jobId, 'evidence', 'photos'), { beforePhoto: cleanBefore }, { merge: true });
+        } catch (_) {}
       }
 
       if (cleanAfter.startsWith('data:')) {
-        if (cleanAfter.length > 700000) {
-          safeAfter = afterUploaded?.storagePath ? `storage:${afterUploaded.storagePath}` : 'photo_proof_captured';
-        } else if (cleanAfter.length > 50000) {
-          try {
-            await setDoc(doc(db, 'bookings', job.jobId, 'evidence', 'photos'), { afterPhoto: cleanAfter }, { merge: true });
-            safeAfter = 'subcollection:evidence/photos';
-          } catch (e) {
-            console.warn('Subcollection afterPhoto error:', e);
-            safeAfter = 'photo_proof_captured';
-          }
+        try {
+          await setDoc(doc(db, 'bookings', job.jobId, 'evidence', 'afterPhoto'), {
+            afterPhoto: cleanAfter,
+            updatedAt: new Date().toISOString(),
+          });
+          safeAfter = 'subcollection:evidence/afterPhoto';
+        } catch (e) {
+          console.warn('Subcollection afterPhoto error:', e);
         }
+        try {
+          await setDoc(doc(db, 'bookings', job.jobId, 'evidence', 'photos'), { afterPhoto: cleanAfter }, { merge: true });
+        } catch (_) {}
       }
 
       if (cleanAudio.startsWith('data:')) {

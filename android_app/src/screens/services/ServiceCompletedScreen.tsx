@@ -61,36 +61,67 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
           const data = { id: snap.id, ...snap.data() } as any;
           setBooking(data);
 
-          let bPhoto = (data.beforePhoto && !data.beforePhoto.startsWith("subcollection:")) ? data.beforePhoto : null;
-          let aPhoto = (data.afterPhoto && !data.afterPhoto.startsWith("subcollection:")) ? data.afterPhoto : null;
+          const isValidPhotoUrl = (url: any): boolean => {
+            return typeof url === "string" && (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:image/"));
+          };
 
-          // 1. If stored in subcollection 'evidence/photos', fetch the actual Base64 / URL
-          if (
-            (!bPhoto || !aPhoto) &&
-            (data.beforePhoto?.startsWith("subcollection:") || data.afterPhoto?.startsWith("subcollection:"))
-          ) {
+          let bPhoto = isValidPhotoUrl(data.beforePhoto) ? data.beforePhoto : null;
+          let aPhoto = isValidPhotoUrl(data.afterPhoto) ? data.afterPhoto : null;
+
+          // 1. If stored in subcollections, fetch the actual Base64 / URL
+          if (!aPhoto) {
+            try {
+              const aSnap = await getDoc(doc(db, "bookings", bookingId, "evidence", "afterPhoto"));
+              if (aSnap.exists()) {
+                const aData = aSnap.data();
+                if (isValidPhotoUrl(aData?.afterPhoto)) aPhoto = aData.afterPhoto;
+              }
+            } catch (_) {}
+          }
+
+          if (!bPhoto) {
+            try {
+              const bSnap = await getDoc(doc(db, "bookings", bookingId, "evidence", "beforePhoto"));
+              if (bSnap.exists()) {
+                const bData = bSnap.data();
+                if (isValidPhotoUrl(bData?.beforePhoto)) bPhoto = bData.beforePhoto;
+              }
+            } catch (_) {}
+          }
+
+          if (!bPhoto || !aPhoto) {
             try {
               const evSnap = await getDoc(doc(db, "bookings", bookingId, "evidence", "photos"));
               if (evSnap.exists()) {
                 const evData = evSnap.data();
-                if (evData.beforePhoto && !bPhoto) bPhoto = evData.beforePhoto;
-                if (evData.afterPhoto && !aPhoto) aPhoto = evData.afterPhoto;
+                if (evData.beforePhoto && !bPhoto && isValidPhotoUrl(evData.beforePhoto)) bPhoto = evData.beforePhoto;
+                if (evData.afterPhoto && !aPhoto && isValidPhotoUrl(evData.afterPhoto)) aPhoto = evData.afterPhoto;
               }
             } catch (err) {
               console.warn("[ServiceCompleted] Error fetching evidence photos:", err);
             }
           }
 
-          // 2. If storage path is available, resolve public download URL
-          if (!bPhoto && data.beforePhotoPath && storage) {
-            try {
-              bPhoto = await getDownloadURL(ref(storage, data.beforePhotoPath));
-            } catch {}
+          // 2. If storage path or storage: reference is available, resolve public download URL
+          if (!bPhoto && storage) {
+            const bPath = (typeof data.beforePhoto === "string" && data.beforePhoto.startsWith("storage:"))
+              ? data.beforePhoto.replace(/^storage:/, "")
+              : data.beforePhotoPath;
+            if (bPath) {
+              try {
+                bPhoto = await getDownloadURL(ref(storage, bPath));
+              } catch {}
+            }
           }
-          if (!aPhoto && data.afterPhotoPath && storage) {
-            try {
-              aPhoto = await getDownloadURL(ref(storage, data.afterPhotoPath));
-            } catch {}
+          if (!aPhoto && storage) {
+            const aPath = (typeof data.afterPhoto === "string" && data.afterPhoto.startsWith("storage:"))
+              ? data.afterPhoto.replace(/^storage:/, "")
+              : data.afterPhotoPath;
+            if (aPath) {
+              try {
+                aPhoto = await getDownloadURL(ref(storage, aPath));
+              } catch {}
+            }
           }
 
           if (bPhoto) setBeforePhoto(bPhoto);
