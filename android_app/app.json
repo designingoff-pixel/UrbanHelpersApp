@@ -29,6 +29,7 @@
     ],
     "android": {
       "package": "com.urbanhelpers.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#081826"
@@ -55,13 +56,17 @@
     },
     "ios": {
       "bundleIdentifier": "com.urbanhelpers.app",
+      "buildNumber": "1.0.0",
       "supportsTablet": false,
       "config": {
         "googleMapsApiKey": "AIzaSyAMzsDmDdT2c7r5j1dWTSxev6XSHJZTf-s"
       },
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Urban Helpers needs your location to show your professional's route.",
-        "NSMotionUsageDescription": "Urban Helpers tracks your daily steps and physical activity."
+        "NSLocationWhenInUseUsageDescription": "Urban Helpers needs your location to show your professional's route and pinpoint doorstep service addresses.",
+        "NSMotionUsageDescription": "Urban Helpers tracks your daily steps and physical activity.",
+        "NSCameraUsageDescription": "Urban Helpers requires camera access to upload prescription and medical record documents.",
+        "NSPhotoLibraryUsageDescription": "Urban Helpers requires photo gallery access to upload profile pictures and health documents.",
+        "NSBluetoothAlwaysUsageDescription": "Urban Helpers connects with your smartwatch to synchronize live pulse rate, step count, and fitness vitals."
       }
     }
   }

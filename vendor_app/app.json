@@ -13,6 +13,14 @@
     },
     "plugins": [
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#10B981",
+          "defaultChannel": "urgent-orders"
+        }
+      ],
+      [
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Urban Captain needs your location to show customers where you are.",
@@ -23,6 +31,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.urbancaptain.vendor",
+      "buildNumber": "1.0.0",
       "config": {
         "googleMapsApiKey": "AIzaSyAMzsDmDdT2c7r5j1dWTSxev6XSHJZTf-s"
       },
@@ -43,9 +52,11 @@
         "backgroundColor": "#0D3325"
       },
       "package": "com.urbancaptain.vendor",
+      "versionCode": 1,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
+        "POST_NOTIFICATIONS",
         "RECORD_AUDIO",
         "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_MICROPHONE",
@@ -54,6 +65,7 @@
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "READ_MEDIA_IMAGES",
+        "ACCESS_NETWORK_STATE",
         "INTERNET"
       ],
       "config": {

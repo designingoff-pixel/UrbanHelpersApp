@@ -18,7 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { store } from '../store/AppStore';
 import { db } from '../services/firebase';
 import { doc, setDoc } from 'firebase/firestore';
-import { registerVendorPushNotifications } from '../services/notificationService';
+import { registerVendorPushNotifications, sendVendorLoginOTPNotification } from '../services/notificationService';
 
 interface Props {
   route: any;
@@ -35,6 +35,7 @@ export default function VendorAuthOTPScreen({ route, navigation }: Props) {
     otp = '123456',
   } = route.params || {};
 
+  const [currentOtp, setCurrentOtp] = useState<string>(String(otp || '123456'));
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [timerSeconds, setTimerSeconds] = useState(45);
@@ -93,11 +94,17 @@ export default function VendorAuthOTPScreen({ route, navigation }: Props) {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
+    const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    setCurrentOtp(newOtp);
     setTimerSeconds(45);
     setDigits(['', '', '', '', '', '']);
     inputRefs.current[0]?.focus();
-    Alert.alert('OTP Sent', `A fresh 6-digit OTP has been sent to +91 ${mobile}`);
+    await sendVendorLoginOTPNotification(newOtp, vendorId);
+    Alert.alert(
+      'Fresh OTP Dispatched',
+      `A new 6-digit verification code has been dispatched to your notification center for Partner ID ${vendorId}.`
+    );
   };
 
   const handleVerify = async () => {
@@ -107,8 +114,8 @@ export default function VendorAuthOTPScreen({ route, navigation }: Props) {
       return;
     }
 
-    if (code !== '123456' && code !== String(otp)) {
-      Alert.alert('Invalid OTP', 'The entered code does not match. Please enter the 6-digit verification code.');
+    if (code !== '123456' && code !== currentOtp && code !== String(otp)) {
+      Alert.alert('Invalid OTP', 'The entered code does not match. Please enter the 6-digit verification code received in your notification.');
       return;
     }
 

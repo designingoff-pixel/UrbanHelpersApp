@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../services/firebase';
+import { sendVendorLoginOTPNotification } from '../services/notificationService';
 
 interface Props {
   navigation: any;
@@ -94,6 +95,10 @@ export default function LoginScreen({ navigation }: Props) {
         return;
       }
 
+      // Generate random 6-digit OTP and send instant local notification
+      const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      await sendVendorLoginOTPNotification(generatedOtp, cleanId);
+
       // Navigate to OTP verification
       navigation.navigate('VendorAuthOTP', {
         vendorId: cleanId,
@@ -101,7 +106,7 @@ export default function LoginScreen({ navigation }: Props) {
         name: vendorData.name || `Partner ${cleanId}`,
         mobile: cleanMobile,
         serviceCategory: vendorData.serviceCategory || '',
-        otp: '123456',
+        otp: generatedOtp,
       });
     } catch (err: any) {
       console.error('[LoginScreen] Lookup error:', err);

@@ -77,31 +77,50 @@ export default function JobDetailsScreen({ route, navigation }: any) {
   useEffect(() => {
     if (!job || !['ACCEPTED', 'NAVIGATING', 'ARRIVED'].includes(job.status)) return;
     let active = true;
+    let subscription: Location.LocationSubscription | null = null;
+    let lastBroadcastTime = 0;
 
-    const broadcastGps = async () => {
+    (async () => {
       try {
-        const { status } = await Location.getForegroundPermissionsAsync();
-        if (status !== 'granted') return;
-        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        if (active && pos?.coords) {
-          setVendorCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-          await updateVendorLocation(
-            store.vendorId || 'v1',
-            pos.coords.latitude,
-            pos.coords.longitude,
-            pos.coords.heading || 0,
-            pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0,
-            job.bookingId
-          );
-        }
-      } catch (_) {}
-    };
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted' || !active) return;
 
-    broadcastGps();
-    const timer = setInterval(broadcastGps, 5000);
+        // Native streaming watcher: balanced accuracy, 3500ms time interval, 5m distance threshold
+        // Minimizes battery consumption while delivering smooth turn-by-turn road tracking
+        subscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.Balanced,
+            timeInterval: 3500,
+            distanceInterval: 5,
+          },
+          async (pos) => {
+            if (!active || !pos?.coords) return;
+            const now = Date.now();
+            if (now - lastBroadcastTime < 2800) return;
+            lastBroadcastTime = now;
+
+            const { latitude, longitude, heading, speed } = pos.coords;
+            setVendorCoords({ lat: latitude, lng: longitude });
+            await updateVendorLocation(
+              store.vendorId || 'v1',
+              latitude,
+              longitude,
+              heading || 0,
+              speed ? Math.round(speed * 3.6) : 0,
+              job.bookingId
+            );
+          }
+        );
+      } catch (err) {
+        console.warn('[JobDetailsScreen] watchPosition error:', err);
+      }
+    })();
+
     return () => {
       active = false;
-      clearInterval(timer);
+      if (subscription) {
+        subscription.remove();
+      }
     };
   }, [job?.status, job?.bookingId]);
 

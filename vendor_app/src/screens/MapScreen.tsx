@@ -87,6 +87,8 @@ export default function MapScreen({ route, navigation }: any) {
     }
 
     let active = true;
+    let subscription: Location.LocationSubscription | null = null;
+    let lastBroadcastTime = 0;
 
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -94,24 +96,47 @@ export default function MapScreen({ route, navigation }: any) {
       if (status !== 'granted') { setGpsGranted(false); return; }
       setGpsGranted(true);
 
-      const broadcast = async () => {
-        try {
-          const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-          const { latitude: lat, longitude: lng, heading, speed } = pos.coords;
-          setVendorCoords({ lat, lng });
-          await updateVendorLocation(store.vendorId!, lat, lng, heading ?? 0, speed ? Math.round(speed * 3.6) : 0);
-        } catch { /* silent retry */ }
-      };
-
-      broadcast();
-      timer.current = setInterval(broadcast, GPS_INTERVAL_MS);
+      // Notify backend that vendor is actively navigating on route
       await updateBookingStatus(job.bookingId, 'en_route').catch(() => {});
       store.updateJobStatus(jobId, 'NAVIGATING');
+
+      // Native streaming watcher: balanced accuracy, 3000ms time interval, 5m distance threshold
+      // Minimizes battery drain while providing smooth turn-by-turn road tracking on customer app
+      try {
+        subscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.Balanced,
+            timeInterval: 3000,
+            distanceInterval: 5,
+          },
+          async (pos) => {
+            if (!active || !pos?.coords) return;
+            const now = Date.now();
+            if (now - lastBroadcastTime < 2500) return;
+            lastBroadcastTime = now;
+
+            const { latitude: lat, longitude: lng, heading, speed } = pos.coords;
+            setVendorCoords({ lat, lng });
+            await updateVendorLocation(
+              store.vendorId!,
+              lat,
+              lng,
+              heading ?? 0,
+              speed ? Math.round(speed * 3.6) : 0,
+              job.bookingId
+            );
+          }
+        );
+      } catch (e) {
+        console.warn('[MapScreen] watchPosition error:', e);
+      }
     })();
 
     return () => {
       active = false;
-      if (timer.current) { clearInterval(timer.current); timer.current = null; }
+      if (subscription) {
+        subscription.remove();
+      }
     };
   }, [job?.bookingId, store.vendorId]);
 

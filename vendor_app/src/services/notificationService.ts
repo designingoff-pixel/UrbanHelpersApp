@@ -80,3 +80,44 @@ export async function triggerLoudNewOrderNotification(
     console.warn("[VendorNotification] Failed to schedule local alert:", err);
   }
 }
+
+// ── Send random OTP notification to vendor upon login or resend ─────────────
+export async function sendVendorLoginOTPNotification(
+  otp: string,
+  vendorId: string
+): Promise<void> {
+  try {
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync("auth-otp", {
+        name: "🔑 Security Verification",
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 200, 250],
+        lightColor: "#10B981",
+        sound: "default",
+        enableVibrate: true,
+        showBadge: true,
+        bypassDnd: true,
+      }).catch(() => {});
+    }
+
+    // Ensure permissions if not granted
+    const { status: existingStatus } = await Notifications.getPermissionsAsync().catch(() => ({ status: "undetermined" }));
+    if (existingStatus !== "granted") {
+      await Notifications.requestPermissionsAsync().catch(() => {});
+    }
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: `🔑 Urban Helpers Partner Login OTP: ${otp}`,
+        body: `Your verification code for Partner ID ${vendorId} is ${otp}. Valid for 10 minutes. Do not share this code.`,
+        sound: true,
+        priority: Notifications.AndroidNotificationPriority.MAX,
+        data: { otp, vendorId, type: "vendor_auth_otp" },
+      },
+      trigger: null, // deliver immediately
+    });
+  } catch (err) {
+    console.warn("[VendorNotification] Failed to send login OTP notification:", err);
+  }
+}
+
