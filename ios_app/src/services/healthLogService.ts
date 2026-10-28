@@ -448,9 +448,11 @@ export async function addMedication(
     await AsyncStorage.setItem(key, JSON.stringify(allMeds));
     syncHealthLogToCloud("medication", {
       name: newItem.name,
-      dosage: newItem.dosage,
-      frequency: newItem.frequency,
-      time: newItem.time,
+      dose: newItem.dose,
+      form: newItem.form,
+      color: newItem.color,
+      scheduleTime: newItem.scheduleTime,
+      instructions: newItem.instructions,
     }, explicitUid);
   } catch (e) {
     console.error("Error adding medication:", e);
@@ -552,6 +554,7 @@ export async function updateMedicationNotificationId(
   } catch (e) {
     console.error("Error updating medication notificationId:", e);
   }
+}
 // ═════════════════════════════════════════════════════════════
 // ACTIVITIES / WORKOUT LOGGING
 // ═════════════════════════════════════════════════════════════
