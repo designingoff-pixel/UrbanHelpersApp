@@ -23,29 +23,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [initializing, setInitializing] = useState(true);
   const [signingIn, setSigningIn] = useState(false);
 
-  let authRequestHook: any = [null, null, async () => {}];
-  try {
-    authRequestHook = Google.useAuthRequest({
-      webClientId: GOOGLE_WEB_CLIENT_ID,
-      androidClientId: GOOGLE_ANDROID_CLIENT_ID,
-    });
-  } catch (err) {
-    console.warn("[AuthContext] Google.useAuthRequest error:", err);
-  }
-  const [request, response, promptAsync] = authRequestHook;
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
+  });
 
   useEffect(() => {
-    if (!auth) {
+    return onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
       setInitializing(false);
-      return;
-    }
-    try {
-      const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
-        setUser(firebaseUser);
-        setInitializing(false);
 
-        if (firebaseUser && db) {
-          try {
+      if (firebaseUser) {
+        try {
           await setDoc(
             doc(db, "users", firebaseUser.uid),
             {
@@ -64,25 +53,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Automatically request push token and save to user profile
-          try {
-            const token = await registerForPushNotifications();
-            if (token) {
-              await setDoc(
-                doc(db, "users", firebaseUser.uid),
-                { pushToken: token },
-                { merge: true }
-              );
-            }
-          } catch (e) {
-            console.warn("Failed to save push token", e);
+        try {
+          const token = await registerForPushNotifications();
+          if (token) {
+            await setDoc(
+              doc(db, "users", firebaseUser.uid),
+              { pushToken: token },
+              { merge: true }
+            );
           }
+        } catch (e) {
+          console.warn("Failed to save push token", e);
         }
-      });
-      return () => unsub();
-    } catch (err) {
-      console.warn("[AuthContext] onAuthStateChanged error:", err);
-      setInitializing(false);
-    }
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -120,7 +104,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    await firebaseSignOut(auth);
+    try {
+      await firebaseSignOut(auth);
+      setUser(null);
+    } catch (e) {
+      console.warn("Sign out error:", e);
+    }
   };
 
   const value = useMemo(

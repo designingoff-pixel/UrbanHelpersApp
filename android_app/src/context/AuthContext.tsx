@@ -104,7 +104,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    await firebaseSignOut(auth);
+    try {
+      await firebaseSignOut(auth);
+      setUser(null);
+    } catch (e) {
+      console.warn("Sign out error:", e);
+    }
   };
 
   const value = useMemo(

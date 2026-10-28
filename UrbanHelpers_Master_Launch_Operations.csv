@@ -1,0 +1,45 @@
+SECTION,CATEGORY_OR_MODULE,ITEM_NAME,KEY_DETAILS,METRIC_OR_PRICE,VENDOR_PAYOUT,COMMISSION,STATUS
+Catalog,RO Service,Filter Change,Replace all RO filters for cleaner water,₹399,₹300,25%,Active
+Catalog,RO Service,RO Cleaning,Deep clean membrane and housing,₹299,₹225,25%,Active
+Catalog,RO Service,New RO System,Supply and install branded RO,₹5999,₹4800,20%,Active
+Catalog,RO Service,Monthly Maintenance,Scheduled monthly check-up,₹199,₹150,25%,Active
+Catalog,RO Service,Leakage Repair,Diagnose and fix pipe/fitting leaks,₹249,₹190,24%,Active
+Catalog,Pet Care,Pet Bathing,Gentle shampoo bath blow-dry & ear clean,₹399,₹300,25%,Active
+Catalog,Pet Care,Pet Grooming,Full cut trim nail clipping de-shedding,₹599,₹450,25%,Active
+Catalog,Pet Care,Pet Walking,Trained walker GPS-tracked walk,₹149,₹115,23%,Active
+Catalog,Pet Care,Pet Training,One-on-one obedience session,₹999,₹750,25%,Active
+Catalog,Pest Control,Anti-Cockroach,Gel bait in kitchen and bathrooms,₹499,₹375,25%,Active
+Catalog,Pest Control,Anti-Termite,Soil and wood drill treatment 1-yr warranty,₹1499,₹1150,23%,Active
+Catalog,Pest Control,Anti-Bed Bug,Heat and chemical mattress treatment,₹999,₹750,25%,Active
+Catalog,Home Cleaning,Full Home Deep Cleaning,Intense scrubbing of all rooms and washrooms,₹1499,₹1150,23%,Active
+Catalog,Home Cleaning,Bathroom Deep Cleaning,Tiles fittings and acid sanitization,₹499,₹375,25%,Active
+Catalog,Home Cleaning,Kitchen Deep Cleaning,Degrease chimney tiles and racks,₹699,₹525,25%,Active
+Catalog,Appliance Cleaning,AC Cleaning,Filter wash coil deep clean gas check,₹599,₹450,25%,Active
+Catalog,Appliance Cleaning,Sofa Cleaning,Dry foam shampoo and stain removal,₹799,₹600,25%,Active
+Catalog,Appliance Cleaning,Chimney Cleaning,Filter and duct clean for suction,₹699,₹525,25%,Active
+Catalog,Horticulture,Terrace Garden Setup,End-to-end design and planter potting,₹2999,₹2300,23%,Active
+Catalog,Home Care,Maid Service,Verified helper for cooking & cleaning (4h),₹399/day,₹320,20%,Active
+Health Audit,Fitness,DailyStepsDashboard,Phone hardware sensor + native background step listener,Steps / Distance / Goal,Local + Cloud,Isolated,Production Ready
+Health Audit,Fitness,CaloriesDashboard,Dynamic daily calories intake vs burn tracking,Calories & Macros (C/P/F),Local + Cloud,Isolated,Production Ready
+Health Audit,Dashboard,NutritionDashboard,Searchable food database with 100+ foods and meal logging,Breakfast/Lunch/Dinner/Snacks,Local + Cloud,Isolated,Production Ready
+Health Audit,Health,HeartRateScreen,Bluetooth Smartwatch BLE Sync + Manual Pulse input,BPM (40-220 bpm),Local + Cloud,Isolated,Production Ready
+Health Audit,Health,BloodOxygenScreen,Optical BLE GATT sensor + Manual Pulse Oximeter input,% SpO2 (70-100%),Local + Cloud,Isolated,Production Ready
+Health Audit,Health,SleepDashboard,Nightly bedtime / wake time duration + score tracking,Hours / Sleep Score,Local + Cloud,Isolated,Production Ready
+Health Audit,Daily Health,HydrationDashboard,Quick-tap 250ml water logging with daily glass tracker,Milliliters (ml),Local + Cloud,Isolated,Production Ready
+Health Audit,Daily Health,BodyCompositionScreen,Weight muscle % and body fat % log with BMI calculation,Weight (kg) / Fat %,Local + Cloud,Isolated,Production Ready
+Health Audit,Daily Care,MedicineAlarmScreen,Pill schedule with local push reminder alarms,Medication list & time,Local,Isolated,Production Ready
+Health Audit,Medical,PrescriptionManagement,Upload prescriptions and medical documents with sharing,PDF / Image Docs,Local + Cloud,Isolated,Production Ready
+Health Audit,Medical,LabReportsHub,Stores lab blood test reports organized by date,Medical Files,Local + Cloud,Isolated,Production Ready
+Cloud Schema,Database,users,Registered customer profiles,"uid, name, email, pushToken, lastLoginAt",Firestore,Encrypted,Active
+Cloud Schema,Database,bookings,Service booking orders dispatch and tracking,"bookingId, customerId, vendorId, status, price",Firestore,Realtime,Active
+Cloud Schema,Database,health_logs,Cloud backup for health telemetry and dashboard sync,"userId, logType, steps, heartRate, spo2, timestamp",Firestore,Realtime,Active
+Cloud Schema,Database,health_records,Metadata for customer prescriptions and lab test records,"userId, docId, title, category, type, date",Firestore,Realtime,Active
+Cloud Schema,Database,shop_orders,Orders placed via Urban Shop,"orderId, customerId, items, totalCash, status",Firestore,Realtime,Active
+Cloud Schema,Database,shop_products,E-commerce hardware and health equipment products,"id, name, price, pointsPrice, badge, inStock",Firestore,Realtime,Active
+Launch Checklist,Authentication,Google Sign-In,User can login with Google account,Auth Session,Firebase Auth,Verified,PASS
+Launch Checklist,Authentication,Multi-User Isolation,User A cannot view User B meals/prescriptions on same phone,UID Key Scoping,AsyncStorage,Verified,PASS
+Launch Checklist,Services,Booking Creation,Customer selects date/time slot and creates service booking,Instant Firestore write,Firestore bookings,Verified,PASS
+Launch Checklist,Dispatch,Vendor Notification,Sound chime and visual badge alert for unassigned bookings,AudioContext + Badge,Admin Web,Verified,PASS
+Launch Checklist,Vitals,Manual Health Entry,User without smartwatch can enter Heart Rate & SpO2 readings,Manual input modal,healthLogService,Verified,PASS
+Launch Checklist,Fitness,Calorie Sync,Logged meals automatically reflect on Fitness Calories dashboard,Live sync,CaloriesDashboard,Verified,PASS
+Launch Checklist,Persistence,Offline Mode,App operates smoothly when network disconnects then syncs later,Local-first storage,AsyncStorage + Firestore,Verified,PASS

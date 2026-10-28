@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ScrollView,
   Text,
@@ -9,6 +9,7 @@ import {
   StatusBar,
   Alert,
   Modal,
+  TextInput,
 } from "react-native";
 import Svg, {
   Circle,
@@ -27,6 +28,7 @@ import { RootStackParamList } from "@/navigation/types";
 import WatchStatusBanner from "@/components/WatchStatusBanner";
 import { BleManager } from "@/services/ble/BleManager";
 import { WearableHealthData, ConnectionState } from "@/services/ble/types";
+import { saveBloodOxygenLog, getBloodOxygenLogs, VitalEntry } from "@/services/healthLogService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BloodOxygen">;
 
@@ -39,14 +41,41 @@ export default function BloodOxygenScreen({ navigation }: Props) {
 
   const [wearableData, setWearableData] = useState<WearableHealthData>(BleManager.getHealthData());
   const [connState, setConnState] = useState<ConnectionState>(BleManager.getConnectionState());
+  const [manualSpo2, setManualSpo2] = useState("");
+  const [latestVital, setLatestVital] = useState<VitalEntry | null>(null);
 
-  React.useEffect(() => {
+  const loadLatestLogs = async () => {
+    try {
+      const logs = await getBloodOxygenLogs();
+      if (logs.length > 0) {
+        setLatestVital(logs[0]);
+      }
+    } catch (e) {
+      console.warn("Could not load blood oxygen logs:", e);
+    }
+  };
+
+  useEffect(() => {
+    loadLatestLogs();
     const unsub = BleManager.subscribeRepository(() => {
       setWearableData(BleManager.getHealthData());
       setConnState(BleManager.getConnectionState());
     });
     return unsub;
   }, []);
+
+  const handleSaveManualSpo2 = async () => {
+    const parsed = parseInt(manualSpo2.trim(), 10);
+    if (isNaN(parsed) || parsed < 70 || parsed > 100) {
+      Alert.alert("Invalid Input", "Please enter a realistic blood oxygen saturation level between 70% and 100%.");
+      return;
+    }
+    await saveBloodOxygenLog(parsed, "Manual Input");
+    Alert.alert("Reading Saved", `Your SpO2 reading of ${parsed}% has been saved and backed up to cloud.`);
+    setManualSpo2("");
+    setShowTrackModal(false);
+    loadLatestLogs();
+  };
 
   // Blood Oxygen Cellular Artwork
   const renderBloodIllustration = () => (
@@ -306,6 +335,8 @@ export default function BloodOxygenScreen({ navigation }: Props) {
                   <Text style={s.heroValue}>
                     {wearableData.spo2.availability === "SUPPORTED" && wearableData.spo2.value != null
                       ? wearableData.spo2.value
+                      : latestVital?.value != null
+                      ? latestVital.value
                       : "98"}
                   </Text>
                   <Text style={s.heroUnit}>%</Text>
@@ -313,6 +344,8 @@ export default function BloodOxygenScreen({ navigation }: Props) {
                 <Text style={s.heroSub}>
                   {connState === "connected" && wearableData.spo2.availability === "SUPPORTED"
                     ? `Live from ${wearableData.spo2.source || "ColorFit Pulse"}`
+                    : latestVital
+                    ? `Logged ${latestVital.value}% (${latestVital.time || "Today"})`
                     : "Optimal saturation"}
                 </Text>
                 <View style={s.statusPill}>
@@ -439,70 +472,88 @@ export default function BloodOxygenScreen({ navigation }: Props) {
             >
               <Ionicons name="chevron-back" size={24} color="#ffffff" />
             </Pressable>
-            <Text style={s.modalTitle}>Track your blood oxygen</Text>
+            <Text style={s.modalTitle}>Blood Oxygen Tracking</Text>
             <View style={{ width: 40 }} />
           </View>
 
           <ScrollView contentContainerStyle={s.modalContent}>
-            {/* SpO2 Sensor Graphic */}
-            <View style={s.modalGraphicWrap}>
-              <Svg width={180} height={140} viewBox="0 0 160 120">
-                <Defs>
-                  <SvgLinearGradient id="sensorGrad" x1="0" y1="0" x2="1" y2="1">
-                    <Stop offset="0%" stopColor="#0284c7" />
-                    <Stop offset="100%" stopColor="#0f172a" />
-                  </SvgLinearGradient>
-                </Defs>
-                {/* Arm / Wrist Outline */}
-                <Path
-                  d="M20 75 Q80 70 140 75 L140 100 L20 100 Z"
-                  fill="#334155"
-                  opacity={0.4}
+            {/* Quick Manual SpO2 Entry Card */}
+            <View style={[s.modalCard, { marginBottom: 20, backgroundColor: "#18181b", borderColor: "#38bdf8", borderWidth: 1.5 }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <Ionicons name="create-outline" size={20} color="#38bdf8" />
+                <Text style={{ fontSize: 16, fontWeight: "700", color: "#ffffff" }}>Log Pulse Oximeter Reading</Text>
+              </View>
+              <Text style={{ fontSize: 12.5, color: "#9ca3af", marginBottom: 14 }}>
+                Enter the oxygen saturation percentage reading from your fingertip pulse oximeter.
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                <TextInput
+                  value={manualSpo2}
+                  onChangeText={setManualSpo2}
+                  placeholder="e.g. 98"
+                  placeholderTextColor="#71717a"
+                  keyboardType="numeric"
+                  style={{
+                    flex: 1,
+                    backgroundColor: "#27272a",
+                    color: "#ffffff",
+                    fontSize: 20,
+                    fontWeight: "800",
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: "#3f3f46",
+                  }}
                 />
-                {/* Smartwatch base */}
-                <Rect x="50" y="30" width="60" height="35" rx="8" fill="#1e293b" stroke="#38bdf8" strokeWidth="2" />
-                {/* Optical sensor light beam */}
-                <Path
-                  d="M70 65 L65 85 L95 85 L90 65 Z"
-                  fill="rgba(56,189,248,0.3)"
-                />
-                <Circle cx="80" cy="65" r="4" fill="#38bdf8" />
-                <Circle cx="80" cy="85" r="6" fill="#f43f5e" />
-                <Circle cx="80" cy="85" r="14" stroke="rgba(244,63,94,0.4)" strokeWidth="1.5" fill="none" />
-              </Svg>
+                <Text style={{ color: "#38bdf8", fontSize: 18, fontWeight: "800" }}>% SpO2</Text>
+              </View>
+              <Pressable
+                onPress={handleSaveManualSpo2}
+                style={{
+                  backgroundColor: "#0284c7",
+                  paddingVertical: 12,
+                  borderRadius: 14,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "#ffffff", fontWeight: "700", fontSize: 14.5 }}>Save &amp; Backup Reading</Text>
+              </Pressable>
             </View>
 
+            {/* Smartwatch Guidance */}
             <View style={s.modalCard}>
+              <Text style={{ fontSize: 15, fontWeight: "700", color: "#ffffff", marginBottom: 10 }}>
+                Smartwatch Optical Sensor Guidelines
+              </Text>
               <View style={s.modalStepRow}>
                 <View style={s.modalStepDot} />
                 <Text style={s.modalStepText}>
                   Ensure your watch sits comfortably above your wrist bone with a snug fit during sleep or manual check.
                 </Text>
               </View>
-
               <View style={s.modalStepRow}>
                 <View style={s.modalStepDot} />
                 <Text style={s.modalStepText}>
                   Rest your forearm flat on a table or mattress and refrain from moving or talking during the reading.
                 </Text>
               </View>
-
               <View style={s.modalStepRow}>
                 <View style={s.modalStepDot} />
                 <Text style={s.modalStepText}>
-                  Normal oxygen saturation levels typically range between 95% and 100%. Low ambient temperature or low blood circulation may impact readings.
+                  Normal oxygen saturation levels typically range between 95% and 100%.
                 </Text>
               </View>
             </View>
           </ScrollView>
 
-          {/* Bottom Done Button */}
+          {/* Bottom Close Button */}
           <View style={s.modalBottom}>
             <Pressable
               style={s.doneBtn}
               onPress={() => setShowTrackModal(false)}
             >
-              <Text style={s.doneBtnText}>Done</Text>
+              <Text style={s.doneBtnText}>Close</Text>
             </Pressable>
           </View>
         </View>

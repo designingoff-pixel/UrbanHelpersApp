@@ -2,6 +2,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { Alert, Platform } from "react-native";
+import { auth, db } from "./firebase";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 
 export type DocumentCategory =
   | "Lab Report"
@@ -27,7 +29,12 @@ export interface HealthDocument {
   createdAt: number;
 }
 
-const STORAGE_KEY = "@urban_health_documents_v2";
+const STORAGE_KEY_BASE = "@urban_health_documents_v2";
+
+function getUserDocKey(explicitUid?: string): string {
+  const uid = explicitUid || auth?.currentUser?.uid || "guest";
+  return `${STORAGE_KEY_BASE}_${uid}`;
+}
 
 /**
  * Ensures permanent local file storage directory exists
@@ -54,9 +61,9 @@ export function formatBytes(bytes?: number): string {
 /**
  * Get all saved health documents sorted with latest first
  */
-export async function getHealthDocuments(): Promise<HealthDocument[]> {
+export async function getHealthDocuments(explicitUid?: string): Promise<HealthDocument[]> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    const raw = await AsyncStorage.getItem(getUserDocKey(explicitUid));
     if (!raw) return [];
     const list: HealthDocument[] = JSON.parse(raw);
     return list.sort((a, b) => b.createdAt - a.createdAt);
@@ -70,7 +77,8 @@ export async function getHealthDocuments(): Promise<HealthDocument[]> {
  * Saves a new health document, copying the source file to app storage for permanence
  */
 export async function saveHealthDocument(
-  input: Omit<HealthDocument, "id" | "createdAt">
+  input: Omit<HealthDocument, "id" | "createdAt">,
+  explicitUid?: string
 ): Promise<HealthDocument> {
   try {
     const id = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -99,9 +107,31 @@ export async function saveHealthDocument(
       createdAt: Date.now(),
     };
 
-    const existing = await getHealthDocuments();
+    const docKey = getUserDocKey(explicitUid);
+    const existing = await getHealthDocuments(explicitUid);
     const updated = [newDoc, ...existing];
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    await AsyncStorage.setItem(docKey, JSON.stringify(updated));
+
+    // Cloud metadata sync to Firestore
+    try {
+      const uid = explicitUid || auth?.currentUser?.uid;
+      if (uid && uid !== "guest" && db) {
+        await addDoc(collection(db, "health_records"), {
+          userId: uid,
+          uid,
+          docId: id,
+          title: newDoc.title,
+          category: newDoc.category,
+          type: newDoc.type,
+          date: newDoc.date,
+          fileSize: newDoc.fileSize || null,
+          notes: newDoc.notes || null,
+          createdAt: serverTimestamp(),
+        });
+      }
+    } catch (cloudErr) {
+      console.warn("[HealthRecords] Cloud metadata sync skipped/offline:", cloudErr);
+    }
 
     return newDoc;
   } catch (error) {
@@ -113,9 +143,10 @@ export async function saveHealthDocument(
 /**
  * Deletes a health document by ID and removes its file from storage
  */
-export async function deleteHealthDocument(id: string): Promise<void> {
+export async function deleteHealthDocument(id: string, explicitUid?: string): Promise<void> {
   try {
-    const existing = await getHealthDocuments();
+    const docKey = getUserDocKey(explicitUid);
+    const existing = await getHealthDocuments(explicitUid);
     const target = existing.find((d) => d.id === id);
     if (target && target.uri && target.uri.startsWith(FileSystem.documentDirectory || "")) {
       try {
@@ -126,7 +157,7 @@ export async function deleteHealthDocument(id: string): Promise<void> {
     }
 
     const filtered = existing.filter((d) => d.id !== id);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    await AsyncStorage.setItem(docKey, JSON.stringify(filtered));
   } catch (error) {
     console.error("Failed to delete health document:", error);
     throw error;

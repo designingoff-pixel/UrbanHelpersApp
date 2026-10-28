@@ -1,31 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { ScrollView, Text, View, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
+import { getMeals, getDailyNutritionTotals, MealItem } from "@/services/healthLogService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "CaloriesDashboard">;
 
-const MEALS = [
-  { name: "Breakfast", time: "8:00 AM", kcal: 420, icon: "sunny", color: "#f59e0b" },
-  { name: "Lunch", time: "1:00 PM", kcal: 680, icon: "restaurant", color: "#10b981" },
-  { name: "Snack", time: "4:30 PM", kcal: 180, icon: "cafe", color: "#8b5cf6" },
-  { name: "Dinner", time: "7:30 PM", kcal: 540, icon: "moon", color: "#2563eb" },
-];
-
-const MACROS = [
-  { label: "Carbs", value: 210, total: 250, color: "#f59e0b" },
-  { label: "Protein", value: 85, total: 120, color: "#10b981" },
-  { label: "Fat", value: 52, total: 65, color: "#e11d48" },
-];
-
-const WEEK = [
-  { day: "M", val: 1800 }, { day: "T", val: 2100 }, { day: "W", val: 1950 },
-  { day: "T", val: 2300 }, { day: "F", val: 2050 }, { day: "S", val: 1700 }, { day: "S", val: 1820 },
-];
-const MAX_VAL = 2400;
+const DEFAULT_GOAL = 2200;
 
 const NAV = [
   { icon: "home-outline", label: "Home", route: "HomeDashboard" },
@@ -34,11 +18,56 @@ const NAV = [
   { icon: "person-outline", label: "Profile", route: "Profile" },
 ];
 
+const MEAL_ICONS: Record<string, { icon: string; color: string }> = {
+  breakfast: { icon: "sunny", color: "#f59e0b" },
+  lunch: { icon: "restaurant", color: "#10b981" },
+  snack: { icon: "cafe", color: "#8b5cf6" },
+  dinner: { icon: "moon", color: "#2563eb" },
+};
+
 export default function CaloriesDashboardScreen({ navigation }: Props) {
-  const consumed = MEALS.reduce((s, m) => s + m.kcal, 0);
-  const goal = 2200;
-  const remaining = goal - consumed;
+  const [meals, setMeals] = useState<MealItem[]>([]);
+  const [totals, setTotals] = useState({
+    totalCalories: 0,
+    totalProtein: 0,
+    totalCarbs: 0,
+    totalFat: 0,
+  });
+
+  const loadData = useCallback(async () => {
+    try {
+      const [todayMeals, nutritionTotals] = await Promise.all([
+        getMeals(),
+        getDailyNutritionTotals(),
+      ]);
+      setMeals(todayMeals);
+      setTotals({
+        totalCalories: nutritionTotals.totalCalories,
+        totalProtein: Math.round(nutritionTotals.totalProtein),
+        totalCarbs: Math.round(nutritionTotals.totalCarbs),
+        totalFat: Math.round(nutritionTotals.totalFat),
+      });
+    } catch (e) {
+      console.warn("Could not load calories data:", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+    const unsubscribe = navigation.addListener("focus", loadData);
+    return unsubscribe;
+  }, [navigation, loadData]);
+
+  const consumed = totals.totalCalories;
+  const goal = DEFAULT_GOAL;
+  const remaining = Math.max(goal - consumed, 0);
   const pct = Math.min(consumed / goal, 1);
+
+  const macros = [
+    { label: "Carbs", value: totals.totalCarbs, total: 250, color: "#f59e0b" },
+    { label: "Protein", value: totals.totalProtein, total: 120, color: "#10b981" },
+    { label: "Fat", value: totals.totalFat, total: 65, color: "#e11d48" },
+  ];
 
   return (
     <View style={s.root}>
@@ -48,7 +77,7 @@ export default function CaloriesDashboardScreen({ navigation }: Props) {
           <Ionicons name="arrow-back" size={22} color={colors.text.secondary} />
         </Pressable>
         <Text style={s.headerTitle}>Calories</Text>
-        <Pressable style={s.iconBtn}>
+        <Pressable style={s.iconBtn} onPress={() => navigation.navigate("NutritionDashboard")}>
           <Ionicons name="add" size={22} color={colors.text.secondary} />
         </Pressable>
       </View>
@@ -65,7 +94,7 @@ export default function CaloriesDashboardScreen({ navigation }: Props) {
             <Text style={s.heroValue}>{consumed.toLocaleString()}</Text>
             <Text style={s.heroGoal}>of {goal} kcal goal</Text>
             <View style={s.heroProgressBg}>
-              <View style={[s.heroProgressFill, { width: `${pct * 100}%` }]} />
+              <View style={[s.heroProgressFill, { width: `${Math.round(pct * 100)}%` }]} />
             </View>
             <Text style={s.heroRemaining}>{remaining} kcal remaining</Text>
           </View>
@@ -83,8 +112,8 @@ export default function CaloriesDashboardScreen({ navigation }: Props) {
         <View style={s.statsRow}>
           {[
             { label: "Burned", value: "520", icon: "flame", color: "#ef4444" },
-            { label: "Net", value: String(consumed - 520), icon: "trending-up", color: "#10b981" },
-            { label: "Water", value: "1.8L", icon: "water", color: "#2563eb" },
+            { label: "Net", value: String(Math.max(consumed - 520, 0)), icon: "trending-up", color: "#10b981" },
+            { label: "Logged", value: `${meals.length} meals`, icon: "restaurant", color: "#2563eb" },
           ].map((st) => (
             <View key={st.label} style={s.statCard}>
               <View style={[s.statIcon, { backgroundColor: `${st.color}22` }]}>
@@ -99,59 +128,47 @@ export default function CaloriesDashboardScreen({ navigation }: Props) {
         {/* Macros */}
         <Text style={s.sectionTitle}>Macronutrients</Text>
         <View style={s.macrosCard}>
-          {MACROS.map((m) => (
+          {macros.map((m) => (
             <View key={m.label} style={s.macroRow}>
               <Text style={s.macroLabel}>{m.label}</Text>
               <View style={s.macroBarBg}>
-                <View style={[s.macroBarFill, { width: `${(m.value / m.total) * 100}%`, backgroundColor: m.color }]} />
+                <View style={[s.macroBarFill, { width: `${Math.min((m.value / m.total) * 100, 100)}%`, backgroundColor: m.color }]} />
               </View>
               <Text style={s.macroVal}>{m.value}g</Text>
             </View>
           ))}
         </View>
 
-        {/* Weekly Chart */}
-        <Text style={s.sectionTitle}>Weekly Intake</Text>
-        <View style={s.chartCard}>
-          <View style={s.barChart}>
-            {WEEK.map((w, i) => (
-              <View key={i} style={s.barWrap}>
-                <LinearGradient
-                  colors={i === 3 ? ["#ea580c", "#f59e0b"] : ["rgba(234,88,12,0.3)", "rgba(245,158,11,0.3)"]}
-                  style={[s.bar, { height: (w.val / MAX_VAL) * 120 }]}
-                />
-                <Text style={s.barDay}>{w.day}</Text>
-              </View>
-            ))}
-          </View>
-          <View style={s.chartGoalLine}>
-            <Text style={s.chartGoalText}>Goal: {goal}</Text>
-          </View>
-        </View>
-
         {/* Meals */}
-        <Text style={s.sectionTitle}>Today's Meals</Text>
+        <Text style={s.sectionTitle}>Today's Logged Meals ({meals.length})</Text>
         <View style={s.mealsList}>
-          {MEALS.map((m) => (
-            <View key={m.name} style={s.mealRow}>
-              <View style={[s.mealIcon, { backgroundColor: `${m.color}22` }]}>
-                <Ionicons name={m.icon as any} size={20} color={m.color} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.mealName}>{m.name}</Text>
-                <Text style={s.mealTime}>{m.time}</Text>
-              </View>
-              <Text style={[s.mealKcal, { color: m.color }]}>{m.kcal} kcal</Text>
-              <Pressable style={s.mealEdit}>
-                <Ionicons name="create-outline" size={16} color={colors.text.secondary} />
-              </Pressable>
+          {meals.length === 0 ? (
+            <View style={{ padding: 20, alignItems: "center" }}>
+              <Ionicons name="fast-food-outline" size={32} color={colors.text.secondary} />
+              <Text style={{ color: "#9ca3af", marginTop: 8, fontSize: 13 }}>No meals logged yet today</Text>
             </View>
-          ))}
+          ) : (
+            meals.map((m) => {
+              const meta = MEAL_ICONS[m.mealType] || { icon: "restaurant", color: "#10b981" };
+              return (
+                <View key={m.id} style={s.mealRow}>
+                  <View style={[s.mealIcon, { backgroundColor: `${meta.color}22` }]}>
+                    <Ionicons name={meta.icon as any} size={20} color={meta.color} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.mealName}>{m.name}</Text>
+                    <Text style={s.mealTime}>{m.time} • {m.mealType.toUpperCase()}</Text>
+                  </View>
+                  <Text style={[s.mealKcal, { color: meta.color }]}>{m.calories} kcal</Text>
+                </View>
+              );
+            })
+          )}
         </View>
 
         {/* Log Meal CTA */}
         <Pressable
-          onPress={() => navigation.navigate("AdvancedNutritionDashboard")}
+          onPress={() => navigation.navigate("NutritionDashboard")}
           style={({ pressed }) => [{ opacity: pressed ? 0.9 : 1 }]}
         >
           <LinearGradient

@@ -1,5 +1,47 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { cancelNotificationById } from "@/services/notificationService";
+import { auth, db } from "./firebase";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+
+// ═════════════════════════════════════════════════════════════
+// MULTI-USER ISOLATION & FIRESTORE CLOUD PERSISTENCE
+// ═════════════════════════════════════════════════════════════
+
+export function getCurrentUid(): string {
+  try {
+    return auth?.currentUser?.uid || "guest";
+  } catch {
+    return "guest";
+  }
+}
+
+export function getUserScopedKey(baseKey: string, explicitUid?: string): string {
+  const uid = explicitUid || getCurrentUid();
+  return `${baseKey}_${uid}`;
+}
+
+export async function syncHealthLogToCloud(
+  logType: string,
+  payload: Record<string, any>,
+  explicitUid?: string
+): Promise<void> {
+  try {
+    const uid = explicitUid || getCurrentUid();
+    if (!uid || uid === "guest" || !db) return;
+    await addDoc(collection(db, "health_logs"), {
+      userId: uid,
+      uid,
+      logType,
+      type: logType,
+      ...payload,
+      createdAt: serverTimestamp(),
+      timestamp: serverTimestamp(),
+    });
+  } catch (err) {
+    // Non-blocking background sync warning
+    console.warn("[HealthSync] Background upload skipped/offline:", err);
+  }
+}
 
 // ═════════════════════════════════════════════════════════════
 // SLEEP LOGGING
@@ -88,6 +130,16 @@ export async function addSleepEntry(
     const filtered = all.filter((e) => e.date !== newEntry.date);
     filtered.unshift(newEntry);
     await AsyncStorage.setItem(`${SLEEP_KEY}_${uid}`, JSON.stringify(filtered));
+    // Background cloud sync to Firestore
+    syncHealthLogToCloud("sleep", {
+      date: newEntry.date,
+      durationMins: newEntry.durationMins,
+      sleepDuration: (newEntry.durationMins / 60).toFixed(1),
+      score: newEntry.score,
+      bedtime: newEntry.bedtime,
+      wakeTime: newEntry.wakeTime,
+      stages: newEntry.stages || null,
+    }, uid);
   } catch (e) {
     console.error("Error saving sleep entry:", e);
   }
@@ -253,9 +305,9 @@ export const formatCurrentTime = (): string => {
 // MEAL LOGGING
 // ═════════════════════════════════════════════════════════════
 
-export async function getMeals(date: string = getTodayKey()): Promise<MealItem[]> {
+export async function getMeals(date: string = getTodayKey(), explicitUid?: string): Promise<MealItem[]> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.MEALS);
+    const raw = await AsyncStorage.getItem(getUserScopedKey(STORAGE_KEYS.MEALS, explicitUid));
     if (!raw) return [];
     const allMeals: MealItem[] = JSON.parse(raw);
     return allMeals.filter((m) => m.date === date);
@@ -269,7 +321,8 @@ export async function addMeal(
   meal: Omit<MealItem, "id" | "date" | "time" | "timestamp"> & {
     date?: string;
     time?: string;
-  }
+  },
+  explicitUid?: string
 ): Promise<MealItem> {
   const date = meal.date || getTodayKey();
   const time = meal.time || formatCurrentTime();
@@ -282,36 +335,49 @@ export async function addMeal(
   };
 
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.MEALS);
+    const key = getUserScopedKey(STORAGE_KEYS.MEALS, explicitUid);
+    const raw = await AsyncStorage.getItem(key);
     const allMeals: MealItem[] = raw ? JSON.parse(raw) : [];
     allMeals.unshift(newItem);
-    await AsyncStorage.setItem(STORAGE_KEYS.MEALS, JSON.stringify(allMeals));
+    await AsyncStorage.setItem(key, JSON.stringify(allMeals));
+    // Background cloud sync
+    syncHealthLogToCloud("nutrition", {
+      mealName: newItem.name,
+      mealType: newItem.mealType,
+      calories: newItem.calories,
+      protein: newItem.protein,
+      carbs: newItem.carbs,
+      fat: newItem.fat,
+      date: newItem.date,
+      time: newItem.time,
+    }, explicitUid);
   } catch (e) {
     console.error("Error saving meal:", e);
   }
   return newItem;
 }
 
-export async function deleteMeal(id: string): Promise<void> {
+export async function deleteMeal(id: string, explicitUid?: string): Promise<void> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.MEALS);
+    const key = getUserScopedKey(STORAGE_KEYS.MEALS, explicitUid);
+    const raw = await AsyncStorage.getItem(key);
     if (!raw) return;
     const allMeals: MealItem[] = JSON.parse(raw);
     const filtered = allMeals.filter((m) => m.id !== id);
-    await AsyncStorage.setItem(STORAGE_KEYS.MEALS, JSON.stringify(filtered));
+    await AsyncStorage.setItem(key, JSON.stringify(filtered));
   } catch (e) {
     console.error("Error deleting meal:", e);
   }
 }
 
-export async function getDailyNutritionTotals(date: string = getTodayKey()): Promise<{
+export async function getDailyNutritionTotals(date: string = getTodayKey(), explicitUid?: string): Promise<{
   totalCalories: number;
   totalProtein: number;
   totalCarbs: number;
   totalFat: number;
   byCategory: Record<MealType, { count: number; calories: number }>;
 }> {
-  const meals = await getMeals(date);
+  const meals = await getMeals(date, explicitUid);
   let totalCalories = 0;
   let totalProtein = 0;
   let totalCarbs = 0;
@@ -352,9 +418,9 @@ export const PILL_COLORS = [
   { name: "Tangerine", hex: "#f97316" },
 ];
 
-export async function getMedications(): Promise<MedicationItem[]> {
+export async function getMedications(explicitUid?: string): Promise<MedicationItem[]> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.MEDICATIONS);
+    const raw = await AsyncStorage.getItem(getUserScopedKey(STORAGE_KEYS.MEDICATIONS, explicitUid));
     if (!raw) return [];
     return JSON.parse(raw);
   } catch (e) {
@@ -364,7 +430,8 @@ export async function getMedications(): Promise<MedicationItem[]> {
 }
 
 export async function addMedication(
-  med: Omit<MedicationItem, "id" | "takenDates" | "createdAt">
+  med: Omit<MedicationItem, "id" | "takenDates" | "createdAt">,
+  explicitUid?: string
 ): Promise<MedicationItem> {
   const newItem: MedicationItem = {
     ...med,
@@ -374,10 +441,17 @@ export async function addMedication(
   };
 
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.MEDICATIONS);
+    const key = getUserScopedKey(STORAGE_KEYS.MEDICATIONS, explicitUid);
+    const raw = await AsyncStorage.getItem(key);
     const allMeds: MedicationItem[] = raw ? JSON.parse(raw) : [];
     allMeds.push(newItem);
-    await AsyncStorage.setItem(STORAGE_KEYS.MEDICATIONS, JSON.stringify(allMeds));
+    await AsyncStorage.setItem(key, JSON.stringify(allMeds));
+    syncHealthLogToCloud("medication", {
+      name: newItem.name,
+      dosage: newItem.dosage,
+      frequency: newItem.frequency,
+      time: newItem.time,
+    }, explicitUid);
   } catch (e) {
     console.error("Error adding medication:", e);
   }
@@ -386,10 +460,12 @@ export async function addMedication(
 
 export async function toggleMedicationTaken(
   id: string,
-  date: string = getTodayKey()
+  date: string = getTodayKey(),
+  explicitUid?: string
 ): Promise<boolean> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.MEDICATIONS);
+    const key = getUserScopedKey(STORAGE_KEYS.MEDICATIONS, explicitUid);
+    const raw = await AsyncStorage.getItem(key);
     if (!raw) return false;
     const allMeds: MedicationItem[] = JSON.parse(raw);
     const index = allMeds.findIndex((m) => m.id === id);
@@ -405,7 +481,7 @@ export async function toggleMedicationTaken(
       med.takenDates.push(date);
     }
 
-    await AsyncStorage.setItem(STORAGE_KEYS.MEDICATIONS, JSON.stringify(allMeds));
+    await AsyncStorage.setItem(key, JSON.stringify(allMeds));
     return !hasTaken;
   } catch (e) {
     console.error("Error toggling medication taken:", e);
@@ -413,9 +489,10 @@ export async function toggleMedicationTaken(
   }
 }
 
-export async function deleteMedication(id: string): Promise<void> {
+export async function deleteMedication(id: string, explicitUid?: string): Promise<void> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.MEDICATIONS);
+    const key = getUserScopedKey(STORAGE_KEYS.MEDICATIONS, explicitUid);
+    const raw = await AsyncStorage.getItem(key);
     if (!raw) return;
     const allMeds: MedicationItem[] = JSON.parse(raw);
     // Cancel the scheduled notification before removing the record
@@ -428,7 +505,7 @@ export async function deleteMedication(id: string): Promise<void> {
       }
     }
     const filtered = allMeds.filter((m) => m.id !== id);
-    await AsyncStorage.setItem(STORAGE_KEYS.MEDICATIONS, JSON.stringify(filtered));
+    await AsyncStorage.setItem(key, JSON.stringify(filtered));
   } catch (e) {
     console.error("Error deleting medication:", e);
   }
@@ -460,28 +537,29 @@ export function parseScheduleTime(time: string): { hour: number; minute: number 
  */
 export async function updateMedicationNotificationId(
   id: string,
-  notificationId: string
+  notificationId: string,
+  explicitUid?: string
 ): Promise<void> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.MEDICATIONS);
+    const key = getUserScopedKey(STORAGE_KEYS.MEDICATIONS, explicitUid);
+    const raw = await AsyncStorage.getItem(key);
     if (!raw) return;
     const allMeds: MedicationItem[] = JSON.parse(raw);
     const index = allMeds.findIndex((m) => m.id === id);
     if (index === -1) return;
     allMeds[index] = { ...allMeds[index], notificationId };
-    await AsyncStorage.setItem(STORAGE_KEYS.MEDICATIONS, JSON.stringify(allMeds));
+    await AsyncStorage.setItem(key, JSON.stringify(allMeds));
   } catch (e) {
     console.error("Error updating medication notificationId:", e);
   }
-}
-
 // ═════════════════════════════════════════════════════════════
 // ACTIVITIES / WORKOUT LOGGING
 // ═════════════════════════════════════════════════════════════
 
-export async function getActivities(date: string = getTodayKey()): Promise<ActivityItem[]> {
+export async function getActivities(date: string = getTodayKey(), explicitUid?: string): Promise<ActivityItem[]> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.ACTIVITIES);
+    const key = getUserScopedKey(STORAGE_KEYS.ACTIVITIES, explicitUid);
+    const raw = await AsyncStorage.getItem(key);
     if (!raw) return [];
     const all: ActivityItem[] = JSON.parse(raw);
     return all.filter((a) => a.date === date);
@@ -495,7 +573,8 @@ export async function addActivity(
   act: Omit<ActivityItem, "id" | "date" | "time" | "timestamp"> & {
     date?: string;
     time?: string;
-  }
+  },
+  explicitUid?: string
 ): Promise<ActivityItem> {
   const date = act.date || getTodayKey();
   const time = act.time || formatCurrentTime();
@@ -508,35 +587,46 @@ export async function addActivity(
   };
 
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.ACTIVITIES);
+    const key = getUserScopedKey(STORAGE_KEYS.ACTIVITIES, explicitUid);
+    const raw = await AsyncStorage.getItem(key);
     const all: ActivityItem[] = raw ? JSON.parse(raw) : [];
     all.unshift(newItem);
-    await AsyncStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(all));
+    await AsyncStorage.setItem(key, JSON.stringify(all));
+    syncHealthLogToCloud("activity", {
+      type: newItem.type,
+      title: newItem.title,
+      durationMins: newItem.durationMins,
+      caloriesBurned: newItem.caloriesBurned,
+      distanceKm: newItem.distanceKm || 0,
+      date: newItem.date,
+      time: newItem.time,
+    }, explicitUid);
   } catch (e) {
     console.error("Error saving activity:", e);
   }
   return newItem;
 }
 
-export async function deleteActivity(id: string): Promise<void> {
+export async function deleteActivity(id: string, explicitUid?: string): Promise<void> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.ACTIVITIES);
+    const key = getUserScopedKey(STORAGE_KEYS.ACTIVITIES, explicitUid);
+    const raw = await AsyncStorage.getItem(key);
     if (!raw) return;
     const all: ActivityItem[] = JSON.parse(raw);
     const filtered = all.filter((a) => a.id !== id);
-    await AsyncStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(filtered));
+    await AsyncStorage.setItem(key, JSON.stringify(filtered));
   } catch (e) {
     console.error("Error deleting activity:", e);
   }
 }
 
-export async function getDailyActivityTotals(date: string = getTodayKey()): Promise<{
+export async function getDailyActivityTotals(date: string = getTodayKey(), explicitUid?: string): Promise<{
   totalMins: number;
   totalCalories: number;
   totalDistanceKm: number;
   count: number;
 }> {
-  const list = await getActivities(date);
+  const list = await getActivities(date, explicitUid);
   let totalMins = 0;
   let totalCalories = 0;
   let totalDistanceKm = 0;
@@ -607,9 +697,9 @@ export interface DailyStepRecord {
   caloriesKcal: number;
 }
 
-export async function getTodayStepCount(): Promise<{ steps: number; date: string }> {
+export async function getTodayStepCount(explicitUid?: string): Promise<{ steps: number; date: string }> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.STEP_COUNT);
+    const raw = await AsyncStorage.getItem(getUserScopedKey(STORAGE_KEYS.STEP_COUNT, explicitUid));
     if (!raw) return { steps: 0, date: getTodayKey() };
     const parsed = JSON.parse(raw);
     // Reset if it's a new day
@@ -621,10 +711,10 @@ export async function getTodayStepCount(): Promise<{ steps: number; date: string
   }
 }
 
-export async function saveTodayStepCount(steps: number): Promise<void> {
+export async function saveTodayStepCount(steps: number, explicitUid?: string): Promise<void> {
   try {
     await AsyncStorage.setItem(
-      STORAGE_KEYS.STEP_COUNT,
+      getUserScopedKey(STORAGE_KEYS.STEP_COUNT, explicitUid),
       JSON.stringify({ steps, date: getTodayKey() })
     );
   } catch (e) {
@@ -632,9 +722,9 @@ export async function saveTodayStepCount(steps: number): Promise<void> {
   }
 }
 
-export async function getStepBaseline(): Promise<StepBaselineData | null> {
+export async function getStepBaseline(explicitUid?: string): Promise<StepBaselineData | null> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.STEP_BASELINE);
+    const raw = await AsyncStorage.getItem(getUserScopedKey(STORAGE_KEYS.STEP_BASELINE, explicitUid));
     if (!raw) return null;
     return JSON.parse(raw) as StepBaselineData;
   } catch (e) {
@@ -643,17 +733,17 @@ export async function getStepBaseline(): Promise<StepBaselineData | null> {
   }
 }
 
-export async function saveStepBaseline(data: StepBaselineData): Promise<void> {
+export async function saveStepBaseline(data: StepBaselineData, explicitUid?: string): Promise<void> {
   try {
-    await AsyncStorage.setItem(STORAGE_KEYS.STEP_BASELINE, JSON.stringify(data));
+    await AsyncStorage.setItem(getUserScopedKey(STORAGE_KEYS.STEP_BASELINE, explicitUid), JSON.stringify(data));
   } catch (e) {
     console.error("Error saving step baseline:", e);
   }
 }
 
-export async function getStepHistory(): Promise<DailyStepRecord[]> {
+export async function getStepHistory(explicitUid?: string): Promise<DailyStepRecord[]> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.STEP_HISTORY);
+    const raw = await AsyncStorage.getItem(getUserScopedKey(STORAGE_KEYS.STEP_HISTORY, explicitUid));
     if (!raw) return [];
     return JSON.parse(raw) as DailyStepRecord[];
   } catch (e) {
@@ -662,22 +752,32 @@ export async function getStepHistory(): Promise<DailyStepRecord[]> {
   }
 }
 
-export async function saveDailyStepRecord(record: DailyStepRecord): Promise<void> {
+export async function saveDailyStepRecord(record: DailyStepRecord, explicitUid?: string): Promise<void> {
   try {
-    const existing = await getStepHistory();
+    const existing = await getStepHistory(explicitUid);
     // Replace if same date exists, else unshift
     const filtered = existing.filter((r) => r.date !== record.date);
     filtered.unshift(record);
     // Keep up to 60 days
-    await AsyncStorage.setItem(STORAGE_KEYS.STEP_HISTORY, JSON.stringify(filtered.slice(0, 60)));
+    await AsyncStorage.setItem(getUserScopedKey(STORAGE_KEYS.STEP_HISTORY, explicitUid), JSON.stringify(filtered.slice(0, 60)));
+    // Cloud sync to Firestore
+    syncHealthLogToCloud("steps", {
+      steps: record.steps,
+      stepCount: record.steps,
+      goal: record.goal,
+      distanceKm: record.distanceKm,
+      caloriesKcal: record.caloriesKcal,
+      completed: record.completed,
+      date: record.date,
+    }, explicitUid);
   } catch (e) {
     console.error("Error saving step record to history:", e);
   }
 }
 
-export async function getStoredStepGoal(): Promise<number> {
+export async function getStoredStepGoal(explicitUid?: string): Promise<number> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.STEP_GOAL);
+    const raw = await AsyncStorage.getItem(getUserScopedKey(STORAGE_KEYS.STEP_GOAL, explicitUid));
     if (!raw) return 6000;
     const val = parseInt(raw, 10);
     return isNaN(val) || val <= 0 ? 6000 : val;
@@ -686,9 +786,9 @@ export async function getStoredStepGoal(): Promise<number> {
   }
 }
 
-export async function saveStoredStepGoal(goal: number): Promise<void> {
+export async function saveStoredStepGoal(goal: number, explicitUid?: string): Promise<void> {
   try {
-    await AsyncStorage.setItem(STORAGE_KEYS.STEP_GOAL, String(goal));
+    await AsyncStorage.setItem(getUserScopedKey(STORAGE_KEYS.STEP_GOAL, explicitUid), String(goal));
   } catch (e) {
     console.error("Error saving step goal:", e);
   }
@@ -706,9 +806,9 @@ export interface WaterEntry {
   timestamp: number;
 }
 
-export async function getWaterLogs(date: string = getTodayKey()): Promise<WaterEntry[]> {
+export async function getWaterLogs(date: string = getTodayKey(), explicitUid?: string): Promise<WaterEntry[]> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.WATER);
+    const raw = await AsyncStorage.getItem(getUserScopedKey(STORAGE_KEYS.WATER, explicitUid));
     if (!raw) return [];
     const all: WaterEntry[] = JSON.parse(raw);
     return all.filter((w) => w.date === date);
@@ -718,7 +818,7 @@ export async function getWaterLogs(date: string = getTodayKey()): Promise<WaterE
   }
 }
 
-export async function addWaterLog(amount: number = 250, date: string = getTodayKey()): Promise<WaterEntry> {
+export async function addWaterLog(amount: number = 250, date: string = getTodayKey(), explicitUid?: string): Promise<WaterEntry> {
   const now = new Date();
   const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }).toLowerCase();
   const newEntry: WaterEntry = {
@@ -729,18 +829,26 @@ export async function addWaterLog(amount: number = 250, date: string = getTodayK
     timestamp: Date.now(),
   };
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.WATER);
+    const key = getUserScopedKey(STORAGE_KEYS.WATER, explicitUid);
+    const raw = await AsyncStorage.getItem(key);
     const all: WaterEntry[] = raw ? JSON.parse(raw) : [];
     all.unshift(newEntry);
-    await AsyncStorage.setItem(STORAGE_KEYS.WATER, JSON.stringify(all));
+    await AsyncStorage.setItem(key, JSON.stringify(all));
+    // Cloud sync
+    syncHealthLogToCloud("hydration", {
+      amount,
+      amountMl: amount,
+      date,
+      time,
+    }, explicitUid);
   } catch (e) {
     console.error("Error saving water log:", e);
   }
   return newEntry;
 }
 
-export async function getTodayWaterIntake(date: string = getTodayKey()): Promise<number> {
-  const logs = await getWaterLogs(date);
+export async function getTodayWaterIntake(date: string = getTodayKey(), explicitUid?: string): Promise<number> {
+  const logs = await getWaterLogs(date, explicitUid);
   return logs.reduce((sum, item) => sum + (item.amount || 0), 0);
 }
 
@@ -759,9 +867,9 @@ export interface BodyCompEntry {
   timestamp: number;
 }
 
-export async function getLatestBodyComp(): Promise<BodyCompEntry | null> {
+export async function getLatestBodyComp(explicitUid?: string): Promise<BodyCompEntry | null> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.BODY_COMP);
+    const raw = await AsyncStorage.getItem(getUserScopedKey(STORAGE_KEYS.BODY_COMP, explicitUid));
     if (!raw) return null;
     const all: BodyCompEntry[] = JSON.parse(raw);
     return all.length > 0 ? all[0] : null;
@@ -771,9 +879,9 @@ export async function getLatestBodyComp(): Promise<BodyCompEntry | null> {
   }
 }
 
-export async function getAllBodyComp(): Promise<BodyCompEntry[]> {
+export async function getAllBodyComp(explicitUid?: string): Promise<BodyCompEntry[]> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.BODY_COMP);
+    const raw = await AsyncStorage.getItem(getUserScopedKey(STORAGE_KEYS.BODY_COMP, explicitUid));
     if (!raw) return [];
     return JSON.parse(raw);
   } catch (e) {
@@ -787,7 +895,7 @@ export async function saveBodyComp(data: {
   muscle?: string;
   bodyFat?: string;
   notes?: string;
-}): Promise<BodyCompEntry> {
+}, explicitUid?: string): Promise<BodyCompEntry> {
   const now = new Date();
   const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }).toLowerCase();
   const newEntry: BodyCompEntry = {
@@ -801,14 +909,130 @@ export async function saveBodyComp(data: {
     timestamp: Date.now(),
   };
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.BODY_COMP);
+    const key = getUserScopedKey(STORAGE_KEYS.BODY_COMP, explicitUid);
+    const raw = await AsyncStorage.getItem(key);
     const all: BodyCompEntry[] = raw ? JSON.parse(raw) : [];
     all.unshift(newEntry);
-    await AsyncStorage.setItem(STORAGE_KEYS.BODY_COMP, JSON.stringify(all));
+    await AsyncStorage.setItem(key, JSON.stringify(all));
+    // Cloud sync
+    syncHealthLogToCloud("body_comp", {
+      weight: data.weight,
+      muscle: data.muscle || null,
+      bodyFat: data.bodyFat || null,
+      notes: data.notes || null,
+      date: newEntry.date,
+    }, explicitUid);
   } catch (e) {
     console.error("Error saving body comp:", e);
   }
   return newEntry;
+}
+
+// ═════════════════════════════════════════════════════════════
+// VITALS: HEART RATE & SPO2 LOGGING (MANUAL + BLE FALLBACK)
+// ═════════════════════════════════════════════════════════════
+
+const HEART_RATE_KEY = "@urban_health_heart_rate_v1";
+const BLOOD_OXYGEN_KEY = "@urban_health_spo2_v1";
+
+export interface VitalEntry {
+  id: string;
+  value: number;
+  unit: string;
+  source: string; // e.g. "Manual Log", "Smartwatch BLE"
+  date: string;
+  time: string;
+  timestamp: number;
+}
+
+export async function saveHeartRateLog(
+  bpm: number,
+  source: string = "Manual Entry",
+  explicitUid?: string
+): Promise<VitalEntry> {
+  const newEntry: VitalEntry = {
+    id: `hr_${Date.now()}`,
+    value: bpm,
+    unit: "bpm",
+    source,
+    date: getTodayKey(),
+    time: formatCurrentTime(),
+    timestamp: Date.now(),
+  };
+  try {
+    const key = getUserScopedKey(HEART_RATE_KEY, explicitUid);
+    const raw = await AsyncStorage.getItem(key);
+    const list: VitalEntry[] = raw ? JSON.parse(raw) : [];
+    list.unshift(newEntry);
+    await AsyncStorage.setItem(key, JSON.stringify(list.slice(0, 50)));
+    // Cloud sync
+    syncHealthLogToCloud("vitals", {
+      heartRate: bpm,
+      hr: bpm,
+      unit: "bpm",
+      source,
+      date: newEntry.date,
+      time: newEntry.time,
+    }, explicitUid);
+  } catch (e) {
+    console.error("Error saving heart rate:", e);
+  }
+  return newEntry;
+}
+
+export async function getHeartRateLogs(explicitUid?: string): Promise<VitalEntry[]> {
+  try {
+    const key = getUserScopedKey(HEART_RATE_KEY, explicitUid);
+    const raw = await AsyncStorage.getItem(key);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+export async function saveBloodOxygenLog(
+  spo2: number,
+  source: string = "Manual Entry",
+  explicitUid?: string
+): Promise<VitalEntry> {
+  const newEntry: VitalEntry = {
+    id: `spo2_${Date.now()}`,
+    value: spo2,
+    unit: "%",
+    source,
+    date: getTodayKey(),
+    time: formatCurrentTime(),
+    timestamp: Date.now(),
+  };
+  try {
+    const key = getUserScopedKey(BLOOD_OXYGEN_KEY, explicitUid);
+    const raw = await AsyncStorage.getItem(key);
+    const list: VitalEntry[] = raw ? JSON.parse(raw) : [];
+    list.unshift(newEntry);
+    await AsyncStorage.setItem(key, JSON.stringify(list.slice(0, 50)));
+    // Cloud sync
+    syncHealthLogToCloud("vitals", {
+      spo2,
+      bloodOxygen: spo2,
+      unit: "%",
+      source,
+      date: newEntry.date,
+      time: newEntry.time,
+    }, explicitUid);
+  } catch (e) {
+    console.error("Error saving blood oxygen:", e);
+  }
+  return newEntry;
+}
+
+export async function getBloodOxygenLogs(explicitUid?: string): Promise<VitalEntry[]> {
+  try {
+    const key = getUserScopedKey(BLOOD_OXYGEN_KEY, explicitUid);
+    const raw = await AsyncStorage.getItem(key);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
 }
 
 // ═════════════════════════════════════════════════════════════

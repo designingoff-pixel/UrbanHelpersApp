@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ScrollView,
   Text,
@@ -9,6 +9,7 @@ import {
   StatusBar,
   Alert,
   Modal,
+  TextInput,
 } from "react-native";
 import Animated, {
   useSharedValue,
@@ -34,6 +35,7 @@ import { RootStackParamList } from "@/navigation/types";
 import WatchStatusBanner from "@/components/WatchStatusBanner";
 import { BleManager } from "@/services/ble/BleManager";
 import { WearableHealthData, ConnectionState } from "@/services/ble/types";
+import { saveHeartRateLog, getHeartRateLogs, VitalEntry } from "@/services/healthLogService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "HeartRate">;
 
@@ -46,14 +48,41 @@ export default function HeartRateScreen({ navigation }: Props) {
 
   const [wearableData, setWearableData] = useState<WearableHealthData>(BleManager.getHealthData());
   const [connState, setConnState] = useState<ConnectionState>(BleManager.getConnectionState());
+  const [manualBpm, setManualBpm] = useState("");
+  const [latestVital, setLatestVital] = useState<VitalEntry | null>(null);
 
-  React.useEffect(() => {
+  const loadLatestLogs = async () => {
+    try {
+      const logs = await getHeartRateLogs();
+      if (logs.length > 0) {
+        setLatestVital(logs[0]);
+      }
+    } catch (e) {
+      console.warn("Could not load heart rate logs:", e);
+    }
+  };
+
+  useEffect(() => {
+    loadLatestLogs();
     const unsub = BleManager.subscribeRepository(() => {
       setWearableData(BleManager.getHealthData());
       setConnState(BleManager.getConnectionState());
     });
     return unsub;
   }, []);
+
+  const handleSaveManualBpm = async () => {
+    const parsed = parseInt(manualBpm.trim(), 10);
+    if (isNaN(parsed) || parsed < 40 || parsed > 220) {
+      Alert.alert("Invalid Input", "Please enter a realistic resting or active heart rate between 40 and 220 bpm.");
+      return;
+    }
+    await saveHeartRateLog(parsed, "Manual Input");
+    Alert.alert("Reading Saved", `Your pulse reading of ${parsed} bpm has been logged and backed up.`);
+    setManualBpm("");
+    setShowTrackModal(false);
+    loadLatestLogs();
+  };
 
   // Anatomical Heart SVG Graphic
   const renderHeartIllustration = () => (
@@ -338,6 +367,8 @@ export default function HeartRateScreen({ navigation }: Props) {
               <Text style={s.heroValue}>
                 {wearableData.heartRate.availability === "SUPPORTED" && wearableData.heartRate.value != null
                   ? wearableData.heartRate.value
+                  : latestVital?.value != null
+                  ? latestVital.value
                   : "72"}
               </Text>
               <Text style={s.heroUnit}>bpm</Text>
@@ -345,6 +376,8 @@ export default function HeartRateScreen({ navigation }: Props) {
             <Text style={s.heroSub}>
               {connState === "connected" && wearableData.heartRate.availability === "SUPPORTED" && wearableData.heartRate.value != null
                 ? `Live from ${wearableData.heartRate.source || "ColorFit Pulse"}`
+                : latestVital
+                ? `Logged ${latestVital.value} bpm (${latestVital.time || "Today"})`
                 : "Latest measurement"}
             </Text>
             <View style={s.restingPill}>
@@ -352,6 +385,8 @@ export default function HeartRateScreen({ navigation }: Props) {
               <Text style={s.restingPillText}>
                 {connState === "connected" && wearableData.heartRate.availability === "SUPPORTED" && wearableData.heartRate.value != null
                   ? `Live: ${wearableData.heartRate.value} bpm`
+                  : latestVital
+                  ? `Last Log: ${latestVital.value} bpm`
                   : "Resting: 64 bpm"}
               </Text>
             </View>
@@ -469,75 +504,82 @@ export default function HeartRateScreen({ navigation }: Props) {
             >
               <Ionicons name="chevron-back" size={24} color="#ffffff" />
             </Pressable>
-            <Text style={s.modalTitle}>Track your heart rate</Text>
+            <Text style={s.modalTitle}>Heart Rate Tracking</Text>
             <View style={{ width: 40 }} />
           </View>
 
           <ScrollView contentContainerStyle={s.modalContent}>
-            {/* Wristwatch Graphic */}
-            <View style={s.modalGraphicWrap}>
-              <Svg width={180} height={140} viewBox="0 0 160 120">
-                <Defs>
-                  <SvgLinearGradient id="strapGrad" x1="0" y1="0" x2="1" y2="1">
-                    <Stop offset="0%" stopColor="#374151" />
-                    <Stop offset="100%" stopColor="#111827" />
-                  </SvgLinearGradient>
-                  <SvgLinearGradient id="glowG" x1="0" y1="0" x2="1" y2="1">
-                    <Stop offset="0%" stopColor="#f43f5e" />
-                    <Stop offset="100%" stopColor="#e11d48" />
-                  </SvgLinearGradient>
-                </Defs>
-                {/* Watch Strap */}
-                <Rect x="55" y="10" width="50" height="100" rx="10" fill="url(#strapGrad)" />
-                {/* Watch Body */}
-                <Circle cx="80" cy="60" r="42" fill="#1f2937" stroke="#4b5563" strokeWidth="3" />
-                <Circle cx="80" cy="60" r="34" fill="#030712" />
-                {/* Heart Rate on Display */}
-                <Path
-                  d="M70 60 Q75 52 80 60 Q85 68 90 60"
-                  stroke="url(#glowG)"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  fill="none"
+            {/* Quick Manual Pulse Entry Card */}
+            <View style={[s.modalCard, { marginBottom: 20, backgroundColor: "#18181b", borderColor: "#f43f5e", borderWidth: 1.5 }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <Ionicons name="create-outline" size={20} color="#f43f5e" />
+                <Text style={{ fontSize: 16, fontWeight: "700", color: "#ffffff" }}>Log Pulse Reading</Text>
+              </View>
+              <Text style={{ fontSize: 12.5, color: "#9ca3af", marginBottom: 14 }}>
+                Enter reading from your pulse oximeter, BP monitor, or radial artery check.
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                <TextInput
+                  value={manualBpm}
+                  onChangeText={setManualBpm}
+                  placeholder="e.g. 72"
+                  placeholderTextColor="#71717a"
+                  keyboardType="numeric"
+                  style={{
+                    flex: 1,
+                    backgroundColor: "#27272a",
+                    color: "#ffffff",
+                    fontSize: 20,
+                    fontWeight: "800",
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: "#3f3f46",
+                  }}
                 />
-                <Circle cx="80" cy="60" r="3" fill="#f43f5e" />
-                {/* Pulsing rings */}
-                <Circle cx="80" cy="60" r="52" stroke="rgba(244,63,94,0.25)" strokeWidth="2" fill="none" />
-                <Circle cx="80" cy="60" r="62" stroke="rgba(244,63,94,0.1)" strokeWidth="1" fill="none" />
-              </Svg>
+                <Text style={{ color: "#f43f5e", fontSize: 18, fontWeight: "800" }}>bpm</Text>
+              </View>
+              <Pressable
+                onPress={handleSaveManualBpm}
+                style={{
+                  backgroundColor: "#f43f5e",
+                  paddingVertical: 12,
+                  borderRadius: 14,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "#ffffff", fontWeight: "700", fontSize: 14.5 }}>Save &amp; Backup Reading</Text>
+              </Pressable>
             </View>
 
+            {/* Smartwatch Guidance */}
             <View style={s.modalCard}>
+              <Text style={{ fontSize: 15, fontWeight: "700", color: "#ffffff", marginBottom: 10 }}>
+                Smartwatch BLE Sync
+              </Text>
               <View style={s.modalStepRow}>
                 <View style={s.modalStepDot} />
                 <Text style={s.modalStepText}>
-                  Wear your Galaxy Watch or smart band securely on your wrist, positioned just above the wrist bone.
+                  Wear your smartwatch or fitness band securely positioned just above the wrist bone.
                 </Text>
               </View>
-
               <View style={s.modalStepRow}>
                 <View style={s.modalStepDot} />
                 <Text style={s.modalStepText}>
-                  Stay seated comfortably and remain still while taking continuous or spot heart rate measurements.
-                </Text>
-              </View>
-
-              <View style={s.modalStepRow}>
-                <View style={s.modalStepDot} />
-                <Text style={s.modalStepText}>
-                  Cold skin, loose fitting, vigorous motion, or excessive tattoo pigment under the sensor may reduce measurement accuracy.
+                  Measurements auto-sync to your account telemetry in the background.
                 </Text>
               </View>
             </View>
           </ScrollView>
 
-          {/* Bottom Done Button */}
+          {/* Bottom Close Button */}
           <View style={s.modalBottom}>
             <Pressable
               style={s.doneBtn}
               onPress={() => setShowTrackModal(false)}
             >
-              <Text style={s.doneBtnText}>Done</Text>
+              <Text style={s.doneBtnText}>Close</Text>
             </Pressable>
           </View>
         </View>
