@@ -51,9 +51,10 @@ const CATEGORIES: { label: ShopCategory; icon: string }[] = [
 ];
 
 const FLASH_DEALS: { productId: string; discount: number }[] = [
-  { productId: "prod-scale-1", discount: 18 },
-  { productId: "prod-detox-3", discount: 25 },
-  { productId: "prod-mat-5", discount: 20 },
+  { productId: "prod-scale-3", discount: 18 },
+  { productId: "prod-humidifier-7", discount: 25 },
+  { productId: "prod-massager-8", discount: 20 },
+  { productId: "prod-thermo-16", discount: 15 },
 ];
 
 // Calculate time left for flash sale (resets every 4 hours)

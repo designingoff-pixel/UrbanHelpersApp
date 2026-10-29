@@ -62,14 +62,13 @@ export default function ShopProductDetailScreen({ navigation, route }: Props) {
     if (found) {
       setProduct(found);
       setLoading(false);
-    } else {
-      const unsub = subscribeToShopProducts((list) => {
-        const p = list.find((x) => x.id === productId);
-        if (p) setProduct(p);
-        setLoading(false);
-      });
-      return () => { if (typeof unsub === "function") unsub(); };
     }
+    const unsub = subscribeToShopProducts((list) => {
+      const p = list.find((x) => x.id === productId);
+      if (p) setProduct(p);
+      setLoading(false);
+    });
+    return () => { if (typeof unsub === "function") unsub(); };
   }, [productId]);
 
   useEffect(() => {

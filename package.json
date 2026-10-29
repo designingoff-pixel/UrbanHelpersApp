@@ -1,4 +1,12 @@
 {
+  "name": "urban-helpers-root",
+  "version": "1.0.0",
+  "scripts": {
+    "seed": "node scripts/seed_inventory.js",
+    "seed:products": "node scripts/seed_inventory.js --products",
+    "seed:services": "node scripts/seed_inventory.js --services",
+    "seed:dry": "node scripts/seed_inventory.js --dry-run"
+  },
   "dependencies": {
     "@grpc/grpc-js": "^1.14.6"
   }
