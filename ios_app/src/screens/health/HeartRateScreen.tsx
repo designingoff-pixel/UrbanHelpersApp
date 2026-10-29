@@ -473,7 +473,7 @@ export default function HeartRateScreen({ navigation }: Props) {
           {/* Energy Score card */}
           <Pressable
             style={s.relatedCard}
-            onPress={() => navigation.navigate("EnergyScore" as any)}
+            onPress={() => navigation.navigate("VascularLoad" as any)}
           >
             <View style={s.relatedLeft}>
               <View style={[s.relatedIconWrap, { backgroundColor: "rgba(34,197,94,0.15)" }]}>

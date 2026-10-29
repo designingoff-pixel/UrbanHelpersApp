@@ -247,7 +247,7 @@ export default function PointsScreen({ navigation }: Props) {
         break;
 
       case "profile":
-        navigation.navigate("UserProfileScreen" as any);
+        navigation.navigate("Profile" as any);
         break;
 
       case "habits":
@@ -300,7 +300,7 @@ export default function PointsScreen({ navigation }: Props) {
 
           <Pressable
             style={s.iconBtn}
-            onPress={() => navigation.navigate("UserProfileScreen" as any)}
+            onPress={() => navigation.navigate("Profile" as any)}
           >
             <Ionicons name="person-outline" size={19} color="#ffffff" />
           </Pressable>
