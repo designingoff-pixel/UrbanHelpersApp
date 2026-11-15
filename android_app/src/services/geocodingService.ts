@@ -140,9 +140,11 @@ export async function searchAddressSuggestions(
  * Prioritizes high-precision OpenStreetMap/Photon reverse geocoding with fallback to Expo Location.
  */
 export async function reverseGeocodeLocation(lat: number, lng: number): Promise<string> {
-  // 1. Instant native Expo reverse geocoding (uses Android Google Play Services local cache)
+  // 1. Instant native Expo reverse geocoding with strict 2-second timeout protection
   try {
-    const geocode = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+    const expoPromise = Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000));
+    const geocode = (await Promise.race([expoPromise, timeoutPromise])) as any;
     if (geocode && geocode.length > 0) {
       const p = geocode[0];
       const parts = [
@@ -159,11 +161,11 @@ export async function reverseGeocodeLocation(lat: number, lng: number): Promise<
     }
   } catch (_) {}
 
-  // 2. Fast fallback to Photon API with tight 1.5s timeout
+  // 2. Fast fallback to Photon API with tight 2s timeout
   try {
     const url = `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1500);
+    const timeout = setTimeout(() => controller.abort(), 2000);
     const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timeout);
     if (res.ok) {
@@ -185,6 +187,24 @@ export async function reverseGeocodeLocation(lat: number, lng: number): Promise<
     }
   } catch (_) {}
 
-  return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  // 3. Fallback to OpenStreetMap Nominatim with 2s timeout
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { "User-Agent": "UrbanHelpersApp/1.0" },
+    });
+    clearTimeout(timeout);
+    if (res.ok) {
+      const data: any = await res.json();
+      if (data?.display_name) {
+        return String(data.display_name).trim();
+      }
+    }
+  } catch (_) {}
+
+  return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
 }
 

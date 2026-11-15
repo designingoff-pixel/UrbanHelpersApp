@@ -595,23 +595,26 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
   };
 
   const loadCachedAddressFallback = async () => {
-    const cached = await AsyncStorage.getItem("@customer_last_address");
-    if (cached?.trim()) {
-      setServiceAddress(cached.trim());
-      setDraggedAddress(cached.trim());
-      const cachedCoords = await AsyncStorage.getItem("@customer_last_coords");
-      if (cachedCoords) {
-        try {
-          const c = JSON.parse(cachedCoords);
-          if (c.latitude && c.longitude) setAddressCoords(c);
-        } catch {
-          // Ignore corrupted cached coordinates
+    try {
+      const cached = await AsyncStorage.getItem("@customer_last_address");
+      if (cached?.trim() && cached.trim() !== "Fetching current location...") {
+        setServiceAddress(cached.trim());
+        setDraggedAddress(cached.trim());
+        const cachedCoords = await AsyncStorage.getItem("@customer_last_coords");
+        if (cachedCoords) {
+          try {
+            const c = JSON.parse(cachedCoords);
+            if (c.latitude && c.longitude) setAddressCoords(c);
+          } catch {
+            // Ignore corrupted cached coordinates
+          }
         }
+        return;
       }
-    } else if (serviceAddress === "Fetching current location...") {
-      setServiceAddress("Select location on map");
-      setDraggedAddress("Select location on map");
-    }
+    } catch {}
+
+    setServiceAddress("Select location on map");
+    setDraggedAddress("Select location on map");
   };
 
   const persistCurrentLocation = async (lat: number, lng: number, address: string) => {
@@ -632,6 +635,20 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
   const fetchCurrentLocation = async (showAlertOnError = false) => {
     setIsFetchingLocation(true);
     try {
+      // 1. Check if device location service (GPS) is turned on
+      const servicesEnabled = await Location.hasServicesEnabledAsync().catch(() => true);
+      if (!servicesEnabled) {
+        if (showAlertOnError) {
+          Alert.alert(
+            "Device GPS is Off",
+            "Please turn on Location / GPS in your device settings to automatically detect your address."
+          );
+        }
+        await loadCachedAddressFallback();
+        return;
+      }
+
+      // 2. Request permission safely
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         if (showAlertOnError) {
@@ -644,11 +661,11 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
         return;
       }
 
-      // STEP 1: Ultra-fast instant position check (< 50ms)
-      const lastKnown = await Location.getLastKnownPositionAsync().catch(() => null);
-      if (lastKnown?.coords) {
-        const lat = lastKnown.coords.latitude;
-        const lng = lastKnown.coords.longitude;
+      // 3. STEP 1: Ultra-fast instant position check (< 50ms)
+      let loc = await Location.getLastKnownPositionAsync().catch(() => null);
+      if (loc?.coords) {
+        const lat = loc.coords.latitude;
+        const lng = loc.coords.longitude;
         setAddressCoords({ latitude: lat, longitude: lng });
         setMapRegion({
           latitude: lat,
@@ -667,13 +684,21 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
         }).catch(() => {});
       }
 
-      // STEP 2: Concurrently get fresh position with tight 3-second timeout race
-      const freshPromise = Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
-      const loc = (await Promise.race([freshPromise, timeoutPromise])) || lastKnown;
+      // 4. STEP 2: Concurrently get fresh position with 5-second timeout race
+      try {
+        const freshPromise = Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
+        const freshLoc = (await Promise.race([freshPromise, timeoutPromise])) as any;
+        if (freshLoc?.coords) {
+          loc = freshLoc;
+        }
+      } catch (freshErr) {
+        console.warn("[ServiceDetail] Fresh location attempt warning:", freshErr);
+      }
 
+      // 5. Apply resolved location or fallback
       if (loc?.coords) {
         const lat = loc.coords.latitude;
         const lng = loc.coords.longitude;
@@ -696,6 +721,8 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
         setDraggedAddress(finalAddress);
 
         await persistCurrentLocation(lat, lng, finalAddress);
+      } else {
+        await loadCachedAddressFallback();
       }
     } catch (err: any) {
       console.warn("[ServiceDetail] Error fetching auto location:", err);

@@ -297,8 +297,8 @@ class AppStore {
         otp:                 fb.otp ?? '',
         checklist:           (fb.status === 'assigned' || fb.status === 'requested') ? (fb.checklist ?? []) : (fb.checklist ?? existing?.checklist ?? []),
         checklistDone:       (fb.status === 'assigned' || fb.status === 'requested') ? (fb.checklistDone ?? []) : (fb.checklistDone ?? existing?.checklistDone ?? []),
-        beforePhoto:         (fb.beforePhoto && !fb.beforePhoto.startsWith('subcollection:')) ? fb.beforePhoto : (existing?.beforePhoto || null),
-        afterPhoto:          (fb.afterPhoto && !fb.afterPhoto.startsWith('subcollection:')) ? fb.afterPhoto : (existing?.afterPhoto || null),
+        beforePhoto:         (fb.beforePhoto && !fb.beforePhoto.startsWith('subcollection:')) ? fb.beforePhoto : (existing?.beforePhoto || fb.beforePhoto || null),
+        afterPhoto:          (fb.afterPhoto && !fb.afterPhoto.startsWith('subcollection:')) ? fb.afterPhoto : (existing?.afterPhoto || fb.afterPhoto || null),
         createdAt:           Date.now(),
         completedAt:         completedTimestamp,
         rating:              fb.rating,
@@ -363,11 +363,14 @@ class AppStore {
     this.notify();
   }
 
-  toggleOnline(isOnline: boolean) {
+  toggleOnline(isOnline: boolean): boolean {
     // Blocked vendors cannot go online
-    if (isOnline && (this.vendor.isLocked || this.vendor.isBlocked || this.cancelCount >= this.CANCEL_LIMIT)) return;
+    if (isOnline && (this.vendor.isLocked || this.vendor.isBlocked || this.cancelCount >= this.CANCEL_LIMIT)) {
+      return false;
+    }
     this.vendor.isOnline = isOnline;
     this.notify();
+    return true;
   }
 
   // ── Record a vendor cancellation — auto-blocks at 3 in 7 days ────────────

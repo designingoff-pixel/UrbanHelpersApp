@@ -30,6 +30,36 @@ import { stopLoudOrderAlert, playOrderChimeSound, resetOrderNotification } from 
 
 const { width } = Dimensions.get('window');
 
+function maskPhoneNumber(phone?: string | null): string {
+  if (!phone) return '••••••••••';
+  const clean = phone.trim();
+  if (clean.startsWith('+')) {
+    const prefix = clean.slice(0, 3);
+    const last2 = clean.slice(-2);
+    return `${prefix} ••••• •••${last2}`;
+  }
+  const last2 = clean.slice(-2);
+  return `•••••••${last2}`;
+}
+
+function getGeneralAreaDisplay(fullAddress?: string | null): string {
+  if (!fullAddress) return 'Customer Area';
+  const parts = fullAddress.split(',').map((p) => p.trim()).filter(Boolean);
+  // Filter out Plus codes (e.g. M3FX+R8W) or house/door numbers
+  const areaParts = parts.filter(
+    (p) =>
+      !p.includes('+') &&
+      !/^(door|flat|house|no\.?|plot|apt|villa|bldg|building)\b/i.test(p) &&
+      !/^\d{1,4}[a-z]?$/i.test(p)
+  );
+  if (areaParts.length >= 2) {
+    return areaParts.slice(0, 2).join(', ');
+  } else if (areaParts.length === 1) {
+    return areaParts[0];
+  }
+  return parts[parts.length - 1] || 'Customer Area';
+}
+
 export default function JobDetailsScreen({ route, navigation }: any) {
   const { jobId } = route.params;
   const [, forceUpdate] = useState(0);
@@ -45,6 +75,37 @@ export default function JobDetailsScreen({ route, navigation }: any) {
   const [vendorCoords, setVendorCoords] = useState<{ lat: number; lng: number } | null>(null);
   const job = store.getJob(jobId);
   const [customerPhoto, setCustomerPhoto] = useState<string | null>(job?.customerPhoto || null);
+  const [proofBefore, setProofBefore] = useState<string | null>(
+    job?.beforePhoto && !job.beforePhoto.startsWith('subcollection:') ? job.beforePhoto : null
+  );
+  const [proofAfter, setProofAfter] = useState<string | null>(
+    job?.afterPhoto && !job.afterPhoto.startsWith('subcollection:') ? job.afterPhoto : null
+  );
+
+  useEffect(() => {
+    if (!job) return;
+    if (job.beforePhoto && !job.beforePhoto.startsWith('subcollection:')) {
+      setProofBefore(job.beforePhoto);
+    } else if (job.jobId) {
+      getDoc(doc(db, 'bookings', job.jobId, 'evidence', 'beforePhoto')).then(s => {
+        if (s.exists() && s.data().beforePhoto) setProofBefore(s.data().beforePhoto);
+      }).catch(() => {});
+      getDoc(doc(db, 'bookings', job.jobId, 'evidence', 'photos')).then(s => {
+        if (s.exists() && s.data().beforePhoto) setProofBefore(s.data().beforePhoto);
+      }).catch(() => {});
+    }
+
+    if (job.afterPhoto && !job.afterPhoto.startsWith('subcollection:')) {
+      setProofAfter(job.afterPhoto);
+    } else if (job.jobId) {
+      getDoc(doc(db, 'bookings', job.jobId, 'evidence', 'afterPhoto')).then(s => {
+        if (s.exists() && s.data().afterPhoto) setProofAfter(s.data().afterPhoto);
+      }).catch(() => {});
+      getDoc(doc(db, 'bookings', job.jobId, 'evidence', 'photos')).then(s => {
+        if (s.exists() && s.data().afterPhoto) setProofAfter(s.data().afterPhoto);
+      }).catch(() => {});
+    }
+  }, [job?.jobId, job?.beforePhoto, job?.afterPhoto]);
 
   useEffect(() => {
     stopLoudOrderAlert();
@@ -149,7 +210,19 @@ export default function JobDetailsScreen({ route, navigation }: any) {
 
   // ── Call Customer Handler ────────────────────────────────────────────────
   const handleCallCustomer = () => {
-    const phone = job.customerPhone || '9876543210';
+    const isPending = job.status === 'NEW_REQUEST' || job.status === 'ADMIN_ASSIGNED';
+    if (isPending) {
+      Alert.alert(
+        '🔒 Contact Information Protected',
+        'Customer phone number and direct calling unlock immediately once you accept the service request.'
+      );
+      return;
+    }
+    const phone = job.customerPhone;
+    if (!phone) {
+      Alert.alert('Phone Unavailable', 'No phone number provided for this booking.');
+      return;
+    }
     Alert.alert(
       'Call Customer',
       `Call ${job.customerName || 'Customer'} at ${phone}?`,
@@ -162,6 +235,15 @@ export default function JobDetailsScreen({ route, navigation }: any) {
 
   // ── Turn-by-Turn Voice Navigation ─────────────────────────────────────────
   const handleOpenNavigation = () => {
+    const isPending = job.status === 'NEW_REQUEST' || job.status === 'ADMIN_ASSIGNED';
+    if (isPending) {
+      Alert.alert(
+        '🔒 Navigation Locked',
+        'Turn-by-turn navigation unlocks immediately after you accept the request.'
+      );
+      return;
+    }
+
     // Security check: Once OTP is verified or service is active/completed, navigation is locked
     const isServiceActiveOrVerified = ['CUSTOMER_VERIFIED', 'SERVICE_STARTED', 'RECORDING_ACTIVE', 'COMPLETED'].includes(job.status);
     if (isServiceActiveOrVerified) {
@@ -504,43 +586,103 @@ export default function JobDetailsScreen({ route, navigation }: any) {
           </TouchableOpacity>
         </View>
 
-        {/* Customer Information Card with Direct Call Only */}
+        {/* Customer Information Card with Direct Call Only (Masked before acceptance) */}
         <View style={s.card}>
           <Text style={s.cardHeading}>CUSTOMER INFORMATION</Text>
           <View style={s.customerRow}>
-            {customerPhoto ? (
+            {customerPhoto && !isPendingAccept ? (
               <Image source={{ uri: customerPhoto }} style={s.customerAvatarImg} resizeMode="cover" />
             ) : (
-              <View style={s.customerAvatar}>
-                <Text style={s.customerInitial}>
-                  {(job.customerName || 'C')[0].toUpperCase()}
-                </Text>
+              <View style={[s.customerAvatar, isPendingAccept && { backgroundColor: '#E2E8F0' }]}>
+                {isPendingAccept ? (
+                  <Ionicons name="person" size={20} color="#64748B" />
+                ) : (
+                  <Text style={s.customerInitial}>
+                    {(job.customerName || 'C')[0].toUpperCase()}
+                  </Text>
+                )}
               </View>
             )}
             <View style={{ flex: 1 }}>
-              <Text style={s.customerName}>{job.customerName}</Text>
-              <Text style={s.customerPhone}>
-                <Ionicons name="call-outline" size={12} color="#64748B" /> {job.customerPhone || 'Contact verified'}
-              </Text>
+              <Text style={s.customerName}>{job.customerName || 'Customer'}</Text>
+              {isPendingAccept ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
+                  <Ionicons name="lock-closed" size={12} color="#94A3B8" style={{ marginRight: 4 }} />
+                  <Text style={{ fontSize: 13, color: '#64748B', fontWeight: '600', letterSpacing: 0.5 }}>
+                    {maskPhoneNumber(job.customerPhone)}
+                  </Text>
+                  <View style={{ backgroundColor: '#F1F5F9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginLeft: 6 }}>
+                    <Text style={{ fontSize: 9, color: '#64748B', fontWeight: '800' }}>LOCKED</Text>
+                  </View>
+                </View>
+              ) : (
+                <Text style={s.customerPhone}>
+                  <Ionicons name="call-outline" size={12} color="#64748B" /> {job.customerPhone || 'Contact verified'}
+                </Text>
+              )}
             </View>
 
-            {/* In-App Direct Call Button Only */}
+            {/* In-App Direct Call Button (Disabled / Locked before accept) */}
             <View style={s.commActions}>
-              <TouchableOpacity style={s.callBtn} onPress={handleCallCustomer} activeOpacity={0.8}>
-                <Ionicons name="call" size={16} color="#FFFFFF" />
-                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12, marginLeft: 4 }}>Call</Text>
+              <TouchableOpacity
+                style={[s.callBtn, isPendingAccept && { backgroundColor: '#94A3B8' }]}
+                onPress={handleCallCustomer}
+                activeOpacity={0.8}
+              >
+                <Ionicons name={isPendingAccept ? 'lock-closed' : 'call'} size={15} color="#FFFFFF" />
+                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12, marginLeft: 4 }}>
+                  {isPendingAccept ? 'Locked' : 'Call'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
 
-        {/* Service Address & Interactive Map */}
+        {/* Service Address & Location (Masked before acceptance to prevent bypassing) */}
         <View style={s.card}>
           <Text style={s.cardHeading}>SERVICE ADDRESS &amp; LOCATION</Text>
-          <View style={s.addressRow}>
-            <Ionicons name="location" size={20} color="#EF4444" style={{ marginTop: 2 }} />
-            <Text style={s.addressText}>{job.address}</Text>
-          </View>
+          {isPendingAccept ? (
+            <View>
+              <View style={s.addressRow}>
+                <Ionicons name="navigate-circle" size={22} color="#0284C7" style={{ marginTop: 2 }} />
+                <View style={{ flex: 1, marginLeft: 6 }}>
+                  <Text style={[s.addressText, { fontWeight: '700', color: '#0F172A' }]}>
+                    {getGeneralAreaDisplay(job.address)}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                    Approximate service zone • ~{job.distance || '1.5 km'} away
+                  </Text>
+                </View>
+              </View>
+
+              {/* Anti-Bypass Security Card */}
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#EFF6FF',
+                borderRadius: 10,
+                padding: 12,
+                marginTop: 10,
+                borderWidth: 1,
+                borderColor: '#BFDBFE',
+              }}>
+                <Ionicons name="shield-checkmark" size={18} color="#0284C7" />
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={{ fontSize: 12, color: '#1E3A8A', fontWeight: '700' }}>
+                    Exact Doorstep Address Protected
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#1D4ED8', marginTop: 2 }}>
+                    Full address, house/flat number, and turn-by-turn navigation map unlock immediately upon accepting this request.
+                  </Text>
+                </View>
+              </View>
+            </View>
+          ) : (
+            <View style={s.addressRow}>
+              <Ionicons name="location" size={20} color="#EF4444" style={{ marginTop: 2 }} />
+              <Text style={s.addressText}>{job.address}</Text>
+            </View>
+          )}
 
           {/* Interactive Map shown when job is Accepted / Navigating / Arrived */}
           {['ACCEPTED', 'UPCOMING', 'NAVIGATING', 'ARRIVED'].includes(job.status) && (() => {
@@ -686,20 +828,20 @@ export default function JobDetailsScreen({ route, navigation }: any) {
         )}
 
         {/* Work Verification Photos (only for active/completed jobs, hidden on unaccepted/reassigned jobs) */}
-        {!isAssigned && (job.beforePhoto || job.afterPhoto) && (
+        {!isAssigned && (proofBefore || proofAfter) && (
           <View style={s.card}>
             <Text style={s.cardHeading}>WORK VERIFICATION PROOF</Text>
             <View style={s.photoProofRow}>
-              {job.beforePhoto && (
+              {proofBefore && (
                 <View style={s.photoCol}>
                   <Text style={s.photoTag}>Before Service</Text>
-                  <Image source={{ uri: job.beforePhoto }} style={s.proofImg} />
+                  <Image source={{ uri: proofBefore }} style={s.proofImg} />
                 </View>
               )}
-              {job.afterPhoto && (
+              {proofAfter && (
                 <View style={s.photoCol}>
                   <Text style={s.photoTag}>After Service</Text>
-                  <Image source={{ uri: job.afterPhoto }} style={s.proofImg} />
+                  <Image source={{ uri: proofAfter }} style={s.proofImg} />
                 </View>
               )}
             </View>

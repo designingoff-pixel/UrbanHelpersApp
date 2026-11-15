@@ -113,6 +113,7 @@ import RatingFeedbackScreen from "@/screens/services/RatingFeedbackScreen";
 import HomeCleaningScreen from "@/screens/services/HomeCleaningScreen";
 import MyBookingsScreen from "@/screens/services/MyBookingsScreen";
 import OffersScreen from "@/screens/services/OffersScreen";
+import VoiceRecordingAwarenessScreen from "@/screens/services/VoiceRecordingAwarenessScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -355,6 +356,7 @@ export function RootNavigator() {
       <Stack.Screen name="HomeCleaning" component={HomeCleaningScreen} />
       <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
       <Stack.Screen name="Offers" component={OffersScreen} />
+      <Stack.Screen name="VoiceRecordingAwareness" component={VoiceRecordingAwarenessScreen} />
     </Stack.Navigator>
     </>
   );

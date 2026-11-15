@@ -1,5 +1,6 @@
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
+import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 // ── How notifications appear when vendor app is OPEN ─────────────────────────
@@ -18,13 +19,17 @@ export async function registerVendorPushNotifications(): Promise<string | null> 
       await Notifications.setNotificationChannelAsync("urgent-orders", {
         name: "🔔 New Booking Assignments",
         importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 150, 250],
+        vibrationPattern: [0, 400, 200, 400, 200, 400],
         lightColor: "#00BCD4",
         sound: "default",
         enableVibrate: true,
         showBadge: true,
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
         bypassDnd: true,
+        audioAttributes: {
+          usage: Notifications.AndroidAudioUsage.NOTIFICATION_EVENT,
+          contentType: Notifications.AndroidAudioContentType.SONIFICATION,
+        },
       });
     } catch (e) {
       console.warn("[VendorNotification] Error creating notification channel:", e);
@@ -50,8 +55,27 @@ export async function registerVendorPushNotifications(): Promise<string | null> 
       return null;
     }
 
-    const tokenData = await Notifications.getExpoPushTokenAsync();
-    return tokenData.data;
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ??
+      Constants.easConfig?.projectId;
+
+    let token: string | null = null;
+    try {
+      const tokenData = await Notifications.getExpoPushTokenAsync(
+        projectId ? { projectId } : undefined
+      );
+      token = tokenData.data;
+    } catch (expoErr) {
+      console.warn("[VendorNotification] Expo push token fetch warning:", expoErr);
+      try {
+        const devToken = await Notifications.getDevicePushTokenAsync();
+        token = devToken.data;
+      } catch (devErr) {
+        console.warn("[VendorNotification] Device push token error:", devErr);
+      }
+    }
+
+    return token;
   } catch (err) {
     console.warn("[VendorNotification] Error obtaining push token:", err);
     return null;
@@ -70,8 +94,10 @@ export async function triggerLoudNewOrderNotification(
       content: {
         title: `⚡ New Booking Allotment: ${serviceName} (${price})`,
         body: `You have been assigned a service near ${address.slice(0, 30)}. Tap to review and accept.`,
-        sound: true,
-        priority: Notifications.AndroidNotificationPriority.HIGH,
+        sound: "default",
+        channelId: "urgent-orders",
+        priority: Notifications.AndroidNotificationPriority.MAX,
+        vibrate: [0, 400, 200, 400, 200, 400],
         data: { screen: "HomeScreen", bookingId },
       },
       trigger: null, // deliver immediately

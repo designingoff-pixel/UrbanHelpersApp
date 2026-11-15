@@ -83,13 +83,16 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
 
   const handleShareInvoice = async () => {
     try {
-      const summary = `📄 URBAN HELPERS OFFICIAL TAX INVOICE\n` +
+      const summary = `📄 URBAN HELPER'S OFFICIAL TAX INVOICE\n` +
+        `SHI AND SHI PRIVATE LIMITED • PAN: ABTCS0325F\n` +
+        `17, VELNAGAR 1ST CROSS, Salem, TN 636302\n` +
         `----------------------------------------\n` +
         `Invoice No : ${invoiceNo}\n` +
+        `Customer   : ${booking?.customerName || "Mr. Gobinath"}\n` +
         `Service    : ${booking?.subServiceName || booking?.serviceCategory}\n` +
-        `Partner    : ${booking?.vendorName || "Verified Specialist"}\n` +
+        `Partner    : ${booking?.vendorName || "MAHARISHI"}\n` +
         `Date       : ${formattedDate}\n` +
-        `Address    : ${booking?.address || "On file"}\n` +
+        `Address    : ${booking?.address || "Salem, Tamil Nadu"}\n` +
         `----------------------------------------\n` +
         `Base Service Fee : ₹${baseServiceFee}\n` +
         `Safety & Platform: ₹${platformFee}\n` +
@@ -98,7 +101,9 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
         `----------------------------------------\n` +
         `GRAND TOTAL PAID : ₹${total}\n` +
         `Payment Status   : PAID ONLINE (Verified)\n` +
+        `Bank Details     : Federal Bank • A/c 26670200000800 • FDRL0001462\n` +
         `----------------------------------------\n` +
+        `Support / Discount Helpline: +91 7639196202\n` +
         `Thank you for trusting Urban Helpers!`;
 
       await Share.share({

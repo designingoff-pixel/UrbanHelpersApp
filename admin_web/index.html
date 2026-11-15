@@ -296,6 +296,9 @@
           <li class="submenu-item" onclick="showSubSection('services', 'live', this)"><i class="fa-solid fa-tower-broadcast" style="color:#0284c7;"></i> Live Services</li>
           <li class="submenu-item" onclick="showSubSection('services', 'categories', this)"><i class="fa-solid fa-list" style="color:#f59e0b;"></i> Categories</li>
           <li class="submenu-item" onclick="showSubSection('services', 'pricing', this)"><i class="fa-solid fa-tags" style="color:#8b5cf6;"></i> Pricing</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'diagnostics', this)"><i class="fa-solid fa-microchip" style="color:#0284c7;"></i> AR Diagnostics</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'toolhubs', this)"><i class="fa-solid fa-store" style="color:#f59e0b;"></i> Tools &amp; Suppliers Hub</li>
+          <li class="submenu-item" onclick="showSubSection('services', 'checklists', this)"><i class="fa-solid fa-list-check" style="color:#10b981;"></i> Service Checklists</li>
         </ul>
       </li>
 
@@ -646,6 +649,26 @@
             </div>
             <button class="btn-primary-action" onclick="openCreateVendorModal()"><i class="fa-solid fa-user-plus"></i> Create Vendor Partner</button>
           </div>
+
+          <!-- Vendor Online Availability Summary Bar & Filter -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px 16px;">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+              <div style="font-size:12.5px; font-weight:800; color:#334155;"><i class="fa-solid fa-tower-broadcast" style="color:#10b981;"></i> Live Availability:</div>
+              <span id="vStatTotal" style="font-size:12px; font-weight:800; color:#0f172a; background:#e2e8f0; padding:4px 10px; border-radius:12px;">Total: 0</span>
+              <span id="vStatOnline" style="font-size:12px; font-weight:800; color:#065f46; background:#dcfce7; border:1px solid #bbf7d0; padding:4px 10px; border-radius:12px;"><i class="fa-solid fa-circle" style="color:#10b981; font-size:8px;"></i> Online (Ready): 0</span>
+              <span id="vStatOffline" style="font-size:12px; font-weight:700; color:#475569; background:#f1f5f9; border:1px solid #cbd5e1; padding:4px 10px; border-radius:12px;"><i class="fa-solid fa-circle" style="color:#94a3b8; font-size:8px;"></i> Offline: 0</span>
+              <span id="vStatBlocked" style="font-size:12px; font-weight:800; color:#dc2626; background:#fee2e2; border:1px solid #fecaca; padding:4px 10px; border-radius:12px;"><i class="fa-solid fa-ban" style="font-size:9px;"></i> Blocked: 0</span>
+            </div>
+
+            <!-- Filter tabs -->
+            <div style="display:flex; gap:6px;">
+              <button class="btn-sm-action" id="btnFilterVendorAll" onclick="setVendorOnlineFilter('all')" style="background:#0f172a; color:#fff; font-weight:800; border-radius:8px; padding:6px 14px; font-size:12px; cursor:pointer;">All</button>
+              <button class="btn-sm-action" id="btnFilterVendorOnline" onclick="setVendorOnlineFilter('online')" style="background:#f8fafc; color:#059669; border:1px solid #cbd5e1; font-weight:800; border-radius:8px; padding:6px 14px; font-size:12px; cursor:pointer;"><i class="fa-solid fa-circle" style="color:#10b981; font-size:8px;"></i> Online Only</button>
+              <button class="btn-sm-action" id="btnFilterVendorOffline" onclick="setVendorOnlineFilter('offline')" style="background:#f8fafc; color:#64748b; border:1px solid #cbd5e1; font-weight:700; border-radius:8px; padding:6px 14px; font-size:12px; cursor:pointer;">Offline</button>
+              <button class="btn-sm-action" id="btnFilterVendorBlocked" onclick="setVendorOnlineFilter('blocked')" style="background:#f8fafc; color:#dc2626; border:1px solid #cbd5e1; font-weight:700; border-radius:8px; padding:6px 14px; font-size:12px; cursor:pointer;">Blocked</button>
+            </div>
+          </div>
+
           <div class="admin-table-wrap">
             <table class="admin-table">
               <thead>
@@ -655,7 +678,7 @@
                   <th>Primary Category</th>
                   <th>Rating</th>
                   <th>Jobs Completed</th>
-                  <th>Status</th>
+                  <th>Availability &amp; Status</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -1376,6 +1399,317 @@
           <button type="button" class="btn-primary-action" onclick="closeBookingDetailsModal()" style="background:#0f172a; color:#fff; border:none; padding:8px 20px; border-radius:8px; font-weight:700; cursor:pointer;">Close</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ── Diagnostic Workflow Category Modal (Add / Edit) ── -->
+  <div class="modal-overlay" id="diagWorkflowModal" style="display:none; z-index:9999;">
+    <div class="modal-box" style="max-width:540px; padding:24px 28px;">
+      <div class="modal-header" style="border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:18px;">
+        <h3 class="modal-title" id="diagWfModalTitle" style="font-size:18px; font-weight:800; color:#0f172a;"><i class="fa-solid fa-microchip" style="color:#0284c7;"></i> Add Diagnostic Workflow</h3>
+        <button class="modal-close" onclick="closeDiagWorkflowModal()">&times;</button>
+      </div>
+      <form onsubmit="saveDiagWorkflow(event)" style="display:flex; flex-direction:column; gap:14px;">
+        <input type="hidden" id="diagWfIsEdit" value="0">
+        <div>
+          <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Workflow Identifier / Key (e.g. ro, ac, electrical) *</label>
+          <input type="text" id="diagWfKey" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" placeholder="e.g. electrical" required>
+          <span style="font-size:11px; color:#94a3b8; margin-top:3px; display:block;">Unique lowercase slug for Firestore document</span>
+        </div>
+        <div>
+          <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Full Category Display Title *</label>
+          <input type="text" id="diagWfName" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" placeholder="e.g. Electrical Safety & Load Inspection" required>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div>
+            <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Short Mobile Tab Label</label>
+            <input type="text" id="diagWfTab" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" placeholder="e.g. Electric">
+          </div>
+          <div>
+            <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Display Sequence / Order</label>
+            <input type="number" id="diagWfOrder" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" value="1" min="1" max="99">
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div>
+            <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Theme Accent Color</label>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="color" id="diagWfColor" value="#0284C7" style="width:40px; height:38px; border:none; border-radius:6px; cursor:pointer; padding:0; background:none;">
+              <input type="text" id="diagWfColorText" value="#0284C7" class="form-control" style="flex:1; padding:9px 10px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" oninput="document.getElementById('diagWfColor').value = this.value">
+            </div>
+          </div>
+          <div>
+            <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Ionicons Icon Name</label>
+            <select id="diagWfIcon" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;">
+              <option value="water-outline">water-outline (RO / Plumbing)</option>
+              <option value="snow-outline">snow-outline (AC / Cooling)</option>
+              <option value="sparkles-outline">sparkles-outline (Cleaning)</option>
+              <option value="shield-outline">shield-outline (Pest / Security)</option>
+              <option value="construct-outline">construct-outline (Tools / Repair)</option>
+              <option value="flash-outline">flash-outline (Electrical)</option>
+              <option value="hammer-outline">hammer-outline (Carpentry)</option>
+              <option value="speedometer-outline">speedometer-outline (Pressure / Gauge)</option>
+              <option value="thermometer-outline">thermometer-outline (HVAC)</option>
+              <option value="flask-outline">flask-outline (Chemicals)</option>
+              <option value="eye-outline">eye-outline (Audit / Inspection)</option>
+              <option value="brush-outline">brush-outline (Painting / Wash)</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Service Auto-Match Keywords (comma separated)</label>
+          <input type="text" id="diagWfKeywords" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" placeholder="e.g. electrical, wire, switch, mcb, circuit">
+          <span style="font-size:11px; color:#94a3b8; margin-top:3px; display:block;">When a technician opens a job matching these words, this diagnostic is auto-selected</span>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px; padding-top:14px; border-top:1px solid #e2e8f0;">
+          <button type="button" class="btn-cancel" onclick="closeDiagWorkflowModal()" style="padding:9px 18px; border:1px solid #cbd5e1; background:#f8fafc; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;">Cancel</button>
+          <button type="submit" class="btn-primary-action" style="padding:9px 20px; background:#0284c7; color:#fff; border:none; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;">Save Workflow</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Diagnostic Step Modal (Add / Edit) ── -->
+  <div class="modal-overlay" id="diagStepModal" style="display:none; z-index:9999;">
+    <div class="modal-box" style="max-width:580px; padding:24px 28px;">
+      <div class="modal-header" style="border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:18px;">
+        <h3 class="modal-title" id="diagStepModalTitle" style="font-size:18px; font-weight:800; color:#0f172a;"><i class="fa-solid fa-list-check" style="color:#10b981;"></i> Add Diagnostic Step</h3>
+        <button class="modal-close" onclick="closeDiagStepModal()">&times;</button>
+      </div>
+      <form onsubmit="saveDiagStep(event)" style="display:flex; flex-direction:column; gap:14px;">
+        <input type="hidden" id="diagStepCatKey">
+        <input type="hidden" id="diagStepIndex" value="-1">
+        <div>
+          <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Step Title *</label>
+          <input type="text" id="diagStepTitle" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" placeholder="e.g. Step 1: Input TDS & Pressure Check" required>
+        </div>
+        <div>
+          <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Step Icon</label>
+          <select id="diagStepIcon" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;">
+            <option value="speedometer-outline">speedometer-outline (Gauge / PSI / TDS)</option>
+            <option value="filter-outline">filter-outline (Filter / Membrane)</option>
+            <option value="analytics-outline">analytics-outline (Calculations / Efficiency)</option>
+            <option value="flash-outline">flash-outline (Voltage / Electrical)</option>
+            <option value="thermometer-outline">thermometer-outline (Temperature / Thermal)</option>
+            <option value="checkmark-done-circle-outline">checkmark-done-circle-outline (Verification / Sign-off)</option>
+            <option value="eye-outline">eye-outline (Visual Inspection / Audit)</option>
+            <option value="shield-checkmark-outline">shield-checkmark-outline (Sanitization / PPE)</option>
+            <option value="brush-outline">brush-outline (Scrubbing / Cleaning)</option>
+            <option value="search-outline">search-outline (Mapping / Investigation)</option>
+            <option value="flask-outline">flask-outline (Chemicals / Dilution)</option>
+            <option value="color-wand-outline">color-wand-outline (Precision Application)</option>
+            <option value="clipboard-outline">clipboard-outline (Pre-Service Checklist)</option>
+            <option value="shield-outline">shield-outline (Safety & Insulation)</option>
+            <option value="hammer-outline">hammer-outline (Mechanical / Fix)</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Field Technician Instructions / Description *</label>
+          <textarea id="diagStepDesc" class="form-control" rows="3" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; resize:vertical;" placeholder="e.g. Measure raw tap water TDS with digital meter and check inlet water pressure (> 0.5 bar required)." required></textarea>
+        </div>
+        <div>
+          <label style="font-size:12px; font-weight:700; color:#059669; display:block; margin-bottom:5px;"><i class="fa-solid fa-circle-check"></i> Expected Standard & Pass Criteria *</label>
+          <textarea id="diagStepExpected" class="form-control" rows="2" style="width:100%; padding:9px 12px; border:1px solid #6ee7b7; background:#f0fdf4; border-radius:8px; font-size:13px; resize:vertical; color:#065f46;" placeholder="e.g. Raw TDS < 2000 ppm. Inlet flow constant." required></textarea>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px; padding-top:14px; border-top:1px solid #e2e8f0;">
+          <button type="button" class="btn-cancel" onclick="closeDiagStepModal()" style="padding:9px 18px; border:1px solid #cbd5e1; background:#f8fafc; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;">Cancel</button>
+          <button type="submit" class="btn-primary-action" style="padding:9px 20px; background:#10b981; color:#fff; border:none; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;">Save Step</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Authorized Tool Hub & Supplier Modal (Add / Edit) ── -->
+  <div class="modal-overlay" id="toolHubModal" style="display:none; z-index:9999;">
+    <div class="modal-box" style="max-width:620px; padding:24px 28px; max-height:90vh; overflow-y:auto;">
+      <div class="modal-header" style="border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:18px;">
+        <h3 class="modal-title" id="hubModalTitle" style="font-size:18px; font-weight:800; color:#0f172a;"><i class="fa-solid fa-store" style="color:#f59e0b;"></i> Add Authorized Supplier Hub</h3>
+        <button class="modal-close" onclick="closeToolHubModal()">&times;</button>
+      </div>
+      <form onsubmit="saveToolHub(event)" style="display:flex; flex-direction:column; gap:14px;">
+        <input type="hidden" id="hubModalIsEdit" value="0">
+        <input type="hidden" id="hubModalId" value="">
+
+        <div>
+          <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Store / Distributor Name *</label>
+          <input type="text" id="hubName" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" placeholder="e.g. AquaTech RO Spare Parts & Membrane Hub" required>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div>
+            <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Category *</label>
+            <select id="hubCategory" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" onchange="updateHubCategoryLabel(this.value)">
+              <option value="ro">RO Water & Filter Spares</option>
+              <option value="ac">AC & Appliance Spare Parts</option>
+              <option value="hardware">Hardware & Tools Shops</option>
+              <option value="plumbing">Sanitary & Plumbing Supplies</option>
+              <option value="electrical">Electrical & Electronics Hub</option>
+              <option value="general">General / Multi-Tool Depot</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Contact Phone / WhatsApp *</label>
+            <input type="text" id="hubPhone" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" placeholder="e.g. +91 98427 44123" required>
+          </div>
+        </div>
+
+        <div>
+          <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Specialization / Spares Handled</label>
+          <input type="text" id="hubCategoryLabel" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" placeholder="e.g. Sediment filters, RO membranes, carbon filters, booster pumps">
+        </div>
+
+        <div>
+          <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Full Street Address & Landmark *</label>
+          <textarea id="hubAddress" class="form-control" rows="2" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; resize:vertical;" placeholder="e.g. Shop 4, Opp. New Bus Stand, Suramangalam Main Road, Salem - 636005" required></textarea>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+          <div>
+            <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">City / Area *</label>
+            <input type="text" id="hubCity" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" placeholder="e.g. Salem" required>
+          </div>
+          <div>
+            <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Latitude (GPS) *</label>
+            <input type="number" step="any" id="hubLat" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" placeholder="e.g. 11.6685" required>
+          </div>
+          <div>
+            <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Longitude (GPS) *</label>
+            <input type="number" step="any" id="hubLng" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" placeholder="e.g. 78.1321" required>
+          </div>
+        </div>
+
+        <div>
+          <label style="font-size:12px; font-weight:700; color:#059669; display:block; margin-bottom:5px;"><i class="fa-solid fa-tag"></i> Partner Privilege / Negotiated Discount</label>
+          <input type="text" id="hubDiscount" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #6ee7b7; background:#f0fdf4; border-radius:8px; font-size:13px; color:#065f46;" placeholder="e.g. 15% Urban Captain Discount on Filters & Spares">
+          <span style="font-size:11px; color:#94a3b8; margin-top:3px; display:block;">Highlighted on technicians' mobile app cards to incentivize visiting this trusted store</span>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div>
+            <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Operating Hours</label>
+            <input type="text" id="hubHours" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" placeholder="e.g. 8:30 AM - 9:00 PM">
+          </div>
+          <div>
+            <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Rating (1.0 to 5.0)</label>
+            <input type="number" step="0.1" min="1" max="5" id="hubRating" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" value="4.9">
+          </div>
+        </div>
+
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; display:flex; align-items:center; justify-content:space-between;">
+          <div>
+            <span style="font-size:13px; font-weight:700; color:#0f172a; display:block;">Verified & Trusted Partner Status</span>
+            <span style="font-size:11.5px; color:#64748b;">Only verified stores are rendered on technician maps and search results.</span>
+          </div>
+          <label class="switch" style="position:relative; display:inline-block; width:44px; height:24px;">
+            <input type="checkbox" id="hubVerified" checked style="opacity:0; width:0; height:0;">
+            <span class="slider round" style="position:absolute; cursor:pointer; inset:0; background-color:#10b981; border-radius:24px; transition:.3s;"></span>
+          </label>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding-top:14px; border-top:1px solid #e2e8f0;">
+          <button type="button" onclick="testHubLocationOnMap()" class="btn-sm-action" style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:8px; padding:8px 14px; font-size:12px; font-weight:700; color:#0284c7; cursor:pointer;">
+            <i class="fa-solid fa-map-location-dot"></i> Test GPS on Google Maps
+          </button>
+          <div style="display:flex; gap:10px;">
+            <button type="button" class="btn-cancel" onclick="closeToolHubModal()" style="padding:9px 18px; border:1px solid #cbd5e1; background:#f8fafc; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;">Cancel</button>
+            <button type="submit" class="btn-primary-action" style="padding:9px 20px; background:#f59e0b; color:#fff; border:none; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;">Save Authorized Hub</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Service Checklist Category Modal (Add / Edit) ── -->
+  <div class="modal-overlay" id="chkCatModal" style="display:none; z-index:9999;">
+    <div class="modal-box" style="max-width:540px; padding:24px 28px;">
+      <div class="modal-header" style="border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:18px;">
+        <h3 class="modal-title" id="chkCatModalTitle" style="font-size:18px; font-weight:800; color:#0f172a;"><i class="fa-solid fa-list-check" style="color:#10b981;"></i> Add Category Checklist</h3>
+        <button class="modal-close" onclick="closeChecklistCategoryModal()">&times;</button>
+      </div>
+      <form onsubmit="saveChecklistCategory(event)" style="display:flex; flex-direction:column; gap:14px;">
+        <input type="hidden" id="chkCatIsEdit" value="0">
+        <div>
+          <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Category Identifier / Key (e.g. ro, ac, plumbing, car_wash) *</label>
+          <input type="text" id="chkCatKey" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" placeholder="e.g. ro" required>
+          <span style="font-size:11px; color:#94a3b8; margin-top:3px; display:block;">Unique lowercase key used for Firestore document mapping</span>
+        </div>
+        <div>
+          <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Category Display Title *</label>
+          <input type="text" id="chkCatName" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" placeholder="e.g. RO Water Purifier Service" required>
+        </div>
+        <div>
+          <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Service Keyword Matchers (comma-separated)</label>
+          <input type="text" id="chkCatTypes" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" placeholder="e.g. ro, water, purif, filter">
+          <span style="font-size:11px; color:#94a3b8; margin-top:3px; display:block;">Auto-matches bookings whose service name contains any of these words</span>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div>
+            <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">FontAwesome Icon</label>
+            <input type="text" id="chkCatIcon" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" placeholder="fa-solid fa-faucet-drip" value="fa-solid fa-faucet-drip">
+          </div>
+          <div>
+            <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Display Sequence / Order</label>
+            <input type="number" id="chkCatOrder" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" value="1" min="1" max="99">
+          </div>
+        </div>
+        <div>
+          <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Theme Accent Color</label>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="color" id="chkCatColor" value="#10b981" style="width:40px; height:38px; border:none; border-radius:6px; cursor:pointer; padding:0; background:none;">
+            <input type="text" id="chkCatColorText" value="#10b981" class="form-control" style="flex:1; padding:9px 10px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" oninput="document.getElementById('chkCatColor').value = this.value">
+          </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px; padding-top:14px; border-top:1px solid #e2e8f0;">
+          <button type="button" class="btn-cancel" onclick="closeChecklistCategoryModal()" style="padding:9px 18px; border:1px solid #cbd5e1; background:#f8fafc; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;">Cancel</button>
+          <button type="submit" class="btn-primary-action" style="padding:9px 20px; background:#10b981; color:#fff; border:none; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;">Save Category Checklist</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Checklist Task Item Modal (Add / Edit) ── -->
+  <div class="modal-overlay" id="chkItemModal" style="display:none; z-index:9999;">
+    <div class="modal-box" style="max-width:560px; padding:24px 28px;">
+      <div class="modal-header" style="border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:18px;">
+        <h3 class="modal-title" id="chkItemModalTitle" style="font-size:18px; font-weight:800; color:#0f172a;"><i class="fa-solid fa-list-check" style="color:#10b981;"></i> Add Checklist Task</h3>
+        <button class="modal-close" onclick="closeChecklistItemModal()">&times;</button>
+      </div>
+      <form onsubmit="saveChecklistItem(event)" style="display:flex; flex-direction:column; gap:14px;">
+        <input type="hidden" id="chkItemCategoryKey" value="">
+        <input type="hidden" id="chkItemIsEdit" value="0">
+        <input type="hidden" id="chkItemId" value="">
+
+        <div>
+          <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Task Title / Checklist Step *</label>
+          <input type="text" id="chkItemTask" class="form-control" style="width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13.5px;" placeholder="e.g. Inspect pre-filter, sediment & activated carbon cartridges" required>
+          <span style="font-size:11px; color:#94a3b8; margin-top:3px; display:block;">This exact text will be displayed to technicians on their active service checklist</span>
+        </div>
+
+        <div>
+          <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Quality Benchmark / Expected Standard Note</label>
+          <textarea id="chkItemStandard" class="form-control" rows="2" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; resize:vertical;" placeholder="e.g. Check for silt accumulation, chemical exhaustion, and verify micron rating"></textarea>
+          <span style="font-size:11px; color:#94a3b8; margin-top:3px; display:block;">Provides clear SOP guidance on what technician must verify before ticking</span>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div>
+            <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Sequence / Step Number</label>
+            <input type="number" id="chkItemOrder" class="form-control" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" value="1" min="1" max="99">
+          </div>
+          <div style="display:flex; flex-direction:column; justify-content:center;">
+            <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:5px;">Mandatory SOP Gate</label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-top:4px;">
+              <input type="checkbox" id="chkItemMandatory" checked style="width:17px; height:17px; accent-color:#10b981;">
+              <span style="font-size:12.5px; font-weight:600; color:#0f172a;">Required for service completion</span>
+            </label>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px; padding-top:14px; border-top:1px solid #e2e8f0;">
+          <button type="button" class="btn-cancel" onclick="closeChecklistItemModal()" style="padding:9px 18px; border:1px solid #cbd5e1; background:#f8fafc; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;">Cancel</button>
+          <button type="submit" class="btn-primary-action" style="padding:9px 20px; background:#10b981; color:#fff; border:none; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;">Save Checklist Task</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -2929,6 +3263,54 @@
       };
     };
 
+    window._vendorFilter = window._vendorFilter || 'all';
+
+    window.setVendorOnlineFilter = function(filter) {
+      window._vendorFilter = filter;
+      const filters = ['all', 'online', 'offline', 'blocked'];
+      filters.forEach(f => {
+        const btn = document.getElementById('btnFilterVendor' + f.charAt(0).toUpperCase() + f.slice(1));
+        if (btn) {
+          if (f === filter) {
+            btn.style.background = '#0f172a';
+            btn.style.color = '#ffffff';
+            btn.style.borderColor = '#0f172a';
+          } else {
+            btn.style.background = '#f8fafc';
+            btn.style.color = f === 'online' ? '#059669' : (f === 'blocked' ? '#dc2626' : '#64748b');
+            btn.style.borderColor = '#cbd5e1';
+          }
+        }
+      });
+      renderVendors();
+    };
+
+    window.adminToggleVendorOnline = async function(docId, targetOnline) {
+      const actionText = targetOnline ? 'Set Partner ONLINE (Available)' : 'Set Partner OFFLINE (Off Duty)';
+      if (!confirm(`Are you sure you want to ${actionText}?\n\nVendor: ${docId}`)) return;
+      try {
+        const updatePayload = {
+          isOnline: targetOnline,
+          lastStatusUpdate: serverTimestamp()
+        };
+        try {
+          await updateDoc(doc(db, 'vendors', docId), updatePayload);
+        } catch (updateErr) {
+          const qSnap = await getDocs(query(collection(db, 'vendors'), where('vendorId', '==', docId)));
+          if (!qSnap.empty) {
+            for (const d of qSnap.docs) {
+              await updateDoc(d.ref, updatePayload);
+            }
+          } else {
+            throw updateErr;
+          }
+        }
+        await renderVendors();
+      } catch (err) {
+        alert('Failed to update duty status: ' + err.message);
+      }
+    };
+
     window.renderVendors = async function() {
       const tb = document.getElementById('vendorsTableBody');
       if (!tb) return;
@@ -2937,12 +3319,40 @@
         const snap = await getDocs2('vendors', [orderBy('createdAt', 'desc'), limit(100)]);
         _allVendorsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
+        const totalCount = _allVendorsList.length;
+        const blockedCount = _allVendorsList.filter(v => getVendorBlockInfo(v).isBlocked).length;
+        const onlineCount = _allVendorsList.filter(v => !getVendorBlockInfo(v).isBlocked && v.isOnline === true).length;
+        const offlineCount = _allVendorsList.filter(v => !getVendorBlockInfo(v).isBlocked && v.isOnline !== true).length;
+
+        const elTot = document.getElementById('vStatTotal');
+        const elOn = document.getElementById('vStatOnline');
+        const elOff = document.getElementById('vStatOffline');
+        const elBlk = document.getElementById('vStatBlocked');
+        if (elTot) elTot.innerText = 'Total: ' + totalCount;
+        if (elOn) elOn.innerHTML = '<i class="fa-solid fa-circle" style="color:#10b981;font-size:8px;"></i> Online (Ready): ' + onlineCount;
+        if (elOff) elOff.innerHTML = '<i class="fa-solid fa-circle" style="color:#94a3b8;font-size:8px;"></i> Offline: ' + offlineCount;
+        if (elBlk) elBlk.innerHTML = '<i class="fa-solid fa-ban" style="font-size:9px;"></i> Blocked: ' + blockedCount;
+
         if (_allVendorsList.length === 0) {
           tb.innerHTML = '<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-truck"></i><div class="empty-state-title">No Vendors Registered Yet</div><div class="empty-state-sub">Click "Create Vendor Partner" above to register an official Vendor ID and mobile number.</div></div></td></tr>';
           return;
         }
 
-        tb.innerHTML = _allVendorsList.map(v => {
+        const currentFilter = window._vendorFilter || 'all';
+        const displayList = _allVendorsList.filter(v => {
+          const bInfo = getVendorBlockInfo(v);
+          if (currentFilter === 'online') return !bInfo.isBlocked && v.isOnline === true;
+          if (currentFilter === 'offline') return !bInfo.isBlocked && v.isOnline !== true;
+          if (currentFilter === 'blocked') return bInfo.isBlocked;
+          return true;
+        });
+
+        if (displayList.length === 0) {
+          tb.innerHTML = '<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-filter"></i><div class="empty-state-title">No Vendors match "' + currentFilter + '" filter</div><div class="empty-state-sub">Try selecting "All" to view all partners.</div></div></td></tr>';
+          return;
+        }
+
+        tb.innerHTML = displayList.map(v => {
           const vId = v.vendorId || v.id;
           const name = v.name || v.displayName || '—';
           const mobile = v.mobile ? '+91 ' + v.mobile : '—';
@@ -2951,10 +3361,13 @@
           const jobs = v.jobsCompleted || v.completedJobs || 0;
           const bInfo = getVendorBlockInfo(v);
           const safeName = (name || '').replace(/'/g, "\\'");
+          const isOnline = v.isOnline === true && !bInfo.isBlocked;
 
-          let statusBadge = '<span class="status-badge badge-green">Active</span>';
+          let statusBadge = '<span class="status-badge" style="background:#f8fafc;color:#64748b;border:1px solid #cbd5e1;font-weight:700;display:inline-flex;align-items:center;gap:5px;"><span style="width:7px;height:7px;border-radius:50%;background:#94a3b8;display:inline-block;"></span> OFFLINE · Off Duty</span>';
           if (bInfo.isBlocked) {
-            statusBadge = '<span class="status-badge badge-red" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;font-weight:800;"><i class="fa-solid fa-ban"></i> BLOCKED (' + bInfo.remainingDays + 'd left)</span>';
+            statusBadge = '<span class="status-badge badge-red" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;font-weight:800;display:inline-flex;align-items:center;gap:5px;"><i class="fa-solid fa-ban"></i> BLOCKED (' + bInfo.remainingDays + 'd left)</span>';
+          } else if (isOnline) {
+            statusBadge = '<span class="status-badge" style="background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;font-weight:800;display:inline-flex;align-items:center;gap:5px;"><span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;box-shadow:0 0 6px #10b981;"></span> ONLINE · Available</span>';
           }
 
           let counterBadge = '<span style="font-size:12px;color:#64748b;font-weight:600;">Cancels: ' + bInfo.cancels + '/3 • Skips: ' + bInfo.skips + '/3</span>';
@@ -2978,8 +3391,9 @@
             '<td><strong>' + jobs + '</strong></td>' +
             '<td>' + statusBadge + '<div style="margin-top:2px;">' + counterBadge + '</div></td>' +
             '<td>' +
-              '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+              '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">' +
                 '<button class="btn-sm-action" style="background:#eff6ff;color:#0284c7;border:1px solid #bfdbfe;" onclick="openKycModal(\'' + (v.id || vId) + '\')" title="View KYC Documents"><i class="fa-solid fa-id-card"></i> KYC</button>' +
+                (!bInfo.isBlocked ? '<button class="btn-sm-action" style="background:' + (isOnline ? '#fef2f2' : '#f0fdf4') + ';color:' + (isOnline ? '#dc2626' : '#15803d') + ';border:1px solid ' + (isOnline ? '#fecaca' : '#bbf7d0') + ';font-weight:700;" onclick="adminToggleVendorOnline(\'' + (v.id || vId) + '\', ' + (!isOnline) + ')" title="' + (isOnline ? 'Set Partner Offline' : 'Set Partner Online') + '"><i class="fa-solid ' + (isOnline ? 'fa-toggle-on' : 'fa-toggle-off') + '"></i> ' + (isOnline ? 'Set Off' : 'Set On') + '</button>' : '') +
                 (bInfo.isBlocked ? '<button class="btn-sm-action" style="background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;font-weight:800;" onclick="unblockVendor(\'' + (v.id || vId) + '\', \'' + safeName + '\')" title="Unblock Partner & Reset Cancellation Counter"><i class="fa-solid fa-unlock"></i> Unblock</button>' : '') +
                 '<button class="btn-sm-action" onclick="copyText(\'ID: ' + vId + ' | Mobile: ' + v.mobile + '\')" title="Copy Login Info"><i class="fa-solid fa-key"></i> Info</button>' +
                 '<button class="btn-sm-action" style="color:#e11d48;" onclick="deleteVendor(\'' + (v.id || vId) + '\', \'' + safeName + '\')" title="Delete"><i class="fa-solid fa-trash"></i></button>' +
@@ -4530,6 +4944,2012 @@
         `;
         return;
       }
+
+      // 5. AR DIAGNOSTIC WORKFLOWS & SOP CALIBRATION (subKey === 'diagnostics')
+      if (subKey === 'diagnostics') {
+        await renderDiagnosticsManagerView(container);
+        return;
+      }
+
+      // 6. TOOLS & SUPPLIERS HUB (subKey === 'toolhubs' or 'suppliers')
+      if (subKey === 'toolhubs' || subKey === 'suppliers') {
+        await renderToolHubsManagerView(container);
+        return;
+      }
+
+      // 7. SERVICE QUALITY CHECKLISTS (subKey === 'checklists')
+      if (subKey === 'checklists') {
+        await renderChecklistsManagerView(container);
+        return;
+      }
+    };
+
+    // ─────────────────────────────────────────────
+    // 5. AR DIAGNOSTIC WORKFLOWS & CALIBRATION MANAGER
+    // ─────────────────────────────────────────────
+    const DEFAULT_ADMIN_DIAGNOSTICS = {
+      ro: {
+        categoryName: 'RO Water Purifier Diagnostic',
+        tabLabel: 'RO',
+        icon: 'water-outline',
+        color: '#0284C7',
+        matchKeywords: ['ro', 'water', 'purif', 'filter', 'membrane'],
+        order: 1,
+        steps: [
+          {
+            title: 'Step 1: Input TDS & Pressure Check',
+            desc: 'Measure raw tap water TDS with digital meter and check inlet water pressure (> 0.5 bar required).',
+            expected: 'Raw TDS < 2000 ppm. Inlet flow constant.',
+            icon: 'speedometer-outline',
+          },
+          {
+            title: 'Step 2: Pre-Filter & Carbon Stage',
+            desc: 'Inspect spun polypropylene filter for silt accumulation and carbon block for chemical exhaustion.',
+            expected: 'Clear water output with no foul chlorine odor.',
+            icon: 'filter-outline',
+          },
+          {
+            title: 'Step 3: RO Membrane Rejection Rate',
+            desc: 'Measure purified water TDS. Rejection efficiency = ((Raw - Pure)/Raw) * 100.',
+            expected: 'Purified water TDS between 50 - 150 ppm (90%+ rejection).',
+            icon: 'analytics-outline',
+          },
+          {
+            title: 'Step 4: Auto-Shutoff & Booster Pump',
+            desc: 'Ensure booster pump produces 80-100 PSI and solenoid valve shuts off when tank fills.',
+            expected: 'Pump silent operation; SV seals without dripping.',
+            icon: 'checkmark-done-circle-outline',
+          },
+        ],
+      },
+      ac: {
+        categoryName: 'AC & Appliance Diagnostic',
+        tabLabel: 'AC',
+        icon: 'snow-outline',
+        color: '#0284C7',
+        matchKeywords: ['ac', 'appliance', 'cool', 'refrigerat', 'cooling', 'compressor'],
+        order: 2,
+        steps: [
+          {
+            title: 'Step 1: Power & Voltage Stability',
+            desc: 'Test electrical supply voltage at indoor unit terminals (measure L-N and L-E).',
+            expected: '220V - 240V ± 5%. Stable grounding.',
+            icon: 'flash-outline',
+          },
+          {
+            title: 'Step 2: Suction / Discharge Gas Pressure',
+            desc: 'Connect manifold pressure gauge to suction service port. Check R32/R410A operating PSI.',
+            expected: 'R32 / R410A suction PSI ~ 120-140 PSI during cooling mode.',
+            icon: 'speedometer-outline',
+          },
+          {
+            title: 'Step 3: Delta T (Temperature Drop)',
+            desc: 'Measure Return Air temp vs Supply Grill temp with laser thermometer.',
+            expected: 'Temperature differential (ΔT) between 8°C to 12°C.',
+            icon: 'thermometer-outline',
+          },
+          {
+            title: 'Step 4: Condenser Drain & Fan RPM',
+            desc: 'Inspect condensate drain tray for blockages, blower wheel balance, and outdoor fan vibration.',
+            expected: 'Smooth condensation drainage, zero water backflow.',
+            icon: 'checkmark-done-circle-outline',
+          },
+        ],
+      },
+      cleaning: {
+        categoryName: 'Deep Cleaning Diagnostic & Audit',
+        tabLabel: 'Deep',
+        icon: 'sparkles-outline',
+        color: '#10B981',
+        matchKeywords: ['clean', 'maid', 'housekeep', 'deep', 'scrubbing'],
+        order: 3,
+        steps: [
+          {
+            title: 'Step 1: Surface & Stain Type Assessment',
+            desc: 'Identify hard water scale, grout grime, oil/grease deposits, or mold/mildew.',
+            expected: 'Select appropriate neutral / alkaline / descaling agent.',
+            icon: 'eye-outline',
+          },
+          {
+            title: 'Step 2: High-Touch Sanitization Protocol',
+            desc: 'Pre-treat switches, door handles, taps, faucets, kitchen backsplashes, and under-bed areas.',
+            expected: 'Hospital-grade disinfectant contact time > 5 minutes.',
+            icon: 'shield-checkmark-outline',
+          },
+          {
+            title: 'Step 3: Floor Scrubbing & Extraction',
+            desc: 'Deep buffing of marble / tile / wooden flooring and vacuum extraction of corners.',
+            expected: 'Zero dust residue on white glove test.',
+            icon: 'brush-outline',
+          },
+          {
+            title: 'Step 4: Odor Neutralization & Air Freshening',
+            desc: 'Final inspection of drains, traps, upholstery and organic citrus freshener mist.',
+            expected: 'Fresh ambient scent and spotless luster.',
+            icon: 'checkmark-done-circle-outline',
+          },
+        ],
+      },
+      pest: {
+        categoryName: 'Pest Control Chemical & Safety Audit',
+        tabLabel: 'Pest',
+        icon: 'shield-outline',
+        color: '#D97706',
+        matchKeywords: ['pest', 'termite', 'cockroach', 'bedbug', 'insect'],
+        order: 4,
+        steps: [
+          {
+            title: 'Step 1: Infestation Hotspot Mapping',
+            desc: 'Inspect kitchen cabinet hinges, drain pipes, false ceilings, and wooden baseboards.',
+            expected: 'Locate harborage nests and identify species.',
+            icon: 'search-outline',
+          },
+          {
+            title: 'Step 2: Chemical Dilution & Safety Ratio',
+            desc: 'Prepare WHO-approved synthetic pyrethroid / gel bait with exact dilution ratios.',
+            expected: 'Wear N95 mask, nitrile gloves & verify child/pet safety protocol.',
+            icon: 'flask-outline',
+          },
+          {
+            title: 'Step 3: Micro-Droplet & Gel Ingestion Placement',
+            desc: 'Apply targeted dots in concealed corners and spray perimeter barrier along skirting.',
+            expected: '1 dot per 1m perimeter in dark non-food contact areas.',
+            icon: 'color-wand-outline',
+          },
+          {
+            title: 'Step 4: Customer Safety Briefing',
+            desc: 'Advise customer on ventilation period (2-3 hrs) and dry wiping guidelines.',
+            expected: 'Safety briefing acknowledged by customer.',
+            icon: 'checkmark-done-circle-outline',
+          },
+        ],
+      },
+      general: {
+        categoryName: 'Standard Diagnostic & Safety Protocol',
+        tabLabel: 'Standard',
+        icon: 'construct-outline',
+        color: '#0D3325',
+        matchKeywords: ['general', 'standard', 'repair', 'handyman'],
+        order: 5,
+        steps: [
+          {
+            title: 'Step 1: Pre-Service Inspection',
+            desc: 'Perform visual inspection of customer site, equipment, and confirm customer scope.',
+            expected: 'Customer confirms exact issue and approves service area.',
+            icon: 'clipboard-outline',
+          },
+          {
+            title: 'Step 2: Tool Calibration & Safety Check',
+            desc: 'Verify safety gear, insulated tools, protective floor sheets, and device battery.',
+            expected: 'Zero safety hazards detected.',
+            icon: 'shield-outline',
+          },
+          {
+            title: 'Step 3: Step-by-Step Procedure Execution',
+            desc: 'Follow standard operating procedure (SOP) with manufacturer-approved methodology.',
+            expected: 'Flawless execution without property damage.',
+            icon: 'hammer-outline',
+          },
+          {
+            title: 'Step 4: Quality Benchmark & Handover',
+            desc: 'Demonstrate completed fix/service to customer and verify functioning.',
+            expected: 'Customer signs off on successful operation.',
+            icon: 'checkmark-done-circle-outline',
+          },
+        ],
+      },
+    };
+
+    window._activeDiagCategoryKey = 'ro';
+    window._allDiagnostics = {};
+
+    window.seedDefaultDiagnostics = async function() {
+      if (!confirm('Seed all 5 default diagnostic workflows (RO, AC, Deep Cleaning, Pest Control, Standard SOP) into Firestore? Existing workflows with the same keys will be updated.')) return;
+      try {
+        for (const [key, item] of Object.entries(DEFAULT_ADMIN_DIAGNOSTICS)) {
+          await setDoc(doc(db, 'diagnostics', key), {
+            ...item,
+            updatedAt: serverTimestamp(),
+          }, { merge: true });
+        }
+        alert('✅ Successfully seeded default AR Diagnostics into Firestore! Technician apps now sync this data live in real time.');
+        renderServices('diagnostics');
+      } catch (err) {
+        alert('Failed to seed diagnostics: ' + err.message);
+      }
+    };
+
+    window.renderDiagnosticsManagerView = async function(container) {
+      let diagMap = {};
+      let isFromDefaults = false;
+
+      try {
+        const snap = await getDocs(collection(db, 'diagnostics'));
+        if (!snap.empty) {
+          snap.forEach(d => {
+            diagMap[d.id] = { id: d.id, ...d.data() };
+          });
+        }
+      } catch(err) {
+        console.warn('Diagnostics fetch error:', err);
+      }
+
+      if (Object.keys(diagMap).length === 0) {
+        isFromDefaults = true;
+        diagMap = JSON.parse(JSON.stringify(DEFAULT_ADMIN_DIAGNOSTICS));
+      }
+
+      window._allDiagnostics = diagMap;
+
+      const catKeys = Object.keys(diagMap).sort((a,b) => (diagMap[a]?.order ?? 99) - (diagMap[b]?.order ?? 99));
+      if (!window._activeDiagCategoryKey || !diagMap[window._activeDiagCategoryKey]) {
+        window._activeDiagCategoryKey = catKeys[0] || 'ro';
+      }
+
+      const activeKey = window._activeDiagCategoryKey;
+      const activeCat = diagMap[activeKey] || { categoryName: 'Diagnostic', tabLabel: 'Standard', steps: [], color: '#0284C7', icon: 'construct-outline' };
+      const steps = Array.isArray(activeCat.steps) ? activeCat.steps : [];
+
+      const totalWorkflows = catKeys.length;
+      let totalStepsCount = 0;
+      catKeys.forEach(k => { totalStepsCount += (diagMap[k]?.steps?.length || 0); });
+
+      const iconFaMap = {
+        'water-outline': 'fa-water',
+        'snow-outline': 'fa-snowflake',
+        'sparkles-outline': 'fa-wand-magic-sparkles',
+        'shield-outline': 'fa-shield-halved',
+        'construct-outline': 'fa-screwdriver-wrench',
+        'flash-outline': 'fa-bolt',
+        'hammer-outline': 'fa-hammer',
+        'speedometer-outline': 'fa-gauge-high',
+        'thermometer-outline': 'fa-temperature-half',
+        'flask-outline': 'fa-flask',
+        'eye-outline': 'fa-eye',
+        'brush-outline': 'fa-paintbrush',
+        'filter-outline': 'fa-filter',
+        'analytics-outline': 'fa-chart-line',
+        'checkmark-done-circle-outline': 'fa-circle-check',
+        'shield-checkmark-outline': 'fa-shield-check',
+        'search-outline': 'fa-magnifying-glass',
+        'color-wand-outline': 'fa-wand-magic',
+        'clipboard-outline': 'fa-clipboard-check',
+      };
+
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:22px;">
+          <!-- Top Header & Action Row -->
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+            <div>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <h1 style="font-size:22px; font-weight:800; color:#0f172a;">AR Diagnostic Assistant Manager</h1>
+                <span class="status-badge badge-green" style="font-size:11px; padding:3px 10px;"><i class="fa-solid fa-cloud-arrow-up"></i> REAL-TIME CLOUD SYNC</span>
+              </div>
+              <p style="font-size:13px; color:#64748b; margin-top:3px;">
+                Configure step-by-step diagnostic workflows, calibration thresholds, and field standards. Any changes save directly to Firestore and update technicians' apps instantly.
+              </p>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <button class="btn-outline-action" onclick="seedDefaultDiagnostics()" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:8px 16px; font-weight:700; font-size:12.5px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                <i class="fa-solid fa-arrows-rotate" style="color:#0284c7;"></i> Seed / Reset Defaults
+              </button>
+              <button class="btn-primary-action" onclick="openAddDiagWorkflowModal()" style="background:#0284c7; color:#ffffff; border:none; border-radius:8px; padding:8px 18px; font-weight:700; font-size:12.5px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(2,132,199,0.3);">
+                <i class="fa-solid fa-plus"></i> New Diagnostic Workflow
+              </button>
+            </div>
+          </div>
+
+          ${isFromDefaults ? `
+            <div style="background:#fefce8; border:1px solid #fef08a; padding:12px 18px; border-radius:12px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <i class="fa-solid fa-triangle-exclamation" style="color:#ca8a04; font-size:18px;"></i>
+                <span style="font-size:13px; color:#854d0e; font-weight:600;">
+                  Showing built-in template workflows. Click <strong>"Seed / Reset Defaults"</strong> to write them permanently into Firestore so you can customize them at any time.
+                </span>
+              </div>
+              <button onclick="seedDefaultDiagnostics()" style="background:#ca8a04; color:#fff; border:none; padding:6px 14px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer;">Seed Now</button>
+            </div>
+          ` : ''}
+
+          <!-- Stats Widgets Row -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px;">
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:18px 22px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+              <div style="font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; text-transform:uppercase;">TOTAL WORKFLOWS</div>
+              <div style="font-size:30px; font-weight:900; color:#0284c7; margin-top:6px;">${totalWorkflows}</div>
+              <div style="font-size:11.5px; color:#64748b; margin-top:2px;">Service diagnostic categories</div>
+            </div>
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:18px 22px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+              <div style="font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; text-transform:uppercase;">TOTAL SOP STEPS</div>
+              <div style="font-size:30px; font-weight:900; color:#10b981; margin-top:6px;">${totalStepsCount}</div>
+              <div style="font-size:11.5px; color:#64748b; margin-top:2px;">Checkpoints & calibration criteria</div>
+            </div>
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:18px 22px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+              <div style="font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; text-transform:uppercase;">TECHNICIAN APP SYNC</div>
+              <div style="font-size:30px; font-weight:900; color:#059669; margin-top:6px;">LIVE</div>
+              <div style="font-size:11.5px; color:#059669; margin-top:2px;">Firestore real-time snapshot active</div>
+            </div>
+          </div>
+
+          <!-- Workflow Selection Tabs -->
+          <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:14px 18px; display:flex; align-items:center; gap:10px; overflow-x:auto;">
+            <span style="font-size:12px; font-weight:800; color:#94a3b8; text-transform:uppercase; margin-right:6px; flex-shrink:0;">WORKFLOWS:</span>
+            ${catKeys.map(k => {
+              const item = diagMap[k];
+              const isAct = k === activeKey;
+              const faIcon = iconFaMap[item.icon] || 'fa-screwdriver-wrench';
+              const tabColor = item.color || '#0284c7';
+              return `
+                <button onclick="switchDiagCategory('${k}')" style="
+                  display:inline-flex; align-items:center; gap:8px; padding:8px 16px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer; flex-shrink:0; transition:all 0.15s ease;
+                  background:${isAct ? tabColor : '#f8fafc'};
+                  color:${isAct ? '#ffffff' : '#334155'};
+                  border:1px solid ${isAct ? tabColor : '#e2e8f0'};
+                  box-shadow:${isAct ? '0 2px 8px rgba(0,0,0,0.12)' : 'none'};
+                ">
+                  <i class="fa-solid ${faIcon}"></i>
+                  <span>${item.tabLabel || item.categoryName.split(' ')[0]}</span>
+                  <span style="background:${isAct ? 'rgba(255,255,255,0.25)' : '#e2e8f0'}; padding:2px 7px; border-radius:12px; font-size:11px; margin-left:4px;">
+                    ${item.steps?.length || 0}
+                  </span>
+                </button>
+              `;
+            }).join('')}
+          </div>
+
+          <!-- Main 2-Column Responsive Layout -->
+          <div style="display:grid; grid-template-columns: 1.25fr 0.95fr; gap:24px; align-items:start;">
+            <!-- LEFT COLUMN: Workflow Editor & Steps -->
+            <div style="display:flex; flex-direction:column; gap:18px;">
+              <!-- Category Header Card -->
+              <div class="admin-section-card" style="padding:20px 24px; border-top:4px solid ${activeCat.color || '#0284c7'};">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:14px;">
+                  <div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <div style="width:36px; height:36px; border-radius:10px; background:${(activeCat.color || '#0284c7')}18; display:flex; align-items:center; justify-content:center; color:${activeCat.color || '#0284c7'}; font-size:16px;">
+                        <i class="fa-solid ${iconFaMap[activeCat.icon] || 'fa-screwdriver-wrench'}"></i>
+                      </div>
+                      <div>
+                        <h2 style="font-size:18px; font-weight:800; color:#0f172a;">${activeCat.categoryName}</h2>
+                        <span style="font-size:11.5px; font-weight:700; color:#64748b; font-family:monospace; background:#f1f5f9; padding:2px 8px; border-radius:6px;">key: ${activeKey}</span>
+                      </div>
+                    </div>
+                    <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                      <span style="font-size:12px; color:#64748b; font-weight:600;">Match Keywords:</span>
+                      ${(activeCat.matchKeywords && activeCat.matchKeywords.length > 0) ? activeCat.matchKeywords.map(kw => `
+                        <span style="background:#e0f2fe; color:#0369a1; font-size:11px; font-weight:700; padding:2px 8px; border-radius:6px;">${kw}</span>
+                      `).join('') : '<span style="font-size:11px; color:#94a3b8; font-style:italic;">No auto-match keywords (general fallback)</span>'}
+                    </div>
+                  </div>
+                  <div style="display:flex; gap:8px;">
+                    <button onclick="openEditDiagWorkflowModal('${activeKey}')" class="btn-sm-action" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:7px 12px; font-size:12px; font-weight:700; color:#334155; cursor:pointer;">
+                      <i class="fa-solid fa-pen-to-square"></i> Edit Workflow
+                    </button>
+                    ${catKeys.length > 1 ? `
+                      <button onclick="deleteDiagWorkflow('${activeKey}')" class="btn-sm-action" style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:7px 12px; font-size:12px; font-weight:700; color:#dc2626; cursor:pointer;">
+                        <i class="fa-solid fa-trash-can"></i>
+                      </button>
+                    ` : ''}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Steps List Card -->
+              <div class="admin-section-card" style="padding:22px 24px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+                  <div>
+                    <h3 style="font-size:16px; font-weight:800; color:#0f172a;">Inspection &amp; Calibration Steps</h3>
+                    <p style="font-size:12.5px; color:#64748b; margin-top:2px;">Technicians must complete and verify these steps before closing work.</p>
+                  </div>
+                  <button onclick="openAddDiagStepModal('${activeKey}')" style="background:#10b981; color:#fff; border:none; padding:7px 14px; border-radius:8px; font-weight:700; font-size:12.5px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-plus"></i> Add Step
+                  </button>
+                </div>
+
+                ${steps.length === 0 ? `
+                  <div style="text-align:center; padding:40px 20px; background:#f8fafc; border:2px dashed #cbd5e1; border-radius:14px;">
+                    <i class="fa-solid fa-list-check" style="font-size:32px; color:#94a3b8; margin-bottom:10px;"></i>
+                    <h4 style="font-size:14px; font-weight:700; color:#475569;">No inspection steps created</h4>
+                    <p style="font-size:12px; color:#94a3b8; margin-top:4px;">Click "Add Step" above to create your first calibration step.</p>
+                  </div>
+                ` : `
+                  <div style="display:flex; flex-direction:column; gap:14px;">
+                    ${steps.map((st, idx) => {
+                      const faStepIcon = iconFaMap[st.icon] || 'fa-circle-check';
+                      return `
+                        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:16px 18px; box-shadow:0 1px 3px rgba(0,0,0,0.02); transition:all 0.15s ease;">
+                          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+                            <div style="display:flex; align-items:flex-start; gap:12px; flex:1;">
+                              <div style="width:34px; height:34px; border-radius:50%; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:#0f172a; font-weight:800; font-size:13px; flex-shrink:0;">
+                                ${idx + 1}
+                              </div>
+                              <div style="flex:1;">
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                  <i class="fa-solid ${faStepIcon}" style="color:${activeCat.color || '#0284c7'}; font-size:14px;"></i>
+                                  <h4 style="font-size:14.5px; font-weight:700; color:#0f172a; margin:0;">${st.title}</h4>
+                                </div>
+                                <p style="font-size:12.5px; color:#475569; margin:6px 0 10px 0; line-height:1.45;">${st.desc}</p>
+                                <div style="background:#f0fdf4; border-left:3px solid #10b981; padding:8px 12px; border-radius:6px; font-size:12px; color:#065f46;">
+                                  <strong style="color:#047857;"><i class="fa-solid fa-circle-check" style="color:#10b981; margin-right:4px;"></i> Expected Standard:</strong> ${st.expected}
+                                </div>
+                              </div>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:5px; flex-shrink:0;">
+                              <button onclick="moveDiagStep('${activeKey}', ${idx}, -1)" ${idx === 0 ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : 'style="cursor:pointer;"'} title="Move Up" class="btn-sm-action" style="padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0; background:#f8fafc;">
+                                <i class="fa-solid fa-arrow-up"></i>
+                              </button>
+                              <button onclick="moveDiagStep('${activeKey}', ${idx}, 1)" ${idx === steps.length - 1 ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : 'style="cursor:pointer;"'} title="Move Down" class="btn-sm-action" style="padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0; background:#f8fafc;">
+                                <i class="fa-solid fa-arrow-down"></i>
+                              </button>
+                              <button onclick="openEditDiagStepModal('${activeKey}', ${idx})" title="Edit Step" class="btn-sm-action" style="padding:6px 10px; border-radius:6px; border:1px solid #cbd5e1; background:#f8fafc; color:#0284c7; cursor:pointer; font-weight:700; font-size:12px;">
+                                <i class="fa-solid fa-pen-to-square"></i> Edit
+                              </button>
+                              <button onclick="deleteDiagStep('${activeKey}', ${idx})" title="Delete Step" class="btn-sm-action" style="padding:6px 9px; border-radius:6px; border:1px solid #fecaca; background:#fef2f2; color:#dc2626; cursor:pointer;">
+                                <i class="fa-solid fa-trash-can"></i>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      `;
+                    }).join('')}
+                  </div>
+                `}
+              </div>
+            </div>
+
+            <!-- RIGHT COLUMN: Live Mobile Technician Simulator -->
+            <div style="position:sticky; top:20px;">
+              <div style="background:#0f172a; border-radius:36px; padding:14px; box-shadow:0 25px 60px rgba(0,0,0,0.35); border:4px solid #334155; width:100%; max-width:380px; margin:0 auto;">
+                <!-- Phone Top Speaker & Camera Notch -->
+                <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-bottom:10px;">
+                  <div style="width:50px; height:4px; background:#475569; border-radius:2px;"></div>
+                  <div style="width:8px; height:8px; background:#475569; border-radius:50%;"></div>
+                </div>
+
+                <!-- Phone Screen -->
+                <div style="background:#f8fafc; border-radius:24px; overflow:hidden; display:flex; flex-direction:column; min-height:560px; max-height:680px;">
+                  <!-- App Active Service Top Banner -->
+                  <div style="background:#1e293b; padding:8px 14px; display:flex; justify-content:space-between; align-items:center; font-size:10.5px; color:#cbd5e1; font-weight:700;">
+                    <span><i class="fa-solid fa-circle" style="color:#10b981; font-size:8px;"></i> ACTIVE SERVICE</span>
+                    <span style="color:#ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> SOS</span>
+                  </div>
+
+                  <!-- Modal Sheet Top Gradient Header (Matching uploaded screenshot) -->
+                  <div style="background:linear-gradient(180deg, #0D3325 0%, #164E3A 100%); padding:16px 14px 12px 14px; color:#ffffff;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                      <div style="background:rgba(52,211,153,0.18); border:1px solid rgba(52,211,153,0.35); padding:3px 8px; border-radius:12px; font-size:9px; font-weight:800; color:#34D399; letter-spacing:0.8px; display:inline-flex; align-items:center; gap:5px;">
+                        <i class="fa-solid fa-microchip"></i> AR DIAGNOSTIC ASSISTANT
+                      </div>
+                      <div style="width:24px; height:24px; border-radius:50%; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-size:12px; color:#ffffff;">
+                        &times;
+                      </div>
+                    </div>
+
+                    <h3 style="font-size:16px; font-weight:800; color:#ffffff; margin:0 0 4px 0; line-height:1.2;">
+                      ${activeCat.categoryName}
+                    </h3>
+                    <p style="font-size:10.5px; color:rgba(255,255,255,0.75); margin:0 0 12px 0; line-height:1.35;">
+                      Interactive step-by-step diagnostic workflow and calibration guidelines for field technicians.
+                    </p>
+
+                    <!-- Horizontal Tabs Mockup in Simulator -->
+                    <div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:4px;">
+                      ${catKeys.map(k => {
+                        const item = diagMap[k];
+                        const isSimAct = k === activeKey;
+                        const simFa = iconFaMap[item.icon] || 'fa-screwdriver-wrench';
+                        return `
+                          <div onclick="switchDiagCategory('${k}')" style="
+                            padding:5px 10px; border-radius:16px; font-size:10px; font-weight:700; cursor:pointer; flex-shrink:0; display:flex; align-items:center; gap:4px;
+                            background:${isSimAct ? '#34D399' : 'rgba(255,255,255,0.12)'};
+                            color:${isSimAct ? '#0D3325' : '#ffffff'};
+                          ">
+                            <i class="fa-solid ${simFa}"></i> ${item.tabLabel || item.categoryName.split(' ')[0]}
+                          </div>
+                        `;
+                      }).join('')}
+                    </div>
+                  </div>
+
+                  <!-- Steps Body in Simulator -->
+                  <div style="flex:1; overflow-y:auto; padding:12px 14px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; font-weight:700; color:#475569; margin-bottom:5px;">
+                      <span>Completed Steps: 0 / ${steps.length}</span>
+                      <span>0%</span>
+                    </div>
+                    <div style="height:5px; background:#e2e8f0; border-radius:3px; margin-bottom:12px; overflow:hidden;">
+                      <div style="width:0%; height:100%; background:#10b981;"></div>
+                    </div>
+
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                      ${steps.map((st) => {
+                        const simStepFa = iconFaMap[st.icon] || 'fa-circle-check';
+                        return `
+                          <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:10px 12px; box-shadow:0 1px 2px rgba(0,0,0,0.03);">
+                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                              <div style="width:24px; height:24px; border-radius:50%; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:#0D3325; font-size:11px;">
+                                <i class="fa-solid ${simStepFa}"></i>
+                              </div>
+                              <span style="font-size:12px; font-weight:800; color:#0f172a;">${st.title}</span>
+                            </div>
+                            <p style="font-size:11px; color:#475569; margin:2px 0 6px 0; line-height:1.35;">${st.desc}</p>
+                            <div style="background:#f0fdf4; border-left:2.5px solid #10b981; padding:6px 8px; border-radius:4px; font-size:10px; color:#065f46;">
+                              <strong style="color:#047857;">Expected Standard:</strong> ${st.expected}
+                            </div>
+                          </div>
+                        `;
+                      }).join('')}
+                    </div>
+                  </div>
+
+                  <!-- Simulator Footer Button -->
+                  <div style="padding:10px 14px; background:#ffffff; border-top:1px solid #e2e8f0;">
+                    <div style="background:#0D3325; color:#ffffff; font-weight:800; font-size:12px; padding:10px; border-radius:10px; text-align:center;">
+                      Close Assistant
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    };
+
+    window.switchDiagCategory = function(key) {
+      window._activeDiagCategoryKey = key;
+      renderServices('diagnostics');
+    };
+
+    // Category Modal Handlers
+    window.openAddDiagWorkflowModal = function() {
+      document.getElementById('diagWfIsEdit').value = '0';
+      document.getElementById('diagWfModalTitle').innerHTML = '<i class="fa-solid fa-plus" style="color:#0284c7;"></i> Add Diagnostic Workflow';
+      document.getElementById('diagWfKey').value = '';
+      document.getElementById('diagWfKey').readOnly = false;
+      document.getElementById('diagWfKey').style.background = '#ffffff';
+      document.getElementById('diagWfName').value = '';
+      document.getElementById('diagWfTab').value = '';
+      document.getElementById('diagWfColor').value = '#0284C7';
+      document.getElementById('diagWfColorText').value = '#0284C7';
+      document.getElementById('diagWfIcon').value = 'construct-outline';
+      document.getElementById('diagWfKeywords').value = '';
+      document.getElementById('diagWfOrder').value = (Object.keys(window._allDiagnostics || {}).length + 1);
+      document.getElementById('diagWorkflowModal').style.display = 'flex';
+    };
+
+    window.openEditDiagWorkflowModal = function(catKey) {
+      const cat = (window._allDiagnostics && window._allDiagnostics[catKey]) || {};
+      document.getElementById('diagWfIsEdit').value = '1';
+      document.getElementById('diagWfModalTitle').innerHTML = `<i class="fa-solid fa-pen-to-square" style="color:#0284c7;"></i> Edit Workflow: ${cat.categoryName || catKey}`;
+      document.getElementById('diagWfKey').value = catKey;
+      document.getElementById('diagWfKey').readOnly = true;
+      document.getElementById('diagWfKey').style.background = '#f1f5f9';
+      document.getElementById('diagWfName').value = cat.categoryName || '';
+      document.getElementById('diagWfTab').value = cat.tabLabel || '';
+      document.getElementById('diagWfColor').value = cat.color || '#0284C7';
+      document.getElementById('diagWfColorText').value = cat.color || '#0284C7';
+      document.getElementById('diagWfIcon').value = cat.icon || 'construct-outline';
+      document.getElementById('diagWfKeywords').value = (cat.matchKeywords || []).join(', ');
+      document.getElementById('diagWfOrder').value = cat.order ?? 1;
+      document.getElementById('diagWorkflowModal').style.display = 'flex';
+    };
+
+    window.closeDiagWorkflowModal = function() {
+      document.getElementById('diagWorkflowModal').style.display = 'none';
+    };
+
+    window.saveDiagWorkflow = async function(e) {
+      e.preventDefault();
+      const isEdit = document.getElementById('diagWfIsEdit').value === '1';
+      const key = document.getElementById('diagWfKey').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+      if (!key) {
+        alert('Please enter a valid key (e.g. electrical)');
+        return;
+      }
+      const categoryName = document.getElementById('diagWfName').value.trim();
+      const tabLabel = document.getElementById('diagWfTab').value.trim() || categoryName.split(' ')[0];
+      const color = document.getElementById('diagWfColor').value || '#0284C7';
+      const icon = document.getElementById('diagWfIcon').value || 'construct-outline';
+      const rawKeywords = document.getElementById('diagWfKeywords').value;
+      const matchKeywords = rawKeywords.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+      const order = parseInt(document.getElementById('diagWfOrder').value) || 1;
+
+      const existingSteps = (window._allDiagnostics && window._allDiagnostics[key]?.steps) || [];
+
+      try {
+        await setDoc(doc(db, 'diagnostics', key), {
+          categoryName,
+          tabLabel,
+          color,
+          icon,
+          matchKeywords,
+          order,
+          steps: existingSteps,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+
+        closeDiagWorkflowModal();
+        window._activeDiagCategoryKey = key;
+        alert(`✅ Diagnostic Workflow "${categoryName}" saved to Firestore successfully!`);
+        renderServices('diagnostics');
+      } catch (err) {
+        alert('Error saving workflow: ' + err.message);
+      }
+    };
+
+    window.deleteDiagWorkflow = async function(catKey) {
+      if (!confirm(`Are you sure you want to delete the diagnostic workflow "${catKey}" and all its inspection steps? This cannot be undone.`)) return;
+      try {
+        await deleteDoc(doc(db, 'diagnostics', catKey));
+        window._activeDiagCategoryKey = null;
+        alert(`✅ Deleted workflow "${catKey}" from Firestore.`);
+        renderServices('diagnostics');
+      } catch(err) {
+        alert('Error deleting workflow: ' + err.message);
+      }
+    };
+
+    // Step Modal Handlers
+    window.openAddDiagStepModal = function(catKey) {
+      document.getElementById('diagStepCatKey').value = catKey;
+      document.getElementById('diagStepIndex').value = '-1';
+      const nextStepNum = ((window._allDiagnostics && window._allDiagnostics[catKey]?.steps?.length) || 0) + 1;
+      document.getElementById('diagStepModalTitle').innerHTML = `<i class="fa-solid fa-plus" style="color:#10b981;"></i> Add Step ${nextStepNum} to ${catKey.toUpperCase()}`;
+      document.getElementById('diagStepTitle').value = `Step ${nextStepNum}: `;
+      document.getElementById('diagStepIcon').value = 'speedometer-outline';
+      document.getElementById('diagStepDesc').value = '';
+      document.getElementById('diagStepExpected').value = '';
+      document.getElementById('diagStepModal').style.display = 'flex';
+    };
+
+    window.openEditDiagStepModal = function(catKey, stepIdx) {
+      const cat = (window._allDiagnostics && window._allDiagnostics[catKey]) || {};
+      const st = (cat.steps && cat.steps[stepIdx]) || {};
+      document.getElementById('diagStepCatKey').value = catKey;
+      document.getElementById('diagStepIndex').value = String(stepIdx);
+      document.getElementById('diagStepModalTitle').innerHTML = `<i class="fa-solid fa-pen-to-square" style="color:#10b981;"></i> Edit Step ${stepIdx + 1}: ${st.title || ''}`;
+      document.getElementById('diagStepTitle').value = st.title || '';
+      document.getElementById('diagStepIcon').value = st.icon || 'speedometer-outline';
+      document.getElementById('diagStepDesc').value = st.desc || '';
+      document.getElementById('diagStepExpected').value = st.expected || '';
+      document.getElementById('diagStepModal').style.display = 'flex';
+    };
+
+    window.closeDiagStepModal = function() {
+      document.getElementById('diagStepModal').style.display = 'none';
+    };
+
+    window.saveDiagStep = async function(e) {
+      e.preventDefault();
+      const catKey = document.getElementById('diagStepCatKey').value;
+      const stepIdx = parseInt(document.getElementById('diagStepIndex').value);
+      const title = document.getElementById('diagStepTitle').value.trim();
+      const icon = document.getElementById('diagStepIcon').value || 'speedometer-outline';
+      const desc = document.getElementById('diagStepDesc').value.trim();
+      const expected = document.getElementById('diagStepExpected').value.trim();
+
+      const cat = (window._allDiagnostics && window._allDiagnostics[catKey]) || {};
+      let steps = Array.isArray(cat.steps) ? [...cat.steps] : [];
+
+      const newStep = { title, icon, desc, expected };
+
+      if (stepIdx >= 0 && stepIdx < steps.length) {
+        steps[stepIdx] = newStep;
+      } else {
+        steps.push(newStep);
+      }
+
+      try {
+        await setDoc(doc(db, 'diagnostics', catKey), {
+          ...cat,
+          steps: steps,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+
+        closeDiagStepModal();
+        alert('✅ Step saved! Updated live in technician mobile apps.');
+        renderServices('diagnostics');
+      } catch(err) {
+        alert('Error saving step: ' + err.message);
+      }
+    };
+
+    window.deleteDiagStep = async function(catKey, stepIdx) {
+      if (!confirm(`Are you sure you want to delete Step ${stepIdx + 1}?`)) return;
+      const cat = (window._allDiagnostics && window._allDiagnostics[catKey]) || {};
+      let steps = Array.isArray(cat.steps) ? [...cat.steps] : [];
+      steps.splice(stepIdx, 1);
+
+      try {
+        await setDoc(doc(db, 'diagnostics', catKey), {
+          ...cat,
+          steps: steps,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+        renderServices('diagnostics');
+      } catch(err) {
+        alert('Error deleting step: ' + err.message);
+      }
+    };
+
+    window.moveDiagStep = async function(catKey, stepIdx, dir) {
+      const cat = (window._allDiagnostics && window._allDiagnostics[catKey]) || {};
+      let steps = Array.isArray(cat.steps) ? [...cat.steps] : [];
+      const targetIdx = stepIdx + dir;
+      if (targetIdx < 0 || targetIdx >= steps.length) return;
+
+      const temp = steps[stepIdx];
+      steps[stepIdx] = steps[targetIdx];
+      steps[targetIdx] = temp;
+
+      try {
+        await setDoc(doc(db, 'diagnostics', catKey), {
+          ...cat,
+          steps: steps,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+        renderServices('diagnostics');
+      } catch(err) {
+        alert('Error reordering step: ' + err.message);
+      }
+    };
+
+    // ─────────────────────────────────────────────
+    // 6. AUTHORIZED TOOLS & SUPPLIERS HUB MANAGER
+    // ─────────────────────────────────────────────
+    const DEFAULT_ADMIN_TOOL_HUBS = [
+      {
+        id: 'hub_aquatech_ro',
+        name: 'AquaTech RO Spares & Membrane Depot',
+        category: 'ro',
+        categoryLabel: 'RO Water & Filter Spares',
+        phone: '+91 98427 44123',
+        address: 'Shop 4, Ground Floor, Opp. New Bus Stand, Suramangalam Main Road, Salem - 636005',
+        city: 'Salem',
+        latitude: 11.6685,
+        longitude: 78.1321,
+        partnerDiscount: '15% Off for Urban Helpers on Sediment, Carbon & Dow Membranes',
+        operatingHours: '8:30 AM - 9:00 PM',
+        verified: true,
+        rating: 4.9,
+      },
+      {
+        id: 'hub_coolbreeze_ac',
+        name: 'CoolBreeze AC Spares & Refrigeration Hub',
+        category: 'ac',
+        categoryLabel: 'AC & Appliance Spare Parts',
+        phone: '+91 94432 88214',
+        address: '128/B, Omalur Main Road, Near Five Roads Junction, Salem - 636004',
+        city: 'Salem',
+        latitude: 11.6742,
+        longitude: 78.1398,
+        partnerDiscount: '₹150 Flat Off per R32/R410A Gas Can + 10% on Capacitors & Motors',
+        operatingHours: '8:00 AM - 9:30 PM',
+        verified: true,
+        rating: 4.8,
+      },
+      {
+        id: 'hub_apex_hardware',
+        name: 'Apex Industrial Hardware & Fasteners Hub',
+        category: 'hardware',
+        categoryLabel: 'Hardware & Tools Shops',
+        phone: '+91 98941 55678',
+        address: '45, Junction Main Road, State Bank Colony, Salem - 636005',
+        city: 'Salem',
+        latitude: 11.6621,
+        longitude: 78.1287,
+        partnerDiscount: '10% Discount on Bosch/Makita power tools, drill bits & safety gear',
+        operatingHours: '8:00 AM - 9:00 PM',
+        verified: true,
+        rating: 4.9,
+      },
+      {
+        id: 'hub_balaji_plumbing',
+        name: 'Sri Balaji Sanitary & CPVC Plumbing Depot',
+        category: 'plumbing',
+        categoryLabel: 'Sanitary & Plumbing Supplies',
+        phone: '+91 97894 11234',
+        address: '12, Cherry Road, Hasthampatti, Salem - 636007',
+        city: 'Salem',
+        latitude: 11.6710,
+        longitude: 78.1560,
+        partnerDiscount: 'Wholesale rates on Ashirvad/Astral CPVC pipes & brass valves',
+        operatingHours: '8:00 AM - 9:00 PM',
+        verified: true,
+        rating: 4.8,
+      },
+      {
+        id: 'hub_powergrid_electric',
+        name: 'PowerGrid Electricals & Wire Supplies',
+        category: 'electrical',
+        categoryLabel: 'Electrical & Electronics Hub',
+        phone: '+91 99422 66789',
+        address: '78, Meyyanur Bypass Road, Near ARRS Multiplex, Salem - 636004',
+        city: 'Salem',
+        latitude: 11.6650,
+        longitude: 78.1365,
+        partnerDiscount: '12% Off on Havells/Finolex copper wires, MCBs & switch sockets',
+        operatingHours: '8:30 AM - 9:30 PM',
+        verified: true,
+        rating: 4.9,
+      },
+      {
+        id: 'hub_metro_superstore',
+        name: 'Metro Spare Parts & Technician Superstore',
+        category: 'general',
+        categoryLabel: 'Multi-Tool & Spare Parts Superstore',
+        phone: '+91 98801 23456',
+        address: '88, 100ft Road, Indiranagar, Bengaluru - 560038',
+        city: 'Bengaluru',
+        latitude: 12.9716,
+        longitude: 77.6412,
+        partnerDiscount: 'Urban Captain VIP Express Counter + 10% Storewide Cashback',
+        operatingHours: '8:00 AM - 10:00 PM',
+        verified: true,
+        rating: 4.9,
+      },
+    ];
+
+    window._allToolHubs = [];
+    window._activeHubFilterCat = 'all';
+    window._activeHubSearchQuery = '';
+
+    window.seedDefaultToolHubs = async function() {
+      if (!confirm('Seed the default trusted and verified tool hubs into Firestore? Field technicians will immediately see these authorized stores.')) return;
+      try {
+        for (const hub of DEFAULT_ADMIN_TOOL_HUBS) {
+          await setDoc(doc(db, 'tool_hubs', hub.id), {
+            ...hub,
+            updatedAt: serverTimestamp(),
+          }, { merge: true });
+        }
+        alert('✅ Successfully seeded authorized tool hubs into Firestore! Verified vendor stores will now show on technician maps.');
+        renderServices('toolhubs');
+      } catch (err) {
+        alert('Failed to seed tool hubs: ' + err.message);
+      }
+    };
+
+    window.renderToolHubsManagerView = async function(container) {
+      let hubsList = [];
+      let isFromDefaults = false;
+
+      try {
+        const snap = await getDocs(collection(db, 'tool_hubs'));
+        if (!snap.empty) {
+          hubsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+      } catch(err) {
+        console.warn('tool_hubs fetch error:', err);
+      }
+
+      if (hubsList.length === 0) {
+        isFromDefaults = true;
+        hubsList = JSON.parse(JSON.stringify(DEFAULT_ADMIN_TOOL_HUBS));
+      }
+
+      window._allToolHubs = hubsList;
+
+      const categoryConfig = {
+        ro: { label: 'RO Spares', icon: 'fa-water', color: '#0284c7' },
+        ac: { label: 'AC Parts', icon: 'fa-snowflake', color: '#2563eb' },
+        hardware: { label: 'Hardware & Tools', icon: 'fa-screwdriver-wrench', color: '#0d3325' },
+        plumbing: { label: 'Plumbing', icon: 'fa-faucet-drip', color: '#059669' },
+        electrical: { label: 'Electrical', icon: 'fa-bolt', color: '#d97706' },
+        general: { label: 'General / Multi', icon: 'fa-store', color: '#475569' },
+      };
+
+      const selectedCat = window._activeHubFilterCat || 'all';
+      const searchQ = (window._activeHubSearchQuery || '').toLowerCase().trim();
+
+      const filteredList = hubsList.filter(h => {
+        const matchCat = (selectedCat === 'all' || h.category === selectedCat);
+        const matchText = !searchQ || (
+          (h.name || '').toLowerCase().includes(searchQ) ||
+          (h.address || '').toLowerCase().includes(searchQ) ||
+          (h.city || '').toLowerCase().includes(searchQ) ||
+          (h.phone || '').toLowerCase().includes(searchQ)
+        );
+        return matchCat && matchText;
+      });
+
+      const totalCount = hubsList.length;
+      const verifiedCount = hubsList.filter(h => h.verified !== false).length;
+      const geocodedCount = hubsList.filter(h => h.latitude && h.longitude).length;
+
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:22px;">
+          <!-- Top Header & Action Row -->
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+            <div>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <h1 style="font-size:22px; font-weight:800; color:#0f172a;">Authorized Tools &amp; Spare Parts Hubs</h1>
+                <span class="status-badge badge-green" style="font-size:11px; padding:3px 10px;"><i class="fa-solid fa-shield-check"></i> TRUSTED STORES ONLY</span>
+              </div>
+              <p style="font-size:13px; color:#64748b; margin-top:3px;">
+                Manage verified partner shops and authorized distributor hubs. Technicians in the field will <strong>only see and navigate to your trusted and verified vendors</strong> on their map.
+              </p>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <button class="btn-outline-action" onclick="seedDefaultToolHubs()" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:8px 16px; font-weight:700; font-size:12.5px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                <i class="fa-solid fa-arrows-rotate" style="color:#f59e0b;"></i> Seed / Reset Default Hubs
+              </button>
+              <button class="btn-primary-action" onclick="openAddToolHubModal()" style="background:#f59e0b; color:#ffffff; border:none; border-radius:8px; padding:8px 18px; font-weight:700; font-size:12.5px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(245,158,11,0.3);">
+                <i class="fa-solid fa-plus"></i> Add Authorized Hub
+              </button>
+            </div>
+          </div>
+
+          ${isFromDefaults ? `
+            <div style="background:#fefce8; border:1px solid #fef08a; padding:12px 18px; border-radius:12px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <i class="fa-solid fa-triangle-exclamation" style="color:#ca8a04; font-size:18px;"></i>
+                <span style="font-size:13px; color:#854d0e; font-weight:600;">
+                  Showing default verified hub templates. Click <strong>"Seed / Reset Default Hubs"</strong> to save them permanently to Firestore.
+                </span>
+              </div>
+              <button onclick="seedDefaultToolHubs()" style="background:#ca8a04; color:#fff; border:none; padding:6px 14px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer;">Seed Now</button>
+            </div>
+          ` : ''}
+
+          <!-- Stats Widgets Row -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px;">
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:18px 22px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+              <div style="font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; text-transform:uppercase;">TOTAL AUTHORIZED HUBS</div>
+              <div style="font-size:30px; font-weight:900; color:#f59e0b; margin-top:6px;">${totalCount}</div>
+              <div style="font-size:11.5px; color:#64748b; margin-top:2px;">Hardware, RO, AC & Plumbing</div>
+            </div>
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:18px 22px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+              <div style="font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; text-transform:uppercase;">VERIFIED ACTIVE ON MOBILE</div>
+              <div style="font-size:30px; font-weight:900; color:#10b981; margin-top:6px;">${verifiedCount}</div>
+              <div style="font-size:11.5px; color:#10b981; margin-top:2px;">Trusted partner stores visible on app</div>
+            </div>
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:18px 22px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+              <div style="font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; text-transform:uppercase;">GPS MAP NAVIGATION</div>
+              <div style="font-size:30px; font-weight:900; color:#0284c7; margin-top:6px;">${geocodedCount} / ${totalCount}</div>
+              <div style="font-size:11.5px; color:#0284c7; margin-top:2px;">Turn-by-turn routing ready</div>
+            </div>
+          </div>
+
+          <!-- Filter & Search Controls Bar -->
+          <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:16px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
+            <div style="display:flex; gap:8px; overflow-x:auto; flex-wrap:wrap;">
+              <button onclick="setHubCategoryFilter('all')" style="padding:7px 14px; border-radius:8px; font-weight:700; font-size:12.5px; cursor:pointer; background:${selectedCat === 'all' ? '#0f172a' : '#f1f5f9'}; color:${selectedCat === 'all' ? '#fff' : '#475569'}; border:1px solid ${selectedCat === 'all' ? '#0f172a' : '#cbd5e1'};">
+                All Categories (${totalCount})
+              </button>
+              ${Object.keys(categoryConfig).map(k => {
+                const cfg = categoryConfig[k];
+                const isAct = selectedCat === k;
+                const count = hubsList.filter(h => h.category === k).length;
+                return `
+                  <button onclick="setHubCategoryFilter('${k}')" style="padding:7px 14px; border-radius:8px; font-weight:700; font-size:12.5px; cursor:pointer; background:${isAct ? cfg.color : '#f1f5f9'}; color:${isAct ? '#fff' : '#475569'}; border:1px solid ${isAct ? cfg.color : '#cbd5e1'}; display:inline-flex; align-items:center; gap:6px;">
+                    <i class="fa-solid ${cfg.icon}"></i> ${cfg.label} (${count})
+                  </button>
+                `;
+              }).join('')}
+            </div>
+
+            <div style="position:relative; min-width:240px;">
+              <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:11px; color:#94a3b8; font-size:13px;"></i>
+              <input type="text" value="${window._activeHubSearchQuery || ''}" oninput="setHubSearchQuery(this.value)" placeholder="Search store, city, or phone..." style="width:100%; padding:8px 12px 8px 34px; border:1px solid #cbd5e1; border-radius:8px; font-size:12.5px;">
+            </div>
+          </div>
+
+          <!-- Main 2-Column Responsive Layout -->
+          <div style="display:grid; grid-template-columns: 1.25fr 0.95fr; gap:24px; align-items:start;">
+            <!-- LEFT COLUMN: Verified Store Cards List -->
+            <div style="display:flex; flex-direction:column; gap:16px;">
+              ${filteredList.length === 0 ? `
+                <div style="text-align:center; padding:50px 20px; background:#ffffff; border:2px dashed #cbd5e1; border-radius:16px;">
+                  <i class="fa-solid fa-store-slash" style="font-size:36px; color:#94a3b8; margin-bottom:12px;"></i>
+                  <h3 style="font-size:16px; font-weight:700; color:#334155;">No authorized tool hubs found</h3>
+                  <p style="font-size:13px; color:#94a3b8; margin-top:4px;">Try adjusting your search filter or click "+ Add Authorized Hub" to register a partner store.</p>
+                </div>
+              ` : filteredList.map(hub => {
+                const cfg = categoryConfig[hub.category] || categoryConfig.general;
+                const isVerified = hub.verified !== false;
+                return `
+                  <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.03); border-left:5px solid ${isVerified ? '#10b981' : '#94a3b8'}; transition:all 0.15s ease;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+                      <div>
+                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                          <h3 style="font-size:16.5px; font-weight:800; color:#0f172a; margin:0;">${hub.name}</h3>
+                          ${isVerified ? `
+                            <span class="status-badge badge-green" style="font-size:10.5px; padding:2px 8px; font-weight:800;">
+                              <i class="fa-solid fa-circle-check"></i> VERIFIED PARTNER
+                            </span>
+                          ` : `
+                            <span class="status-badge badge-gray" style="font-size:10.5px; padding:2px 8px; font-weight:800;">
+                              <i class="fa-solid fa-eye-slash"></i> HIDDEN FROM MOBILE
+                            </span>
+                          `}
+                          <span style="background:${cfg.color}15; color:${cfg.color}; font-size:11px; font-weight:700; padding:2px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:4px;">
+                            <i class="fa-solid ${cfg.icon}"></i> ${cfg.label}
+                          </span>
+                        </div>
+                        <div style="font-size:12.5px; color:#475569; margin:6px 0 2px 0;">
+                          <i class="fa-solid fa-location-dot" style="color:#ef4444; margin-right:4px;"></i> ${hub.address}
+                        </div>
+                        <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin-top:6px; font-size:12px; color:#64748b;">
+                          <span><i class="fa-solid fa-phone" style="color:#0284c7; margin-right:4px;"></i> <a href="tel:${hub.phone}" style="color:#0284c7; font-weight:700; text-decoration:none;">${hub.phone}</a></span>
+                          <span><i class="fa-solid fa-clock" style="color:#f59e0b; margin-right:4px;"></i> ${hub.operatingHours || '8:00 AM - 9:00 PM'}</span>
+                          <span><i class="fa-solid fa-star" style="color:#f59e0b; margin-right:2px;"></i> <strong>${hub.rating || '4.9'}</strong> / 5.0</span>
+                          <span><i class="fa-solid fa-compass" style="color:#8b5cf6; margin-right:4px;"></i> GPS: ${hub.latitude ? `${hub.latitude.toFixed(4)}, ${hub.longitude.toFixed(4)}` : 'Not set'}</span>
+                        </div>
+                      </div>
+
+                      <div style="display:flex; gap:6px; flex-shrink:0;">
+                        <a href="https://www.google.com/maps/search/?api=1&query=${hub.latitude},${hub.longitude}" target="_blank" class="btn-sm-action" style="background:#f0fdf4; border:1px solid #bbf7d0; color:#15803d; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                          <i class="fa-solid fa-map-location-dot"></i> Map
+                        </a>
+                        <button onclick="openEditToolHubModal('${hub.id}')" class="btn-sm-action" style="background:#f8fafc; border:1px solid #cbd5e1; color:#0284c7; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer;">
+                          <i class="fa-solid fa-pen-to-square"></i> Edit
+                        </button>
+                        <button onclick="toggleToolHubVerified('${hub.id}', ${!isVerified})" class="btn-sm-action" style="background:#f8fafc; border:1px solid #cbd5e1; color:#475569; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer;" title="${isVerified ? 'Hide from technicians' : 'Verify & show on map'}">
+                          <i class="fa-solid ${isVerified ? 'fa-eye-slash' : 'fa-check'}"></i>
+                        </button>
+                        <button onclick="deleteToolHub('${hub.id}')" class="btn-sm-action" style="background:#fef2f2; border:1px solid #fecaca; color:#dc2626; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer;">
+                          <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                      </div>
+                    </div>
+
+                    ${hub.partnerDiscount ? `
+                      <div style="background:#ecfdf5; border-left:3px solid #10b981; padding:8px 12px; border-radius:6px; margin-top:12px; font-size:12px; color:#065f46; display:flex; align-items:center; gap:8px;">
+                        <i class="fa-solid fa-tag" style="color:#059669;"></i>
+                        <span><strong>Partner Discount:</strong> ${hub.partnerDiscount}</span>
+                      </div>
+                    ` : ''}
+                  </div>
+                `;
+              }).join('')}
+            </div>
+
+            <!-- RIGHT COLUMN: Live Mobile Map & Modal Simulator -->
+            <div style="position:sticky; top:20px;">
+              <div style="background:#0f172a; border-radius:36px; padding:14px; box-shadow:0 25px 60px rgba(0,0,0,0.35); border:4px solid #334155; width:100%; max-width:380px; margin:0 auto;">
+                <!-- Phone Top Speaker & Camera Notch -->
+                <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-bottom:10px;">
+                  <div style="width:50px; height:4px; background:#475569; border-radius:2px;"></div>
+                  <div style="width:8px; height:8px; background:#475569; border-radius:50%;"></div>
+                </div>
+
+                <!-- Phone Screen -->
+                <div style="background:#f8fafc; border-radius:24px; overflow:hidden; display:flex; flex-direction:column; min-height:560px; max-height:680px;">
+                  <!-- App Active Service Top Banner -->
+                  <div style="background:#1e293b; padding:8px 14px; display:flex; justify-content:space-between; align-items:center; font-size:10.5px; color:#cbd5e1; font-weight:700;">
+                    <span><i class="fa-solid fa-circle" style="color:#10b981; font-size:8px;"></i> ACTIVE SERVICE</span>
+                    <span style="color:#ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> SOS</span>
+                  </div>
+
+                  <!-- Modal Sheet Top Gradient Header (Matching uploaded screenshot) -->
+                  <div style="background:linear-gradient(180deg, #0F172A 0%, #1E293B 100%); padding:16px 14px 12px 14px; color:#ffffff;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                      <div style="background:rgba(96,165,250,0.2); border:1px solid rgba(96,165,250,0.35); padding:3px 8px; border-radius:12px; font-size:9.5px; font-weight:800; color:#60A5FA; letter-spacing:0.8px; display:inline-flex; align-items:center; gap:5px;">
+                        <i class="fa-solid fa-storefront"></i> SUPPLIERS &amp; TOOLS HUB
+                      </div>
+                      <div style="width:24px; height:24px; border-radius:50%; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-size:12px; color:#ffffff;">
+                        &times;
+                      </div>
+                    </div>
+
+                    <h3 style="font-size:16px; font-weight:800; color:#ffffff; margin:0 0 4px 0; line-height:1.2;">
+                      Nearby Spare Parts &amp; Tool Shops
+                    </h3>
+                    <p style="font-size:10.5px; color:rgba(255,255,255,0.75); margin:0; line-height:1.35;">
+                      Showing verified partner stores with negotiated Urban Captain discounts near current job location.
+                    </p>
+                  </div>
+
+                  <!-- Stores Body in Simulator -->
+                  <div style="flex:1; overflow-y:auto; padding:12px 14px; display:flex; flex-direction:column; gap:10px;">
+                    ${hubsList.filter(h => h.verified !== false).slice(0, 5).map(hub => {
+                      const cfg = categoryConfig[hub.category] || categoryConfig.general;
+                      return `
+                        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:12px; box-shadow:0 1px 2px rgba(0,0,0,0.03);">
+                          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+                            <span style="font-size:12px; font-weight:800; color:#0f172a;">${hub.name}</span>
+                            <span style="background:#ecfdf5; color:#059669; font-size:9px; font-weight:800; padding:1px 6px; border-radius:8px;">
+                              <i class="fa-solid fa-shield-check"></i> TRUSTED
+                            </span>
+                          </div>
+                          <p style="font-size:10.5px; color:#64748b; margin:2px 0 6px 0; line-height:1.3;">
+                            <i class="fa-solid fa-location-dot" style="color:#ef4444; font-size:9px;"></i> ${hub.address.split(',')[0]}
+                          </p>
+                          ${hub.partnerDiscount ? `
+                            <div style="background:#f0fdf4; border-left:2px solid #10b981; padding:4px 6px; border-radius:4px; font-size:9.5px; color:#065f46; margin-bottom:6px;">
+                              <i class="fa-solid fa-tag"></i> ${hub.partnerDiscount}
+                            </div>
+                          ` : ''}
+                          <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px; color:#0284c7; font-weight:700;">
+                            <span><i class="fa-solid fa-diamond-turn-right"></i> Navigate on Map</span>
+                            <span style="color:#475569;">${hub.phone}</span>
+                          </div>
+                        </div>
+                      `;
+                    }).join('')}
+                  </div>
+
+                  <!-- Simulator Footer Button -->
+                  <div style="padding:10px 14px; background:#ffffff; border-top:1px solid #e2e8f0;">
+                    <div style="background:#0F172A; color:#ffffff; font-weight:800; font-size:12px; padding:10px; border-radius:10px; text-align:center;">
+                      Close Supplier Hub
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    };
+
+    window.setHubCategoryFilter = function(cat) {
+      window._activeHubFilterCat = cat;
+      renderServices('toolhubs');
+    };
+
+    window.setHubSearchQuery = function(q) {
+      window._activeHubSearchQuery = q;
+      renderServices('toolhubs');
+    };
+
+    window.updateHubCategoryLabel = function(catKey) {
+      const labels = {
+        ro: 'Sediment filters, RO membranes, carbon filters, fittings & tubing',
+        ac: 'Refrigerant gas cans, capacitors, copper pipes & fan motors',
+        hardware: 'Power tools, drill bits, fasteners, adhesives & safety gear',
+        plumbing: 'CPVC pipes, brass valves, angle cocks, Teflon tape & sealants',
+        electrical: 'MCBs, copper wires, sockets, testing multimeters & relays',
+        general: 'Standard parts, spare components & power tools',
+      };
+      const labelInput = document.getElementById('hubCategoryLabel');
+      if (labelInput && !labelInput.value) {
+        labelInput.value = labels[catKey] || '';
+      }
+    };
+
+    window.openAddToolHubModal = function() {
+      document.getElementById('hubModalIsEdit').value = '0';
+      document.getElementById('hubModalId').value = '';
+      document.getElementById('hubModalTitle').innerHTML = '<i class="fa-solid fa-store" style="color:#f59e0b;"></i> Add Authorized Supplier Hub';
+      document.getElementById('hubName').value = '';
+      document.getElementById('hubCategory').value = 'ro';
+      document.getElementById('hubCategoryLabel').value = 'Sediment filters, RO membranes, carbon filters, fittings & tubing';
+      document.getElementById('hubPhone').value = '';
+      document.getElementById('hubAddress').value = '';
+      document.getElementById('hubCity').value = 'Salem';
+      document.getElementById('hubLat').value = '11.6685';
+      document.getElementById('hubLng').value = '78.1321';
+      document.getElementById('hubDiscount').value = '15% Off for Urban Helpers Technicians on Filters & Spares';
+      document.getElementById('hubHours').value = '8:30 AM - 9:00 PM';
+      document.getElementById('hubRating').value = '4.9';
+      document.getElementById('hubVerified').checked = true;
+      document.getElementById('toolHubModal').style.display = 'flex';
+    };
+
+    window.openEditToolHubModal = function(hubId) {
+      const hub = (window._allToolHubs || []).find(h => h.id === hubId);
+      if (!hub) return;
+      document.getElementById('hubModalIsEdit').value = '1';
+      document.getElementById('hubModalId').value = hubId;
+      document.getElementById('hubModalTitle').innerHTML = `<i class="fa-solid fa-pen-to-square" style="color:#f59e0b;"></i> Edit Hub: ${hub.name}`;
+      document.getElementById('hubName').value = hub.name || '';
+      document.getElementById('hubCategory').value = hub.category || 'ro';
+      document.getElementById('hubCategoryLabel').value = hub.categoryLabel || '';
+      document.getElementById('hubPhone').value = hub.phone || '';
+      document.getElementById('hubAddress').value = hub.address || '';
+      document.getElementById('hubCity').value = hub.city || '';
+      document.getElementById('hubLat').value = hub.latitude || '';
+      document.getElementById('hubLng').value = hub.longitude || '';
+      document.getElementById('hubDiscount').value = hub.partnerDiscount || '';
+      document.getElementById('hubHours').value = hub.operatingHours || '';
+      document.getElementById('hubRating').value = hub.rating || '4.9';
+      document.getElementById('hubVerified').checked = hub.verified !== false;
+      document.getElementById('toolHubModal').style.display = 'flex';
+    };
+
+    window.closeToolHubModal = function() {
+      document.getElementById('toolHubModal').style.display = 'none';
+    };
+
+    window.testHubLocationOnMap = function() {
+      const lat = document.getElementById('hubLat').value.trim();
+      const lng = document.getElementById('hubLng').value.trim();
+      const name = document.getElementById('hubName').value.trim();
+      if (!lat || !lng) {
+        alert('Please enter Latitude and Longitude first.');
+        return;
+      }
+      const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+      window.open(url, '_blank');
+    };
+
+    window.saveToolHub = async function(e) {
+      e.preventDefault();
+      const isEdit = document.getElementById('hubModalIsEdit').value === '1';
+      let hubId = document.getElementById('hubModalId').value.trim();
+      const name = document.getElementById('hubName').value.trim();
+      const category = document.getElementById('hubCategory').value;
+      const categoryLabel = document.getElementById('hubCategoryLabel').value.trim();
+      const phone = document.getElementById('hubPhone').value.trim();
+      const address = document.getElementById('hubAddress').value.trim();
+      const city = document.getElementById('hubCity').value.trim();
+      const latitude = parseFloat(document.getElementById('hubLat').value) || 0;
+      const longitude = parseFloat(document.getElementById('hubLng').value) || 0;
+      const partnerDiscount = document.getElementById('hubDiscount').value.trim();
+      const operatingHours = document.getElementById('hubHours').value.trim();
+      const rating = parseFloat(document.getElementById('hubRating').value) || 4.9;
+      const verified = document.getElementById('hubVerified').checked;
+
+      if (!hubId) {
+        hubId = 'hub_' + Math.random().toString(36).substring(2, 9);
+      }
+
+      const payload = {
+        name,
+        category,
+        categoryLabel,
+        phone,
+        address,
+        city,
+        latitude,
+        longitude,
+        partnerDiscount,
+        operatingHours,
+        rating,
+        verified,
+        updatedAt: serverTimestamp(),
+      };
+
+      try {
+        await setDoc(doc(db, 'tool_hubs', hubId), payload, { merge: true });
+        closeToolHubModal();
+        alert(`✅ Authorized Hub "${name}" saved! Technicians will now see this verified store on their map.`);
+        renderServices('toolhubs');
+      } catch (err) {
+        alert('Error saving tool hub: ' + err.message);
+      }
+    };
+
+    window.toggleToolHubVerified = async function(hubId, isVerified) {
+      try {
+        await updateDoc(doc(db, 'tool_hubs', hubId), {
+          verified: isVerified,
+          updatedAt: serverTimestamp(),
+        });
+        renderServices('toolhubs');
+      } catch(err) {
+        alert('Error updating status: ' + err.message);
+      }
+    };
+
+    window.deleteToolHub = async function(hubId) {
+      if (!confirm('Are you sure you want to delete this authorized tool hub from Firestore?')) return;
+      try {
+        await deleteDoc(doc(db, 'tool_hubs', hubId));
+        alert('✅ Store removed from authorized tool hubs.');
+        renderServices('toolhubs');
+      } catch(err) {
+        alert('Error deleting tool hub: ' + err.message);
+      }
+    };
+
+    // ─────────────────────────────────────────────
+    // 7. SERVICE QUALITY CHECKLISTS MANAGER
+    // ─────────────────────────────────────────────
+    const DEFAULT_SERVICE_CHECKLISTS = {
+      ro: {
+        categoryKey: 'ro',
+        categoryName: 'RO Water Purifier Service',
+        serviceTypes: ['ro', 'water', 'purif', 'filter'],
+        icon: 'fa-solid fa-faucet-drip',
+        color: '#0284c7',
+        order: 1,
+        items: [
+          { id: 'ro_1', task: 'Test raw inlet TDS and check water pressure', standard: 'Raw TDS < 2000 ppm, inlet pressure > 0.5 bar required', mandatory: true },
+          { id: 'ro_2', task: 'Inspect pre-filter, sediment & activated carbon cartridges', standard: 'Inspect spun polypropylene for silt & carbon block for exhaustion', mandatory: true },
+          { id: 'ro_3', task: 'Check RO membrane rejection rate & pump PSI', standard: 'Pump PSI 80-110, membrane salt rejection rate >= 90%', mandatory: true },
+          { id: 'ro_4', task: 'Sanitize storage tank & test output water purity', standard: 'Food-grade sanitization, verify pure water TDS reduction', mandatory: true },
+          { id: 'ro_5', task: 'Capture Before & After service proof photos', standard: 'Clear photos of uninstalled parts and newly fitted filters', mandatory: true },
+          { id: 'ro_6', task: 'Handover verified pure water sample to customer', standard: 'Demonstrate TDS drop on digital meter to customer', mandatory: true },
+        ]
+      },
+      ac: {
+        categoryKey: 'ac',
+        categoryName: 'Air Conditioner (AC) Service',
+        serviceTypes: ['ac', 'air conditioner', 'cool'],
+        icon: 'fa-solid fa-snowflake',
+        color: '#06b6d4',
+        order: 2,
+        items: [
+          { id: 'ac_1', task: 'Inspect indoor/outdoor units & power diagnostics', standard: 'Check line voltage (220-240V) and wiring connections', mandatory: true },
+          { id: 'ac_2', task: 'Deep jet cleaning of filters & condenser coils', standard: 'High-pressure wash with jacket protection & drain flush', mandatory: true },
+          { id: 'ac_3', task: 'Check refrigerant gas pressure & leak detection', standard: 'R32/R410A suction pressure verified, no soap bubble leaks', mandatory: true },
+          { id: 'ac_4', task: 'Measure air output temperature & voltage test', standard: 'Cooling differential >= 10°C from room ambient', mandatory: true },
+          { id: 'ac_5', task: 'Capture Before & After service proof photos', standard: 'Clear photos of clogged coils vs sparkling clean fins', mandatory: true },
+          { id: 'ac_6', task: 'Complete test run & handover to customer', standard: '10-minute continuous run with smooth fan airflow', mandatory: true },
+        ]
+      },
+      pest: {
+        categoryKey: 'pest',
+        categoryName: 'Pest & Insect Control',
+        serviceTypes: ['pest', 'cockroach', 'termite', 'bug'],
+        icon: 'fa-solid fa-bug',
+        color: '#84cc16',
+        order: 3,
+        items: [
+          { id: 'pest_1', task: 'Identify infestation hotspots & entry gaps', standard: 'Inspect kitchen under-sink, skirting corners & drains', mandatory: true },
+          { id: 'pest_2', task: 'Chemical dilution & safety preparation check', standard: 'Certified Bayer/CIB formulation diluted per guidelines', mandatory: true },
+          { id: 'pest_3', task: 'Targeted gel baiting & crack-and-crevice perimeter spray', standard: 'Cover all skirting gaps, hinges & pipe penetrations', mandatory: true },
+          { id: 'pest_4', task: 'Safety briefing on ventilation to customer', standard: 'Advise 2-hour room closure and food protection protocols', mandatory: true },
+          { id: 'pest_5', task: 'Capture Before & After treatment photos', standard: 'Photos of applied gel bait dots and treated perimeters', mandatory: true },
+        ]
+      },
+      plumbing: {
+        categoryKey: 'plumbing',
+        categoryName: 'Plumbing & Sanitary Repair',
+        serviceTypes: ['plumb', 'pipe', 'drain', 'tap', 'leak'],
+        icon: 'fa-solid fa-wrench',
+        color: '#3b82f6',
+        order: 4,
+        items: [
+          { id: 'plumb_1', task: 'Inspect pipeline joints, valves & pressure test', standard: 'Trace origin of leakage or water hammer issues', mandatory: true },
+          { id: 'plumb_2', task: 'Isolate main water line & disassemble faulty fittings', standard: 'Shut off isolation angle cocks before unthreading', mandatory: true },
+          { id: 'plumb_3', task: 'Replace worn washers, seals, cartridges or pipes', standard: 'Fit ISI certified CPVC/brass fittings with Teflon seal', mandatory: true },
+          { id: 'plumb_4', task: 'Re-pressurize system & verify zero leaks', standard: 'Test under full mains pressure with dry tissue check', mandatory: true },
+          { id: 'plumb_5', task: 'Capture Before & After repair photos', standard: 'Clear photos of defective piece and finished joint', mandatory: true },
+        ]
+      },
+      electrical: {
+        categoryKey: 'electrical',
+        categoryName: 'Electrical Installation & Safety',
+        serviceTypes: ['electr', 'wire', 'switch', 'fan', 'light'],
+        icon: 'fa-solid fa-bolt',
+        color: '#f59e0b',
+        order: 5,
+        items: [
+          { id: 'elec_1', task: 'Voltage & circuit continuity safety check', standard: 'De-energize main MCB before touching exposed terminals', mandatory: true },
+          { id: 'elec_2', task: 'Inspect wiring insulation and terminal tightness', standard: 'Verify copper gauges, zero melt marks or loose screws', mandatory: true },
+          { id: 'elec_3', task: 'Replace or repair malfunctioning electrical components', standard: 'Install rated switches, sockets or relays cleanly', mandatory: true },
+          { id: 'elec_4', task: 'Test load capacity and grounding safety', standard: 'Measure phase-to-neutral 230V and neutral-to-earth < 2V', mandatory: true },
+          { id: 'elec_5', task: 'Capture Before & After service photos', standard: 'Photos of open junction box and finished clean plate', mandatory: true },
+        ]
+      },
+      cleaning: {
+        categoryKey: 'cleaning',
+        categoryName: 'Home Cleaning & Housekeeping',
+        serviceTypes: ['clean', 'maid', 'housekeep', 'deep clean'],
+        icon: 'fa-solid fa-sparkles',
+        color: '#10b981',
+        order: 6,
+        items: [
+          { id: 'clean_1', task: 'Inspect rooms, surfaces & high-touch areas', standard: 'Map cleaning order from dry dusting to deep wet scrubbing', mandatory: true },
+          { id: 'clean_2', task: 'Dusting, vacuuming & deep scrubbing of floors', standard: 'Use HEPA vacuum and microfiber mop pads', mandatory: true },
+          { id: 'clean_3', task: 'Kitchen counter, sink & appliance degreasing', standard: 'Dissolve oil residue from chimneys, tiles & countertops', mandatory: true },
+          { id: 'clean_4', task: 'Bathroom sanitation & tile descaling', standard: 'Descale hard water stains from glass, taps & tiles', mandatory: true },
+          { id: 'clean_5', task: 'Capture Before & After service proof photos', standard: 'Before/after angles of each designated zone', mandatory: true },
+          { id: 'clean_6', task: 'Final walkthrough & customer satisfaction review', standard: 'Inspect all areas with customer and obtain approval', mandatory: true },
+        ]
+      },
+      general: {
+        categoryKey: 'general',
+        categoryName: 'General Maintenance & Handyman',
+        serviceTypes: ['general', 'repair', 'handyman'],
+        icon: 'fa-solid fa-screwdriver-wrench',
+        color: '#6366f1',
+        order: 7,
+        items: [
+          { id: 'gen_1', task: 'Initial pre-service inspection & safety audit', standard: 'Verify scope of request and review plan with customer', mandatory: true },
+          { id: 'gen_2', task: 'Execute core service procedures with calibrated tools', standard: 'Follow standard industry trade practice and safety wear', mandatory: true },
+          { id: 'gen_3', task: 'Inspect and verify operational quality', standard: 'Perform live function test under normal operating conditions', mandatory: true },
+          { id: 'gen_4', task: 'Capture Before & After work verification photos', standard: 'Clear photos confirming proper repair completion', mandatory: true },
+          { id: 'gen_5', task: 'Customer demonstration & clean site handover', standard: 'Demonstrate working condition and clean up all debris', mandatory: true },
+        ]
+      }
+    };
+
+    window._activeChecklistCategoryKey = 'ro';
+    window._allChecklistCategories = {};
+    window._simChecklistDone = [];
+
+    window.renderChecklistsManagerView = async function(container) {
+      container.innerHTML = `
+        <div style="display:flex; justify-content:center; align-items:center; min-height:300px;">
+          <div style="text-align:center;">
+            <i class="fa-solid fa-circle-notch fa-spin" style="font-size:32px; color:#10b981;"></i>
+            <p style="margin-top:12px; font-size:14px; font-weight:700; color:#475569;">Loading Service Quality Checklists from Firestore...</p>
+          </div>
+        </div>
+      `;
+
+      let categories = {};
+      let isFromFirestore = false;
+
+      try {
+        const snap = await getDocs(collection(db, 'service_checklists'));
+        if (!snap.empty) {
+          isFromFirestore = true;
+          snap.forEach(d => {
+            categories[d.id] = { id: d.id, ...d.data() };
+          });
+        }
+      } catch (err) {
+        console.warn('[renderChecklistsManagerView] Firestore read error:', err);
+      }
+
+      // If Firestore is empty, fallback to DEFAULT_SERVICE_CHECKLISTS
+      if (Object.keys(categories).length === 0) {
+        categories = JSON.parse(JSON.stringify(DEFAULT_SERVICE_CHECKLISTS));
+      }
+
+      window._allChecklistCategories = categories;
+
+      // Ensure active category key is valid
+      const catKeys = Object.keys(categories);
+      if (!categories[window._activeChecklistCategoryKey] && catKeys.length > 0) {
+        window._activeChecklistCategoryKey = catKeys[0];
+      }
+
+      const activeCat = categories[window._activeChecklistCategoryKey] || {
+        categoryKey: window._activeChecklistCategoryKey,
+        categoryName: 'Service Checklist',
+        serviceTypes: [],
+        icon: 'fa-solid fa-list-check',
+        color: '#10b981',
+        order: 1,
+        items: []
+      };
+
+      const items = Array.isArray(activeCat.items) ? activeCat.items : [];
+      const totalSteps = items.length;
+
+      // Mobile simulator simulation state initialization
+      if (!window._simChecklistDoneCategory || window._simChecklistDoneCategory !== window._activeChecklistCategoryKey) {
+        window._simChecklistDoneCategory = window._activeChecklistCategoryKey;
+        // Default simulation to all completed to match user's screenshot (6/6)
+        window._simChecklistDone = items.map(it => it.task);
+      }
+
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:20px;">
+          <!-- Top Header -->
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:14px;">
+            <div>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <div style="width:40px; height:40px; border-radius:10px; background:#ecfdf5; display:flex; align-items:center; justify-content:center;">
+                  <i class="fa-solid fa-list-check" style="color:#10b981; font-size:20px;"></i>
+                </div>
+                <div>
+                  <h1 style="font-size:22px; font-weight:800; color:#0f172a; margin:0;">Service Quality Checklists</h1>
+                  <p style="font-size:13px; color:#64748b; margin-top:2px;">Customize mandatory technician SOP checklists, add or remove tasks, and reorder steps. Live-synced to mobile apps.</p>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              ${!isFromFirestore ? `
+                <button onclick="seedDefaultChecklists()" class="btn-primary-action" style="background:#0284c7; color:#fff; border:none; border-radius:8px; padding:9px 16px; font-weight:700; font-size:12.5px; cursor:pointer; display:inline-flex; align-items:center; gap:8px;">
+                  <i class="fa-solid fa-cloud-arrow-up"></i> Seed Checklists to Firestore
+                </button>
+              ` : `
+                <button onclick="seedDefaultChecklists(true)" class="btn-outline-action" style="background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:9px 14px; font-weight:700; font-size:12px; color:#475569; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                  <i class="fa-solid fa-rotate"></i> Restore Standard Checklists
+                </button>
+              `}
+              <button onclick="openAddChecklistItemModal('${activeCat.categoryKey}')" class="btn-primary-action" style="background:#10b981; color:#fff; border:none; border-radius:8px; padding:9px 18px; font-weight:700; font-size:13px; cursor:pointer; display:inline-flex; align-items:center; gap:8px; box-shadow:0 2px 4px rgba(16,185,129,0.25);">
+                <i class="fa-solid fa-plus"></i> Add Checklist Task
+              </button>
+              <button onclick="openAddChecklistCategoryModal()" class="btn-outline-action" style="background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:9px 16px; font-weight:700; font-size:12.5px; color:#0f172a; cursor:pointer; display:inline-flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-folder-plus" style="color:#10b981;"></i> New Category
+              </button>
+            </div>
+          </div>
+
+          <!-- Category Selector Tabs -->
+          <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:8px 12px; display:flex; gap:8px; overflow-x:auto; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+            ${catKeys.map(k => {
+              const c = categories[k];
+              const isActive = k === window._activeChecklistCategoryKey;
+              const itemCount = (c.items || []).length;
+              return `
+                <button onclick="switchChecklistCategory('${k}')" style="display:flex; align-items:center; gap:8px; padding:9px 16px; border-radius:10px; font-size:13px; font-weight:${isActive ? '800' : '600'}; background:${isActive ? (c.color || '#10b981') : '#f8fafc'}; color:${isActive ? '#ffffff' : '#475569'}; border:${isActive ? 'none' : '1px solid #e2e8f0'}; cursor:pointer; white-space:nowrap; transition:all 0.15s ease;">
+                  <i class="${c.icon || 'fa-solid fa-list-check'}"></i>
+                  <span>${c.categoryName || k.toUpperCase()}</span>
+                  <span style="font-size:11px; padding:2px 7px; border-radius:12px; background:${isActive ? 'rgba(255,255,255,0.28)' : '#e2e8f0'}; color:${isActive ? '#ffffff' : '#64748b'}; font-weight:700;">${itemCount}</span>
+                </button>
+              `;
+            }).join('')}
+          </div>
+
+          <!-- Main Two-Column Layout -->
+          <div style="display:grid; grid-template-columns:1fr 380px; gap:24px; align-items:start;">
+            <!-- LEFT COLUMN: Checklist Items Management -->
+            <div style="display:flex; flex-direction:column; gap:16px;">
+              <!-- Category Card Banner -->
+              <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:18px 22px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
+                <div style="display:flex; align-items:center; gap:14px;">
+                  <div style="width:44px; height:44px; border-radius:12px; background:${activeCat.color ? activeCat.color + '15' : '#ecfdf5'}; color:${activeCat.color || '#10b981'}; display:flex; align-items:center; justify-content:center; font-size:20px;">
+                    <i class="${activeCat.icon || 'fa-solid fa-list-check'}"></i>
+                  </div>
+                  <div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <h2 style="font-size:17px; font-weight:800; color:#0f172a; margin:0;">${activeCat.categoryName}</h2>
+                      <span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:6px; background:#f1f5f9; color:#475569; font-family:monospace;">key: ${activeCat.categoryKey}</span>
+                    </div>
+                    <div style="font-size:12px; color:#64748b; margin-top:4px;">
+                      <span>Matches services containing: <strong>${Array.isArray(activeCat.serviceTypes) ? activeCat.serviceTypes.join(', ') : (activeCat.serviceTypes || activeCat.categoryKey)}</strong></span>
+                      <span style="margin:0 6px;">•</span>
+                      <span>Total Checkpoints: <strong>${totalSteps}</strong></span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="display:flex; gap:8px;">
+                  <button onclick="openEditChecklistCategoryModal('${activeCat.categoryKey}')" class="btn-sm-action" style="background:#f8fafc; border:1px solid #cbd5e1; color:#0284c7; border-radius:8px; padding:7px 12px; font-size:12px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:5px;">
+                    <i class="fa-solid fa-pen-to-square"></i> Edit Category
+                  </button>
+                  ${catKeys.length > 1 ? `
+                    <button onclick="deleteChecklistCategory('${activeCat.categoryKey}')" class="btn-sm-action" style="background:#fef2f2; border:1px solid #fecaca; color:#dc2626; border-radius:8px; padding:7px 10px; font-size:12px; font-weight:700; cursor:pointer;" title="Delete this entire category">
+                      <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+
+              <!-- Checklist Items Container -->
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                ${items.length === 0 ? `
+                  <div style="background:#ffffff; border:2px dashed #cbd5e1; border-radius:14px; padding:36px; text-align:center;">
+                    <i class="fa-solid fa-clipboard-list" style="font-size:36px; color:#94a3b8;"></i>
+                    <h3 style="font-size:16px; font-weight:800; color:#0f172a; margin-top:10px;">No Checkpoints Configured</h3>
+                    <p style="font-size:13px; color:#64748b; max-width:400px; margin:6px auto 16px;">This service category does not have any checklist tasks yet. Add mandatory tasks for technicians to verify.</p>
+                    <button onclick="openAddChecklistItemModal('${activeCat.categoryKey}')" class="btn-primary-action" style="background:#10b981; color:#fff; border:none; border-radius:8px; padding:9px 20px; font-weight:700; font-size:13px; cursor:pointer;">
+                      <i class="fa-solid fa-plus"></i> Add First Checklist Task
+                    </button>
+                  </div>
+                ` : items.map((item, idx) => {
+                  const isFirst = idx === 0;
+                  const isLast = idx === items.length - 1;
+                  const stepNum = idx + 1;
+                  return `
+                    <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:16px 18px; box-shadow:0 1px 3px rgba(0,0,0,0.02); display:flex; align-items:flex-start; gap:14px; transition:box-shadow 0.15s ease;">
+                      <!-- Step Badge & Check Icon -->
+                      <div style="display:flex; flex-direction:column; align-items:center; gap:4px; flex-shrink:0;">
+                        <div style="width:36px; height:36px; border-radius:10px; background:#ecfdf5; border:1px solid #a7f3d0; display:flex; align-items:center; justify-content:center; color:#059669; font-size:16px;">
+                          <i class="fa-solid fa-circle-check"></i>
+                        </div>
+                        <span style="font-size:11px; font-weight:800; color:#64748b;">Step ${stepNum}</span>
+                      </div>
+
+                      <!-- Task Details -->
+                      <div style="flex:1; min-width:0;">
+                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                          <h4 style="font-size:14.5px; font-weight:800; color:#0f172a; margin:0; line-height:1.4;">${item.task}</h4>
+                          ${item.mandatory !== false ? `
+                            <span style="font-size:10.5px; font-weight:800; background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; padding:2px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:4px;">
+                              <i class="fa-solid fa-lock" style="font-size:9px;"></i> Mandatory Gate
+                            </span>
+                          ` : `
+                            <span style="font-size:10.5px; font-weight:700; background:#f8fafc; color:#64748b; border:1px solid #e2e8f0; padding:2px 8px; border-radius:6px;">
+                              Optional
+                            </span>
+                          `}
+                        </div>
+
+                        ${item.standard ? `
+                          <div style="margin-top:6px; font-size:12.5px; color:#475569; background:#f8fafc; border-left:3px solid #10b981; padding:6px 10px; border-radius:4px; display:flex; align-items:center; gap:6px;">
+                            <i class="fa-solid fa-shield-halved" style="color:#10b981; font-size:11px;"></i>
+                            <span><strong>Standard:</strong> ${item.standard}</span>
+                          </div>
+                        ` : ''}
+                      </div>
+
+                      <!-- Actions: Move Up/Down, Edit, Delete -->
+                      <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                        <button onclick="moveChecklistItem('${activeCat.categoryKey}', '${item.id}', 'up')" class="btn-sm-action" style="background:#f8fafc; border:1px solid #cbd5e1; color:#475569; border-radius:6px; width:30px; height:30px; padding:0; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:${isFirst ? 'not-allowed' : 'pointer'}; opacity:${isFirst ? '0.35' : '1'};" ${isFirst ? 'disabled' : ''} title="Move Up">
+                          <i class="fa-solid fa-arrow-up"></i>
+                        </button>
+                        <button onclick="moveChecklistItem('${activeCat.categoryKey}', '${item.id}', 'down')" class="btn-sm-action" style="background:#f8fafc; border:1px solid #cbd5e1; color:#475569; border-radius:6px; width:30px; height:30px; padding:0; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:${isLast ? 'not-allowed' : 'pointer'}; opacity:${isLast ? '0.35' : '1'};" ${isLast ? 'disabled' : ''} title="Move Down">
+                          <i class="fa-solid fa-arrow-down"></i>
+                        </button>
+                        <button onclick="openEditChecklistItemModal('${activeCat.categoryKey}', '${item.id}')" class="btn-sm-action" style="background:#f8fafc; border:1px solid #cbd5e1; color:#0284c7; border-radius:6px; width:30px; height:30px; padding:0; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer;" title="Edit Task">
+                          <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button onclick="deleteChecklistItem('${activeCat.categoryKey}', '${item.id}')" class="btn-sm-action" style="background:#fef2f2; border:1px solid #fecaca; color:#dc2626; border-radius:6px; width:30px; height:30px; padding:0; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer;" title="Delete Task">
+                          <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+
+              <!-- Quick Add Task Footer Link -->
+              <div style="display:flex; justify-content:center; margin-top:6px;">
+                <button onclick="openAddChecklistItemModal('${activeCat.categoryKey}')" style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:10px; padding:10px 24px; font-size:13px; font-weight:700; color:#10b981; cursor:pointer; display:inline-flex; align-items:center; gap:8px; width:100%; justify-content:center;">
+                  <i class="fa-solid fa-plus-circle"></i> Add Another Checklist Checkpoint to ${activeCat.categoryName}
+                </button>
+              </div>
+            </div>
+
+            <!-- RIGHT COLUMN: Live Mobile App Simulator Preview -->
+            <div style="position:sticky; top:20px;">
+              <div style="background:#0f172a; border-radius:36px; padding:14px; box-shadow:0 25px 60px rgba(0,0,0,0.35); border:4px solid #334155; width:100%; max-width:380px; margin:0 auto;">
+                <!-- Phone Top Bar -->
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:2px 14px 10px; color:#94a3b8; font-size:11px; font-weight:700;">
+                  <span>11:21</span>
+                  <div style="width:70px; height:18px; background:#000; border-radius:12px; margin:0 auto;"></div>
+                  <div style="display:flex; gap:5px; align-items:center;">
+                    <i class="fa-solid fa-wifi"></i>
+                    <i class="fa-solid fa-battery-three-quarters"></i>
+                  </div>
+                </div>
+
+                <!-- Simulated Mobile Screen Content (Matching Screenshot) -->
+                <div style="background:#f8fafc; border-radius:24px; overflow:hidden; border:1px solid #1e293b; max-height:640px; display:flex; flex-direction:column;">
+                  <!-- Mobile Header -->
+                  <div style="background:#ffffff; padding:12px 14px; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                      <span style="width:8px; height:8px; border-radius:50%; background:#10b981; display:inline-block;"></span>
+                      <span style="font-size:11.5px; font-weight:900; letter-spacing:0.5px; color:#0f172a;">ACTIVE SERVICE</span>
+                    </div>
+                    <span style="background:#fee2e2; color:#dc2626; font-size:10px; font-weight:900; padding:2px 7px; border-radius:4px; letter-spacing:0.5px;">
+                      <i class="fa-solid fa-triangle-exclamation"></i> SOS
+                    </span>
+                  </div>
+
+                  <!-- Mobile Scrollable Body -->
+                  <div style="padding:12px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; flex:1;">
+                    <!-- Mini Service Card -->
+                    <div style="background:#0f172a; border-radius:12px; padding:12px; color:#fff;">
+                      <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="background:rgba(255,255,255,0.12); color:#38bdf8; font-size:10px; font-weight:800; padding:2px 8px; border-radius:12px;">
+                          <i class="${activeCat.icon || 'fa-solid fa-wrench'}"></i> ${activeCat.categoryName.replace(' Service', '')}
+                        </span>
+                        <span style="font-size:11.5px; font-weight:800; color:#f8fafc;">₹399</span>
+                      </div>
+                      <div style="font-size:13.5px; font-weight:800; color:#f8fafc; margin-top:6px;">Standard Service Package</div>
+                      <div style="font-size:10.5px; color:#94a3b8; margin-top:2px;">Customer: Urban Helpers • Salem</div>
+                    </div>
+
+                    <!-- Mini Audio Proof Card -->
+                    <div style="background:#ffffff; border:1px solid #fecdd3; border-radius:12px; padding:10px; background:#fff1f2;">
+                      <div style="display:flex; align-items:center; gap:6px; color:#9f1239; font-size:10.5px; font-weight:800;">
+                        <span style="width:7px; height:7px; border-radius:50%; background:#e11d48; display:inline-block; animation:pulse 1.5s infinite;"></span>
+                        <span>Automatic Voice Recording Active</span>
+                      </div>
+                      <div style="font-size:9.5px; color:#be123c; margin-top:2px;">Recording in background • Auto-saves upon completion</div>
+                    </div>
+
+                    <!-- Dynamic Service Checklist Card (Screenshot Replica) -->
+                    <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:12px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+                      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <div style="display:flex; align-items:center; gap:6px;">
+                          <i class="fa-solid fa-square-check" style="color:#0f172a; font-size:13px;"></i>
+                          <span style="font-size:11px; font-weight:900; letter-spacing:0.5px; color:#0f172a;">
+                            SERVICE CHECKLIST (${window._simChecklistDone.length}/${items.length})
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style="display:flex; flex-direction:column; gap:7px;">
+                        ${items.map((item, idx) => {
+                          const isDone = window._simChecklistDone.includes(item.task);
+                          return `
+                            <div onclick="toggleSimChecklistItem('${item.task.replace(/'/g, "\\'")}')" style="display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:10px; background:${isDone ? '#f0fdf4' : '#ffffff'}; border:1px solid ${isDone ? '#bbf7d0' : '#e2e8f0'}; cursor:pointer; transition:all 0.15s ease;">
+                              <div style="width:18px; height:18px; border-radius:4px; background:${isDone ? '#10b981' : '#f8fafc'}; border:1.5px solid ${isDone ? '#10b981' : '#cbd5e1'}; display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px; flex-shrink:0;">
+                                ${isDone ? '<i class="fa-solid fa-check"></i>' : ''}
+                              </div>
+                              <span style="font-size:11.5px; font-weight:${isDone ? '700' : '600'}; color:${isDone ? '#166534' : '#1e293b'}; text-decoration:${isDone ? 'line-through' : 'none'}; opacity:${isDone ? '0.9' : '1'}; flex:1; line-height:1.35;">
+                                ${item.task}
+                              </span>
+                            </div>
+                          `;
+                        }).join('')}
+                      </div>
+                    </div>
+
+                    <!-- Complete Button -->
+                    <div style="margin-top:4px;">
+                      <button style="width:100%; padding:10px; background:#064e3b; color:#ffffff; border:none; border-radius:10px; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:6px;">
+                        <i class="fa-solid fa-circle-check"></i> Complete & Finalize Service
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Footer Simulator Status -->
+                  <div style="background:#0f172a; padding:8px 12px; text-align:center; color:#94a3b8; font-size:10.5px;">
+                    <i class="fa-solid fa-bolt" style="color:#10b981;"></i> Real-Time Mobile App Simulator
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    };
+
+    window.switchChecklistCategory = function(catKey) {
+      window._activeChecklistCategoryKey = catKey;
+      renderServices('checklists');
+    };
+
+    window.toggleSimChecklistItem = function(task) {
+      if (!window._simChecklistDone) window._simChecklistDone = [];
+      const idx = window._simChecklistDone.indexOf(task);
+      if (idx > -1) {
+        window._simChecklistDone.splice(idx, 1);
+      } else {
+        window._simChecklistDone.push(task);
+      }
+      renderServices('checklists');
+    };
+
+    window.openAddChecklistCategoryModal = function() {
+      document.getElementById('chkCatIsEdit').value = '0';
+      document.getElementById('chkCatModalTitle').innerHTML = '<i class="fa-solid fa-list-check" style="color:#10b981;"></i> Add Category Checklist';
+      document.getElementById('chkCatKey').value = '';
+      document.getElementById('chkCatKey').disabled = false;
+      document.getElementById('chkCatName').value = '';
+      document.getElementById('chkCatTypes').value = '';
+      document.getElementById('chkCatIcon').value = 'fa-solid fa-wrench';
+      document.getElementById('chkCatOrder').value = Object.keys(window._allChecklistCategories || {}).length + 1;
+      document.getElementById('chkCatColor').value = '#10b981';
+      document.getElementById('chkCatColorText').value = '#10b981';
+      document.getElementById('chkCatModal').style.display = 'flex';
+    };
+
+    window.openEditChecklistCategoryModal = function(catKey) {
+      const c = (window._allChecklistCategories || {})[catKey];
+      if (!c) return;
+      document.getElementById('chkCatIsEdit').value = '1';
+      document.getElementById('chkCatModalTitle').innerHTML = `<i class="fa-solid fa-pen-to-square" style="color:#10b981;"></i> Edit Category: ${c.categoryName}`;
+      document.getElementById('chkCatKey').value = catKey;
+      document.getElementById('chkCatKey').disabled = true;
+      document.getElementById('chkCatName').value = c.categoryName || '';
+      document.getElementById('chkCatTypes').value = Array.isArray(c.serviceTypes) ? c.serviceTypes.join(', ') : (c.serviceTypes || '');
+      document.getElementById('chkCatIcon').value = c.icon || 'fa-solid fa-list-check';
+      document.getElementById('chkCatOrder').value = c.order || 1;
+      document.getElementById('chkCatColor').value = c.color || '#10b981';
+      document.getElementById('chkCatColorText').value = c.color || '#10b981';
+      document.getElementById('chkCatModal').style.display = 'flex';
+    };
+
+    window.closeChecklistCategoryModal = function() {
+      document.getElementById('chkCatModal').style.display = 'none';
+    };
+
+    window.saveChecklistCategory = async function(e) {
+      e.preventDefault();
+      const isEdit = document.getElementById('chkCatIsEdit').value === '1';
+      const key = document.getElementById('chkCatKey').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+      const categoryName = document.getElementById('chkCatName').value.trim();
+      const rawTypes = document.getElementById('chkCatTypes').value.trim();
+      const serviceTypes = rawTypes ? rawTypes.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [key];
+      const icon = document.getElementById('chkCatIcon').value.trim() || 'fa-solid fa-list-check';
+      const order = parseInt(document.getElementById('chkCatOrder').value) || 1;
+      const color = document.getElementById('chkCatColor').value.trim() || '#10b981';
+
+      if (!key) {
+        alert('Please specify a unique category identifier key.');
+        return;
+      }
+
+      const existingCat = (window._allChecklistCategories || {})[key] || {};
+      const payload = {
+        categoryKey: key,
+        categoryName,
+        serviceTypes,
+        icon,
+        order,
+        color,
+        items: existingCat.items || [],
+        updatedAt: serverTimestamp(),
+      };
+
+      try {
+        await setDoc(doc(db, 'service_checklists', key), payload, { merge: true });
+        closeChecklistCategoryModal();
+        window._activeChecklistCategoryKey = key;
+        alert(`✅ Service Category "${categoryName}" saved successfully!`);
+        renderServices('checklists');
+      } catch (err) {
+        alert('Error saving category checklist: ' + err.message);
+      }
+    };
+
+    window.deleteChecklistCategory = async function(catKey) {
+      const c = (window._allChecklistCategories || {})[catKey];
+      const name = c ? c.categoryName : catKey;
+      if (!confirm(`Are you sure you want to delete the "${name}" checklist category and all its items from Firestore?`)) return;
+
+      try {
+        await deleteDoc(doc(db, 'service_checklists', catKey));
+        alert(`✅ Category "${name}" deleted.`);
+        window._activeChecklistCategoryKey = 'ro';
+        renderServices('checklists');
+      } catch (err) {
+        alert('Error deleting category: ' + err.message);
+      }
+    };
+
+    window.openAddChecklistItemModal = function(catKey) {
+      const c = (window._allChecklistCategories || {})[catKey];
+      const items = c && Array.isArray(c.items) ? c.items : [];
+      document.getElementById('chkItemCategoryKey').value = catKey;
+      document.getElementById('chkItemIsEdit').value = '0';
+      document.getElementById('chkItemId').value = '';
+      document.getElementById('chkItemModalTitle').innerHTML = `<i class="fa-solid fa-list-check" style="color:#10b981;"></i> Add Task to ${c ? c.categoryName : 'Checklist'}`;
+      document.getElementById('chkItemTask').value = '';
+      document.getElementById('chkItemStandard').value = '';
+      document.getElementById('chkItemOrder').value = items.length + 1;
+      document.getElementById('chkItemMandatory').checked = true;
+      document.getElementById('chkItemModal').style.display = 'flex';
+    };
+
+    window.openEditChecklistItemModal = function(catKey, itemId) {
+      const c = (window._allChecklistCategories || {})[catKey];
+      if (!c) return;
+      const items = Array.isArray(c.items) ? c.items : [];
+      const item = items.find(it => it.id === itemId);
+      if (!item) return;
+
+      document.getElementById('chkItemCategoryKey').value = catKey;
+      document.getElementById('chkItemIsEdit').value = '1';
+      document.getElementById('chkItemId').value = itemId;
+      document.getElementById('chkItemModalTitle').innerHTML = `<i class="fa-solid fa-pen-to-square" style="color:#10b981;"></i> Edit Checklist Task`;
+      document.getElementById('chkItemTask').value = item.task || '';
+      document.getElementById('chkItemStandard').value = item.standard || '';
+      document.getElementById('chkItemOrder').value = items.indexOf(item) + 1;
+      document.getElementById('chkItemMandatory').checked = item.mandatory !== false;
+      document.getElementById('chkItemModal').style.display = 'flex';
+    };
+
+    window.closeChecklistItemModal = function() {
+      document.getElementById('chkItemModal').style.display = 'none';
+    };
+
+    window.saveChecklistItem = async function(e) {
+      e.preventDefault();
+      const catKey = document.getElementById('chkItemCategoryKey').value;
+      const isEdit = document.getElementById('chkItemIsEdit').value === '1';
+      const itemId = document.getElementById('chkItemId').value;
+      const task = document.getElementById('chkItemTask').value.trim();
+      const standard = document.getElementById('chkItemStandard').value.trim();
+      const mandatory = document.getElementById('chkItemMandatory').checked;
+      const order = parseInt(document.getElementById('chkItemOrder').value) || 1;
+
+      if (!task) {
+        alert('Please enter a task title.');
+        return;
+      }
+
+      const c = (window._allChecklistCategories || {})[catKey] || {
+        categoryKey: catKey,
+        categoryName: catKey.toUpperCase() + ' Service',
+        serviceTypes: [catKey],
+        icon: 'fa-solid fa-list-check',
+        color: '#10b981',
+        order: 1,
+        items: []
+      };
+
+      let items = Array.isArray(c.items) ? [...c.items] : [];
+
+      if (isEdit && itemId) {
+        const idx = items.findIndex(it => it.id === itemId);
+        if (idx > -1) {
+          items[idx] = {
+            ...items[idx],
+            task,
+            standard,
+            mandatory
+          };
+        }
+      } else {
+        const newId = `${catKey}_${Date.now()}`;
+        const newItem = {
+          id: newId,
+          task,
+          standard,
+          mandatory
+        };
+        items.push(newItem);
+      }
+
+      // Update Firestore document
+      try {
+        const catRef = doc(db, 'service_checklists', catKey);
+        await setDoc(catRef, {
+          categoryKey: c.categoryKey || catKey,
+          categoryName: c.categoryName || catKey,
+          serviceTypes: c.serviceTypes || [catKey],
+          icon: c.icon || 'fa-solid fa-list-check',
+          color: c.color || '#10b981',
+          order: c.order || 1,
+          items: items,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+
+        closeChecklistItemModal();
+        alert(`✅ Checklist task saved! Technicians will immediately see this updated SOP step.`);
+        renderServices('checklists');
+      } catch (err) {
+        alert('Error saving checklist task: ' + err.message);
+      }
+    };
+
+    window.deleteChecklistItem = async function(catKey, itemId) {
+      const c = (window._allChecklistCategories || {})[catKey];
+      if (!c) return;
+      let items = Array.isArray(c.items) ? [...c.items] : [];
+      const item = items.find(it => it.id === itemId);
+      if (!confirm(`Are you sure you want to delete this checklist task:\n"${item ? item.task : itemId}"?`)) return;
+
+      items = items.filter(it => it.id !== itemId);
+
+      try {
+        await updateDoc(doc(db, 'service_checklists', catKey), {
+          items: items,
+          updatedAt: serverTimestamp()
+        });
+        alert('✅ Checklist task removed.');
+        renderServices('checklists');
+      } catch (err) {
+        alert('Error deleting task: ' + err.message);
+      }
+    };
+
+    window.moveChecklistItem = async function(catKey, itemId, direction) {
+      const c = (window._allChecklistCategories || {})[catKey];
+      if (!c) return;
+      let items = Array.isArray(c.items) ? [...c.items] : [];
+      const idx = items.findIndex(it => it.id === itemId);
+      if (idx === -1) return;
+
+      if (direction === 'up' && idx > 0) {
+        const temp = items[idx];
+        items[idx] = items[idx - 1];
+        items[idx - 1] = temp;
+      } else if (direction === 'down' && idx < items.length - 1) {
+        const temp = items[idx];
+        items[idx] = items[idx + 1];
+        items[idx + 1] = temp;
+      } else {
+        return;
+      }
+
+      try {
+        await updateDoc(doc(db, 'service_checklists', catKey), {
+          items: items,
+          updatedAt: serverTimestamp()
+        });
+        renderServices('checklists');
+      } catch (err) {
+        alert('Error reordering tasks: ' + err.message);
+      }
+    };
+
+    window.seedDefaultChecklists = async function(force = false) {
+      if (force && !confirm('Restore default SOP checklists for RO, AC, Pest, Plumbing, Electrical, Cleaning, and General? Existing items will be reset to standard values.')) {
+        return;
+      }
+
+      try {
+        const keys = Object.keys(DEFAULT_SERVICE_CHECKLISTS);
+        for (const k of keys) {
+          const cat = DEFAULT_SERVICE_CHECKLISTS[k];
+          await setDoc(doc(db, 'service_checklists', k), {
+            ...cat,
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        }
+        alert('✅ Default quality checklists seeded to Firestore successfully! Technicians now have standardized SOPs.');
+        renderServices('checklists');
+      } catch (err) {
+        alert('Error seeding default checklists: ' + err.message);
+      }
     };
 
     window.toggleCategoryAccordion = function(rowId, btn) {
@@ -5197,22 +7617,36 @@
         }
       }
 
-      // Resolve before & after photo URLs across download URLs and storage paths
-      let beforePhotoSrc = b.beforePhoto || b.beforePhotoPath || null;
+      // Resolve before & after photo URLs across download URLs, storage paths and subcollections
+      let beforePhotoSrc = b.beforePhoto || null;
+      if ((!beforePhotoSrc || beforePhotoSrc.startsWith('subcollection:')) && b.beforePhotoPath) {
+        beforePhotoSrc = b.beforePhotoPath;
+      }
       if (typeof beforePhotoSrc === 'string' && beforePhotoSrc.startsWith('storage:')) {
         const sPath = beforePhotoSrc.replace(/^storage:/, '');
         beforePhotoSrc = 'https://firebasestorage.googleapis.com/v0/b/' + DEFAULT_FIREBASE_CONFIG.storageBucket + '/o/' + encodeURIComponent(sPath) + '?alt=media';
       } else if (beforePhotoSrc && typeof beforePhotoSrc === 'string' && !beforePhotoSrc.startsWith('http') && !beforePhotoSrc.startsWith('data:') && !beforePhotoSrc.startsWith('file://') && !beforePhotoSrc.startsWith('subcollection:') && beforePhotoSrc !== 'photo_proof_captured') {
-        beforePhotoSrc = 'https://firebasestorage.googleapis.com/v0/b/' + DEFAULT_FIREBASE_CONFIG.storageBucket + '/o/' + encodeURIComponent(beforePhotoSrc) + '?alt=media';
+        if (beforePhotoSrc.includes('/') || beforePhotoSrc.includes('.')) {
+          beforePhotoSrc = 'https://firebasestorage.googleapis.com/v0/b/' + DEFAULT_FIREBASE_CONFIG.storageBucket + '/o/' + encodeURIComponent(beforePhotoSrc) + '?alt=media';
+        } else if (beforePhotoSrc.length > 50) {
+          beforePhotoSrc = 'data:image/jpeg;base64,' + beforePhotoSrc;
+        }
       }
       const isSubcollectionBefore = (beforePhotoSrc && typeof beforePhotoSrc === 'string' && (beforePhotoSrc.startsWith('subcollection:') || beforePhotoSrc === 'photo_proof_captured')) || (!beforePhotoSrc && b.hasPhotoProof);
 
-      let afterPhotoSrc = b.afterPhoto || b.afterPhotoPath || null;
+      let afterPhotoSrc = b.afterPhoto || null;
+      if ((!afterPhotoSrc || afterPhotoSrc.startsWith('subcollection:')) && b.afterPhotoPath) {
+        afterPhotoSrc = b.afterPhotoPath;
+      }
       if (typeof afterPhotoSrc === 'string' && afterPhotoSrc.startsWith('storage:')) {
         const sPath = afterPhotoSrc.replace(/^storage:/, '');
         afterPhotoSrc = 'https://firebasestorage.googleapis.com/v0/b/' + DEFAULT_FIREBASE_CONFIG.storageBucket + '/o/' + encodeURIComponent(sPath) + '?alt=media';
       } else if (afterPhotoSrc && typeof afterPhotoSrc === 'string' && !afterPhotoSrc.startsWith('http') && !afterPhotoSrc.startsWith('data:') && !afterPhotoSrc.startsWith('file://') && !afterPhotoSrc.startsWith('subcollection:') && afterPhotoSrc !== 'photo_proof_captured') {
-        afterPhotoSrc = 'https://firebasestorage.googleapis.com/v0/b/' + DEFAULT_FIREBASE_CONFIG.storageBucket + '/o/' + encodeURIComponent(afterPhotoSrc) + '?alt=media';
+        if (afterPhotoSrc.includes('/') || afterPhotoSrc.includes('.')) {
+          afterPhotoSrc = 'https://firebasestorage.googleapis.com/v0/b/' + DEFAULT_FIREBASE_CONFIG.storageBucket + '/o/' + encodeURIComponent(afterPhotoSrc) + '?alt=media';
+        } else if (afterPhotoSrc.length > 50) {
+          afterPhotoSrc = 'data:image/jpeg;base64,' + afterPhotoSrc;
+        }
       }
       const isSubcollectionAfter = (afterPhotoSrc && typeof afterPhotoSrc === 'string' && (afterPhotoSrc.startsWith('subcollection:') || afterPhotoSrc === 'photo_proof_captured')) || (!afterPhotoSrc && b.hasPhotoProof);
 
@@ -5347,7 +7781,12 @@
                         '<span style="font-size:10px; color:#78350f; margin-top:2px;">Captured before cloud upload</span>' +
                       '</div>'
                     ) : (
-                      '<img id="proofBeforeImg_' + b.id + '" src="' + (isSubcollectionBefore ? '' : beforePhotoSrc) + '" alt="Before Service" style="width:100%; height:160px; object-fit:cover;' + (isSubcollectionBefore ? ' display:none;' : ' display:block;') + ' cursor:pointer;" onclick="window.open(this.src, \'_blank\')" onerror="this.style.display=\'none\';">' +
+                      '<img id="proofBeforeImg_' + b.id + '" src="' + (isSubcollectionBefore ? '' : beforePhotoSrc) + '" alt="Before Service" style="width:100%; height:160px; object-fit:cover;' + (isSubcollectionBefore ? ' display:none;' : ' display:block;') + ' cursor:pointer;" onclick="window.open(this.src, \'_blank\')" onerror="this.style.display=\'none\'; const f = document.getElementById(\'proofBeforeFallback_' + b.id + '\'); if(f) f.style.display=\'flex\';">' +
+                      '<div id="proofBeforeFallback_' + b.id + '" style="display:none; height:140px; flex-direction:column; align-items:center; justify-content:center; padding:10px; text-align:center; color:#0284c7; background:#f0f9ff; width:100%;">' +
+                        '<i class="fa-solid fa-image" style="font-size:24px; color:#0284c7; margin-bottom:4px;"></i>' +
+                        '<span style="font-size:11.5px; font-weight:700;">Service Photo Recorded</span>' +
+                        '<a href="' + (beforePhotoSrc || '#') + '" target="_blank" style="font-size:11px; color:#0284c7; font-weight:700; margin-top:4px; text-decoration:underline;">Click to open photo</a>' +
+                      '</div>' +
                       '<a id="proofBeforeZoom_' + b.id + '" href="' + (isSubcollectionBefore ? '#' : beforePhotoSrc) + '" target="_blank" style="position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,0.65); color:#fff; font-size:10.5px; padding:3px 8px; border-radius:6px; text-decoration:none; font-weight:700;' + (isSubcollectionBefore ? ' display:none;' : '') + '">' +
                         '<i class="fa-solid fa-expand"></i> Zoom' +
                       '</a>'
@@ -5382,7 +7821,12 @@
                         '<span style="font-size:10px; color:#78350f; margin-top:2px;">Captured before cloud upload</span>' +
                       '</div>'
                     ) : (
-                      '<img id="proofAfterImg_' + b.id + '" src="' + (isSubcollectionAfter ? '' : afterPhotoSrc) + '" alt="After Service" style="width:100%; height:160px; object-fit:cover;' + (isSubcollectionAfter ? ' display:none;' : ' display:block;') + ' cursor:pointer;" onclick="window.open(this.src, \'_blank\')" onerror="this.style.display=\'none\';">' +
+                      '<img id="proofAfterImg_' + b.id + '" src="' + (isSubcollectionAfter ? '' : afterPhotoSrc) + '" alt="After Service" style="width:100%; height:160px; object-fit:cover;' + (isSubcollectionAfter ? ' display:none;' : ' display:block;') + ' cursor:pointer;" onclick="window.open(this.src, \'_blank\')" onerror="this.style.display=\'none\'; const f = document.getElementById(\'proofAfterFallback_' + b.id + '\'); if(f) f.style.display=\'flex\';">' +
+                      '<div id="proofAfterFallback_' + b.id + '" style="display:none; height:140px; flex-direction:column; align-items:center; justify-content:center; padding:10px; text-align:center; color:#0284c7; background:#f0f9ff; width:100%;">' +
+                        '<i class="fa-solid fa-image" style="font-size:24px; color:#0284c7; margin-bottom:4px;"></i>' +
+                        '<span style="font-size:11.5px; font-weight:700;">Service Photo Recorded</span>' +
+                        '<a href="' + (afterPhotoSrc || '#') + '" target="_blank" style="font-size:11px; color:#0284c7; font-weight:700; margin-top:4px; text-decoration:underline;">Click to open photo</a>' +
+                      '</div>' +
                       '<a id="proofAfterZoom_' + b.id + '" href="' + (isSubcollectionAfter ? '#' : afterPhotoSrc) + '" target="_blank" style="position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,0.65); color:#fff; font-size:10.5px; padding:3px 8px; border-radius:6px; text-decoration:none; font-weight:700;' + (isSubcollectionAfter ? ' display:none;' : '') + '">' +
                         '<i class="fa-solid fa-expand"></i> Zoom' +
                       '</a>'
@@ -5477,9 +7921,19 @@
                     '<i class="fa-solid ' + (isDone ? 'fa-circle-check' : 'fa-circle-xmark') + '" style="color:' + (isDone ? '#10b981' : '#ef4444') + '; font-size:15px;"></i>' +
                     '<span style="flex:1; color:' + (isDone ? '#166534' : '#991b1b') + '; font-weight:' + (isDone ? '700' : '600') + ';' + (isDone ? '' : ' text-decoration:line-through opacity:0.85;') + '">' + label + '</span>' +
                     '<span style="font-size:10.5px; font-weight:800; padding:2px 8px; border-radius:4px; background:' + (isDone ? '#dcfce7' : '#fee2e2') + '; color:' + (isDone ? '#15803d' : '#b91c1c') + ';">' + (isDone ? '✓ Completed' : '✕ Crossed / Skipped') + '</span>' +
+                    '<button onclick="deleteBookingCustomChecklistTask(\'' + b.id + '\', ' + idx + ')" title="Remove task from this booking" style="background:none; border:none; color:#94a3b8; hover:color:#dc2626; cursor:pointer; font-size:12px; padding:2px 6px;">' +
+                      '<i class="fa-solid fa-trash-can"></i>' +
+                    '</button>' +
                   '</div>'
                 );
               }).join('') +
+            '</div>' +
+
+            '<div style="display:flex; gap:8px; margin-top:10px;">' +
+              '<input type="text" id="addBookingTaskInput_' + b.id + '" placeholder="+ Add custom task or instruction for this job..." style="flex:1; padding:7px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px;" onkeydown="if(event.key===\'Enter\') addBookingCustomChecklistTask(\'' + b.id + '\')">' +
+              '<button onclick="addBookingCustomChecklistTask(\'' + b.id + '\')" style="background:#10b981; color:#fff; border:none; border-radius:6px; padding:7px 12px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">' +
+                '<i class="fa-solid fa-plus"></i> Add' +
+              '</button>' +
             '</div>',
           '</div>',
 
@@ -5554,31 +8008,69 @@
 
       const renderProofImage = (prefix, url) => {
         if (!url) return false;
+        let finalSrc = url;
+        if (typeof finalSrc === 'string') {
+          if (finalSrc.startsWith('storage:')) {
+            const cleanPath = finalSrc.replace(/^storage:/, '');
+            finalSrc = 'https://firebasestorage.googleapis.com/v0/b/' + DEFAULT_FIREBASE_CONFIG.storageBucket + '/o/' + encodeURIComponent(cleanPath) + '?alt=media';
+          } else if (!finalSrc.startsWith('http') && !finalSrc.startsWith('data:') && !finalSrc.startsWith('blob:') && !finalSrc.startsWith('file://')) {
+            if (finalSrc.includes('/') || finalSrc.includes('.')) {
+              finalSrc = 'https://firebasestorage.googleapis.com/v0/b/' + DEFAULT_FIREBASE_CONFIG.storageBucket + '/o/' + encodeURIComponent(finalSrc) + '?alt=media';
+            } else if (finalSrc.length > 50) {
+              finalSrc = 'data:image/jpeg;base64,' + finalSrc;
+            }
+          }
+        }
         const img = document.getElementById(prefix + 'Img_' + b.id);
         const loading = document.getElementById(prefix + 'Loading_' + b.id);
         const zoom = document.getElementById(prefix + 'Zoom_' + b.id);
+        const fallback = document.getElementById(prefix + 'Fallback_' + b.id);
         if (loading) loading.style.display = 'none';
+        if (fallback) fallback.style.display = 'none';
         if (img) {
-          img.src = url;
+          img.src = finalSrc;
           img.style.display = 'block';
         }
         if (zoom) {
-          zoom.href = url;
+          zoom.href = finalSrc;
           zoom.style.display = 'inline-block';
         }
         return true;
       };
 
-      // Check subcollection evidence documents
-      getDoc(doc(db, 'bookings', b.id, 'evidence', 'afterPhoto')).then(s => {
-        if (s.exists() && s.data().afterPhoto) {
-          renderProofImage('proofAfter', s.data().afterPhoto);
+      // Check subcollection evidence documents & storage path
+      let beforeLoaded = false;
+      let afterLoaded = false;
+
+      // 1. Check if direct download URL from Firebase Storage exists for storage path
+      if (b.beforePhotoPath && window._firebaseStorage && window._getDownloadURL && window._storageRef) {
+        const sPath = b.beforePhotoPath.replace(/^storage:/, '');
+        window._getDownloadURL(window._storageRef(window._firebaseStorage, sPath)).then(url => {
+          beforeLoaded = true;
+          renderProofImage('proofBefore', url);
+        }).catch(() => {});
+      }
+
+      if (b.afterPhotoPath && window._firebaseStorage && window._getDownloadURL && window._storageRef) {
+        const sPath = b.afterPhotoPath.replace(/^storage:/, '');
+        window._getDownloadURL(window._storageRef(window._firebaseStorage, sPath)).then(url => {
+          afterLoaded = true;
+          renderProofImage('proofAfter', url);
+        }).catch(() => {});
+      }
+
+      // 2. Check subcollection evidence documents
+      getDoc(doc(db, 'bookings', b.id, 'evidence', 'beforePhoto')).then(s => {
+        if (s.exists() && s.data().beforePhoto) {
+          beforeLoaded = true;
+          renderProofImage('proofBefore', s.data().beforePhoto);
         }
       }).catch(() => {});
 
-      getDoc(doc(db, 'bookings', b.id, 'evidence', 'beforePhoto')).then(s => {
-        if (s.exists() && s.data().beforePhoto) {
-          renderProofImage('proofBefore', s.data().beforePhoto);
+      getDoc(doc(db, 'bookings', b.id, 'evidence', 'afterPhoto')).then(s => {
+        if (s.exists() && s.data().afterPhoto) {
+          afterLoaded = true;
+          renderProofImage('proofAfter', s.data().afterPhoto);
         }
       }).catch(() => {});
 
@@ -5586,19 +8078,69 @@
         if (s.exists()) {
           const data = s.data();
           if (data.beforePhoto) {
+            beforeLoaded = true;
             renderProofImage('proofBefore', data.beforePhoto);
-          } else if (!beforePhotoSrc || beforePhotoSrc.startsWith('subcollection:')) {
-            const bLoading = document.getElementById('proofBeforeLoading_' + b.id);
-            if (bLoading && bLoading.style.display !== 'none') bLoading.innerHTML = '<span style="color:#64748b;">Photo saved on device</span>';
           }
           if (data.afterPhoto) {
+            afterLoaded = true;
             renderProofImage('proofAfter', data.afterPhoto);
-          } else if (!afterPhotoSrc || afterPhotoSrc.startsWith('subcollection:')) {
-            const aLoading = document.getElementById('proofAfterLoading_' + b.id);
-            if (aLoading && aLoading.style.display !== 'none') aLoading.innerHTML = '<span style="color:#64748b;">Photo saved on device</span>';
           }
         }
       }).catch(err => console.warn('[proofModal] Subcollection photo fetch warning:', err));
+
+      // 3. Fallback timer: if loading is still spinning after 3.5 seconds, display clear status
+      setTimeout(() => {
+        const bLoading = document.getElementById('proofBeforeLoading_' + b.id);
+        if (bLoading && bLoading.style.display !== 'none' && !beforeLoaded) {
+          bLoading.innerHTML = '<span style="color:#64748b; font-size:11.5px;"><i class="fa-solid fa-circle-check" style="color:#10b981;"></i> Photo recorded by technician</span>';
+        }
+        const aLoading = document.getElementById('proofAfterLoading_' + b.id);
+        if (aLoading && aLoading.style.display !== 'none' && !afterLoaded) {
+          aLoading.innerHTML = '<span style="color:#64748b; font-size:11.5px;"><i class="fa-solid fa-circle-check" style="color:#10b981;"></i> Photo recorded by technician</span>';
+        }
+      }, 3500);
+    };
+
+    window.addBookingCustomChecklistTask = async function(bookingId) {
+      const input = document.getElementById('addBookingTaskInput_' + bookingId);
+      if (!input) return;
+      const task = input.value.trim();
+      if (!task) return;
+      try {
+        const b = (_allBookings || []).find(x => x.id === bookingId);
+        let currentList = (b && b.checklist && b.checklist.length > 0) ? [...b.checklist] : [];
+        if (currentList.length === 0) {
+          const defaultTasks = (DEFAULT_SERVICE_CHECKLISTS.ro.items || []).map(it => it.task);
+          currentList = [...defaultTasks];
+        }
+        currentList.push(task);
+        await updateDoc(doc(db, 'bookings', bookingId), {
+          checklist: currentList,
+          updatedAt: serverTimestamp()
+        });
+        if (b) b.checklist = currentList;
+        input.value = '';
+        openBookingDetailsModal(bookingId);
+      } catch (err) {
+        alert('Error adding custom task: ' + err.message);
+      }
+    };
+
+    window.deleteBookingCustomChecklistTask = async function(bookingId, idx) {
+      if (!confirm('Remove this task from this specific booking?')) return;
+      try {
+        const b = (_allBookings || []).find(x => x.id === bookingId);
+        let currentList = (b && b.checklist && b.checklist.length > 0) ? [...b.checklist] : [];
+        currentList.splice(idx, 1);
+        await updateDoc(doc(db, 'bookings', bookingId), {
+          checklist: currentList,
+          updatedAt: serverTimestamp()
+        });
+        if (b) b.checklist = currentList;
+        openBookingDetailsModal(bookingId);
+      } catch (err) {
+        alert('Error removing task: ' + err.message);
+      }
     };
 
     window.closeBookingDetailsModal = function() {

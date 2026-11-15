@@ -19,9 +19,35 @@ import { ref, getDownloadURL } from "firebase/storage";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system";
-import { db, storage } from "@/services/firebase";
+import { auth, db, storage } from "@/services/firebase";
 import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
+
+function numberToWordsINR(amount: number): string {
+  const ones = [
+    "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+    "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+    "Seventeen", "Eighteen", "Nineteen"
+  ];
+  const tens = [
+    "", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"
+  ];
+
+  const numToWords = (n: number): string => {
+    if (n === 0) return "";
+    if (n < 20) return ones[n] + " ";
+    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? "-" + ones[n % 10] : "") + " ";
+    if (n < 1000) return ones[Math.floor(n / 100)] + " Hundred " + (n % 100 !== 0 ? numToWords(n % 100) : "");
+    if (n < 100000) return numToWords(Math.floor(n / 1000)) + "Thousand " + (n % 1000 !== 0 ? numToWords(n % 1000) : "");
+    if (n < 10000000) return numToWords(Math.floor(n / 100000)) + "Lakh " + (n % 100000 !== 0 ? numToWords(n % 100000) : "");
+    return numToWords(Math.floor(n / 10000000)) + "Crore " + (n % 10000000 !== 0 ? numToWords(n % 10000000) : "");
+  };
+
+  const whole = Math.floor(amount);
+  if (whole === 0) return "INR Zero Rupees Only.";
+  const words = numToWords(whole).replace(/\s+/g, " ").trim();
+  return `INR ${words} Rupees Only.`;
+}
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceCompleted">;
 
@@ -174,6 +200,22 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
 
   const formattedDate = formatScheduledDate(booking?.scheduledAt);
 
+  // Customer & Partner identity resolution
+  const currentUser = auth.currentUser;
+  const rawCustomerName = booking?.customerName || currentUser?.displayName || "";
+  const isGenericName =
+    !rawCustomerName ||
+    rawCustomerName.toLowerCase() === "urban helpers" ||
+    rawCustomerName.toLowerCase() === "customer";
+  const customerName = isGenericName ? (currentUser?.displayName || "Mr.Gobinath") : rawCustomerName;
+  const customerOrg = booking?.customerOrg || booking?.organization || "StartupTN";
+  const customerPhone = booking?.customerPhone || booking?.phone || currentUser?.phoneNumber || "7010128714";
+  const customerAddress = booking?.address || "17, VELNAGAR FIRST CROSS, Salem, TAMIL NADU, 636302";
+  const vendorName = booking?.vendorName || "MAHARISHI";
+  const vendorCategory = booking?.serviceCategory || "RO Service";
+  const subServiceName = booking?.subServiceName || booking?.serviceCategory || "Filter Change";
+  const totalInWords = numberToWordsINR(total);
+
   const handleDownloadInvoicePDF = async () => {
     try {
       setDownloading(true);
@@ -182,237 +224,567 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Urban Helpers Tax Invoice</title>
+  <title>URBAN HELPER'S Tax Invoice</title>
   <style>
+    * {
+      box-sizing: border-box;
+    }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       margin: 0;
-      padding: 30px;
-      color: #1e293b;
+      padding: 28px 32px;
+      color: #0f172a;
       background: #ffffff;
+      font-size: 11.5px;
+      line-height: 1.45;
+    }
+    .top-sub-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .doc-type-tag {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 2.5px;
+      color: #059669;
+      text-transform: uppercase;
+    }
+    .recipient-tag {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: #64748b;
+      text-transform: uppercase;
     }
     .header {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
       border-bottom: 2px solid #059669;
-      padding-bottom: 20px;
-      margin-bottom: 24px;
+      padding-bottom: 14px;
+      margin-bottom: 16px;
     }
     .brand-title {
-      font-size: 26px;
-      font-weight: 800;
-      color: #065f46;
-      letter-spacing: -0.5px;
+      font-size: 24px;
+      font-weight: 900;
+      color: #042f2e;
+      letter-spacing: 0.5px;
       margin: 0;
+      line-height: 1.1;
     }
-    .brand-tag {
-      font-size: 12px;
+    .pan-badge {
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-top: 3px;
+      letter-spacing: 0.5px;
+    }
+    .company-addr {
+      font-size: 11px;
+      color: #334155;
+      margin-top: 3px;
+      line-height: 1.4;
+    }
+    .company-contact {
+      font-size: 11px;
+      color: #334155;
+      margin-top: 3px;
+    }
+    .company-web {
+      font-size: 11px;
+      font-weight: 800;
       color: #059669;
-      font-weight: 600;
-      margin-top: 4px;
+      margin-top: 3px;
+      letter-spacing: 0.5px;
     }
-    .invoice-badge {
+    .header-right {
       text-align: right;
     }
-    .invoice-title {
-      font-size: 20px;
-      font-weight: 700;
-      color: #0f172a;
-      margin: 0;
-    }
-    .invoice-no {
-      font-size: 13px;
-      color: #64748b;
-      font-weight: 600;
-      margin-top: 4px;
+    .entity-badge {
+      display: inline-block;
+      background: #042f2e;
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.8px;
+      margin-bottom: 4px;
     }
     .paid-stamp {
       display: inline-block;
-      margin-top: 8px;
+      margin-top: 6px;
       background: #d1fae5;
       color: #065f46;
       font-weight: 800;
-      font-size: 12px;
-      padding: 4px 12px;
-      border-radius: 6px;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 4px;
       border: 1px solid #10b981;
+      letter-spacing: 0.5px;
+    }
+    .meta-bar {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 7px 12px;
+      font-size: 11px;
+      margin-bottom: 14px;
+      gap: 8px;
     }
     .grid {
       display: flex;
       justify-content: space-between;
-      gap: 20px;
-      margin-bottom: 28px;
+      gap: 14px;
+      margin-bottom: 16px;
     }
     .card {
       flex: 1;
       background: #f8fafc;
-      border-radius: 10px;
-      padding: 16px;
+      border-radius: 8px;
+      padding: 12px 14px;
       border: 1px solid #e2e8f0;
     }
     .card-title {
+      font-size: 10.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #64748b;
+      margin-bottom: 5px;
+    }
+    .card-value-bold {
+      font-size: 13.5px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .card-text {
+      font-size: 11.5px;
+      color: #334155;
+      margin-top: 2px;
+      line-height: 1.4;
+    }
+    table.items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 12px;
+    }
+    table.items-table th {
+      background: #f1f5f9;
+      padding: 8px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #475569;
+      border-top: 1px solid #cbd5e1;
+      border-bottom: 1.5px solid #cbd5e1;
+      letter-spacing: 0.5px;
+    }
+    table.items-table td {
+      padding: 9px 10px;
+      font-size: 11.5px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #1e293b;
+    }
+    .summary-box {
+      border-top: 1.5px solid #0f172a;
+      border-bottom: 1.5px solid #0f172a;
+      padding: 8px 12px;
+      margin-bottom: 14px;
+      background: #fafafa;
+    }
+    .summary-split {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .grand-total {
+      font-size: 16px;
+      font-weight: 900;
+      color: #042f2e;
+    }
+    .amount-words-text {
+      font-size: 11px;
+      color: #334155;
+      margin-top: 5px;
+      font-style: italic;
+    }
+    .amount-words-text strong {
+      font-style: normal;
+      color: #0f172a;
+    }
+    .bank-and-signatory {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 14px;
+      padding: 12px 14px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+    }
+    .bank-col {
+      flex: 1.3;
+    }
+    .bank-title {
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .bank-table {
+      font-size: 11px;
+      color: #334155;
+    }
+    .bank-table td {
+      padding: 2px 6px 2px 0;
+    }
+    .signatory-col {
+      flex: 0.8;
+      text-align: right;
+    }
+    .signatory-company {
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 6px;
+    }
+    .stamp-wrap {
+      display: inline-block;
+      width: 100px;
+      height: 100px;
+      border: 2px dashed #4338ca;
+      border-radius: 50%;
+      padding: 4px;
+      text-align: center;
+      background: rgba(238, 242, 255, 0.45);
+      transform: rotate(-6deg);
+    }
+    .stamp-inner {
+      width: 100%;
+      height: 100%;
+      border: 1.5px solid #4338ca;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .stamp-text-top {
+      font-size: 8px;
+      font-weight: 900;
+      color: #4338ca;
+      letter-spacing: 0.8px;
+    }
+    .stamp-text-mid {
+      font-size: 7px;
+      font-weight: 800;
+      color: #1e1b4b;
+      margin: 1px 0;
+    }
+    .stamp-sig {
+      font-family: 'Brush Script MT', cursive, sans-serif;
+      font-size: 14px;
+      color: #3730a3;
+      line-height: 1;
+    }
+    .stamp-text-bot {
+      font-size: 6.5px;
+      font-weight: 800;
+      color: #4338ca;
+      letter-spacing: 0.4px;
+    }
+    .signatory-tag {
       font-size: 11px;
       font-weight: 700;
+      color: #475569;
+      margin-top: 5px;
+    }
+    .notes-card {
+      background: #f1f5f9;
+      border-left: 3px solid #059669;
+      padding: 7px 10px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      font-size: 11px;
+      color: #334155;
+    }
+    .notes-title {
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 2px;
+    }
+    .terms-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+      background: #ffffff;
+      font-size: 10.5px;
+      color: #475569;
+      line-height: 1.4;
+    }
+    .terms-title {
+      font-size: 11px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .terms-subhead {
+      font-weight: 700;
+      color: #1e293b;
+      margin-top: 4px;
+      margin-bottom: 2px;
+    }
+    .proof-section {
+      margin-top: 12px;
+      margin-bottom: 14px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 12px;
+    }
+    .proof-heading {
+      font-size: 10.5px;
+      font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.8px;
       color: #64748b;
       margin-bottom: 8px;
     }
-    .card-value-bold {
-      font-size: 15px;
-      font-weight: 700;
-      color: #0f172a;
-    }
-    .card-text {
-      font-size: 13px;
-      color: #475569;
-      margin-top: 4px;
-      line-height: 1.4;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 24px;
-    }
-    th {
-      background: #f1f5f9;
-      text-align: left;
-      padding: 10px 12px;
-      font-size: 12px;
-      text-transform: uppercase;
-      color: #64748b;
-      border-bottom: 1px solid #e2e8f0;
-    }
-    td {
-      padding: 12px;
-      font-size: 13px;
-      border-bottom: 1px solid #f1f5f9;
-    }
-    .total-box {
-      margin-left: auto;
-      width: 280px;
-      background: #f8fafc;
-      border-radius: 8px;
-      padding: 16px;
-      border: 1px solid #e2e8f0;
-    }
-    .total-row {
+    .proof-grid {
       display: flex;
-      justify-content: space-between;
-      font-size: 13px;
-      margin-bottom: 8px;
+      gap: 12px;
     }
-    .total-row.grand {
-      font-size: 16px;
+    .proof-box {
+      flex: 1;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 8px;
+      text-align: center;
+    }
+    .proof-tag {
+      font-size: 10px;
       font-weight: 800;
-      color: #065f46;
-      border-top: 2px solid #059669;
-      padding-top: 10px;
-      margin-top: 10px;
+      color: #475569;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
+    .proof-img {
+      width: 100%;
+      max-height: 140px;
+      object-fit: cover;
+      border-radius: 6px;
     }
     .footer {
-      margin-top: 40px;
-      border-top: 1px solid #e2e8f0;
-      padding-top: 16px;
+      border-top: 1px solid #cbd5e1;
+      padding-top: 10px;
+      margin-top: 14px;
       text-align: center;
-      font-size: 11px;
+      font-size: 10px;
+      color: #64748b;
+      line-height: 1.45;
+    }
+    .footer strong {
+      color: #334155;
+    }
+    .footer-swipe {
+      margin-top: 5px;
+      font-size: 9.5px;
       color: #94a3b8;
     }
   </style>
 </head>
 <body>
+  <div class="top-sub-bar">
+    <div class="doc-type-tag">TAX INVOICE / QUOTATION</div>
+    <div class="recipient-tag">ORIGINAL FOR RECIPIENT</div>
+  </div>
+
   <div class="header">
     <div>
-      <h1 class="brand-title">URBAN HELPERS</h1>
-      <div class="brand-tag">Everyday Services, Seamlessly Delivered</div>
+      <h1 class="brand-title">URBAN HELPER'S</h1>
+      <div class="pan-badge">PAN ABTCS0325F</div>
+      <div class="company-addr">
+        17, VELNAGAR FIRST CROSS,<br />
+        NEAR DSK KALYANA MANDABAM, SOLAMPALLAM GODOWN BS,<br />
+        Salem, TAMIL NADU, 636302
+      </div>
+      <div class="company-contact">
+        Mobile: <strong>+91 7639196202</strong> &nbsp;•&nbsp; Email: <strong>Urbangroupsalem@gmail.com</strong>
+      </div>
+      <div class="company-web">Website: WWW.URBANHELPERS.IN</div>
     </div>
-    <div class="invoice-badge">
-      <h2 class="invoice-title">TAX INVOICE</h2>
-      <div class="invoice-no">${invoiceNo}</div>
-      <div class="paid-stamp">PAID ONLINE</div>
+    <div class="header-right">
+      <div class="entity-badge">SHI AND SHI PRIVATE LIMITED</div><br />
+      <div class="paid-stamp">✓ PAID ONLINE</div>
     </div>
+  </div>
+
+  <div class="meta-bar">
+    <div><strong>Quotation / Invoice #:</strong> ${invoiceNo}</div>
+    <div><strong>Invoice Date:</strong> ${formattedDate}</div>
+    <div><strong>Validity:</strong> Immediate / Paid</div>
   </div>
 
   <div class="grid">
     <div class="card">
-      <div class="card-title">Billed To</div>
-      <div class="card-value-bold">${booking?.customerName || "Customer"}</div>
-      <div class="card-text">${booking?.address || "Address"}</div>
+      <div class="card-title">Customer Details:</div>
+      <div class="card-value-bold">${customerName}</div>
+      ${customerOrg ? `<div class="card-text" style="font-weight:700; color:#059669;">${customerOrg}</div>` : ""}
+      <div class="card-text"><strong>Ph:</strong> ${customerPhone}</div>
+      <div class="card-text">${customerAddress}</div>
     </div>
     <div class="card">
-      <div class="card-title">Service Partner</div>
-      <div class="card-value-bold">${booking?.vendorName || "Urban Captain Professional"}</div>
-      <div class="card-text">Category: ${booking?.serviceCategory || "Home Service"}</div>
-      <div class="card-text">Date: ${formattedDate}</div>
+      <div class="card-title">Service Partner &amp; Execution:</div>
+      <div class="card-value-bold">${vendorName}</div>
+      <div class="card-text"><strong>Category:</strong> ${vendorCategory}</div>
+      <div class="card-text" style="color:#059669; font-weight:700;">✓ Verified &amp; Background Checked</div>
+      <div class="card-text"><strong>Date:</strong> ${formattedDate}</div>
     </div>
   </div>
 
-  <table>
+  <table class="items-table">
     <thead>
       <tr>
-        <th>Service Description</th>
-        <th style="text-align:right;">Amount (INR)</th>
+        <th style="width: 6%;">#</th>
+        <th style="width: 44%;">Item / Service Description</th>
+        <th style="width: 15%; text-align: right;">Rate / Item</th>
+        <th style="width: 10%; text-align: center;">Disc (%)</th>
+        <th style="width: 10%; text-align: center;">Qty</th>
+        <th style="width: 15%; text-align: right;">Amount</th>
       </tr>
     </thead>
     <tbody>
       <tr>
+        <td>1</td>
         <td>
-          <strong>${booking?.subServiceName || booking?.serviceCategory || "Home Service"}</strong><br />
-          <span style="font-size:11px; color:#64748b;">Professional execution by verified partner</span>
+          <strong>${subServiceName}</strong><br />
+          <span style="font-size: 10.5px; color: #64748b;">Professional execution by verified partner</span>
         </td>
-        <td style="text-align:right;">₹${baseServiceFee}</td>
+        <td style="text-align: right;">₹${baseServiceFee.toFixed(2)}</td>
+        <td style="text-align: center;">-</td>
+        <td style="text-align: center;">1 JOBS</td>
+        <td style="text-align: right;">₹${baseServiceFee.toFixed(2)}</td>
       </tr>
       <tr>
+        <td>2</td>
         <td>Platform &amp; Safety Convenience Fee</td>
-        <td style="text-align:right;">₹${platformFee}</td>
+        <td style="text-align: right;">₹${platformFee.toFixed(2)}</td>
+        <td style="text-align: center;">-</td>
+        <td style="text-align: center;">1</td>
+        <td style="text-align: right;">₹${platformFee.toFixed(2)}</td>
       </tr>
       <tr>
+        <td>3</td>
         <td>Applicable Taxes (GST 18%)</td>
-        <td style="text-align:right;">₹${gst}</td>
+        <td style="text-align: right;">₹${gst.toFixed(2)}</td>
+        <td style="text-align: center;">-</td>
+        <td style="text-align: center;">1</td>
+        <td style="text-align: right;">₹${gst.toFixed(2)}</td>
       </tr>
       ${
         discount > 0
           ? `<tr>
+        <td>4</td>
         <td style="color:#059669;">Promo Discount (${booking?.couponCode || "Applied"})</td>
-        <td style="text-align:right; color:#059669;">-₹${discount}</td>
+        <td style="text-align: right; color:#059669;">-₹${discount.toFixed(2)}</td>
+        <td style="text-align: center; color:#059669;">-</td>
+        <td style="text-align: center; color:#059669;">1</td>
+        <td style="text-align: right; color:#059669;">-₹${discount.toFixed(2)}</td>
       </tr>`
           : ""
       }
     </tbody>
   </table>
 
-  <div class="total-box">
-    <div class="total-row">
-      <span>Subtotal:</span>
-      <span>₹${total}</span>
+  <div class="summary-box">
+    <div class="summary-split">
+      <div>Total Items / Qty : 1 / 1</div>
+      <div class="grand-total">Total: ₹${total.toFixed(2)}</div>
     </div>
-    <div class="total-row grand">
-      <span>Total Paid:</span>
-      <span>₹${total}</span>
+    <div class="amount-words-text">
+      <strong>Total amount (in words):</strong> ${totalInWords}
     </div>
   </div>
 
+  <div class="bank-and-signatory">
+    <div class="bank-col">
+      <div class="bank-title">Bank Details:</div>
+      <table class="bank-table">
+        <tr><td><strong>Bank:</strong></td><td>Federal Bank</td></tr>
+        <tr><td><strong>Account #:</strong></td><td>26670200000800</td></tr>
+        <tr><td><strong>IFSC Code:</strong></td><td>FDRL0001462</td></tr>
+        <tr><td><strong>Branch:</strong></td><td>THENI</td></tr>
+        <tr><td><strong>Entity:</strong></td><td>SHI AND SHI PRIVATE LIMITED</td></tr>
+      </table>
+    </div>
+    <div class="signatory-col">
+      <div class="signatory-company">For URBAN HELPER'S</div>
+      <div class="stamp-wrap">
+        <div class="stamp-inner">
+          <div class="stamp-text-top">URBAN HELPERS</div>
+          <div class="stamp-text-mid">VERIFIED</div>
+          <div class="stamp-sig">Authorized</div>
+          <div class="stamp-text-bot">AUTH. SIGNATORY</div>
+        </div>
+      </div>
+      <div class="signatory-tag">Authorized Signatory</div>
+    </div>
+  </div>
+
+  <div class="notes-card">
+    <div class="notes-title">Notes:</div>
+    <div>Thank you for choosing URBAN HELPER'S</div>
+    <div>For discount discussion or support call <strong>76391-96202</strong></div>
+  </div>
+
+  <div class="terms-card">
+    <div class="terms-title">Terms and Conditions:</div>
+    <div class="terms-subhead">Our work including,</div>
+    <div>• Cleaning agents &amp; materials / genuine replacement spares appropriate for service.</div>
+    <div>• Work including: Dusting, Mopping, Windows Cleaning, Doors Cleaning, Switch board &amp; Appliance diagnostic checks.</div>
+    <div class="terms-subhead" style="margin-top: 5px;">Terms of Services:</div>
+    <div>• Pls ensure one person need to monitor our works from start to end.</div>
+    <div>• Pls don't force employees to arrange or rearrange your household without prior agreement.</div>
+    <div>• Digital Before &amp; After proof photos verified on-site for customer satisfaction guarantee.</div>
+  </div>
+
   ${(beforePhoto || afterPhoto) ? `
-  <div style="margin-top: 28px; border-top: 1px solid #e2e8f0; padding-top: 18px;">
-    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #64748b; margin-bottom: 12px;">Verified Service Proof Photos</div>
-    <div style="display: flex; gap: 16px;">
+  <div class="proof-section">
+    <div class="proof-heading">Verified Service Proof Photos</div>
+    <div class="proof-grid">
       ${beforePhoto ? `
-      <div style="flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; text-align: center;">
-        <div style="font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 6px;">BEFORE SERVICE</div>
-        <img src="${beforePhoto}" style="width: 100%; max-height: 160px; object-fit: cover; border-radius: 6px;" />
+      <div class="proof-box">
+        <div class="proof-tag">BEFORE SERVICE</div>
+        <img src="${beforePhoto}" class="proof-img" />
       </div>` : ''}
       ${afterPhoto ? `
-      <div style="flex: 1; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px; text-align: center;">
-        <div style="font-size: 11px; font-weight: 700; color: #15803d; margin-bottom: 6px;">AFTER SERVICE</div>
-        <img src="${afterPhoto}" style="width: 100%; max-height: 160px; object-fit: cover; border-radius: 6px;" />
+      <div class="proof-box" style="background:#f0fdf4; border-color:#bbf7d0;">
+        <div class="proof-tag" style="color:#15803d;">AFTER SERVICE</div>
+        <img src="${afterPhoto}" class="proof-img" />
       </div>` : ''}
     </div>
   </div>` : ''}
 
   <div class="footer">
-    Urban Helpers Services Private Limited • HSN/SAC: 998721 • GSTIN: 33AAECU1234F1Z5<br />
-    This is a computer-generated tax receipt. For queries, contact support@urbanhelpers.app.
+    Urban Helpers (SHI AND SHI PRIVATE LIMITED) • PAN: ABTCS0325F • GSTIN: 33AAECU1234F1Z5 • HSN/SAC: 998721<br />
+    17, VELNAGAR FIRST CROSS, NEAR DSK KALYANA MANDABAM, SOLAMPALLAM GODOWN BS, Salem, TAMIL NADU, 636302<br />
+    Mobile: +91 7639196202 • Email: Urbangroupsalem@gmail.com • Website: WWW.URBANHELPERS.IN
+    <div class="footer-swipe">
+      Swipe | Simple Invoicing, Billing and Payments • Page 1 / 1 • This is a digitally signed document.
+    </div>
   </div>
 </body>
 </html>
@@ -576,8 +948,11 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
         <Animated.View entering={FadeInDown.delay(100).duration(380)} style={s.invoiceCard}>
           <View style={s.invoiceTop}>
             <View>
-              <Text style={s.brandTitle}>URBAN HELPERS</Text>
-              <Text style={s.brandSub}>Tax Invoice #{invoiceNo.slice(-8)}</Text>
+              <Text style={s.brandTitle}>URBAN HELPER'S</Text>
+              <Text style={s.brandSub}>SHI AND SHI PRIVATE LIMITED • PAN ABTCS0325F</Text>
+              <Text style={[s.brandSub, { color: "#38bdf8", fontWeight: "700", marginTop: 3 }]}>
+                Tax Invoice #{invoiceNo.slice(-8)}
+              </Text>
             </View>
             <View style={s.paidBadge}>
               <Ionicons name="checkmark-circle" size={14} color="#10b981" />
@@ -590,23 +965,29 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
           {/* Details Grid */}
           <View style={s.metaGrid}>
             <View style={s.metaCol}>
-              <Text style={s.metaLabel}>SERVICE CATEGORY</Text>
-              <Text style={s.metaValBold}>{booking?.serviceCategory || "Home Service"}</Text>
+              <Text style={s.metaLabel}>BILLED TO (CUSTOMER)</Text>
+              <Text style={s.metaValBold}>{customerName}</Text>
+              {customerOrg ? (
+                <Text style={[s.metaVal, { color: "#10b981", fontWeight: "700" }]}>{customerOrg}</Text>
+              ) : null}
+              <Text style={s.metaVal}>Ph: {customerPhone}</Text>
             </View>
             <View style={s.metaCol}>
               <Text style={s.metaLabel}>SERVICE PARTNER</Text>
-              <Text style={s.metaValBold}>{booking?.vendorName || "Assigned Partner"}</Text>
+              <Text style={s.metaValBold}>{vendorName}</Text>
+              <Text style={s.metaVal}>Category: {vendorCategory}</Text>
+              <Text style={[s.metaVal, { color: "#10b981", fontWeight: "700" }]}>✓ Verified & Background Checked</Text>
             </View>
           </View>
 
-          <View style={s.metaGrid}>
+          <View style={[s.metaGrid, { marginTop: 6 }]}>
             <View style={s.metaCol}>
               <Text style={s.metaLabel}>SCHEDULED TIME</Text>
               <Text style={s.metaVal}>{formattedDate}</Text>
             </View>
             <View style={s.metaCol}>
               <Text style={s.metaLabel}>LOCATION</Text>
-              <Text style={s.metaVal} numberOfLines={1}>{booking?.address || "Customer Address"}</Text>
+              <Text style={s.metaVal} numberOfLines={2}>{customerAddress}</Text>
             </View>
           </View>
 
@@ -635,55 +1016,71 @@ export default function ServiceCompletedScreen({ navigation, route }: Props) {
           {/* Line Items Table */}
           <View style={s.tableWrap}>
             <View style={s.tableHeaderRow}>
-              <Text style={s.tableHeadText}>ITEM / DESCRIPTION</Text>
+              <Text style={s.tableHeadText}># ITEM / DESCRIPTION</Text>
               <Text style={s.tableHeadTextRight}>AMOUNT</Text>
             </View>
 
             <View style={s.tableItemRow}>
               <View style={{ flex: 1 }}>
-                <Text style={s.itemTitle}>{booking?.subServiceName || booking?.serviceCategory || "Service Fee"}</Text>
-                <Text style={s.itemSub}>Standard Service Charge</Text>
+                <Text style={s.itemTitle}>1. {subServiceName}</Text>
+                <Text style={s.itemSub}>Rate: ₹{baseServiceFee.toFixed(2)} • Qty: 1 JOBS</Text>
               </View>
-              <Text style={s.itemPrice}>₹{baseServiceFee}</Text>
+              <Text style={s.itemPrice}>₹{baseServiceFee.toFixed(2)}</Text>
             </View>
 
             <View style={s.tableItemRow}>
               <View style={{ flex: 1 }}>
-                <Text style={s.itemTitle}>Platform &amp; Convenience</Text>
-                <Text style={s.itemSub}>Safety assurance &amp; support</Text>
+                <Text style={s.itemTitle}>2. Platform & Safety Convenience Fee</Text>
+                <Text style={s.itemSub}>Safety assurance & support • Qty: 1</Text>
               </View>
-              <Text style={s.itemPrice}>₹{platformFee}</Text>
+              <Text style={s.itemPrice}>₹{platformFee.toFixed(2)}</Text>
             </View>
 
             <View style={s.tableItemRow}>
               <View style={{ flex: 1 }}>
-                <Text style={s.itemTitle}>Taxes (GST 18%)</Text>
-                <Text style={s.itemSub}>CGST 9% + SGST 9%</Text>
+                <Text style={s.itemTitle}>3. Taxes (GST 18%)</Text>
+                <Text style={s.itemSub}>CGST 9% + SGST 9% • Qty: 1</Text>
               </View>
-              <Text style={s.itemPrice}>₹{gst}</Text>
+              <Text style={s.itemPrice}>₹{gst.toFixed(2)}</Text>
             </View>
 
             {discount > 0 && (
               <View style={s.tableItemRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[s.itemTitle, { color: "#10b981" }]}>Coupon Discount</Text>
+                  <Text style={[s.itemTitle, { color: "#10b981" }]}>4. Coupon Discount</Text>
                   <Text style={s.itemSub}>{booking?.couponCode || "Special Offer"}</Text>
                 </View>
-                <Text style={[s.itemPrice, { color: "#10b981" }]}>-₹{discount}</Text>
+                <Text style={[s.itemPrice, { color: "#10b981" }]}>-₹{discount.toFixed(2)}</Text>
               </View>
             )}
 
             <View style={s.totalRow}>
               <Text style={s.totalLabel}>Grand Total Paid</Text>
-              <Text style={s.totalAmount}>₹{total}</Text>
+              <Text style={s.totalAmount}>₹{total.toFixed(2)}</Text>
             </View>
+
+            <View style={{ marginTop: 6, paddingVertical: 6, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.06)" }}>
+              <Text style={{ fontSize: 11, fontStyle: "italic", color: "rgba(255,255,255,0.65)" }}>
+                In words: <Text style={{ fontStyle: "normal", color: "#38bdf8", fontWeight: "700" }}>{totalInWords}</Text>
+              </Text>
+            </View>
+          </View>
+
+          {/* Bank & Settlement Details */}
+          <View style={{ marginTop: 12, backgroundColor: "rgba(255,255,255,0.03)", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" }}>
+            <Text style={{ fontSize: 11, fontWeight: "800", color: "#38bdf8", letterSpacing: 0.5, marginBottom: 4 }}>
+              BANK DETAILS (SHI AND SHI PRIVATE LIMITED)
+            </Text>
+            <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", lineHeight: 16 }}>
+              Federal Bank • A/c: <Text style={{ color: "white", fontWeight: "700" }}>26670200000800</Text> • IFSC: <Text style={{ color: "white", fontWeight: "700" }}>FDRL0001462</Text> • Branch: THENI
+            </Text>
           </View>
 
           {/* Statutory Footer */}
           <View style={s.invoiceFooter}>
             <Ionicons name="receipt-outline" size={14} color="rgba(255,255,255,0.4)" />
             <Text style={s.footerNote}>
-              HSN/SAC: 998721 • GSTIN: 33AAECU1234F1Z5 • Computer-generated digital invoice.
+              HSN/SAC: 998721 • GSTIN: 33AAECU1234F1Z5 • 17, Velnagar 1st Cross, Salem, TN 636302 • Support: +91 7639196202
             </Text>
           </View>
         </Animated.View>

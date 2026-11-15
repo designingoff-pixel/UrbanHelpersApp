@@ -17,7 +17,8 @@
         {
           "icon": "./assets/icon.png",
           "color": "#10B981",
-          "defaultChannel": "urgent-orders"
+          "defaultChannel": "urgent-orders",
+          "sounds": ["./assets/sounds/notification_sound.mp3"]
         }
       ],
       [
@@ -53,6 +54,7 @@
       },
       "package": "com.urbancaptain.vendor",
       "versionCode": 1,
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",

@@ -12,6 +12,8 @@ import { RootStackParamList } from "@/navigation/types";
 import { colors } from "@/theme/colors";
 import { db } from "@/services/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
+import VoiceRecorderAwarenessModal from "@/components/VoiceRecorderAwarenessModal";
+import { useTheme } from "@/context/ThemeContext";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceInProgress">;
 
@@ -77,6 +79,7 @@ function getDynamicChecklist(serviceName: string): { label: string; icon: string
 }
 
 export default function ServiceInProgressScreen({ route, navigation }: Props) {
+  const { isDark } = useTheme();
   // Accept serviceName and bookingId from navigation params
   const serviceName: string = (route?.params as any)?.serviceName ?? "Home Cleaning";
   const bookingId: string | undefined = (route?.params as any)?.bookingId;
@@ -85,6 +88,8 @@ export default function ServiceInProgressScreen({ route, navigation }: Props) {
   // Live vendor checklist progress from Firestore
   const [vendorDoneCount, setVendorDoneCount] = useState(0);
   const [liveChecklistDone, setLiveChecklistDone] = useState<string[]>([]);
+  const [vendorName, setVendorName] = useState<string>("Professional");
+  const [safetyModalVisible, setSafetyModalVisible] = useState(false);
 
   useEffect(() => {
     if (!bookingId) {
@@ -100,6 +105,7 @@ export default function ServiceInProgressScreen({ route, navigation }: Props) {
       const done: string[] = data?.checklistDone || [];
       setLiveChecklistDone(done);
       setVendorDoneCount(done.length);
+      if (data?.vendorName) setVendorName(data.vendorName);
     });
 
     return () => unsub();
@@ -126,8 +132,8 @@ export default function ServiceInProgressScreen({ route, navigation }: Props) {
           <Ionicons name="arrow-back" size={22} color={colors.text.secondary} />
         </Pressable>
         <Text style={s.headerTitle}>Service In Progress</Text>
-        <Pressable style={s.iconBtn}>
-          <Ionicons name="help-circle-outline" size={20} color={colors.text.secondary} />
+        <Pressable onPress={() => setSafetyModalVisible(true)} style={s.iconBtn}>
+          <Ionicons name="shield-checkmark" size={20} color="#10B981" />
         </Pressable>
       </View>
 
@@ -159,6 +165,48 @@ export default function ServiceInProgressScreen({ route, navigation }: Props) {
               </View>
             </View>
           </LinearGradient>
+        </Animated.View>
+
+        {/* ── Voice Recording & Safe Hands Trust Awareness Card ── */}
+        <Animated.View entering={FadeInDown.delay(70).duration(380)}>
+          <Pressable
+            style={[
+              s.voiceSafetyCard,
+              {
+                backgroundColor: isDark ? "rgba(244,63,94,0.12)" : "#FFF1F2",
+                borderColor: isDark ? "rgba(244,63,94,0.3)" : "#FECDD3",
+              },
+            ]}
+            onPress={() => setSafetyModalVisible(true)}
+          >
+            <View style={s.voiceSafetyTopRow}>
+              <View style={s.voiceSafetyIconBox}>
+                <Ionicons name="mic" size={20} color="#E11D48" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Animated.View style={[s.liveVoiceDot, pulseStyle]} />
+                  <Text style={s.voiceSafetyTitle}>
+                    Automatic Voice Recording Active
+                  </Text>
+                </View>
+                <Text style={s.voiceSafetySub}>
+                  You're in safe hands. This service is audio-monitored in the background for your personal safety, respectful conduct & verified quality.
+                </Text>
+              </View>
+            </View>
+
+            <View style={s.voiceSafetyBottomRow}>
+              <View style={s.safeHandsPill}>
+                <Ionicons name="shield-checkmark" size={12} color="#059669" />
+                <Text style={s.safeHandsPillText}>Safe Hands Protocol Active</Text>
+              </View>
+              <View style={s.safetyLearnMoreRow}>
+                <Text style={s.safetyLearnMoreText}>Safety details</Text>
+                <Ionicons name="chevron-forward" size={13} color="#0D9488" />
+              </View>
+            </View>
+          </Pressable>
         </Animated.View>
 
         {/* ── Service Quality Checklist (Customer View) ──── */}
@@ -291,12 +339,94 @@ export default function ServiceInProgressScreen({ route, navigation }: Props) {
           <Ionicons name="arrow-forward" size={18} color="white" />
         </Pressable>
       </View>
+
+      <VoiceRecorderAwarenessModal
+        visible={safetyModalVisible}
+        onClose={() => setSafetyModalVisible(false)}
+        serviceName={serviceName}
+        vendorName={vendorName}
+        bookingId={bookingId}
+      />
     </View>
   );
 }
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surface.dim },
+  voiceSafetyCard: {
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+  },
+  voiceSafetyTopRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  voiceSafetyIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#E11D48",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  liveVoiceDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: "#E11D48",
+  },
+  voiceSafetyTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#BE123C",
+  },
+  voiceSafetySub: {
+    fontSize: 11.5,
+    color: "#475569",
+    lineHeight: 16,
+    marginTop: 3,
+  },
+  voiceSafetyBottomRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(225,29,72,0.15)",
+  },
+  safeHandsPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "#ECFDF5",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  safeHandsPillText: {
+    fontSize: 10.5,
+    fontWeight: "800",
+    color: "#059669",
+  },
+  safetyLearnMoreRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
+  safetyLearnMoreText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#0D9488",
+  },
   header: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingHorizontal: 16, paddingTop: 52, paddingBottom: 12,

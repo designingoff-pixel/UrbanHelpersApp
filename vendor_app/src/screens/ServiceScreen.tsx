@@ -10,7 +10,7 @@ import { store } from '../store/AppStore';
 import { Colors, Typography, Spacing, Radius } from '../theme';
 import { updateBookingStatus, updateBookingAudio, updateBookingPhotos, updateBookingChecklist } from '../services/firestoreService';
 import { db, storage, auth } from '../services/firebase';
-import { doc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, getDoc, collection, onSnapshot, getDocs, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage';
 import { signInAnonymously } from 'firebase/auth';
 import * as ImagePicker from 'expo-image-picker';
@@ -28,6 +28,21 @@ function formatTime(secs: number) {
   const m = Math.floor((secs % 3600) / 60);
   const s = secs % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function findMatchingChecklistCategory(docs: any[], serviceType: string, serviceName: string): any {
+  const text = `${serviceType || ''} ${serviceName || ''}`.toLowerCase();
+  for (const d of docs) {
+    const key = (d.categoryKey || d.id || '').toLowerCase();
+    const name = (d.categoryName || '').toLowerCase();
+    const types: string[] = Array.isArray(d.serviceTypes)
+      ? d.serviceTypes.map((t: string) => t.toLowerCase())
+      : (typeof d.serviceTypes === 'string' ? d.serviceTypes.toLowerCase().split(',').map((s: string) => s.trim()) : []);
+    if (types.some((t: string) => text.includes(t)) || (key && text.includes(key)) || (name && text.includes(name))) {
+      return d;
+    }
+  }
+  return null;
 }
 
 function getDynamicChecklist(serviceType: string, serviceName: string): string[] {
@@ -111,6 +126,7 @@ export default function ServiceScreen({ route, navigation }: any) {
   const [, forceUpdate] = useState(0);
   const [completeModalVisible, setCompleteModalVisible] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
+  const [liveChecklist, setLiveChecklist] = useState<string[] | null>(null);
 
   // Photos state
   const [beforePhoto, setBeforePhoto] = useState<string | null>(null);
@@ -137,16 +153,57 @@ export default function ServiceScreen({ route, navigation }: any) {
 
   const job = store.getJob(jobId);
 
-  // Load existing photos and audio from job
+  // Load existing photos and audio from job (including Firestore subcollection recovery)
   useEffect(() => {
-    if (job?.beforePhoto && !job.beforePhoto.startsWith('subcollection:')) {
-      setBeforePhoto((prev) => prev || job.beforePhoto);
+    if (!job) return;
+
+    // 1. Before Photo resolution
+    if (job.beforePhoto) {
+      if (!job.beforePhoto.startsWith('subcollection:')) {
+        setBeforePhoto((prev) => prev || job.beforePhoto);
+      } else {
+        // Fetch from subcollection if stored as reference pointer
+        getDoc(doc(db, 'bookings', job.jobId, 'evidence', 'beforePhoto'))
+          .then((s) => {
+            if (s.exists() && s.data().beforePhoto) {
+              setBeforePhoto((prev) => prev || s.data().beforePhoto);
+            }
+          })
+          .catch(() => {});
+        getDoc(doc(db, 'bookings', job.jobId, 'evidence', 'photos'))
+          .then((s) => {
+            if (s.exists() && s.data().beforePhoto) {
+              setBeforePhoto((prev) => prev || s.data().beforePhoto);
+            }
+          })
+          .catch(() => {});
+      }
     }
-    if (job?.afterPhoto && !job.afterPhoto.startsWith('subcollection:')) {
-      setAfterPhoto((prev) => prev || job.afterPhoto);
+
+    // 2. After Photo resolution
+    if (job.afterPhoto) {
+      if (!job.afterPhoto.startsWith('subcollection:')) {
+        setAfterPhoto((prev) => prev || job.afterPhoto);
+      } else {
+        getDoc(doc(db, 'bookings', job.jobId, 'evidence', 'afterPhoto'))
+          .then((s) => {
+            if (s.exists() && s.data().afterPhoto) {
+              setAfterPhoto((prev) => prev || s.data().afterPhoto);
+            }
+          })
+          .catch(() => {});
+        getDoc(doc(db, 'bookings', job.jobId, 'evidence', 'photos'))
+          .then((s) => {
+            if (s.exists() && s.data().afterPhoto) {
+              setAfterPhoto((prev) => prev || s.data().afterPhoto);
+            }
+          })
+          .catch(() => {});
+      }
     }
-    if (job?.audioUrl) setAudioUri(job.audioUrl);
-  }, [job?.beforePhoto, job?.afterPhoto, job?.audioUrl]);
+
+    if (job.audioUrl) setAudioUri(job.audioUrl);
+  }, [job?.jobId, job?.beforePhoto, job?.afterPhoto, job?.audioUrl]);
 
   // Subscribe to background audio recording service state
   useEffect(() => {
@@ -181,13 +238,36 @@ export default function ServiceScreen({ route, navigation }: any) {
     };
   }, []);
 
-  // Dynamic checklist initialization
+  // Dynamic checklist initialization & live Firestore synchronization
   useEffect(() => {
-    if (job && (!job.checklist || job.checklist.length === 0)) {
+    if (!job) return;
+
+    // 1. Initial fallback to local dynamic checklist if empty
+    if (!job.checklist || job.checklist.length === 0) {
       const dynamicList = getDynamicChecklist(job.serviceType, job.serviceName);
       store.updateJobStatus(job.jobId, job.status, { checklist: dynamicList });
     }
-  }, [job?.jobId]);
+
+    // 2. Real-time live listener to admin-configured service_checklists in Firestore
+    const unsub = onSnapshot(collection(db, 'service_checklists'), (snapshot) => {
+      if (snapshot.empty) return;
+      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      const matched = findMatchingChecklistCategory(docs, job.serviceType, job.serviceName);
+      if (matched && Array.isArray(matched.items) && matched.items.length > 0) {
+        const tasks: string[] = matched.items
+          .map((it: any) => (typeof it === 'string' ? it : it.task))
+          .filter(Boolean);
+        if (tasks.length > 0) {
+          setLiveChecklist(tasks);
+          store.updateJobStatus(job.jobId, job.status, { checklist: tasks });
+        }
+      }
+    }, (err) => {
+      console.warn('[ServiceScreen] Firestore service_checklists listener warning:', err);
+    });
+
+    return () => unsub();
+  }, [job?.jobId, job?.serviceType, job?.serviceName]);
 
   if (!job) return null;
 
@@ -201,38 +281,55 @@ export default function ServiceScreen({ route, navigation }: any) {
           {
             text: 'Camera',
             onPress: async () => {
-              const { status } = await ImagePicker.requestCameraPermissionsAsync();
-              if (status !== 'granted') {
-                Alert.alert('Permission Needed', 'Camera access is required to take verification photos.');
-                return;
-              }
-              const res = await ImagePicker.launchCameraAsync({
-                allowsEditing: true,
-                aspect: [4, 3],
-                quality: 0.25,
-                base64: true,
-              });
-              if (!res.canceled && res.assets && res.assets.length > 0) {
-                savePhotoData(type, res.assets[0]);
+              try {
+                const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                if (status !== 'granted') {
+                  Alert.alert('Permission Needed', 'Camera access is required to take verification photos.');
+                  return;
+                }
+                const res = await ImagePicker.launchCameraAsync({
+                  mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                  allowsEditing: false, // Prevents crop activity crashes/silent cancel on Android
+                  quality: 0.35,
+                  base64: true,
+                });
+                if (!res.canceled && res.assets && res.assets.length > 0) {
+                  await savePhotoData(type, res.assets[0]);
+                }
+              } catch (camErr: any) {
+                console.warn('Camera launch error:', camErr);
+                Alert.alert('Camera Error', camErr?.message || 'Could not open camera.');
               }
             },
           },
           {
             text: 'Gallery',
             onPress: async () => {
-              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-              if (status !== 'granted') {
-                Alert.alert('Permission Needed', 'Gallery access is required.');
-                return;
-              }
-              const res = await ImagePicker.launchImageLibraryAsync({
-                allowsEditing: true,
-                aspect: [4, 3],
-                quality: 0.25,
-                base64: true,
-              });
-              if (!res.canceled && res.assets && res.assets.length > 0) {
-                savePhotoData(type, res.assets[0]);
+              try {
+                // Request permissions safely, but do not block on Android 13+ PhotoPicker
+                try {
+                  const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                  if (perm.status !== 'granted' && !perm.canAskAgain) {
+                    Alert.alert(
+                      'Permission Required',
+                      'Please allow photo library access in your device settings to select photos.'
+                    );
+                    return;
+                  }
+                } catch (_) {}
+
+                // NOTE: Omit base64: true to prevent out-of-memory crash on Android with high-res gallery images
+                const res = await ImagePicker.launchImageLibraryAsync({
+                  mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                  allowsEditing: false, // Prevents crop activity crashes/silent cancel on Android
+                  quality: 0.5,
+                });
+                if (!res.canceled && res.assets && res.assets.length > 0) {
+                  await savePhotoData(type, res.assets[0]);
+                }
+              } catch (galErr: any) {
+                console.warn('Gallery launch error:', galErr);
+                Alert.alert('Gallery Error', galErr?.message || 'Could not open gallery.');
               }
             },
           },
@@ -240,48 +337,90 @@ export default function ServiceScreen({ route, navigation }: any) {
         ]
       );
     } catch (err: any) {
-      Alert.alert('Error', err.message);
+      Alert.alert('Error', err?.message || 'Could not pick photo.');
     }
   };
 
   const savePhotoData = async (type: 'before' | 'after', asset: ImagePicker.ImagePickerAsset) => {
     setUploadingPhoto(type);
     try {
+      // 1. Resolve content:// URI to a local cached file:// URI for reliable React Native handling
+      let localUri = asset.uri;
+      if (localUri && localUri.startsWith('content://')) {
+        try {
+          const dest = `${FileSystem.cacheDirectory}proof_${type}_${Date.now()}.jpg`;
+          await FileSystem.copyAsync({ from: localUri, to: dest });
+          localUri = dest;
+        } catch (copyErr) {
+          console.warn('[savePhotoData] content:// URI cache copy warning:', copyErr);
+        }
+      }
+
+      // Set immediate local preview so technician sees the image right away with 0 delay
+      if (type === 'before') {
+        setBeforePhoto(localUri);
+        store.updateJobPhotos(job.jobId, localUri, undefined);
+      } else {
+        setAfterPhoto(localUri);
+        store.updateJobPhotos(job.jobId, undefined, localUri);
+      }
+
       let finalPhotoUrl = '';
       const storagePath = `booking_proofs/${job.jobId}_${type}_${Date.now()}.jpg`;
 
-      // 1. Prepare Base64 representation
-      let b64Str = asset.base64;
-      if (!b64Str && asset.uri) {
+      // 2. Prepare Base64 representation safely (read on-demand from local file)
+      let cleanB64 = '';
+      if (localUri) {
         try {
-          b64Str = await FileSystem.readAsStringAsync(asset.uri, {
+          const rawB64 = await FileSystem.readAsStringAsync(localUri, {
             encoding: FileSystem.EncodingType.Base64,
           });
+          cleanB64 = rawB64.replace(/^data:image\/[a-zA-Z0-9.+_-]+;base64,/, '').trim();
         } catch (e) {
           console.warn('[savePhotoData] Base64 read error:', e);
         }
       }
 
-      // 2. Upload to Firebase Storage using uploadString (exact method used for audio)
-      if (storage && b64Str) {
+      // 3. Upload to Firebase Storage with dual strategy: uploadBytes (blob) then uploadString (base64)
+      if (storage) {
         try {
           if (auth && !auth.currentUser) {
             await signInAnonymously(auth).catch(() => {});
           }
           const photoRef = ref(storage, storagePath);
-          await uploadString(photoRef, b64Str, 'base64', { contentType: 'image/jpeg' });
-          finalPhotoUrl = await getDownloadURL(photoRef);
+
+          // Priority 1: Native binary blob upload
+          if (localUri) {
+            try {
+              const response = await fetch(localUri);
+              const blob = await response.blob();
+              await uploadBytes(photoRef, blob, { contentType: 'image/jpeg' });
+              finalPhotoUrl = await getDownloadURL(photoRef);
+            } catch (blobErr) {
+              console.warn('[savePhotoData] uploadBytes error, trying uploadString:', blobErr);
+            }
+          }
+
+          // Priority 2: Base64 string upload fallback
+          if (!finalPhotoUrl && cleanB64) {
+            try {
+              await uploadString(photoRef, cleanB64, 'base64', { contentType: 'image/jpeg' });
+              finalPhotoUrl = await getDownloadURL(photoRef);
+            } catch (strErr) {
+              console.warn('[savePhotoData] uploadString error:', strErr);
+            }
+          }
         } catch (uploadErr) {
-          console.warn('[savePhotoData] Storage uploadString error:', uploadErr);
+          console.warn('[savePhotoData] Firebase Storage error:', uploadErr);
         }
       }
 
-      // 3. Fallback: if storage upload is unavailable, use base64 data URI or asset URI
+      // 4. Fallback: if storage upload is unavailable, use base64 data URI if lightweight, else localUri
       if (!finalPhotoUrl) {
-        if (b64Str) {
-          finalPhotoUrl = `data:image/jpeg;base64,${b64Str}`;
-        } else if (asset.uri) {
-          finalPhotoUrl = asset.uri;
+        if (cleanB64 && cleanB64.length < 900000) {
+          finalPhotoUrl = `data:image/jpeg;base64,${cleanB64}`;
+        } else if (localUri) {
+          finalPhotoUrl = localUri;
         }
       }
 
@@ -289,10 +428,8 @@ export default function ServiceScreen({ route, navigation }: any) {
         throw new Error('Photo could not be captured. Please try taking the photo again.');
       }
 
-      // Keep reliable photo URI in state and store
-      const localDisplayUri = asset.uri || finalPhotoUrl;
-      const effectivePhoto = finalPhotoUrl || (b64Str ? `data:image/jpeg;base64,${b64Str}` : localDisplayUri);
-
+      // 5. Update local store and state with the finalized photo URL
+      const effectivePhoto = finalPhotoUrl.startsWith('http') ? finalPhotoUrl : localUri;
       if (type === 'before') {
         setBeforePhoto(effectivePhoto);
         store.updateJobPhotos(job.jobId, effectivePhoto, undefined);
@@ -476,10 +613,21 @@ export default function ServiceScreen({ route, navigation }: any) {
     }
 
     // Process local audio & photo files
-    if (rawVal.startsWith('data:') || rawVal.startsWith('file://')) {
-      if (type === 'audio' && rawVal.startsWith('file://')) {
+    if (rawVal.startsWith('data:') || rawVal.startsWith('file://') || rawVal.startsWith('content://')) {
+      let resolvedFileUri = rawVal;
+      if (rawVal.startsWith('content://')) {
         try {
-          const base64Str = await FileSystem.readAsStringAsync(rawVal, {
+          const dest = `${FileSystem.cacheDirectory}finalize_${type}_${Date.now()}.jpg`;
+          await FileSystem.copyAsync({ from: rawVal, to: dest });
+          resolvedFileUri = dest;
+        } catch (copyErr) {
+          console.warn('[ensureCloudUrl] content:// copy warning:', copyErr);
+        }
+      }
+
+      if (type === 'audio' && resolvedFileUri.startsWith('file://')) {
+        try {
+          const base64Str = await FileSystem.readAsStringAsync(resolvedFileUri, {
             encoding: FileSystem.EncodingType.Base64,
           });
           if (base64Str && base64Str.length < 900000) {
@@ -490,12 +638,58 @@ export default function ServiceScreen({ route, navigation }: any) {
         }
       }
       if (type === 'before' || type === 'after') {
-        let base64Payload = '';
-        if (rawVal.startsWith('data:')) {
-          base64Payload = rawVal.replace(/^data:image\/[a-zA-Z0-9.+_-]+;base64,/, '');
-        } else if (rawVal.startsWith('file://')) {
+        const storagePath = `booking_proofs/${jobId}_${type}_${Date.now()}.jpg`;
+
+        // Direct upload to Firebase Storage if available (dual strategy: Blob then Base64)
+        if (storage) {
           try {
-            base64Payload = await FileSystem.readAsStringAsync(rawVal, {
+            if (auth && !auth.currentUser) {
+              await signInAnonymously(auth).catch(() => {});
+            }
+            const photoRef = ref(storage, storagePath);
+
+            // Strategy 1: Native binary blob
+            if (resolvedFileUri.startsWith('file://')) {
+              try {
+                const response = await fetch(resolvedFileUri);
+                const blob = await response.blob();
+                await uploadBytes(photoRef, blob, { contentType: 'image/jpeg' });
+                const cloudUrl = await getDownloadURL(photoRef);
+                if (cloudUrl) return { url: cloudUrl, storagePath };
+              } catch (_) {}
+            }
+
+            // Strategy 2: Clean base64 string
+            let base64Payload = '';
+            if (resolvedFileUri.startsWith('data:')) {
+              base64Payload = resolvedFileUri.replace(/^data:image\/[a-zA-Z0-9.+_-]+;base64,/, '').trim();
+            } else if (resolvedFileUri.startsWith('file://')) {
+              try {
+                base64Payload = await FileSystem.readAsStringAsync(resolvedFileUri, {
+                  encoding: FileSystem.EncodingType.Base64,
+                });
+                base64Payload = base64Payload.replace(/^data:image\/[a-zA-Z0-9.+_-]+;base64,/, '').trim();
+              } catch (_) {}
+            }
+
+            if (base64Payload) {
+              try {
+                await uploadString(photoRef, base64Payload, 'base64', { contentType: 'image/jpeg' });
+                const cloudUrl = await getDownloadURL(photoRef);
+                if (cloudUrl) return { url: cloudUrl, storagePath };
+              } catch (_) {}
+            }
+          } catch (storageErr) {
+            console.warn('[ensureCloudUrl] Storage upload error:', storageErr);
+          }
+        }
+
+        let base64Payload = '';
+        if (resolvedFileUri.startsWith('data:')) {
+          base64Payload = resolvedFileUri.replace(/^data:image\/[a-zA-Z0-9.+_-]+;base64,/, '').trim();
+        } else if (resolvedFileUri.startsWith('file://')) {
+          try {
+            base64Payload = await FileSystem.readAsStringAsync(resolvedFileUri, {
               encoding: FileSystem.EncodingType.Base64,
             });
           } catch (e) {
@@ -503,33 +697,14 @@ export default function ServiceScreen({ route, navigation }: any) {
           }
         }
 
-        const storagePath = `booking_proofs/${jobId}_${type}_${Date.now()}.jpg`;
-
-        // Direct upload to Firebase Storage if available
-        if (storage && base64Payload) {
-          try {
-            if (auth && !auth.currentUser) {
-              await signInAnonymously(auth).catch(() => {});
-            }
-            const photoRef = ref(storage, storagePath);
-            await uploadString(photoRef, base64Payload, 'base64', { contentType: 'image/jpeg' });
-            const cloudUrl = await getDownloadURL(photoRef);
-            if (cloudUrl) {
-              return { url: cloudUrl, storagePath };
-            }
-          } catch (storageErr) {
-            console.warn('[ensureCloudUrl] Storage upload error:', storageErr);
-          }
-        }
-
-        if (base64Payload) {
+        if (base64Payload && base64Payload.length < 900000) {
           return {
             url: `data:image/jpeg;base64,${base64Payload}`,
             storagePath,
           };
         }
       }
-      return { url: rawVal, storagePath: undefined };
+      return { url: resolvedFileUri, storagePath: undefined };
     }
 
     return { url: rawVal };
@@ -541,9 +716,11 @@ export default function ServiceScreen({ route, navigation }: any) {
 
     const currentBefore = beforePhoto || job.beforePhoto || null;
     const currentAfter = afterPhoto || job.afterPhoto || null;
-    const currentChecklistItems = job.checklist && job.checklist.length > 0
-      ? job.checklist
-      : getDynamicChecklist(job.serviceType, job.serviceName);
+    const currentChecklistItems = (liveChecklist && liveChecklist.length > 0)
+      ? liveChecklist
+      : (job.checklist && job.checklist.length > 0
+          ? job.checklist
+          : getDynamicChecklist(job.serviceType, job.serviceName));
 
     if (!currentBefore) {
       Alert.alert('Missing Before Photo', 'Please capture the Before Work proof photo before finalizing.');
@@ -617,33 +794,50 @@ export default function ServiceScreen({ route, navigation }: any) {
       let safeAfter = cleanAfter;
       let safeAudio = cleanAudio;
 
-      // Subcollection writes for base64 data to individual docs to guarantee 1MB limit is never exceeded
+      // Persist Before photo evidence to subcollection docs (and keep safe URL for main doc)
       if (cleanBefore.startsWith('data:')) {
+        if (cleanBefore.length < 900000) {
+          try {
+            await setDoc(doc(db, 'bookings', job.jobId, 'evidence', 'beforePhoto'), {
+              beforePhoto: cleanBefore,
+              updatedAt: new Date().toISOString(),
+            });
+            await setDoc(doc(db, 'bookings', job.jobId, 'evidence', 'photos'), { beforePhoto: cleanBefore }, { merge: true });
+            safeBefore = 'subcollection:evidence/beforePhoto';
+          } catch (e) {
+            console.warn('Subcollection beforePhoto error:', e);
+          }
+        }
+      } else if (cleanBefore.startsWith('http://') || cleanBefore.startsWith('https://')) {
         try {
           await setDoc(doc(db, 'bookings', job.jobId, 'evidence', 'beforePhoto'), {
             beforePhoto: cleanBefore,
             updatedAt: new Date().toISOString(),
-          });
-          safeBefore = 'subcollection:evidence/beforePhoto';
-        } catch (e) {
-          console.warn('Subcollection beforePhoto error:', e);
-        }
-        try {
+          }, { merge: true });
           await setDoc(doc(db, 'bookings', job.jobId, 'evidence', 'photos'), { beforePhoto: cleanBefore }, { merge: true });
         } catch (_) {}
       }
 
+      // Persist After photo evidence to subcollection docs (and keep safe URL for main doc)
       if (cleanAfter.startsWith('data:')) {
+        if (cleanAfter.length < 900000) {
+          try {
+            await setDoc(doc(db, 'bookings', job.jobId, 'evidence', 'afterPhoto'), {
+              afterPhoto: cleanAfter,
+              updatedAt: new Date().toISOString(),
+            });
+            await setDoc(doc(db, 'bookings', job.jobId, 'evidence', 'photos'), { afterPhoto: cleanAfter }, { merge: true });
+            safeAfter = 'subcollection:evidence/afterPhoto';
+          } catch (e) {
+            console.warn('Subcollection afterPhoto error:', e);
+          }
+        }
+      } else if (cleanAfter.startsWith('http://') || cleanAfter.startsWith('https://')) {
         try {
           await setDoc(doc(db, 'bookings', job.jobId, 'evidence', 'afterPhoto'), {
             afterPhoto: cleanAfter,
             updatedAt: new Date().toISOString(),
-          });
-          safeAfter = 'subcollection:evidence/afterPhoto';
-        } catch (e) {
-          console.warn('Subcollection afterPhoto error:', e);
-        }
-        try {
+          }, { merge: true });
           await setDoc(doc(db, 'bookings', job.jobId, 'evidence', 'photos'), { afterPhoto: cleanAfter }, { merge: true });
         } catch (_) {}
       }
@@ -690,6 +884,8 @@ export default function ServiceScreen({ route, navigation }: any) {
       if (safeAudio) updateData.audioUrl = safeAudio;
       if (audioStoragePath) updateData.audioPath = audioStoragePath;
       if (cleanAudio || audioStoragePath) updateData.audioMetadata = audioMetadata;
+      updateData.checklist = currentChecklistItems;
+      updateData.checklistDone = job.checklistDone;
 
       await updateDoc(doc(db, 'bookings', job.jobId), updateData);
 
@@ -711,9 +907,11 @@ export default function ServiceScreen({ route, navigation }: any) {
     }
   };
 
-  const checklistItems = job.checklist && job.checklist.length > 0
-    ? job.checklist
-    : getDynamicChecklist(job.serviceType, job.serviceName);
+  const checklistItems = (liveChecklist && liveChecklist.length > 0)
+    ? liveChecklist
+    : (job.checklist && job.checklist.length > 0
+        ? job.checklist
+        : getDynamicChecklist(job.serviceType, job.serviceName));
 
   const doneCount = job.checklistDone.length;
   const totalCount = checklistItems.length;
@@ -804,16 +1002,23 @@ export default function ServiceScreen({ route, navigation }: any) {
             {/* Before Photo Box */}
             <View style={styles.photoBox}>
               <Text style={styles.photoBoxLabel}>1. Before Service</Text>
-              {beforePhoto ? (
+              {beforePhoto && !beforePhoto.startsWith('subcollection:') ? (
                 <View style={styles.photoPreviewWrap}>
                   <Image source={{ uri: beforePhoto }} style={styles.photoImg} resizeMode="cover" />
-                  <TouchableOpacity
-                    style={styles.replaceBtn}
-                    onPress={() => handlePickPhoto('before')}
-                  >
-                    <Ionicons name="refresh" size={14} color="#FFFFFF" />
-                    <Text style={styles.replaceText}>Retake</Text>
-                  </TouchableOpacity>
+                  {uploadingPhoto === 'before' ? (
+                    <View style={[styles.replaceBtn, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <Text style={styles.replaceText}>Syncing…</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.replaceBtn}
+                      onPress={() => handlePickPhoto('before')}
+                    >
+                      <Ionicons name="refresh" size={14} color="#FFFFFF" />
+                      <Text style={styles.replaceText}>Retake</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               ) : (
                 <TouchableOpacity
@@ -836,16 +1041,23 @@ export default function ServiceScreen({ route, navigation }: any) {
             {/* After Photo Box */}
             <View style={styles.photoBox}>
               <Text style={styles.photoBoxLabel}>2. After Service</Text>
-              {afterPhoto ? (
+              {afterPhoto && !afterPhoto.startsWith('subcollection:') ? (
                 <View style={styles.photoPreviewWrap}>
                   <Image source={{ uri: afterPhoto }} style={styles.photoImg} resizeMode="cover" />
-                  <TouchableOpacity
-                    style={styles.replaceBtn}
-                    onPress={() => handlePickPhoto('after')}
-                  >
-                    <Ionicons name="refresh" size={14} color="#FFFFFF" />
-                    <Text style={styles.replaceText}>Retake</Text>
-                  </TouchableOpacity>
+                  {uploadingPhoto === 'after' ? (
+                    <View style={[styles.replaceBtn, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <Text style={styles.replaceText}>Syncing…</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.replaceBtn}
+                      onPress={() => handlePickPhoto('after')}
+                    >
+                      <Ionicons name="refresh" size={14} color="#FFFFFF" />
+                      <Text style={styles.replaceText}>Retake</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               ) : (
                 <TouchableOpacity

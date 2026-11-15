@@ -11,6 +11,7 @@ import {
   subscribeToVendorJobs,
   subscribeToVendorProfile,
   subscribeToNewRequests,
+  setVendorOnlineStatus,
   FirestoreBooking,
 } from '../services/firestoreService';
 import { db } from '../services/firebase';
@@ -86,16 +87,22 @@ export default function HomeScreen({ navigation }: any) {
 
     // 📲 Register vendor push notifications to shout loud when outside app
     registerVendorPushNotifications().then(async (token) => {
-      if (token && store.vendorId && db) {
+      const vId = store.vendorId || store.vendor?.docId || store.vendor?.vendorId;
+      if (token && vId && db) {
         try {
           const updatePayload: any = { pushToken: token };
           if (!store.isVendorBlocked()) {
             updatePayload.isOnline = true;
           }
-          await updateDoc(doc(db, 'vendors', store.vendorId), updatePayload);
-        } catch (_) {}
+          await setDoc(doc(db, 'vendors', vId), updatePayload, { merge: true });
+          console.log('[HomeScreen] Vendor push token synced to Firestore:', token);
+        } catch (e) {
+          console.warn('[HomeScreen] Push token sync error:', e);
+        }
       }
-    }).catch(() => {});
+    }).catch((err) => {
+      console.warn('[HomeScreen] Push registration error:', err);
+    });
 
     if (store.vendorId) {
       startSubscriptions(store.vendorId);
@@ -152,6 +159,31 @@ export default function HomeScreen({ navigation }: any) {
     remainingDays = Math.max(1, Math.ceil(remainingMs / (24 * 60 * 60 * 1000)));
   }
 
+  const isOnline = vendor.isOnline !== false && !cancelBlocked;
+
+  const handleToggleOnline = async (targetStatus?: boolean) => {
+    const nextStatus = targetStatus !== undefined ? targetStatus : !isOnline;
+
+    if (nextStatus && cancelBlocked) {
+      Alert.alert(
+        'Account Restricted',
+        'You cannot switch Online because your profile is temporarily restricted due to the 7-day cancellation policy (3 cancellations in 7 days). Contact Admin to unblock.'
+      );
+      return;
+    }
+
+    const success = store.toggleOnline(nextStatus);
+    if (success !== false) {
+      forceUpdate((n) => n + 1);
+      const vId = store.vendorId || store.vendor?.docId || store.vendor?.vendorId;
+      if (vId) {
+        setVendorOnlineStatus(vId, nextStatus).catch((err) => {
+          console.warn('[handleToggleOnline] Firestore sync warning:', err);
+        });
+      }
+    }
+  };
+
   return (
     <View style={s.root}>
       {/* Top Scenic Banner & Header */}
@@ -166,12 +198,29 @@ export default function HomeScreen({ navigation }: any) {
             style={s.headerGradient}
           />
           <SafeAreaView edges={['top']} style={s.safeHeader}>
-            {/* Header Top Bar: Brand, Calendar & Notification Bell */}
+            {/* Header Top Bar: Brand, Online Toggle, Calendar & Notification Bell */}
             <View style={s.topBarRow}>
               <View style={s.brandPill}>
                 <Ionicons name="shield-checkmark" size={13} color="#0D3325" />
                 <Text style={s.brandPillText}>URBAN CAPTAIN</Text>
               </View>
+
+              {/* Online / Offline Status Toggle Pill */}
+              <TouchableOpacity
+                style={[s.onlineTogglePill, isOnline ? s.onlineTogglePillOn : s.onlineTogglePillOff]}
+                onPress={() => handleToggleOnline()}
+                activeOpacity={0.8}
+              >
+                <View style={[s.dutyDotSmall, { backgroundColor: isOnline ? '#10B981' : '#94A3B8' }]} />
+                <Text style={[s.onlineTogglePillText, { color: isOnline ? '#065F46' : '#64748B' }]}>
+                  {isOnline ? 'ONLINE' : 'OFFLINE'}
+                </Text>
+                <Ionicons
+                  name={isOnline ? 'toggle' : 'toggle-outline'}
+                  size={19}
+                  color={isOnline ? '#10B981' : '#94A3B8'}
+                />
+              </TouchableOpacity>
 
               <View style={s.topActions}>
                 {/* Calendar Button */}
@@ -204,12 +253,20 @@ export default function HomeScreen({ navigation }: any) {
                 <Image
                   source={{
                     uri:
-                      vendor.avatar ||
-                      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80',
+                    vendor.avatar ||
+                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80',
                   }}
                   style={s.avatar}
                 />
-                <View style={s.onlineDot} />
+                <View
+                  style={[
+                    s.onlineDot,
+                    {
+                      backgroundColor: isOnline ? '#10B981' : '#94A3B8',
+                      borderColor: isOnline ? '#FFFFFF' : '#CBD5E1',
+                    },
+                  ]}
+                />
               </TouchableOpacity>
 
               <View style={s.nameBlock}>
@@ -239,6 +296,46 @@ export default function HomeScreen({ navigation }: any) {
             </View>
           </SafeAreaView>
         </ImageBackground>
+      </View>
+
+      {/* ── Online / Offline Availability Duty Bar ─────────────────────────── */}
+      <View style={[s.dutyCard, isOnline ? s.dutyCardOnline : s.dutyCardOffline]}>
+        <View style={s.dutyLeft}>
+          <View style={[s.dutyIconBox, { backgroundColor: isOnline ? '#D1FAE5' : '#E2E8F0' }]}>
+            <Ionicons
+              name={isOnline ? 'radio' : 'moon'}
+              size={18}
+              color={isOnline ? '#059669' : '#64748B'}
+            />
+          </View>
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={[s.dutyDotPulse, { backgroundColor: isOnline ? '#10B981' : '#94A3B8' }]} />
+              <Text style={[s.dutyTitle, { color: isOnline ? '#065F46' : '#334155' }]}>
+                {isOnline ? 'YOU ARE ONLINE' : 'YOU ARE OFFLINE'}
+              </Text>
+            </View>
+            <Text style={[s.dutySub, { color: isOnline ? '#047857' : '#64748B' }]}>
+              {isOnline
+                ? 'Available & ready to receive incoming job requests'
+                : 'Duty paused • You are not receiving new job requests'}
+            </Text>
+          </View>
+        </View>
+        <TouchableOpacity
+          style={[s.dutyToggleActionBtn, { backgroundColor: isOnline ? '#059669' : '#0F172A' }]}
+          onPress={() => handleToggleOnline()}
+          activeOpacity={0.85}
+        >
+          <Ionicons
+            name={isOnline ? 'power' : 'flash'}
+            size={13}
+            color="#FFFFFF"
+          />
+          <Text style={s.dutyToggleActionBtnText}>
+            {isOnline ? 'Go Offline' : 'Go Online'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* ── Cancellation Counter Card ─────────────────────────────────────── */}
@@ -339,13 +436,35 @@ export default function HomeScreen({ navigation }: any) {
       >
         {displayedJobs.length === 0 ? (
           <View style={s.emptyContainer}>
-            <Ionicons name="briefcase-outline" size={54} color="#CBD5E1" />
-            <Text style={s.emptyTitle}>No {activeTab} jobs right now</Text>
+            <Ionicons
+              name={activeTab === 'requests' && !isOnline ? 'moon-outline' : 'briefcase-outline'}
+              size={54}
+              color={activeTab === 'requests' && !isOnline ? '#94A3B8' : '#CBD5E1'}
+            />
+            <Text style={s.emptyTitle}>
+              {activeTab === 'requests' && !isOnline
+                ? 'You are currently Offline'
+                : `No ${activeTab} jobs right now`}
+            </Text>
             <Text style={s.emptySub}>
-              {activeTab === 'requests'
+              {activeTab === 'requests' && !isOnline
+                ? 'Switch your status to Online to start receiving instant job requests.'
+                : activeTab === 'requests'
                 ? 'Incoming customer bookings will appear here instantly.'
                 : `You do not have any ${activeTab} bookings.`}
             </Text>
+            {activeTab === 'requests' && !isOnline && (
+              <TouchableOpacity
+                style={s.goOnlineEmptyBtn}
+                onPress={() => handleToggleOnline(true)}
+                activeOpacity={0.85}
+              >
+                <LinearGradient colors={['#10B981', '#059669']} style={s.goOnlineEmptyGrad}>
+                  <Ionicons name="flash" size={15} color="#FFFFFF" />
+                  <Text style={s.goOnlineEmptyText}>Go Online Now</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
           </View>
         ) : (
           displayedJobs.map((job) => (
@@ -393,6 +512,110 @@ const s = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#F6F7F9',
+  },
+  onlineTogglePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  onlineTogglePillOn: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+  },
+  onlineTogglePillOff: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#CBD5E1',
+  },
+  onlineTogglePillText: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  dutyDotSmall: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+  },
+  dutyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 6,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  dutyCardOnline: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+  },
+  dutyCardOffline: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+  },
+  dutyLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  dutyIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dutyDotPulse: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  dutyTitle: {
+    fontSize: 12.5,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  dutySub: {
+    fontSize: 11,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  dutyToggleActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginLeft: 8,
+  },
+  dutyToggleActionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  goOnlineEmptyBtn: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 14,
+  },
+  goOnlineEmptyGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+  },
+  goOnlineEmptyText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
   },
   headerContainer: {
     backgroundColor: '#0D3325',

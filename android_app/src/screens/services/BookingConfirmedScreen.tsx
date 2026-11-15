@@ -16,6 +16,7 @@ import { db } from "@/services/firebase";
 import { RootStackParamList } from "@/navigation/types";
 import { useTheme } from "@/context/ThemeContext";
 import { SERVICE_CATEGORIES } from "./servicesData";
+import VoiceRecorderAwarenessModal from "@/components/VoiceRecorderAwarenessModal";
 import {
   sendBookingConfirmation,
   sendBookingPlaced,
@@ -31,12 +32,7 @@ const DATES = ["11",  "12",  "13",  "14",  "15",  "16",  "17"];
 const TEAL   = "#00bcd4";
 const TEAL_D = "#0097a7";
 
-const FEATURES = [
-  { icon: "shield-checkmark", title: "Trusted Professionals", desc: "Background verified" },
-  { icon: "leaf", title: "Eco-Friendly Products", desc: "Safe for kids & pets" },
-  { icon: "ribbon", title: "100% Satisfaction", desc: "Re-service guarantee" },
-  { icon: "time", title: "Flexible Slots", desc: "Reschedule anytime" },
-];
+
 
 export default function BookingConfirmedScreen({ navigation, route }: Props) {
   const { isDark, colors: themeColors } = useTheme();
@@ -71,6 +67,7 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
     };
 
   const [copied, setCopied] = useState(false);
+  const [safetyModalVisible, setSafetyModalVisible] = useState(false);
 
   const bookingDateStr =
     booking.scheduledAt ||
@@ -470,70 +467,44 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
           </Animated.View>
         )}
 
-        {/* 6. Why Urban Helpers (4 Pills Grid) */}
-        <Animated.View entering={FadeInDown.delay(420).duration(400)} style={s.featuresGrid}>
-          {FEATURES.map((item, idx) => (
-            <View key={idx} style={[s.featureCard, { backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "#FFFFFF", borderColor: isDark ? "rgba(255,255,255,0.06)" : "#E2E8F0" }]}>
-              <View style={s.featureIconCircle}>
-                <Ionicons name={item.icon as any} size={18} color={TEAL} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[s.featureTitle, textPrimary]}>{item.title}</Text>
-                <Text style={[s.featureDesc, textSecondary]}>{item.desc}</Text>
-              </View>
-            </View>
-          ))}
-        </Animated.View>
-
-        {/* 6.1 Appliance Repeat Cleaning & Maintenance Cadence */}
+        {/* 6. Safe Hands Guarantee & Audio Recording Awareness Card */}
         {!isCancelled && (
-          <Animated.View entering={FadeInDown.delay(440).duration(400)} style={[s.applianceCard, cardBgStyle]}>
-            <View style={s.applianceHeader}>
-              <View style={s.applianceBadge}>
-                <Ionicons name="repeat" size={13} color="#059669" />
-                <Text style={s.applianceBadgeText}>APPLIANCE HEALTH CADENCE</Text>
+          <Animated.View entering={FadeInDown.delay(380).duration(400)}>
+            <Pressable
+              style={[
+                s.safeHandsCard,
+                {
+                  backgroundColor: isDark ? "rgba(16,185,129,0.08)" : "#F0FDF4",
+                  borderColor: isDark ? "rgba(16,185,129,0.25)" : "#BBF7D0",
+                },
+              ]}
+              onPress={() => setSafetyModalVisible(true)}
+            >
+              <View style={s.safeHandsTopRow}>
+                <View style={s.safeHandsIconBox}>
+                  <Ionicons name="shield-checkmark" size={22} color="#059669" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                    <Text style={[s.safeHandsTitle, { color: isDark ? "#ECFDF5" : "#065F46" }]}>
+                      Safe Hands Guarantee
+                    </Text>
+                    <View style={s.audioBadge}>
+                      <Ionicons name="mic" size={11} color="#E11D48" />
+                      <Text style={s.audioBadgeText}>Audio Monitored</Text>
+                    </View>
+                  </View>
+                  <Text style={[s.safeHandsSub, { color: isDark ? "#A7F3D0" : "#047857" }]}>
+                    When your specialist arrives, background audio monitoring activates to ensure polite conduct, transparent pricing & verified service quality.
+                  </Text>
+                </View>
               </View>
-              <View style={s.applianceActiveTag}>
-                <Ionicons name="notifications" size={13} color="#059669" />
-                <Text style={s.applianceActiveText}>Repeat Alert Active</Text>
-              </View>
-            </View>
 
-            <View style={s.applianceContentRow}>
-              <View style={s.applianceIconBox}>
-                <Ionicons
-                  name={matchedAppliance ? (matchedAppliance.icon as any) : "sparkles"}
-                  size={24}
-                  color="#059669"
-                />
+              <View style={s.safeHandsBottomRow}>
+                <Text style={s.safeHandsLearnText}>Tap to learn how audio monitoring keeps you safe</Text>
+                <Ionicons name="chevron-forward" size={13} color="#059669" />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[s.applianceTitle, textPrimary]}>
-                  {matchedAppliance ? `${matchedAppliance.name} Repeat Cleaning` : "Periodic Appliance Maintenance"}
-                </Text>
-                <Text style={[s.applianceDesc, textSecondary]}>
-                  {matchedAppliance
-                    ? `Heavy buildup requires servicing every ${matchedAppliance.intervalDays} days. We've set your automatic repeat reminder!`
-                    : "Kitchen chimneys need filter degreasing every 60 days, and refrigerators need coil sanitization every 90 days to save electricity and prevent bacteria."}
-                </Text>
-              </View>
-            </View>
-
-            {/* Quick reminder pills for key appliances */}
-            <View style={s.appliancePillsRow}>
-              <View style={s.applianceIntervalPill}>
-                <Ionicons name="flame" size={12} color="#D97706" />
-                <Text style={s.applianceIntervalText}>Chimney: Every 60d</Text>
-              </View>
-              <View style={s.applianceIntervalPill}>
-                <Ionicons name="snow" size={12} color="#0284C7" />
-                <Text style={s.applianceIntervalText}>Fridge: Every 90d</Text>
-              </View>
-              <View style={s.applianceIntervalPill}>
-                <Ionicons name="thermometer" size={12} color="#059669" />
-                <Text style={s.applianceIntervalText}>AC Jet: Every 90d</Text>
-              </View>
-            </View>
+            </Pressable>
           </Animated.View>
         )}
 
@@ -682,11 +653,82 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
 
         <View style={{ height: 30 }} />
       </ScrollView>
+
+      <VoiceRecorderAwarenessModal
+        visible={safetyModalVisible}
+        onClose={() => setSafetyModalVisible(false)}
+        serviceName={sub.name}
+        vendorName={vendorName}
+        bookingId={bookingId}
+      />
     </View>
   );
 }
 
 const s = StyleSheet.create({
+  safeHandsCard: {
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  safeHandsTopRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  safeHandsIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#059669",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  safeHandsTitle: {
+    fontSize: 14.5,
+    fontWeight: "800",
+  },
+  audioBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FFF1F2",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#FECDD3",
+  },
+  audioBadgeText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#E11D48",
+  },
+  safeHandsSub: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 4,
+  },
+  safeHandsBottomRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(5,150,105,0.15)",
+  },
+  safeHandsLearnText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: "#059669",
+  },
   root: {
     flex: 1,
   },
@@ -1110,123 +1152,7 @@ const s = StyleSheet.create({
     lineHeight: 16,
   },
 
-  // Features Grid
-  featuresGrid: {
-    gap: 8,
-    marginBottom: 22,
-  },
-  featureCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 12,
-    gap: 12,
-  },
-  featureIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(0,188,212,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  featureTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    marginBottom: 1,
-  },
-  featureDesc: {
-    fontSize: 11,
-  },
 
-  // Appliance Cadence Card
-  applianceCard: {
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 16,
-    elevation: 3,
-  },
-  applianceHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 12,
-  },
-  applianceBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "rgba(5, 150, 105, 0.12)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  applianceBadgeText: {
-    fontSize: 10.5,
-    fontWeight: "800",
-    color: "#059669",
-    letterSpacing: 0.8,
-  },
-  applianceActiveTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  applianceActiveText: {
-    fontSize: 11.5,
-    fontWeight: "700",
-    color: "#059669",
-  },
-  applianceContentRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-  },
-  applianceIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(5, 150, 105, 0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  applianceTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    marginBottom: 3,
-  },
-  applianceDesc: {
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  appliancePillsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.06)",
-  },
-  applianceIntervalPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    backgroundColor: "rgba(0,0,0,0.04)",
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-  },
-  applianceIntervalText: {
-    fontSize: 10.5,
-    fontWeight: "700",
-    color: "#475569",
-  },
 
   // Referral Card
   referralCard: {

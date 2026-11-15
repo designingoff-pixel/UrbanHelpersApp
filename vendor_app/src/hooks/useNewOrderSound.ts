@@ -127,6 +127,11 @@ export function useNewOrderSound() {
           return;
         }
 
+        // Do not trigger new request sound alerts if vendor is currently offline / on break
+        if (store.vendor.isOnline === false) {
+          return;
+        }
+
         // Live check: trigger loud chime whenever a request arrives or is re-assigned
         let playedAny = false;
         for (const job of currentRequests) {

@@ -24,6 +24,7 @@ import { RootStackParamList } from "@/navigation/types";
 import {
   getDistanceKm, formatETA, formatDistance,
 } from "@/services/locationService";
+import VoiceRecorderAwarenessModal from "@/components/VoiceRecorderAwarenessModal";
 
 type Props = NativeStackScreenProps<RootStackParamList, "LiveTracking">;
 
@@ -102,6 +103,7 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
 
   const [booking,        setBooking]        = useState<LiveBooking | null>(null);
   const [vendorCoords,   setVendorCoords]   = useState<VendorCoords | null>(null);
+  const [safetyModalVisible, setSafetyModalVisible] = useState(false);
   const [vendorAvatar,   setVendorAvatar]   = useState<string | null>(null);
   const [customerCoords, setCustomerCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [etaText,        setEtaText]        = useState("Calculating...");
@@ -668,6 +670,41 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
           </Animated.View>
         )}
 
+        {/* ── 3.5 Safe Hands Voice Recording Active Banner ── */}
+        {isServiceStarted && (
+          <Animated.View entering={FadeInDown.delay(200).duration(380)}>
+            <Pressable
+              style={[
+                s.voiceRecordingLiveCard,
+                {
+                  backgroundColor: isDark ? "rgba(244,63,94,0.12)" : "#FFF1F2",
+                  borderColor: isDark ? "rgba(244,63,94,0.3)" : "#FECDD3",
+                },
+              ]}
+              onPress={() => setSafetyModalVisible(true)}
+            >
+              <View style={s.voiceRecordingInnerRow}>
+                <View style={s.voiceLiveIconCircle}>
+                  <Ionicons name="mic" size={18} color="#E11D48" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Animated.View style={[s.liveRedDot, pulseStyle]} />
+                    <Text style={s.voiceLiveTitle}>Automatic Voice Recording Active</Text>
+                  </View>
+                  <Text style={s.voiceLiveSub}>
+                    Audio monitoring active for your safety & verified quality. You're in safe hands.
+                  </Text>
+                </View>
+                <View style={s.safetyInfoPill}>
+                  <Text style={s.safetyInfoPillText}>Details</Text>
+                  <Ionicons name="chevron-forward" size={12} color="#BE123C" />
+                </View>
+              </View>
+            </Pressable>
+          </Animated.View>
+        )}
+
         {/* ── 4. Prominent ETA & Distance Stats Bar (ONLY while specialist is travelling) ── */}
         {isPreService && (
           <Animated.View entering={FadeInDown.delay(220).duration(380)} style={[s.etaStatsCard, cardBgStyle]}>
@@ -844,11 +881,75 @@ export default function LiveTrackingScreen({ navigation, route }: Props) {
           </View>
         )}
       </View>
+
+      <VoiceRecorderAwarenessModal
+        visible={safetyModalVisible}
+        onClose={() => setSafetyModalVisible(false)}
+        serviceName={booking?.serviceCategory || "Service"}
+        vendorName={proName}
+        bookingId={booking?.id}
+      />
     </View>
   );
 }
 
 const s = StyleSheet.create({
+  voiceRecordingLiveCard: {
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  voiceRecordingInnerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  voiceLiveIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#E11D48",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  liveRedDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: "#E11D48",
+  },
+  voiceLiveTitle: {
+    fontSize: 12.5,
+    fontWeight: "800",
+    color: "#BE123C",
+  },
+  voiceLiveSub: {
+    fontSize: 11,
+    color: "#64748B",
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  safetyInfoPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    backgroundColor: "rgba(225,29,72,0.1)",
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  safetyInfoPillText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#BE123C",
+  },
   root: {
     flex: 1,
   },

@@ -108,8 +108,7 @@ export type RootStackParamList = {
   HomeCleaning: undefined;
   MyBookings: undefined;
   Offers: undefined;
-
-  // Recording & OTP Vendor Verification (REMOVED)
+  VoiceRecordingAwareness: { bookingId?: string; serviceName?: string; vendorName?: string } | undefined;
 };
 
 export type ScreenName = keyof RootStackParamList;

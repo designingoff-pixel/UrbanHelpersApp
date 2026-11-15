@@ -1,32 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView,
-  Dimensions,
+  Dimensions, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { db } from '../services/firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
 
 const { width } = Dimensions.get('window');
 
-interface DiagnosticStep {
+export interface DiagnosticStep {
   title: string;
   desc: string;
   expected: string;
-  icon: string;
+  icon?: string;
 }
 
-interface CategoryDiagnostic {
+export interface CategoryDiagnostic {
+  id?: string;
   categoryName: string;
+  tabLabel?: string;
   icon: string;
   color: string;
+  matchKeywords?: string[];
+  order?: number;
   steps: DiagnosticStep[];
 }
 
-const DIAGNOSTICS_DATA: Record<string, CategoryDiagnostic> = {
+const DEFAULT_DIAGNOSTICS_DATA: Record<string, CategoryDiagnostic> = {
   ro: {
     categoryName: 'RO Water Purifier Diagnostic',
+    tabLabel: 'RO',
     icon: 'water-outline',
     color: '#0284C7',
+    matchKeywords: ['ro', 'water', 'purif', 'filter', 'membrane'],
+    order: 1,
     steps: [
       {
         title: 'Step 1: Input TDS & Pressure Check',
@@ -56,8 +65,11 @@ const DIAGNOSTICS_DATA: Record<string, CategoryDiagnostic> = {
   },
   ac: {
     categoryName: 'AC & Appliance Diagnostic',
+    tabLabel: 'AC',
     icon: 'snow-outline',
     color: '#0284C7',
+    matchKeywords: ['ac', 'appliance', 'cool', 'refrigerat', 'cooling', 'compressor'],
+    order: 2,
     steps: [
       {
         title: 'Step 1: Power & Voltage Stability',
@@ -87,8 +99,11 @@ const DIAGNOSTICS_DATA: Record<string, CategoryDiagnostic> = {
   },
   cleaning: {
     categoryName: 'Deep Cleaning Diagnostic & Audit',
+    tabLabel: 'Deep',
     icon: 'sparkles-outline',
     color: '#10B981',
+    matchKeywords: ['clean', 'maid', 'housekeep', 'deep', 'scrubbing'],
+    order: 3,
     steps: [
       {
         title: 'Step 1: Surface & Stain Type Assessment',
@@ -118,8 +133,11 @@ const DIAGNOSTICS_DATA: Record<string, CategoryDiagnostic> = {
   },
   pest: {
     categoryName: 'Pest Control Chemical & Safety Audit',
+    tabLabel: 'Pest',
     icon: 'shield-outline',
     color: '#D97706',
+    matchKeywords: ['pest', 'termite', 'cockroach', 'bedbug', 'insect'],
+    order: 4,
     steps: [
       {
         title: 'Step 1: Infestation Hotspot Mapping',
@@ -149,8 +167,11 @@ const DIAGNOSTICS_DATA: Record<string, CategoryDiagnostic> = {
   },
   general: {
     categoryName: 'Standard Diagnostic & Safety Protocol',
+    tabLabel: 'Standard',
     icon: 'construct-outline',
     color: '#0D3325',
+    matchKeywords: ['general', 'standard', 'repair', 'handyman'],
+    order: 5,
     steps: [
       {
         title: 'Step 1: Pre-Service Inspection',
@@ -193,23 +214,90 @@ export default function DiagnosticModal({
   serviceCategory = '',
   subServiceName = '',
 }: DiagnosticModalProps) {
+  const [diagnosticsData, setDiagnosticsData] = useState<Record<string, CategoryDiagnostic>>(DEFAULT_DIAGNOSTICS_DATA);
   const [selectedKey, setSelectedKey] = useState<string>('auto');
   const [checkedSteps, setCheckedSteps] = useState<number[]>([]);
+  const [loadingLive, setLoadingLive] = useState<boolean>(true);
+
+  // Live Firestore subscription: any edit made in the Admin Web Portal immediately updates here in real time!
+  useEffect(() => {
+    if (!db) {
+      setLoadingLive(false);
+      return;
+    }
+
+    try {
+      const unsub = onSnapshot(
+        collection(db, 'diagnostics'),
+        (snapshot) => {
+          setLoadingLive(false);
+          if (!snapshot.empty) {
+            const loaded: Record<string, CategoryDiagnostic> = {};
+            snapshot.forEach((docSnap) => {
+              const data = docSnap.data() as any;
+              const key = docSnap.id;
+              if (data && data.categoryName) {
+                loaded[key] = {
+                  id: key,
+                  categoryName: data.categoryName,
+                  tabLabel: data.tabLabel || data.categoryName.split(' ')[0],
+                  icon: data.icon || 'construct-outline',
+                  color: data.color || '#0284C7',
+                  matchKeywords: Array.isArray(data.matchKeywords) ? data.matchKeywords : [],
+                  order: typeof data.order === 'number' ? data.order : 99,
+                  steps: Array.isArray(data.steps) ? data.steps : [],
+                };
+              }
+            });
+
+            // Merge with default standard protocol as safety fallback if not returned
+            setDiagnosticsData((prev) => ({
+              ...DEFAULT_DIAGNOSTICS_DATA,
+              ...loaded,
+            }));
+          }
+        },
+        (err) => {
+          console.warn('[DiagnosticModal] Live diagnostics sync error:', err);
+          setLoadingLive(false);
+        }
+      );
+      return () => unsub();
+    } catch (e) {
+      console.warn('[DiagnosticModal] Firestore listener init warning:', e);
+      setLoadingLive(false);
+    }
+  }, []);
 
   const query = `${serviceCategory} ${subServiceName}`.toLowerCase();
+
+  // Match category dynamically based on keywords or default fallbacks
   let defaultKey = 'general';
-  if (query.includes('ro') || query.includes('water') || query.includes('purif')) {
-    defaultKey = 'ro';
-  } else if (query.includes('ac') || query.includes('appliance') || query.includes('cool') || query.includes('refrigerat')) {
-    defaultKey = 'ac';
-  } else if (query.includes('clean') || query.includes('maid') || query.includes('housekeep')) {
-    defaultKey = 'cleaning';
-  } else if (query.includes('pest') || query.includes('termite') || query.includes('cockroach')) {
-    defaultKey = 'pest';
+  for (const [key, item] of Object.entries(diagnosticsData)) {
+    const kws = item.matchKeywords;
+    if (Array.isArray(kws) && kws.some((kw: string) => kw && query.includes(kw.toLowerCase()))) {
+      defaultKey = key;
+      break;
+    }
+  }
+
+  if (defaultKey === 'general') {
+    if (query.includes('ro') || query.includes('water') || query.includes('purif')) {
+      defaultKey = 'ro';
+    } else if (query.includes('ac') || query.includes('appliance') || query.includes('cool') || query.includes('refrigerat')) {
+      defaultKey = 'ac';
+    } else if (query.includes('clean') || query.includes('maid') || query.includes('housekeep')) {
+      defaultKey = 'cleaning';
+    } else if (query.includes('pest') || query.includes('termite') || query.includes('cockroach')) {
+      defaultKey = 'pest';
+    }
   }
 
   const activeKey = selectedKey === 'auto' ? defaultKey : selectedKey;
-  const currentDiag = DIAGNOSTICS_DATA[activeKey] || DIAGNOSTICS_DATA.general;
+  const currentDiag = diagnosticsData[activeKey] || diagnosticsData.general || DEFAULT_DIAGNOSTICS_DATA.general;
+  const stepsList = currentDiag?.steps || [];
+  const totalSteps = stepsList.length;
+  const progressPercent = totalSteps > 0 ? Math.round((checkedSteps.length / totalSteps) * 100) : 0;
 
   const toggleStep = (idx: number) => {
     setCheckedSteps(prev =>
@@ -240,25 +328,29 @@ export default function DiagnosticModal({
 
             {/* Category Selector Tabs */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catTabs}>
-              {Object.keys(DIAGNOSTICS_DATA).map(k => {
-                const item = DIAGNOSTICS_DATA[k];
-                const isActive = activeKey === k;
-                return (
-                  <TouchableOpacity
-                    key={k}
-                    style={[styles.catTab, isActive && styles.catTabActive]}
-                    onPress={() => {
-                      setSelectedKey(k);
-                      setCheckedSteps([]);
-                    }}
-                  >
-                    <Ionicons name={item.icon as any} size={14} color={isActive ? '#0D3325' : '#FFFFFF'} />
-                    <Text style={[styles.catTabText, isActive && styles.catTabTextActive]}>
-                      {item.categoryName.split(' ')[0]}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+              {Object.keys(diagnosticsData)
+                .sort((a, b) => (diagnosticsData[a]?.order ?? 99) - (diagnosticsData[b]?.order ?? 99))
+                .map(k => {
+                  const item = diagnosticsData[k];
+                  if (!item) return null;
+                  const isActive = activeKey === k;
+                  const tabLabel = item.tabLabel || item.categoryName.split(' ')[0];
+                  return (
+                    <TouchableOpacity
+                      key={k}
+                      style={[styles.catTab, isActive && styles.catTabActive]}
+                      onPress={() => {
+                        setSelectedKey(k);
+                        setCheckedSteps([]);
+                      }}
+                    >
+                      <Ionicons name={(item.icon as any) || 'construct-outline'} size={14} color={isActive ? '#0D3325' : '#FFFFFF'} />
+                      <Text style={[styles.catTabText, isActive && styles.catTabTextActive]}>
+                        {tabLabel}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
             </ScrollView>
           </LinearGradient>
 
@@ -266,10 +358,10 @@ export default function DiagnosticModal({
           <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
             <View style={styles.progressRow}>
               <Text style={styles.progressLabel}>
-                Completed Steps: {checkedSteps.length} / {currentDiag.steps.length}
+                Completed Steps: {checkedSteps.length} / {totalSteps}
               </Text>
               <Text style={styles.progressPercent}>
-                {Math.round((checkedSteps.length / currentDiag.steps.length) * 100)}%
+                {progressPercent}%
               </Text>
             </View>
 
@@ -277,12 +369,12 @@ export default function DiagnosticModal({
               <View
                 style={[
                   styles.progressBarFill,
-                  { width: `${(checkedSteps.length / currentDiag.steps.length) * 100}%` },
+                  { width: `${progressPercent}%` },
                 ]}
               />
             </View>
 
-            {currentDiag.steps.map((st, idx) => {
+            {stepsList.map((st, idx) => {
               const isDone = checkedSteps.includes(idx);
               return (
                 <TouchableOpacity
@@ -294,7 +386,7 @@ export default function DiagnosticModal({
                   <View style={styles.stepHeader}>
                     <View style={[styles.stepIconWrap, isDone && styles.stepIconDone]}>
                       <Ionicons
-                        name={isDone ? 'checkmark-circle' : (st.icon as any)}
+                        name={isDone ? 'checkmark-circle' : ((st.icon as any) || 'construct-outline')}
                         size={20}
                         color={isDone ? '#10B981' : '#0D3325'}
                       />
@@ -322,7 +414,7 @@ export default function DiagnosticModal({
           <View style={styles.footer}>
             <TouchableOpacity style={styles.doneBtn} onPress={onClose} activeOpacity={0.85}>
               <Text style={styles.doneBtnText}>
-                {checkedSteps.length === currentDiag.steps.length
+                {totalSteps > 0 && checkedSteps.length === totalSteps
                   ? '✅ Diagnostic Passed & Confirmed'
                   : 'Close Assistant'}
               </Text>

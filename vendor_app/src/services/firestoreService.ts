@@ -607,43 +607,79 @@ export async function updateBookingPhotos(
 
   if (photos.beforePhoto !== undefined) {
     if (typeof photos.beforePhoto === 'string' && photos.beforePhoto.startsWith('data:')) {
-      try {
-        await setDoc(doc(db, "bookings", bookingId, "evidence", "beforePhoto"), {
-          beforePhoto: photos.beforePhoto,
-          updatedAt: new Date().toISOString(),
-        });
-        await setDoc(doc(db, "bookings", bookingId, "evidence", "photos"), {
-          beforePhoto: photos.beforePhoto,
-        }, { merge: true }).catch(() => {});
-      } catch (e) {
-        console.warn('[updateBookingPhotos] beforePhoto subcollection error:', e);
+      if (photos.beforePhoto.length < 900000) {
+        try {
+          await setDoc(doc(db, "bookings", bookingId, "evidence", "beforePhoto"), {
+            beforePhoto: photos.beforePhoto,
+            updatedAt: new Date().toISOString(),
+          }, { merge: true });
+          await setDoc(doc(db, "bookings", bookingId, "evidence", "photos"), {
+            beforePhoto: photos.beforePhoto,
+          }, { merge: true }).catch(() => {});
+        } catch (e) {
+          console.warn('[updateBookingPhotos] beforePhoto subcollection error:', e);
+        }
       }
-      updateData.beforePhoto = 'subcollection:evidence/beforePhoto';
+      // If small enough, store directly on main doc for instant web/app display
+      if (photos.beforePhoto.length < 300000) {
+        updateData.beforePhoto = photos.beforePhoto;
+      } else {
+        updateData.beforePhoto = 'subcollection:evidence/beforePhoto';
+      }
       updateData.hasPhotoProof = true;
     } else {
       updateData.beforePhoto = photos.beforePhoto;
-      if (photos.beforePhoto) updateData.hasPhotoProof = true;
+      if (photos.beforePhoto) {
+        updateData.hasPhotoProof = true;
+        // Also sync remote URL to subcollection for dual compatibility
+        if (typeof photos.beforePhoto === 'string' && photos.beforePhoto.startsWith('http')) {
+          setDoc(doc(db, "bookings", bookingId, "evidence", "beforePhoto"), {
+            beforePhoto: photos.beforePhoto,
+            updatedAt: new Date().toISOString(),
+          }, { merge: true }).catch(() => {});
+          setDoc(doc(db, "bookings", bookingId, "evidence", "photos"), {
+            beforePhoto: photos.beforePhoto,
+          }, { merge: true }).catch(() => {});
+        }
+      }
     }
   }
 
   if (photos.afterPhoto !== undefined) {
     if (typeof photos.afterPhoto === 'string' && photos.afterPhoto.startsWith('data:')) {
-      try {
-        await setDoc(doc(db, "bookings", bookingId, "evidence", "afterPhoto"), {
-          afterPhoto: photos.afterPhoto,
-          updatedAt: new Date().toISOString(),
-        });
-        await setDoc(doc(db, "bookings", bookingId, "evidence", "photos"), {
-          afterPhoto: photos.afterPhoto,
-        }, { merge: true }).catch(() => {});
-      } catch (e) {
-        console.warn('[updateBookingPhotos] afterPhoto subcollection error:', e);
+      if (photos.afterPhoto.length < 900000) {
+        try {
+          await setDoc(doc(db, "bookings", bookingId, "evidence", "afterPhoto"), {
+            afterPhoto: photos.afterPhoto,
+            updatedAt: new Date().toISOString(),
+          }, { merge: true });
+          await setDoc(doc(db, "bookings", bookingId, "evidence", "photos"), {
+            afterPhoto: photos.afterPhoto,
+          }, { merge: true }).catch(() => {});
+        } catch (e) {
+          console.warn('[updateBookingPhotos] afterPhoto subcollection error:', e);
+        }
       }
-      updateData.afterPhoto = 'subcollection:evidence/afterPhoto';
+      if (photos.afterPhoto.length < 300000) {
+        updateData.afterPhoto = photos.afterPhoto;
+      } else {
+        updateData.afterPhoto = 'subcollection:evidence/afterPhoto';
+      }
       updateData.hasPhotoProof = true;
     } else {
       updateData.afterPhoto = photos.afterPhoto;
-      if (photos.afterPhoto) updateData.hasPhotoProof = true;
+      if (photos.afterPhoto) {
+        updateData.hasPhotoProof = true;
+        if (typeof photos.afterPhoto === 'string' && photos.afterPhoto.startsWith('http')) {
+          setDoc(doc(db, "bookings", bookingId, "evidence", "afterPhoto"), {
+            afterPhoto: photos.afterPhoto,
+            updatedAt: new Date().toISOString(),
+          }, { merge: true }).catch(() => {});
+          setDoc(doc(db, "bookings", bookingId, "evidence", "photos"), {
+            afterPhoto: photos.afterPhoto,
+          }, { merge: true }).catch(() => {});
+        }
+      }
     }
   }
 
@@ -749,10 +785,28 @@ export async function setVendorOnlineStatus(
   vendorId: string,
   isOnline: boolean
 ): Promise<void> {
-  await updateDoc(doc(db, "vendors", vendorId), {
+  if (!vendorId) return;
+  const updatePayload = {
     isOnline,
     lastSeen: serverTimestamp(),
-  });
+    lastStatusUpdate: serverTimestamp(),
+  };
+
+  try {
+    await updateDoc(doc(db, "vendors", vendorId), updatePayload);
+  } catch (err) {
+    try {
+      const q = query(collection(db, "vendors"), where("vendorId", "==", vendorId));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        for (const d of snap.docs) {
+          await updateDoc(d.ref, updatePayload);
+        }
+      }
+    } catch (qErr) {
+      console.warn("[setVendorOnlineStatus] query fallback error:", qErr);
+    }
+  }
 }
 
 export async function verifyOTP(
