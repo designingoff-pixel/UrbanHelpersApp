@@ -47,6 +47,7 @@ import {
   NormalizedPhone,
 } from "@/services/smsService";
 import { reverseGeocodeLocation, searchAddressSuggestions, GeocodedLocation } from "@/services/geocodingService";
+import PaymentModal, { PaymentSuccessDetails } from "@/components/PaymentModal";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceDetail">;
 const { width } = Dimensions.get("window");
@@ -460,6 +461,7 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
   // Dynamic Date & Any-Time Selection Modal States
   const [dateModalVisible, setDateModalVisible] = useState(false);
   const [timeModalVisible, setTimeModalVisible] = useState(false);
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [customTimeInput, setCustomTimeInput] = useState("");
   const [customAmPm, setCustomAmPm] = useState<"AM" | "PM">("AM");
 
@@ -962,8 +964,18 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
       return;
     }
 
-    // Directly execute booking: generates random 4-digit OTP for customer & vendor verification
-    await executeBooking(phoneNorm);
+    setTargetPhoneNorm(phoneNorm);
+    // Customer must complete payment before the order is confirmed
+    setPaymentModalVisible(true);
+  };
+
+  const handlePaymentSuccess = async (paymentDetails: PaymentSuccessDetails) => {
+    const phoneNorm = targetPhoneNorm || normalizeAndValidatePhone(contactNumber);
+    if (!phoneNorm.isValid) {
+      Alert.alert("Phone Required", "A valid mobile number is required to place your booking.");
+      return;
+    }
+    await executeBooking(phoneNorm, paymentDetails);
   };
 
   const handleVerifyOtpSubmit = () => {
@@ -995,10 +1007,13 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
     setOtpModalVisible(false);
     setEnteredOtp("");
 
-    void executeBooking(targetPhoneNorm);
+    setPaymentModalVisible(true);
   };
 
-  const executeBooking = async (phoneNorm: NormalizedPhone) => {
+  const executeBooking = async (
+    phoneNorm: NormalizedPhone,
+    paymentDetails?: PaymentSuccessDetails
+  ) => {
     if (isSubmittingBooking.current) return;
     isSubmittingBooking.current = true;
     setLoading(true);
@@ -1028,6 +1043,10 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
         console.warn("Could not retrieve customer avatar:", err);
       }
 
+      const paymentId = paymentDetails?.paymentId || `pay_test_${Date.now()}`;
+      const paymentMethod = paymentDetails?.paymentMethod || "UPI";
+      const paidAmount = paymentDetails?.paidAmount || finalPrice;
+
       const bookingPayload = {
         id: bookingId,
         bookingId,
@@ -1047,6 +1066,11 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
         price: finalPrice,
         priceLabel: `₹${finalPrice}`,
         originalPrice: `₹${originalPrice}`,
+        paymentStatus: "paid",
+        paymentId,
+        paymentMethod,
+        paidAmount,
+        paidAt: new Date().toISOString(),
         otp: otpCode,
         status: "requested",
         vendorId: null,
@@ -1114,6 +1138,9 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
         categoryId: category.id,
         subServiceId: selectedSub.id,
         scheduledDate: scheduledDateTimeStr,
+        paymentId,
+        paymentStatus: "paid",
+        paidAmount,
         booking: bookingPayload,
       } as any);
     } catch (e: any) {
@@ -1515,7 +1542,8 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
             <>
-              <Text style={styles.confirmBookingMainBtnText}>Confirm Booking</Text>
+              <Ionicons name="lock-closed" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.confirmBookingMainBtnText}>Proceed to Pay ₹{finalPrice}</Text>
               <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
             </>
           )}
@@ -2145,6 +2173,27 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
           </View>
         </View>
       </Modal>
+
+      {/* ── 11. Secure Pre-Payment Checkout Modal ─────────────────── */}
+      <PaymentModal
+        visible={paymentModalVisible}
+        onClose={() => setPaymentModalVisible(false)}
+        serviceName={category.name}
+        subServiceName={selectedSub.name}
+        bookingDate={bookingDate}
+        bookingTime={bookingTime}
+        serviceAddress={serviceAddress}
+        customerPhone={contactNumber}
+        customerEmail={activeUser?.email || undefined}
+        customerName={activeUser?.displayName || undefined}
+        amount={finalPrice}
+        originalPrice={originalPrice}
+        discount={couponDiscount}
+        onPaymentSuccess={handlePaymentSuccess}
+        onPaymentFailure={(errMsg) => {
+          Alert.alert("Payment Incomplete", errMsg || "Your booking was not placed because payment was not completed.");
+        }}
+      />
     </View>
   );
 }

@@ -389,6 +389,43 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
               </Text>
             </Pressable>
           </View>
+
+          {/* Payment Status Badge */}
+          <View
+            style={[
+              s.paymentPillCard,
+              {
+                backgroundColor: isDark ? "rgba(16,185,129,0.12)" : "#ECFDF5",
+                borderColor: isDark ? "rgba(16,185,129,0.25)" : "#A7F3D0",
+              },
+            ]}
+          >
+            <View style={s.paymentPillLeft}>
+              <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+              <View style={{ flex: 1, marginLeft: 8 }}>
+                <Text
+                  style={[
+                    s.paymentPillTitle,
+                    { color: isDark ? "#A7F3D0" : "#065F46" },
+                  ]}
+                >
+                  Payment Verified: {booking.priceLabel || (booking.price ? `₹${booking.price}` : sub.price)}
+                </Text>
+                <Text
+                  style={[
+                    s.paymentPillSub,
+                    { color: isDark ? "#6EE7B7" : "#047857" },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {booking.paymentId ? `ID: ${booking.paymentId}` : "Prepaid & Escrow Secured"} • 100% Refundable
+                </Text>
+              </View>
+            </View>
+            <View style={s.paidBadge}>
+              <Text style={s.paidBadgeText}>PAID</Text>
+            </View>
+          </View>
         </Animated.View>
 
         {/* 5. Assigned Professional Preview Card (Dynamic: Cancelled vs Assigned vs Finding) */}
@@ -1023,6 +1060,42 @@ const s = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     color: TEAL,
+  },
+  paymentPillCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 14,
+  },
+  paymentPillLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  paymentPillTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  paymentPillSub: {
+    fontSize: 11,
+    marginTop: 1,
+    fontWeight: "500",
+  },
+  paidBadge: {
+    backgroundColor: "#10B981",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  paidBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.8,
   },
 
   // Assigned Pro Card
