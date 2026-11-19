@@ -146,18 +146,38 @@ export default function JobDetailsScreen({ route, navigation }: any) {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted' || !active) return;
 
-        // Native streaming watcher: balanced accuracy, 3500ms time interval, 5m distance threshold
-        // Minimizes battery consumption while delivering smooth turn-by-turn road tracking
+        // Fetch initial location immediately for smooth map rendering
+        try {
+          const initLoc =
+            (await Location.getLastKnownPositionAsync().catch(() => null)) ||
+            (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }).catch(() => null));
+          if (initLoc?.coords && active) {
+            const { latitude, longitude, heading, speed } = initLoc.coords;
+            setVendorCoords({ lat: latitude, lng: longitude });
+            await updateVendorLocation(
+              store.vendorId || 'v1',
+              latitude,
+              longitude,
+              heading || 0,
+              speed ? Math.round(speed * 3.6) : 0,
+              job.bookingId
+            ).catch(() => {});
+          }
+        } catch (initErr) {
+          console.warn('[JobDetailsScreen] initial fix warning:', initErr);
+        }
+
+        // Native streaming watcher with High accuracy
         subscription = await Location.watchPositionAsync(
           {
-            accuracy: Location.Accuracy.Balanced,
-            timeInterval: 3500,
-            distanceInterval: 5,
+            accuracy: Location.Accuracy.High,
+            timeInterval: 3000,
+            distanceInterval: 3,
           },
           async (pos) => {
             if (!active || !pos?.coords) return;
             const now = Date.now();
-            if (now - lastBroadcastTime < 2800) return;
+            if (now - lastBroadcastTime < 2500) return;
             lastBroadcastTime = now;
 
             const { latitude, longitude, heading, speed } = pos.coords;

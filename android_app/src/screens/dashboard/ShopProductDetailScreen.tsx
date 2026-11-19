@@ -110,7 +110,7 @@ export default function ShopProductDetailScreen({ navigation, route }: Props) {
       `${product.name} (×${quantity}) added.`,
       [
         { text: "Keep Shopping", style: "cancel" },
-        { text: "Go to Cart", onPress: () => navigation.navigate("Shop") },
+        { text: "Go to Cart", onPress: () => navigation.navigate("Shop", { openCart: true }) },
       ]
     );
   };

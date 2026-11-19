@@ -187,7 +187,7 @@ export default function CreateProfileScreen({ navigation, route }: Props) {
             <TextInput
               value={name}
               onChangeText={setName}
-              placeholder="e.g. John Doe"
+              placeholder="e.g. Arunachalam S."
               placeholderTextColor="#94A3B8"
               style={styles.inputField}
             />

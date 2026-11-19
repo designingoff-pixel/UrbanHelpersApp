@@ -140,32 +140,83 @@ export async function searchAddressSuggestions(
  * Prioritizes high-precision OpenStreetMap/Photon reverse geocoding with fallback to Expo Location.
  */
 export async function reverseGeocodeLocation(lat: number, lng: number): Promise<string> {
-  // 1. Instant native Expo reverse geocoding with strict 2-second timeout protection
+  // 1. Native Expo / Android Geocoder with 6-second timeout protection
   try {
     const expoPromise = Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
-    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000));
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 6000));
     const geocode = (await Promise.race([expoPromise, timeoutPromise])) as any;
     if (geocode && geocode.length > 0) {
       const p = geocode[0];
+      
+      const streetParts: string[] = [];
+      // Ignore plus codes (e.g. "8V7V+9M") or pure numbers if street exists
+      const cleanName = (p.name || "").trim();
+      const cleanStreet = (p.street || "").trim();
+      
+      const isPlusCode = cleanName.includes("+") || /^[A-Z0-9]{4,}\+[A-Z0-9]{2,}$/i.test(cleanName);
+      if (cleanName && !isPlusCode) {
+        streetParts.push(cleanName);
+      }
+      if (cleanStreet && (!cleanName || !cleanName.toLowerCase().includes(cleanStreet.toLowerCase()))) {
+        streetParts.push(cleanStreet);
+      }
+
+      const locality = p.district || p.subregion || p.neighborhood;
+      const city = p.city || p.subregion;
+      const postal = p.postalCode;
+      const state = p.region;
+
       const parts = [
-        p.name || p.street,
-        p.district || p.subregion,
-        p.city,
-        p.postalCode,
-        p.region,
+        streetParts.join(", ") || cleanStreet || cleanName,
+        locality,
+        city,
+        postal,
+        state,
       ].filter(Boolean);
+
       const label = parts.filter((v, i, a) => a.indexOf(v) === i).join(", ");
       if (label.trim().length > 3) {
-        return label;
+        return label.trim();
       }
     }
   } catch (_) {}
 
-  // 2. Fast fallback to Photon API with tight 2s timeout
+  // 2. High-precision fallback to OpenStreetMap Nominatim with 4-second timeout
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { "User-Agent": "UrbanHelpersApp/1.0 (support@urbanhelpers.app)" },
+    });
+    clearTimeout(timeout);
+    if (res.ok) {
+      const data: any = await res.json();
+      if (data?.address) {
+        const a = data.address;
+        const street = [a.house_number, a.road || a.pedestrian || a.suburb].filter(Boolean).join(" ");
+        const locality = a.neighbourhood || a.residential || a.suburb || a.city_district;
+        const city = a.city || a.town || a.village || a.county;
+        const state = a.state;
+        const postCode = a.postcode;
+        const parts = [street, locality, city, postCode, state].filter(Boolean);
+        const unique = parts.filter((v, i, a) => a.indexOf(v) === i).join(", ");
+        if (unique.trim().length > 3) {
+          return unique.trim();
+        }
+      }
+      if (data?.display_name) {
+        return String(data.display_name).trim();
+      }
+    }
+  } catch (_) {}
+
+  // 3. Fallback to Photon API with 3-second timeout
   try {
     const url = `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000);
+    const timeout = setTimeout(() => controller.abort(), 3000);
     const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timeout);
     if (res.ok) {
@@ -173,34 +224,16 @@ export async function reverseGeocodeLocation(lat: number, lng: number): Promise<
       if (Array.isArray(data.features) && data.features.length > 0) {
         const props = data.features[0].properties || {};
         const parts = [
-          props.name,
-          props.street,
+          props.housenumber ? `${props.housenumber} ${props.street || props.name}` : (props.street || props.name),
           props.district || props.suburb,
           props.city,
+          props.postcode,
           props.state,
         ].filter(Boolean);
         const unique = parts.filter((v, i, a) => a.indexOf(v) === i).join(", ");
         if (unique.trim().length > 3) {
-          return unique;
+          return unique.trim();
         }
-      }
-    }
-  } catch (_) {}
-
-  // 3. Fallback to OpenStreetMap Nominatim with 2s timeout
-  try {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000);
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: { "User-Agent": "UrbanHelpersApp/1.0" },
-    });
-    clearTimeout(timeout);
-    if (res.ok) {
-      const data: any = await res.json();
-      if (data?.display_name) {
-        return String(data.display_name).trim();
       }
     }
   } catch (_) {}

@@ -631,7 +631,7 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
     }
   };
 
-  // Ultra-fast doorstep location detection with instant last-known cache and quick GPS race
+  // High-precision doorstep location detection with instant camera preview & GPS satellite fix
   const fetchCurrentLocation = async (showAlertOnError = false) => {
     setIsFetchingLocation(true);
     try {
@@ -661,7 +661,7 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
         return;
       }
 
-      // 3. STEP 1: Ultra-fast instant position check (< 50ms)
+      // 3. STEP 1: Quick preview from last known position for immediate UI response
       let loc = await Location.getLastKnownPositionAsync().catch(() => null);
       if (loc?.coords) {
         const lat = loc.coords.latitude;
@@ -673,29 +673,35 @@ export default function ServiceDetailScreen({ navigation, route }: Readonly<Prop
           latitudeDelta: 0.008,
           longitudeDelta: 0.008,
         });
-
-        // Instant reverse geocode in parallel
-        reverseGeocodeLocation(lat, lng).then((resolved) => {
-          if (resolved && resolved.trim().length > 3) {
-            setServiceAddress(resolved.trim());
-            setDraggedAddress(resolved.trim());
-            setIsFetchingLocation(false);
-          }
-        }).catch(() => {});
       }
 
-      // 4. STEP 2: Concurrently get fresh position with 5-second timeout race
+      // 4. STEP 2: Concurrently get fresh high-precision GPS position (9s timeout)
+      let freshLoc: any = null;
       try {
-        const freshPromise = Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
+        const highPromise = Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
         });
-        const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
-        const freshLoc = (await Promise.race([freshPromise, timeoutPromise])) as any;
-        if (freshLoc?.coords) {
-          loc = freshLoc;
+        const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 9000));
+        freshLoc = await Promise.race([highPromise, timeoutPromise]);
+      } catch (highErr) {
+        console.warn("[ServiceDetail] High accuracy location attempt warning:", highErr);
+      }
+
+      // Fallback to balanced accuracy if high accuracy timed out or failed (e.g. deep indoors)
+      if (!freshLoc?.coords) {
+        try {
+          const balancedPromise = Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          const balancedTimeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000));
+          freshLoc = await Promise.race([balancedPromise, balancedTimeout]);
+        } catch (balErr) {
+          console.warn("[ServiceDetail] Balanced location fallback warning:", balErr);
         }
-      } catch (freshErr) {
-        console.warn("[ServiceDetail] Fresh location attempt warning:", freshErr);
+      }
+
+      if (freshLoc?.coords) {
+        loc = freshLoc;
       }
 
       // 5. Apply resolved location or fallback

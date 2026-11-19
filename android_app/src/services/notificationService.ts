@@ -6,6 +6,7 @@
 
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
+import Constants from "expo-constants";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -44,7 +45,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
   }
 
   if (Platform.OS === "android") {
-    // Create notification channels (Android 8+)
+    // Create notification channels with MAX importance so sound & heads-up alerts trigger on lock screen
     await Notifications.setNotificationChannelAsync("default", {
       name: "Urban Helpers",
       importance: Notifications.AndroidImportance.MAX,
@@ -53,6 +54,8 @@ export async function registerForPushNotifications(): Promise<string | null> {
       sound: "default",
       enableVibrate: true,
       showBadge: true,
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+      bypassDnd: true,
     });
     await Notifications.setNotificationChannelAsync("medicine", {
       name: "Medicine Reminders",
@@ -62,6 +65,8 @@ export async function registerForPushNotifications(): Promise<string | null> {
       sound: "default",
       enableVibrate: true,
       showBadge: true,
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+      bypassDnd: true,
     });
     await Notifications.setNotificationChannelAsync("fitness", {
       name: "Fitness Reminders",
@@ -72,11 +77,18 @@ export async function registerForPushNotifications(): Promise<string | null> {
     });
     await Notifications.setNotificationChannelAsync("services", {
       name: "Service Updates",
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 300, 200, 300],
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 400, 200, 400],
       lightColor: "#00bcd4",
       sound: "default",
+      enableVibrate: true,
       showBadge: true,
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+      bypassDnd: true,
+      audioAttributes: {
+        usage: Notifications.AndroidAudioUsage.NOTIFICATION_EVENT,
+        contentType: Notifications.AndroidAudioContentType.SONIFICATION,
+      },
     });
     await Notifications.setNotificationChannelAsync("emergency", {
       name: "Emergency Alerts",
@@ -86,6 +98,8 @@ export async function registerForPushNotifications(): Promise<string | null> {
       sound: "default",
       enableVibrate: true,
       showBadge: true,
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+      bypassDnd: true,
     });
   }
 
@@ -100,14 +114,35 @@ export async function registerForPushNotifications(): Promise<string | null> {
     return null;
   }
 
+  const projectId =
+    Constants.expoConfig?.extra?.eas?.projectId ??
+    Constants.easConfig?.projectId ??
+    "84334374-3619-4b82-9cb7-7f9188e0c3d4";
+
+  let token: string | null = null;
   try {
-    const token = await Notifications.getExpoPushTokenAsync();
-    console.log("[Notifications] Push token:", token.data);
-    return token.data;
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+    if (tokenData?.data) {
+      token = tokenData.data;
+      console.log("[Notifications] Expo Push token:", token);
+    }
   } catch (e) {
-    console.log("[Notifications] Token error:", e);
-    return null;
+    console.log("[Notifications] Expo Token error:", e);
   }
+
+  if (!token) {
+    try {
+      const devToken = await Notifications.getDevicePushTokenAsync();
+      if (devToken?.data) {
+        token = devToken.data;
+        console.log("[Notifications] Device Push token:", token);
+      }
+    } catch (devErr) {
+      console.warn("[Notifications] Device Token error:", devErr);
+    }
+  }
+
+  return token;
 }
 
 export async function cancelAllScheduledNotifications(): Promise<void> {
@@ -625,25 +660,62 @@ export async function notifyVendorsBookingPlaced(
 
     if (tokens.length === 0) return;
 
-    const messages = tokens.map((pushToken) => ({
-      to: pushToken,
-      sound: "default",
-      priority: "high",
-      channelId: "urgent-orders",
-      title: `🚨 NEW BOOKING PLACED! (${priceLabel})`,
-      body: `⚡ Urgent: ${subServiceName} (${serviceCategory}) near ${address.slice(0, 30)}. Open app to accept!`,
-      data: { screen: "HomeScreen", bookingId },
-    }));
+    const expoTokens = tokens.filter(
+      (t) => t.startsWith("ExponentPushToken[") || t.startsWith("ExpoPushToken[")
+    );
+    const fcmTokens = tokens.filter(
+      (t) => !t.startsWith("ExponentPushToken[") && !t.startsWith("ExpoPushToken[")
+    );
 
-    await fetch("https://exp.host/--/api/v2/push/send", {
-      method: "POST",
-      headers: {
-        "Accept": "application/json",
-        "Accept-encoding": "gzip, deflate",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(messages),
-    });
+    const title = `🚨 NEW BOOKING PLACED! (${priceLabel})`;
+    const body = `⚡ Urgent: ${subServiceName} (${serviceCategory}) near ${address.slice(0, 30)}. Open app to accept!`;
+
+    // 1. Deliver to Expo push tokens
+    if (expoTokens.length > 0) {
+      const messages = expoTokens.map((pushToken) => ({
+        to: pushToken,
+        sound: "default",
+        priority: "high",
+        channelId: "urgent-orders",
+        title,
+        body,
+        _displayInForeground: true,
+        data: { screen: "HomeScreen", bookingId },
+      }));
+
+      await fetch("https://exp.host/--/api/v2/push/send", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Accept-encoding": "gzip, deflate",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(messages),
+      }).catch((e) => console.warn("[notifyVendorsBookingPlaced] Expo push send warning:", e));
+    }
+
+    // 2. Deliver to native FCM device tokens
+    for (const fcmToken of fcmTokens) {
+      fetch("https://fcm.googleapis.com/fcm/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "key=AIzaSyDhkD-wS-wCc2ZlMbHSNTEp3MFxSrLIUQY",
+        },
+        body: JSON.stringify({
+          to: fcmToken,
+          priority: "high",
+          notification: {
+            title,
+            body,
+            sound: "default",
+            android_channel_id: "urgent-orders",
+          },
+          data: { screen: "HomeScreen", bookingId, channelId: "urgent-orders" },
+        }),
+      }).catch((e) => console.warn("[notifyVendorsBookingPlaced] FCM push send warning:", e));
+    }
+
     console.log(`[notifyVendorsBookingPlaced] Sent loud push alert to ${tokens.length} vendors`);
   } catch (err) {
     console.warn("[notifyVendorsBookingPlaced] Push error:", err);

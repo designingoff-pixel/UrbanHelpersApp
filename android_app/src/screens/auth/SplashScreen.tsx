@@ -1,8 +1,9 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   ImageBackground,
   StyleSheet,
   Dimensions,
+  TouchableOpacity,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
@@ -14,13 +15,28 @@ type Props = NativeStackScreenProps<RootStackParamList, "Splash">;
 const { width, height } = Dimensions.get("window");
 
 export default function SplashScreen({ navigation }: Props) {
+  const hasNavigated = useRef(false);
+
+  const navigateTo = (target: keyof RootStackParamList) => {
+    if (hasNavigated.current) return;
+    hasNavigated.current = true;
+    try {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: target }],
+      });
+    } catch {
+      navigation.replace(target as any);
+    }
+  };
+
   useEffect(() => {
-    let isMounted = true;
+    // Failsafe timer: Guaranteed transition within 1.5 seconds maximum
+    const failsafeTimeout = setTimeout(() => {
+      navigateTo("Welcome");
+    }, 1500);
 
     (async () => {
-      // Hold splash screen for 2.2 seconds
-      const minDisplayPromise = new Promise((resolve) => setTimeout(resolve, 2200));
-
       let determinedRoute: keyof RootStackParamList = "Welcome";
 
       try {
@@ -31,7 +47,7 @@ export default function SplashScreen({ navigation }: Props) {
           determinedRoute = "ServicesDashboard";
         } else {
           determinedRoute = await new Promise<keyof RootStackParamList>((resolve) => {
-            const timeout = setTimeout(() => resolve("Welcome"), 1200);
+            const timeout = setTimeout(() => resolve("Welcome"), 600);
             const unsub = onAuthStateChanged(auth, (u) => {
               clearTimeout(timeout);
               unsub();
@@ -47,27 +63,30 @@ export default function SplashScreen({ navigation }: Props) {
         determinedRoute = "Welcome";
       }
 
-      await minDisplayPromise;
-
-      if (isMounted) {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: determinedRoute }],
-        });
-      }
+      clearTimeout(failsafeTimeout);
+      // Brief smooth transition
+      setTimeout(() => {
+        navigateTo(determinedRoute);
+      }, 500);
     })();
 
     return () => {
-      isMounted = false;
+      clearTimeout(failsafeTimeout);
     };
   }, [navigation]);
 
   return (
-    <ImageBackground
-      source={require("../../../assets/splash_art.png")}
-      style={styles.bg}
-      resizeMode="cover"
-    />
+    <TouchableOpacity
+      activeOpacity={1}
+      style={{ flex: 1 }}
+      onPress={() => navigateTo("Welcome")}
+    >
+      <ImageBackground
+        source={require("../../../assets/splash_art.png")}
+        style={styles.bg}
+        resizeMode="cover"
+      />
+    </TouchableOpacity>
   );
 }
 

@@ -67,12 +67,18 @@
         "WRITE_EXTERNAL_STORAGE",
         "READ_MEDIA_IMAGES",
         "ACCESS_NETWORK_STATE",
-        "INTERNET"
+        "INTERNET",
+        "DETECT_SCREEN_CAPTURE"
       ],
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyAMzsDmDdT2c7r5j1dWTSxev6XSHJZTf-s"
         }
+      }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "84334374-3619-4b82-9cb7-7f9188e0c3d4"
       }
     },
     "web": {

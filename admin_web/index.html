@@ -3782,25 +3782,48 @@
 
         // 📲 Send instant Push Notification to vendor
         try {
-          let pToken = assignedVendorData?.pushToken;
+          let pToken = assignedVendorData?.pushToken || assignedVendorData?.expoPushToken;
           if (pToken) {
-            fetch('https://exp.host/--/api/v2/push/send', {
-              method: 'POST',
-              headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                to: pToken,
-                title: '⚡ New Order Assigned: ' + (b?.serviceCategory || 'Service Request'),
-                body: 'You have been assigned booking #' + bookingId.slice(-8).toUpperCase() + '. Open app to review & accept.',
-                sound: 'default',
-                channelId: 'urgent-orders',
-                priority: 'high',
-                _displayInForeground: true,
-                data: { screen: 'HomeScreen', bookingId: bookingId, noticeId: assignmentTimestamp.toString(), type: 'new_order' },
-              }),
-            }).catch(e => console.warn('Expo push send error:', e));
+            const isExpo = pToken.startsWith('ExponentPushToken[') || pToken.startsWith('ExpoPushToken[');
+            if (isExpo) {
+              fetch('https://exp.host/--/api/v2/push/send', {
+                method: 'POST',
+                headers: {
+                  'Accept': 'application/json',
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  to: pToken,
+                  title: '⚡ New Order Assigned: ' + (b?.serviceCategory || 'Service Request'),
+                  body: 'You have been assigned booking #' + bookingId.slice(-8).toUpperCase() + '. Open app to review & accept.',
+                  sound: 'default',
+                  channelId: 'urgent-orders',
+                  priority: 'high',
+                  _displayInForeground: true,
+                  data: { screen: 'HomeScreen', bookingId: bookingId, noticeId: assignmentTimestamp.toString(), type: 'new_order' },
+                }),
+              }).catch(e => console.warn('Expo push send error:', e));
+            } else {
+              // Direct FCM device token delivery
+              fetch('https://fcm.googleapis.com/fcm/send', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': 'key=AIzaSyDhkD-wS-wCc2ZlMbHSNTEp3MFxSrLIUQY',
+                },
+                body: JSON.stringify({
+                  to: pToken,
+                  priority: 'high',
+                  notification: {
+                    title: '⚡ New Order Assigned: ' + (b?.serviceCategory || 'Service Request'),
+                    body: 'You have been assigned booking #' + bookingId.slice(-8).toUpperCase() + '. Open app to review & accept.',
+                    sound: 'default',
+                    android_channel_id: 'urgent-orders',
+                  },
+                  data: { screen: 'HomeScreen', bookingId: bookingId, channelId: 'urgent-orders', type: 'new_order' },
+                }),
+              }).catch(e => console.warn('FCM push send error:', e));
+            }
           }
         } catch (pushErr) {
           console.warn('Push notification delivery error:', pushErr);

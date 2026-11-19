@@ -56,11 +56,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const token = await registerForPushNotifications();
           if (token) {
+            const updatePayload: any = { pushToken: token };
+            if (token.startsWith("ExponentPushToken[") || token.startsWith("ExpoPushToken[")) {
+              updatePayload.expoPushToken = token;
+            }
             await setDoc(
               doc(db, "users", firebaseUser.uid),
-              { pushToken: token },
+              updatePayload,
               { merge: true }
             );
+            console.log("[AuthContext] Customer push token synced to Firestore:", token);
           }
         } catch (e) {
           console.warn("Failed to save push token", e);

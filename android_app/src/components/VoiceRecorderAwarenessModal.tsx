@@ -232,7 +232,7 @@ export default function VoiceRecorderAwarenessModal({
                 ]}
               >
                 <View
-                  style={[s.pillarIconBox, { backgroundColor: "#ECFDF5", color: "#059669" }]}
+                  style={[s.pillarIconBox, { backgroundColor: "#ECFDF5" }]}
                 >
                   <Ionicons name="shield-checkmark" size={20} color="#059669" />
                 </View>
@@ -267,7 +267,7 @@ export default function VoiceRecorderAwarenessModal({
                 ]}
               >
                 <View
-                  style={[s.pillarIconBox, { backgroundColor: "#EFF6FF", color: "#2563EB" }]}
+                  style={[s.pillarIconBox, { backgroundColor: "#EFF6FF" }]}
                 >
                   <Ionicons name="pricetag" size={19} color="#2563EB" />
                 </View>
@@ -302,7 +302,7 @@ export default function VoiceRecorderAwarenessModal({
                 ]}
               >
                 <View
-                  style={[s.pillarIconBox, { backgroundColor: "#FAF5FF", color: "#7C3AED" }]}
+                  style={[s.pillarIconBox, { backgroundColor: "#FAF5FF" }]}
                 >
                   <Ionicons name="lock-closed" size={19} color="#7C3AED" />
                 </View>
@@ -337,7 +337,7 @@ export default function VoiceRecorderAwarenessModal({
                 ]}
               >
                 <View
-                  style={[s.pillarIconBox, { backgroundColor: "#FEF2F2", color: "#DC2626" }]}
+                  style={[s.pillarIconBox, { backgroundColor: "#FEF2F2" }]}
                 >
                   <Ionicons name="stop-circle" size={20} color="#DC2626" />
                 </View>

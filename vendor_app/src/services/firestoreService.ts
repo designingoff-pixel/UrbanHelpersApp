@@ -833,28 +833,72 @@ export async function verifyOTP(
   return correct;
 }
 
+// ── Helper to deliver high-priority push to customer (Expo or FCM) ─────────
+async function sendCustomerPush(
+  token: string,
+  title: string,
+  body: string,
+  data: any = {}
+) {
+  if (!token) return;
+  const isExpo = token.startsWith("ExponentPushToken[") || token.startsWith("ExpoPushToken[");
+
+  if (isExpo) {
+    await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Accept-encoding": "gzip, deflate",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        to: token,
+        sound: "default",
+        priority: "high",
+        channelId: "services",
+        title,
+        body,
+        _displayInForeground: true,
+        data,
+      }),
+    }).catch((e) => console.warn("[sendCustomerPush] Expo send warning:", e));
+  } else {
+    // Native FCM device token fallback
+    await fetch("https://fcm.googleapis.com/fcm/send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "key=AIzaSyDhkD-wS-wCc2ZlMbHSNTEp3MFxSrLIUQY",
+      },
+      body: JSON.stringify({
+        to: token,
+        priority: "high",
+        notification: {
+          title,
+          body,
+          sound: "default",
+          android_channel_id: "services",
+        },
+        data: { ...data, channelId: "services" },
+      }),
+    }).catch((e) => console.warn("[sendCustomerPush] FCM send warning:", e));
+  }
+}
+
 // ── Send OTP via Expo Push API to Customer ────────────────────────────────────
 export async function notifyCustomerOTP(customerId: string, otp: string) {
   try {
     const userDoc = await getDoc(doc(db, "users", customerId));
     if (userDoc.exists()) {
       const data = userDoc.data();
-      if (data.pushToken) {
-        await fetch("https://exp.host/--/api/v2/push/send", {
-          method: "POST",
-          headers: {
-            "Accept": "application/json",
-            "Accept-encoding": "gzip, deflate",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            to: data.pushToken,
-            sound: "default",
-            title: "📍 Vendor Arrived!",
-            body: `Your vendor has arrived. Share this OTP with them: ${otp}`,
-            data: { screen: "LiveTracking" },
-          }),
-        });
+      const token = data.pushToken || data.expoPushToken;
+      if (token) {
+        await sendCustomerPush(
+          token,
+          "📍 Vendor Arrived at Your Doorstep!",
+          `Your service specialist has arrived. Please share this start OTP: ${otp}`,
+          { screen: "LiveTracking", otp, type: "vendor_arrived" }
+        );
         console.log("OTP Push sent to customer");
       }
     }
@@ -877,7 +921,8 @@ export async function notifyCustomerBookingConfirmed(
     const userDoc = await getDoc(doc(db, "users", customerId));
     if (userDoc.exists()) {
       const data = userDoc.data();
-      if (data.pushToken) {
+      const token = data.pushToken || data.expoPushToken;
+      if (token) {
         let cleanDate = (scheduledDate || "").trim();
         let cleanTime = (scheduledTime || "").trim();
         if (cleanDate.includes(" at ")) {
@@ -891,21 +936,12 @@ export async function notifyCustomerBookingConfirmed(
         const otpPart = otp ? ` Your OTP for the service is ${otp}.` : "";
         const bodyText = `${baseMessage}${otpPart}`;
 
-        await fetch("https://exp.host/--/api/v2/push/send", {
-          method: "POST",
-          headers: {
-            "Accept": "application/json",
-            "Accept-encoding": "gzip, deflate",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            to: data.pushToken,
-            sound: "default",
-            title: "Booking Confirmed!",
-            body: bodyText,
-            data: { screen: "MyBookings", bookingId },
-          }),
-        });
+        await sendCustomerPush(
+          token,
+          "⚡ Booking Confirmed!",
+          bodyText,
+          { screen: "MyBookings", bookingId, type: "booking_confirmed" }
+        );
         console.log("Booking Confirmed Push sent to customer");
       }
     }

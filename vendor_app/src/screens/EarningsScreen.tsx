@@ -21,7 +21,7 @@ export default function EarningsScreen({ navigation }: any) {
   const [, forceUpdate] = useState(0);
   useEffect(() => store.subscribe(() => forceUpdate((n) => n + 1)), []);
 
-  const completed = store.jobs.filter((j) => j.status === 'COMPLETED');
+  const completed = store.getJobsForTab('completed').filter((j) => j.status === 'COMPLETED');
   const realTotalEarnings = completed.reduce((sum, j) => sum + (j.vendorEarnings || 0), 0);
   const realTodayEarnings = completed
     .filter((j) => j.date === 'Today')

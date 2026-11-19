@@ -128,7 +128,7 @@ export default function CreateAccountScreen({ navigation }: Props) {
             <TextInput
               value={fullName}
               onChangeText={setFullName}
-              placeholder="e.g. Alex Johnson"
+              placeholder="e.g. Priya Sharma"
               placeholderTextColor="#94A3B8"
               autoCapitalize="words"
               style={styles.inputField}

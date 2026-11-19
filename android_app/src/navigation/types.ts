@@ -17,7 +17,7 @@ export type RootStackParamList = {
   FitnessDashboard: undefined;
   FamilyDashboard: undefined;
   Discover: undefined;
-  Shop: undefined;
+  Shop: undefined | { openCart?: boolean };
   ShopProductDetail: { productId: string };
   OrderHistory: undefined;
   Points: undefined;

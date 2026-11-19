@@ -12,13 +12,35 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/types";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Welcome">;
 const { width } = Dimensions.get("window");
 
 export default function WelcomeScreen({ navigation }: Props) {
+  const handleGuestExplore = async () => {
+    await AsyncStorage.setItem("@customer_logged_in", "true");
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "ServicesDashboard" }],
+    });
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      {/* Top Bar with Skip */}
+      <View style={styles.topBar}>
+        <View style={{ flex: 1 }} />
+        <TouchableOpacity
+          style={styles.skipBtn}
+          onPress={handleGuestExplore}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.skipText}>Explore as Guest</Text>
+          <Ionicons name="arrow-forward" size={14} color="#0056D2" />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -90,6 +112,15 @@ export default function WelcomeScreen({ navigation }: Props) {
             activeOpacity={0.88}
           >
             <Text style={styles.secondaryBtnText}>Create Account</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.guestBtn}
+            onPress={handleGuestExplore}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="eye-outline" size={17} color="#64748B" style={{ marginRight: 6 }} />
+            <Text style={styles.guestBtnText}>Continue as Guest (Preview All Services)</Text>
           </TouchableOpacity>
         </View>
 
@@ -237,6 +268,41 @@ const styles = StyleSheet.create({
     color: "#0F172A",
     fontSize: 15.5,
     fontWeight: "700",
+  },
+  topBar: {
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  skipBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#EFF6FF",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
+  },
+  skipText: {
+    color: "#0056D2",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  guestBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    marginTop: 4,
+  },
+  guestBtnText: {
+    color: "#64748B",
+    fontSize: 13.5,
+    fontWeight: "600",
   },
   footerWrap: {
     flexDirection: "row",

@@ -100,14 +100,34 @@ export default function MapScreen({ route, navigation }: any) {
       await updateBookingStatus(job.bookingId, 'en_route').catch(() => {});
       store.updateJobStatus(jobId, 'NAVIGATING');
 
-      // Native streaming watcher: balanced accuracy, 3000ms time interval, 5m distance threshold
-      // Minimizes battery drain while providing smooth turn-by-turn road tracking on customer app
+      // Fetch initial position immediately so map does not stall on "Getting your location..."
+      try {
+        const initialLoc =
+          (await Location.getLastKnownPositionAsync().catch(() => null)) ||
+          (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }).catch(() => null));
+        if (initialLoc?.coords && active) {
+          const { latitude: lat, longitude: lng, heading, speed } = initialLoc.coords;
+          setVendorCoords({ lat, lng });
+          await updateVendorLocation(
+            store.vendorId!,
+            lat,
+            lng,
+            heading ?? 0,
+            speed ? Math.round(speed * 3.6) : 0,
+            job.bookingId
+          ).catch(() => {});
+        }
+      } catch (initErr) {
+        console.warn('[MapScreen] initial location fix warning:', initErr);
+      }
+
+      // Native streaming watcher with High GPS accuracy for real turn-by-turn road navigation
       try {
         subscription = await Location.watchPositionAsync(
           {
-            accuracy: Location.Accuracy.Balanced,
+            accuracy: Location.Accuracy.High,
             timeInterval: 3000,
-            distanceInterval: 5,
+            distanceInterval: 3,
           },
           async (pos) => {
             if (!active || !pos?.coords) return;

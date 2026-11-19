@@ -69,7 +69,7 @@ function getFlashTimeLeft(): { h: number; m: number; s: number } {
 
 function pad(n: number) { return String(n).padStart(2, "0"); }
 
-export default function ShopScreen({ navigation }: Props) {
+export default function ShopScreen({ navigation, route }: Props) {
   const { isDark } = useTheme();
 
   const [products, setProducts] = useState<ShopProduct[]>(DEFAULT_SHOP_PRODUCTS);
@@ -81,6 +81,13 @@ export default function ShopScreen({ navigation }: Props) {
   const [cartModalVisible, setCartModalVisible] = useState(false);
   const [adminModalVisible, setAdminModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<"shop" | "wishlist">("shop");
+
+  // Automatically open cart if navigated with openCart flag
+  useEffect(() => {
+    if (route?.params?.openCart) {
+      setCartModalVisible(true);
+    }
+  }, [route?.params?.openCart]);
 
   // Flash deal timer
   const [timeLeft, setTimeLeft] = useState(getFlashTimeLeft());
@@ -155,12 +162,12 @@ export default function ShopScreen({ navigation }: Props) {
     await placeShopOrder({
       orderNumber,
       customerId: "user-current",
-      customerName: "Current User",
+      customerName: "Arunachalam S.",
       customerPhone: "+91 98765 43210",
       shippingAddress: {
-        street: "Default Delivery Address",
-        city: "Urban District",
-        pincode: "600001",
+        street: "Flat 4B, Green Meadows, 2nd Cross, R.S. Puram",
+        city: "Coimbatore",
+        pincode: "641002",
       },
       items: cart.map((c) => ({
         productId: c.product.id,

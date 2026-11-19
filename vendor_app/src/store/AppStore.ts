@@ -245,8 +245,23 @@ class AppStore {
 
       const isAssigned = fb.status === 'assigned';
       let completedTimestamp = existing?.completedAt;
+      const parseTimestamp = (val: any): number | undefined => {
+        if (!val) return undefined;
+        if (typeof val === 'number') return val;
+        if (typeof val.toMillis === 'function') return val.toMillis();
+        const parsed = new Date(val).getTime();
+        return isNaN(parsed) ? undefined : parsed;
+      };
+
+      const fbAny = fb as any;
       if (fb.completedAt) {
-        completedTimestamp = fb.completedAt.toMillis ? fb.completedAt.toMillis() : fb.completedAt;
+        completedTimestamp = parseTimestamp(fb.completedAt) ?? completedTimestamp;
+      } else if (fb.serviceEndedAt) {
+        completedTimestamp = parseTimestamp(fb.serviceEndedAt) ?? completedTimestamp;
+      } else if (fbAny.service_endedAt) {
+        completedTimestamp = parseTimestamp(fbAny.service_endedAt) ?? completedTimestamp;
+      } else if (fb.status === 'completed' || fb.status === 'service_ended') {
+        completedTimestamp = parseTimestamp(fb.createdAt) ?? completedTimestamp ?? Date.now();
       }
 
       // Preserve coordinates: if Firestore returns 0/missing, fall back to the
@@ -452,7 +467,31 @@ class AppStore {
       active: ['ACCEPTED', 'UPCOMING', 'NAVIGATING', 'ARRIVED', 'OTP_PENDING', 'CUSTOMER_VERIFIED', 'SERVICE_STARTED', 'RECORDING_ACTIVE', 'RECORDING_STOPPED'],
       completed: ['COMPLETED', 'REJECTED', 'CANCELLED'],
     };
-    return (this.jobs || []).filter(j => (map[tab] || []).includes(j.status));
+
+    const list = (this.jobs || []).filter(j => (map[tab] || []).includes(j.status));
+
+    // Sort completed orders so the last completed is always on top (above)
+    if (tab === 'completed') {
+      const getJobCompletedTime = (job: Job): number => {
+        if (job.completedAt) {
+          const t = typeof job.completedAt === 'number' ? job.completedAt : new Date(job.completedAt).getTime();
+          if (!isNaN(t) && t > 0) return t;
+        }
+        const jAny = job as any;
+        const alt = jAny.serviceEndedAt || jAny.service_endedAt || jAny.updatedAt || jAny.createdAt;
+        if (alt) {
+          if (typeof alt === 'number') return alt;
+          if (typeof alt.toMillis === 'function') return alt.toMillis();
+          const t = new Date(alt).getTime();
+          if (!isNaN(t)) return t;
+        }
+        return 0;
+      };
+
+      return [...list].sort((a, b) => getJobCompletedTime(b) - getJobCompletedTime(a));
+    }
+
+    return list;
   }
 
   get activeJobs(): Job[] {

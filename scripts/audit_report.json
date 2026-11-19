@@ -1,0 +1,865 @@
+{
+  "deadNavigations": [],
+  "emptyOnPress": [],
+  "roboticAiPlaceholders": [
+    {
+      "file": "android_app\\src\\screens\\auth\\CreateAccountScreen.tsx",
+      "line": 131,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"e.g. Priya Sharma\""
+    },
+    {
+      "file": "android_app\\src\\screens\\auth\\CreateAccountScreen.tsx",
+      "line": 132,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#94A3B8\""
+    },
+    {
+      "file": "android_app\\src\\screens\\auth\\CreateAccountScreen.tsx",
+      "line": 147,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"you@example.com (optional if phone provided)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\auth\\CreateAccountScreen.tsx",
+      "line": 148,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#94A3B8\""
+    },
+    {
+      "file": "android_app\\src\\screens\\auth\\CreateAccountScreen.tsx",
+      "line": 164,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"e.g. 98765 43210\""
+    },
+    {
+      "file": "android_app\\src\\screens\\auth\\CreateAccountScreen.tsx",
+      "line": 165,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#94A3B8\""
+    },
+    {
+      "file": "android_app\\src\\screens\\auth\\CreateAccountScreen.tsx",
+      "line": 181,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"At least 6 characters\""
+    },
+    {
+      "file": "android_app\\src\\screens\\auth\\CreateAccountScreen.tsx",
+      "line": 182,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#94A3B8\""
+    },
+    {
+      "file": "android_app\\src\\screens\\auth\\CreateProfileScreen.tsx",
+      "line": 190,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"e.g. Arunachalam S.\""
+    },
+    {
+      "file": "android_app\\src\\screens\\auth\\CreateProfileScreen.tsx",
+      "line": 191,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#94A3B8\""
+    },
+    {
+      "file": "android_app\\src\\screens\\auth\\CreateProfileScreen.tsx",
+      "line": 205,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"you@example.com\""
+    },
+    {
+      "file": "android_app\\src\\screens\\auth\\CreateProfileScreen.tsx",
+      "line": 206,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#94A3B8\""
+    },
+    {
+      "file": "android_app\\src\\screens\\auth\\CreateProfileScreen.tsx",
+      "line": 222,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"+91 98765 43210\""
+    },
+    {
+      "file": "android_app\\src\\screens\\auth\\CreateProfileScreen.tsx",
+      "line": 223,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#94A3B8\""
+    },
+    {
+      "file": "android_app\\src\\screens\\auth\\CreateProfileScreen.tsx",
+      "line": 256,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"House/Flat No., Street, Landmark, City\""
+    },
+    {
+      "file": "android_app\\src\\screens\\auth\\CreateProfileScreen.tsx",
+      "line": 257,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#94A3B8\""
+    },
+    {
+      "file": "android_app\\src\\screens\\auth\\CreateProfileScreen.tsx",
+      "line": 272,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"DD/MM/YYYY\""
+    },
+    {
+      "file": "android_app\\src\\screens\\auth\\CreateProfileScreen.tsx",
+      "line": 273,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#94A3B8\""
+    },
+    {
+      "file": "android_app\\src\\screens\\auth\\ForgotPasswordScreen.tsx",
+      "line": 25,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"you@example.com\""
+    },
+    {
+      "file": "android_app\\src\\screens\\auth\\SignInScreen.tsx",
+      "line": 244,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"e.g. you@example.com or 98765 43210\""
+    },
+    {
+      "file": "android_app\\src\\screens\\auth\\SignInScreen.tsx",
+      "line": 245,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#94A3B8\""
+    },
+    {
+      "file": "android_app\\src\\screens\\auth\\SignInScreen.tsx",
+      "line": 262,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Enter your password\""
+    },
+    {
+      "file": "android_app\\src\\screens\\auth\\SignInScreen.tsx",
+      "line": 263,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#94A3B8\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dailycare\\SmartRemindersScreen.tsx",
+      "line": 325,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"e.g. Green Tea, Multivitamin, Walk Dog\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dailycare\\SmartRemindersScreen.tsx",
+      "line": 326,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.3)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dailycare\\SmartRemindersScreen.tsx",
+      "line": 334,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"e.g. 08:30 AM\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dailycare\\SmartRemindersScreen.tsx",
+      "line": 335,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.3)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dailyhealth\\BodyCompositionScreen.tsx",
+      "line": 245,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"e.g. 28.4\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dailyhealth\\BodyCompositionScreen.tsx",
+      "line": 246,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.4)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dailyhealth\\BodyCompositionScreen.tsx",
+      "line": 257,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"e.g. 18.5\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dailyhealth\\BodyCompositionScreen.tsx",
+      "line": 258,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.4)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dailyhealth\\BodyCompositionScreen.tsx",
+      "line": 274,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Notes\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dailyhealth\\BodyCompositionScreen.tsx",
+      "line": 275,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.4)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\AICoachScreen.tsx",
+      "line": 376,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Ask your Health Coach anything...\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\AICoachScreen.tsx",
+      "line": 377,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#64748b\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\DiscoverScreen.tsx",
+      "line": 56,
+      "matched": "/placeholder/i",
+      "snippet": "<Text style={s.searchInputPlaceholder}>Search healthy living, diets, workouts, care...</Text>"
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\DiscoverScreen.tsx",
+      "line": 890,
+      "matched": "/placeholder/i",
+      "snippet": "searchInputPlaceholder: {"
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\FamilyDashboardScreen.tsx",
+      "line": 165,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Search family member, medical doc, nearby help...\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\FamilyDashboardScreen.tsx",
+      "line": 166,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.4)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\FamilyDashboardScreen.tsx",
+      "line": 612,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Full Name (e.g. Grandmother Lakshmi)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\FamilyDashboardScreen.tsx",
+      "line": 613,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#94a3b8\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\FamilyDashboardScreen.tsx",
+      "line": 619,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Phone Number (e.g. +91 98401 23456)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\FamilyDashboardScreen.tsx",
+      "line": 620,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#94a3b8\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\FamilyDashboardScreen.tsx",
+      "line": 627,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Relationship (e.g. Mother, Father, Spouse)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\FamilyDashboardScreen.tsx",
+      "line": 628,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#94a3b8\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\FitnessDashboardScreen.tsx",
+      "line": 199,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"e.g. Upper Body Push, Leg Day, HIIT\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\FitnessDashboardScreen.tsx",
+      "line": 200,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.3)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\FitnessDashboardScreen.tsx",
+      "line": 211,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"35\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\FitnessDashboardScreen.tsx",
+      "line": 212,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.3)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\FitnessDashboardScreen.tsx",
+      "line": 222,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"240\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\FitnessDashboardScreen.tsx",
+      "line": 223,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.3)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\FitnessDashboardScreen.tsx",
+      "line": 236,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"3.5\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\FitnessDashboardScreen.tsx",
+      "line": 237,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.3)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\HomeDashboardScreen.tsx",
+      "line": 772,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Tell us what you love or how we can improve...\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\HomeDashboardScreen.tsx",
+      "line": 773,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.4)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\HomeDashboardScreen.tsx",
+      "line": 2572,
+      "matched": "/placeholder/i",
+      "snippet": "// Other sub-categories placeholder"
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\MedicalRecordsScreen.tsx",
+      "line": 338,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Search by title, category, doctor...\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\MedicalRecordsScreen.tsx",
+      "line": 339,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#64748b\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\MedicalRecordsScreen.tsx",
+      "line": 624,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"e.g. Blood Test Report, Dr. Smith Prescription\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\MedicalRecordsScreen.tsx",
+      "line": 625,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#64748b\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\MedicalRecordsScreen.tsx",
+      "line": 634,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"YYYY-MM-DD\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\MedicalRecordsScreen.tsx",
+      "line": 635,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#64748b\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\MedicalRecordsScreen.tsx",
+      "line": 661,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"e.g. Prescribed by Dr. Roy for seasonal allergies\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\MedicalRecordsScreen.tsx",
+      "line": 662,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#64748b\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\MedicationCenterScreen.tsx",
+      "line": 394,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"e.g. Dolo 650, Pan 40, Metformin, Shelcal...\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\MedicationCenterScreen.tsx",
+      "line": 395,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.3)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\MedicationCenterScreen.tsx",
+      "line": 556,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"500mg or 10g\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\MedicationCenterScreen.tsx",
+      "line": 557,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.3)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\MedicationCenterScreen.tsx",
+      "line": 567,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"08:00 AM\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\MedicationCenterScreen.tsx",
+      "line": 568,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.3)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\MedicationCenterScreen.tsx",
+      "line": 619,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"e.g. After food, Before breakfast\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\MedicationCenterScreen.tsx",
+      "line": 620,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.3)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\NutritionDashboardScreen.tsx",
+      "line": 673,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Search for food\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\NutritionDashboardScreen.tsx",
+      "line": 674,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.4)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\PointsScreen.tsx",
+      "line": 525,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"e.g. 14 February\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\PointsScreen.tsx",
+      "line": 526,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#64748b\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\ShopScreen.tsx",
+      "line": 342,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Search products...\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\ShopScreen.tsx",
+      "line": 343,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#94a3b8\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\ShopScreen.tsx",
+      "line": 578,
+      "matched": "/placeholder/i",
+      "snippet": "{ label: \"Product Name *\", value: newProdName, setter: setNewProdName, placeholder: \"e.g. Smart ECG "
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\ShopScreen.tsx",
+      "line": 579,
+      "matched": "/placeholder/i",
+      "snippet": "{ label: \"Subtitle\", value: newProdSubtitle, setter: setNewProdSubtitle, placeholder: \"e.g. AI-power"
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\ShopScreen.tsx",
+      "line": 580,
+      "matched": "/placeholder/i",
+      "snippet": "{ label: \"Image URL (https://...)\", value: newProdImageUrl, setter: setNewProdImageUrl, placeholder:"
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\ShopScreen.tsx",
+      "line": 581,
+      "matched": "/placeholder/i",
+      "snippet": "{ label: \"Badge Tag\", value: newProdBadge, setter: setNewProdBadge, placeholder: \"POPULAR\" },"
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\ShopScreen.tsx",
+      "line": 587,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder={f.placeholder} placeholderTextColor=\"#94a3b8\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\ShopScreen.tsx",
+      "line": 597,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"2499\" placeholderTextColor=\"#94a3b8\" keyboardType=\"numeric\""
+    },
+    {
+      "file": "android_app\\src\\screens\\dashboard\\ShopScreen.tsx",
+      "line": 605,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"2200\" placeholderTextColor=\"#94a3b8\" keyboardType=\"numeric\""
+    },
+    {
+      "file": "android_app\\src\\screens\\fitness\\DailyStepsDashboardScreen.tsx",
+      "line": 379,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"e.g. 7500\""
+    },
+    {
+      "file": "android_app\\src\\screens\\fitness\\DailyStepsDashboardScreen.tsx",
+      "line": 380,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.3)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\health\\BloodOxygenScreen.tsx",
+      "line": 493,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"e.g. 98\""
+    },
+    {
+      "file": "android_app\\src\\screens\\health\\BloodOxygenScreen.tsx",
+      "line": 494,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#71717a\""
+    },
+    {
+      "file": "android_app\\src\\screens\\health\\CycleTrackingScreen.tsx",
+      "line": 624,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder={`Enter ${activeLogModal} details...`}"
+    },
+    {
+      "file": "android_app\\src\\screens\\health\\CycleTrackingScreen.tsx",
+      "line": 625,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#64748b\""
+    },
+    {
+      "file": "android_app\\src\\screens\\health\\CycleTrackingScreen.tsx",
+      "line": 664,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"28\""
+    },
+    {
+      "file": "android_app\\src\\screens\\health\\CycleTrackingScreen.tsx",
+      "line": 665,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#64748b\""
+    },
+    {
+      "file": "android_app\\src\\screens\\health\\CycleTrackingScreen.tsx",
+      "line": 674,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"5\""
+    },
+    {
+      "file": "android_app\\src\\screens\\health\\CycleTrackingScreen.tsx",
+      "line": 675,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#64748b\""
+    },
+    {
+      "file": "android_app\\src\\screens\\health\\HeartRateScreen.tsx",
+      "line": 525,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"e.g. 72\""
+    },
+    {
+      "file": "android_app\\src\\screens\\health\\HeartRateScreen.tsx",
+      "line": 526,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#71717a\""
+    },
+    {
+      "file": "android_app\\src\\screens\\health\\MoodCheckInScreen.tsx",
+      "line": 288,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Add a note to help you remember this feeling or moment\""
+    },
+    {
+      "file": "android_app\\src\\screens\\health\\MoodCheckInScreen.tsx",
+      "line": 289,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#64748b\""
+    },
+    {
+      "file": "android_app\\src\\screens\\medical\\BloodTestReportsScreen.tsx",
+      "line": 212,
+      "matched": "/placeholder/i",
+      "snippet": "<View style={s.mapPlaceholder}>"
+    },
+    {
+      "file": "android_app\\src\\screens\\medical\\BloodTestReportsScreen.tsx",
+      "line": 313,
+      "matched": "/placeholder/i",
+      "snippet": "mapPlaceholder: { flex: 1, justifyContent: \"center\", alignItems: \"center\", gap: 8 },"
+    },
+    {
+      "file": "android_app\\src\\screens\\medical\\DoctorAdviceScreen.tsx",
+      "line": 163,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Search doctor by name, specialty, clinic...\""
+    },
+    {
+      "file": "android_app\\src\\screens\\medical\\DoctorAdviceScreen.tsx",
+      "line": 164,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.4)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\profile\\ProfileScreen.tsx",
+      "line": 643,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Your full name\""
+    },
+    {
+      "file": "android_app\\src\\screens\\profile\\ProfileScreen.tsx",
+      "line": 644,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.3)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\profile\\ProfileScreen.tsx",
+      "line": 657,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Email address\""
+    },
+    {
+      "file": "android_app\\src\\screens\\profile\\ProfileScreen.tsx",
+      "line": 658,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.3)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\profile\\ProfileScreen.tsx",
+      "line": 672,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Mobile / Contact number\""
+    },
+    {
+      "file": "android_app\\src\\screens\\profile\\ProfileScreen.tsx",
+      "line": 673,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.3)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\profile\\ProfileScreen.tsx",
+      "line": 686,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Age (e.g. 24)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\profile\\ProfileScreen.tsx",
+      "line": 687,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.3)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\profile\\ProfileScreen.tsx",
+      "line": 702,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Gender\""
+    },
+    {
+      "file": "android_app\\src\\screens\\profile\\ProfileScreen.tsx",
+      "line": 703,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.3)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\profile\\ProfileScreen.tsx",
+      "line": 715,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Height\""
+    },
+    {
+      "file": "android_app\\src\\screens\\profile\\ProfileScreen.tsx",
+      "line": 716,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.3)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\profile\\ProfileScreen.tsx",
+      "line": 728,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Weight\""
+    },
+    {
+      "file": "android_app\\src\\screens\\profile\\ProfileScreen.tsx",
+      "line": 729,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.3)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\profile\\ProfileScreen.tsx",
+      "line": 741,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Date of Birth (e.g. 28 Jan 2001)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\profile\\ProfileScreen.tsx",
+      "line": 742,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.3)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\profile\\SettingsScreen.tsx",
+      "line": 221,
+      "matched": "/placeholder/i",
+      "snippet": "<View style={styles.headerRightPlaceholder} />"
+    },
+    {
+      "file": "android_app\\src\\screens\\profile\\SettingsScreen.tsx",
+      "line": 605,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Search screen, route name, or description...\""
+    },
+    {
+      "file": "android_app\\src\\screens\\profile\\SettingsScreen.tsx",
+      "line": 606,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#94a3b8\""
+    },
+    {
+      "file": "android_app\\src\\screens\\profile\\SettingsScreen.tsx",
+      "line": 727,
+      "matched": "/placeholder/i",
+      "snippet": "headerRightPlaceholder: {"
+    },
+    {
+      "file": "android_app\\src\\screens\\services\\BookingConfirmedScreen.tsx",
+      "line": 249,
+      "matched": "/placeholder/i",
+      "snippet": "<View style={s.headerRightPlaceholder} />"
+    },
+    {
+      "file": "android_app\\src\\screens\\services\\BookingConfirmedScreen.tsx",
+      "line": 755,
+      "matched": "/placeholder/i",
+      "snippet": "headerRightPlaceholder: {"
+    },
+    {
+      "file": "android_app\\src\\screens\\services\\MyBookingsScreen.tsx",
+      "line": 270,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Search by invoice ID, service name...\""
+    },
+    {
+      "file": "android_app\\src\\screens\\services\\MyBookingsScreen.tsx",
+      "line": 271,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.4)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\services\\RatingFeedbackScreen.tsx",
+      "line": 597,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder={isComplaint ? \"Please describe what happened in detail...\" : \"Tell us about the service"
+    },
+    {
+      "file": "android_app\\src\\screens\\services\\RatingFeedbackScreen.tsx",
+      "line": 598,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"rgba(255,255,255,0.3)\""
+    },
+    {
+      "file": "android_app\\src\\screens\\services\\ServiceCategoryScreen.tsx",
+      "line": 138,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Search in this category...\""
+    },
+    {
+      "file": "android_app\\src\\screens\\services\\ServiceCategoryScreen.tsx",
+      "line": 139,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#94A3B8\""
+    },
+    {
+      "file": "android_app\\src\\screens\\services\\ServiceDetailScreen.tsx",
+      "line": 1339,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Enter 10-digit mobile\""
+    },
+    {
+      "file": "android_app\\src\\screens\\services\\ServiceDetailScreen.tsx",
+      "line": 1340,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor={isDark ? themeColors.textMuted : \"#94A3B8\"}"
+    },
+    {
+      "file": "android_app\\src\\screens\\services\\ServiceDetailScreen.tsx",
+      "line": 1474,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"e.g. URBAN50\""
+    },
+    {
+      "file": "android_app\\src\\screens\\services\\ServiceDetailScreen.tsx",
+      "line": 1475,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor={isDark ? themeColors.textMuted : \"#94A3B8\"}"
+    },
+    {
+      "file": "android_app\\src\\screens\\services\\ServiceDetailScreen.tsx",
+      "line": 1557,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Search locality, street, or landmark...\""
+    },
+    {
+      "file": "android_app\\src\\screens\\services\\ServiceDetailScreen.tsx",
+      "line": 1558,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor=\"#94A3B8\""
+    },
+    {
+      "file": "android_app\\src\\screens\\services\\ServiceDetailScreen.tsx",
+      "line": 2095,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"0000\""
+    },
+    {
+      "file": "android_app\\src\\screens\\services\\ServiceDetailScreen.tsx",
+      "line": 2096,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor={isDark ? themeColors.textMuted : \"#94A3B8\"}"
+    },
+    {
+      "file": "android_app\\src\\screens\\services\\ServicesDashboardScreen.tsx",
+      "line": 433,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Search services, e.g. cleaning, RO...\""
+    },
+    {
+      "file": "android_app\\src\\screens\\services\\ServicesDashboardScreen.tsx",
+      "line": 434,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor={colors.textMuted}"
+    },
+    {
+      "file": "android_app\\src\\screens\\services\\ServicesDashboardScreen.tsx",
+      "line": 795,
+      "matched": "/placeholder/i",
+      "snippet": "placeholder=\"Search services, e.g. cleaning, RO...\""
+    },
+    {
+      "file": "android_app\\src\\screens\\services\\ServicesDashboardScreen.tsx",
+      "line": 796,
+      "matched": "/placeholder/i",
+      "snippet": "placeholderTextColor={colors.textMuted}"
+    }
+  ],
+  "consoleOnlyButtons": []
+}

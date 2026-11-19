@@ -609,7 +609,7 @@ export default function FamilyDashboardScreen({ navigation }: Props) {
 
             <TextInput
               style={s.modalInput}
-              placeholder="Full Name (e.g. Grandma Helen)"
+              placeholder="Full Name (e.g. Grandmother Lakshmi)"
               placeholderTextColor="#94a3b8"
               value={newMemberName}
               onChangeText={setNewMemberName}

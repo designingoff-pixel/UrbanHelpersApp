@@ -16,8 +16,7 @@
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#00bcd4",
-          "defaultChannel": "default"
+          "color": "#00bcd4"
         }
       ],
       [
@@ -46,7 +45,8 @@
         "BLUETOOTH",
         "BLUETOOTH_ADMIN",
         "BLUETOOTH_SCAN",
-        "BLUETOOTH_CONNECT"
+        "BLUETOOTH_CONNECT",
+        "DETECT_SCREEN_CAPTURE"
       ],
       "config": {
         "googleMaps": {
@@ -67,6 +67,11 @@
         "NSCameraUsageDescription": "Urban Helpers requires camera access to upload prescription and medical record documents.",
         "NSPhotoLibraryUsageDescription": "Urban Helpers requires photo gallery access to upload profile pictures and health documents.",
         "NSBluetoothAlwaysUsageDescription": "Urban Helpers connects with your smartwatch to synchronize live pulse rate, step count, and fitness vitals."
+      }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "84334374-3619-4b82-9cb7-7f9188e0c3d4"
       }
     }
   }

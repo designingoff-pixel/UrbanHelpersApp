@@ -170,6 +170,33 @@ export default function SignInScreen({ navigation }: Props) {
     }
   };
 
+  const handleQuickDemoSignIn = async () => {
+    try {
+      setLoading(true);
+      await AsyncStorage.setItem("@customer_logged_in", "true");
+      await AsyncStorage.setItem(
+        "@urban_health_user_profile_v2",
+        JSON.stringify({
+          name: "Arunachalam S.",
+          phone: "+91 98765 43210",
+          email: "arunachalam@urbanhelpers.app",
+          address: "Flat 4B, Green Meadows, 2nd Cross, R.S. Puram, Coimbatore - 641002",
+        })
+      );
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "ServicesDashboard" }],
+      });
+    } catch (e) {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "ServicesDashboard" }],
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -270,6 +297,17 @@ export default function SignInScreen({ navigation }: Props) {
               <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
             </>
           )}
+        </TouchableOpacity>
+
+        {/* Quick Demo 1-Tap Access for Instant App Exploration */}
+        <TouchableOpacity
+          style={styles.demoBtn}
+          onPress={handleQuickDemoSignIn}
+          disabled={loading}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="flash" size={16} color="#059669" style={{ marginRight: 6 }} />
+          <Text style={styles.demoBtnText}>One-Tap Demo Login (Explore App Instantly)</Text>
         </TouchableOpacity>
 
         {/* Social Divider */}
@@ -423,6 +461,22 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "800",
+  },
+  demoBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#ECFDF5",
+    borderWidth: 1.5,
+    borderColor: "#A7F3D0",
+    borderRadius: 14,
+    height: 48,
+    marginTop: 10,
+  },
+  demoBtnText: {
+    color: "#065F46",
+    fontSize: 14,
+    fontWeight: "700",
   },
   dividerRow: {
     flexDirection: "row",

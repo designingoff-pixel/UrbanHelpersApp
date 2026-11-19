@@ -128,7 +128,7 @@ export default function HomeScreen({ navigation }: any) {
   const requestedJobs = store.getJobsForTab('requests');
   const upcomingJobs = store.getJobsForTab('upcoming');
   const activeJobs = store.getJobsForTab('active');
-  const realCompletedJobs = store.jobs.filter((j) => j.status === 'COMPLETED');
+  const realCompletedJobs = store.getJobsForTab('completed').filter((j) => j.status === 'COMPLETED');
 
   const displayedJobs = store.getJobsForTab(activeTab);
 
